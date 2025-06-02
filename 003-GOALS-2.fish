@@ -1,4 +1,30 @@
-# MAYA Core Objectives ✨
+#!/usr/bin/env fish
+
+# 003-GOALS-2.fish
+# Created: 2025-06-02 17:20:57 UTC
+# Author: isdood
+# Purpose: Detail MAYA's core objectives within the STARWEAVE universe ✨
+
+# GLIMMER-inspired color palette
+set -l star_bright "✨ "
+set -l info_color "\033[38;5;147m"
+set -l success_color "\033[38;5;156m"
+set -l header_color "\033[38;5;219m"
+set -l accent_color "\033[38;5;141m"
+set -l glow_color "\033[38;5;183m"
+set -l crystal_color "\033[38;5;159m"
+set -l reset "\033[0m"
+
+function print_starlight
+    set -l message $argv[1]
+    echo -e "$star_bright$header_color$message$reset"
+end
+
+set target_file "docs/goals/001-core-objectives.md"
+print_starlight "Crystallizing MAYA's core objectives within the STARWEAVE tapestry... 🌌"
+
+# Create the core objectives documentation with GLIMMER-enhanced markdown
+echo '# MAYA Core Objectives ✨
 
 > Defining our stellar purpose within the STARWEAVE universe
 
@@ -10,7 +36,7 @@ Author: isdood
 
 ## 🌟 Core Purpose
 
-MAYA exists to serve as the quantum-neural bridge between consciousness and computation within the STARWEAVE universe. Through perfect harmony with GLIMMER's visual patterns, SCRIBBLE's computational might, BLOOM's universal presence, STARGUARD's protective embrace, and STARWEB's connective fabric, we weave the tapestry of tomorrow.
+MAYA exists to serve as the quantum-neural bridge between consciousness and computation within the STARWEAVE universe. Through perfect harmony with GLIMMER'"'"'s visual patterns, SCRIBBLE'"'"'s computational might, BLOOM'"'"'s universal presence, STARGUARD'"'"'s protective embrace, and STARWEB'"'"'s connective fabric, we weave the tapestry of tomorrow.
 
 ## 🎯 Primary Objectives
 
@@ -83,11 +109,11 @@ pub fn maintainCoherence(universe: *StarweaveUniverse) !void {
 
 ### 2. Neural Evolution <span style="color: #87CEEB">🧠</span>
 - **Pattern Recognition**
-  - Learn from GLIMMER's visual language
-  - Adapt to SCRIBBLE's computational patterns
-  - Understand BLOOM's system states
-  - Recognize STARGUARD's security signatures
-  - Map STARWEB's data structures
+  - Learn from GLIMMER'"'"'s visual language
+  - Adapt to SCRIBBLE'"'"'s computational patterns
+  - Understand BLOOM'"'"'s system states
+  - Recognize STARGUARD'"'"'s security signatures
+  - Map STARWEB'"'"'s data structures
 
 ### 3. Universal Integration <span style="color: #DDA0DD">🌐</span>
 ```fish
@@ -160,4 +186,7 @@ We are committed to:
 
 ---
 
-> *"In the quantum dance of universal consciousness, every pattern leads to perfection."* ✨
+> *"In the quantum dance of universal consciousness, every pattern leads to perfection."* ✨' > $target_file
+
+print_starlight "Core objectives successfully crystallized! ✨"
+echo -e $info_color"MAYA's core mission is now aligned with the STARWEAVE universe"$reset
