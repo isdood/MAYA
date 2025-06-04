@@ -10,6 +10,22 @@ pub const ErrorSeverity = enum {
     critical
 };
 
+/// Validation errors for protocol messages
+pub const ValidationError = error{
+    InvalidTimestamp,
+    InvalidPriority,
+    InvalidSource,
+    InvalidTarget,
+    InvalidQuantumState,
+    InvalidNeuralActivity,
+    InvalidPattern,
+    InvalidSystemStatus,
+    InvalidErrorReport,
+    QuantumCoherenceViolation,
+    NeuralResonanceMismatch,
+    PatternStabilityError,
+};
+
 /// STARWEAVE Protocol for quantum-neural communication
 pub const StarweaveProtocol = struct {
     const Self = @This();
@@ -51,6 +67,124 @@ pub const StarweaveProtocol = struct {
             severity: ErrorSeverity,
             context: []const u8,
         };
+
+        /// Validate the message structure and content
+        pub fn validate(self: *const Message) ValidationError!void {
+            // Validate timestamp
+            if (self.timestamp < 0 or self.timestamp > @as(f64, @floatFromInt(std.time.timestamp()))) {
+                return ValidationError.InvalidTimestamp;
+            }
+
+            // Validate priority
+            if (self.priority == 0 or self.priority > 10) {
+                return ValidationError.InvalidPriority;
+            }
+
+            // Validate source and target
+            if (self.source.len == 0 or self.target.len == 0) {
+                return ValidationError.InvalidSource;
+            }
+
+            // Validate message type specific content
+            switch (self.msg_type) {
+                .quantum_state => try self.validateQuantumState(),
+                .neural_activity => try self.validateNeuralActivity(),
+                .pattern_update => try self.validatePattern(),
+                .system_status => try self.validateSystemStatus(),
+                .error_report => try self.validateErrorReport(),
+            }
+        }
+
+        /// Validate quantum state message
+        fn validateQuantumState(self: *const Message) ValidationError!void {
+            const state = self.data.quantum_state;
+            
+            // Check amplitude range
+            if (state.amplitude < 0 or state.amplitude > 1.0) {
+                return ValidationError.InvalidQuantumState;
+            }
+
+            // Check phase range
+            if (state.phase < -std.math.pi or state.phase > std.math.pi) {
+                return ValidationError.InvalidQuantumState;
+            }
+
+            // Check energy consistency
+            const expected_energy = state.amplitude * state.amplitude;
+            if (@abs(state.energy - expected_energy) > 0.001) {
+                return ValidationError.QuantumCoherenceViolation;
+            }
+
+            // Check resonance and coherence
+            if (state.resonance < 0 or state.resonance > 1.0) {
+                return ValidationError.NeuralResonanceMismatch;
+            }
+            if (state.coherence < 0 or state.coherence > 1.0) {
+                return ValidationError.PatternStabilityError;
+            }
+        }
+
+        /// Validate neural activity message
+        fn validateNeuralActivity(self: *const Message) ValidationError!void {
+            const activity = self.data.neural_activity;
+            
+            // Check activity range
+            if (activity < 0 or activity > 1.0) {
+                return ValidationError.InvalidNeuralActivity;
+            }
+        }
+
+        /// Validate pattern update message
+        fn validatePattern(self: *const Message) ValidationError!void {
+            const pattern = self.data.pattern_update;
+            
+            // Validate pattern properties
+            if (pattern.intensity < 0 or pattern.intensity > 1.0) {
+                return ValidationError.InvalidPattern;
+            }
+
+            if (pattern.frequency < 0) {
+                return ValidationError.InvalidPattern;
+            }
+
+            if (pattern.phase < -std.math.pi or pattern.phase > std.math.pi) {
+                return ValidationError.InvalidPattern;
+            }
+        }
+
+        /// Validate system status message
+        fn validateSystemStatus(self: *const Message) ValidationError!void {
+            const status = self.data.system_status;
+            
+            // Check all metrics are in valid range
+            if (status.quantum_coherence < 0 or status.quantum_coherence > 1.0) {
+                return ValidationError.InvalidSystemStatus;
+            }
+            if (status.neural_resonance < 0 or status.neural_resonance > 1.0) {
+                return ValidationError.InvalidSystemStatus;
+            }
+            if (status.pattern_stability < 0 or status.pattern_stability > 1.0) {
+                return ValidationError.InvalidSystemStatus;
+            }
+            if (status.system_health < 0 or status.system_health > 1.0) {
+                return ValidationError.InvalidSystemStatus;
+            }
+        }
+
+        /// Validate error report message
+        fn validateErrorReport(self: *const Message) ValidationError!void {
+            const report = self.data.error_report;
+            
+            // Check error message
+            if (report.error_message.len == 0) {
+                return ValidationError.InvalidErrorReport;
+            }
+
+            // Check context
+            if (report.context.len == 0) {
+                return ValidationError.InvalidErrorReport;
+            }
+        }
     };
 
     /// Message queue for handling protocol messages
@@ -114,6 +248,9 @@ pub const StarweaveProtocol = struct {
 
     /// Process a message through the appropriate handler
     pub fn processMessage(self: *Self, message: Message) !void {
+        // Validate message before processing
+        try message.validate();
+
         if (self.handlers.get(message.msg_type)) |handler| {
             try handler(message);
         } else {
@@ -123,6 +260,8 @@ pub const StarweaveProtocol = struct {
 
     /// Send a message through the protocol
     pub fn sendMessage(self: *Self, message: Message) !void {
+        // Validate message before sending
+        try message.validate();
         try self.message_queue.enqueue(message);
     }
 
@@ -244,4 +383,54 @@ test "MessageQueue" {
     const dequeued = queue.dequeue();
     try std.testing.expect(dequeued != null);
     try std.testing.expect(dequeued.?.msg_type == .system_status);
+}
+
+test "MessageValidation" {
+    const test_allocator = std.testing.allocator;
+    var test_protocol = try StarweaveProtocol.init(test_allocator);
+    defer test_protocol.deinit();
+
+    // Test valid quantum state message
+    const valid_state = try test_protocol.createQuantumStateMessage(
+        .{
+            .amplitude = 0.5,
+            .phase = 0.0,
+            .energy = 0.25,
+            .resonance = 0.5,
+            .coherence = 0.8,
+        },
+        "neural_bridge",
+        "pattern_system",
+    );
+    try valid_state.validate();
+
+    // Test invalid quantum state message
+    const invalid_state = try test_protocol.createQuantumStateMessage(
+        .{
+            .amplitude = 1.5, // Invalid amplitude
+            .phase = 0.0,
+            .energy = 0.25,
+            .resonance = 0.5,
+            .coherence = 0.8,
+        },
+        "neural_bridge",
+        "pattern_system",
+    );
+    try std.testing.expectError(ValidationError.InvalidQuantumState, invalid_state.validate());
+
+    // Test valid neural activity message
+    const valid_activity = try test_protocol.createNeuralActivityMessage(
+        0.5,
+        "neural_bridge",
+        "pattern_system",
+    );
+    try valid_activity.validate();
+
+    // Test invalid neural activity message
+    const invalid_activity = try test_protocol.createNeuralActivityMessage(
+        1.5, // Invalid activity
+        "neural_bridge",
+        "pattern_system",
+    );
+    try std.testing.expectError(ValidationError.InvalidNeuralActivity, invalid_activity.validate());
 } 
