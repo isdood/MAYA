@@ -6,7 +6,12 @@ pub fn build(b: *std.Build) void {
 
     // Create and register modules
     const glimmer_module = b.addModule("glimmer", .{
-        .root_source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
+        .root_source_file = .{ .cwd_relative = "src/glimmer/patterns.zig" },
+        .imports = &.{
+            .{ .name = "colors", .module = b.addModule("glimmer_colors", .{
+                .root_source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
+            })},
+        },
     });
 
     const neural_module = b.addModule("neural", .{

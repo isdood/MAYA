@@ -1,12 +1,29 @@
 const std = @import("std");
 
 /// GLIMMER color system for quantum-aware visual patterns
+pub const GlimmerColor = struct {
+    r: u8,
+    g: u8,
+    b: u8,
+
+    pub fn blend(a: GlimmerColor, b: GlimmerColor, t: f32) GlimmerColor {
+        const clamped_t = std.math.clamp(t, 0.0, 1.0);
+        return .{
+            .r = @as(u8, @intFromFloat(@as(f32, @floatFromInt(a.r)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(b.r)) * clamped_t)),
+            .g = @as(u8, @intFromFloat(@as(f32, @floatFromInt(a.g)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(b.g)) * clamped_t)),
+            .b = @as(u8, @intFromFloat(@as(f32, @floatFromInt(a.b)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(b.b)) * clamped_t)),
+        };
+    }
+};
+
 pub const GlimmerColors = struct {
-    pub const primary = "#B19CD9";    // Stellar Primary
-    pub const secondary = "#87CEEB";  // Neural Flow
-    pub const accent = "#FFB7C5";     // Quantum Sparkle
-    pub const neural = "#98FB98";     // Neural Pathways
-    pub const cosmic = "#DDA0DD";     // Cosmic Harmony
+    pub const primary = GlimmerColor{ .r = 0xB1, .g = 0x9C, .b = 0xD9 }; // Soft purple
+    pub const secondary = GlimmerColor{ .r = 0x9C, .g = 0xD9, .b = 0xB1 }; // Mint green
+    pub const accent = GlimmerColor{ .r = 0xD9, .g = 0xB1, .b = 0x9C }; // Peach
+    pub const neural = GlimmerColor{ .r = 0x9C, .g = 0xB1, .b = 0xD9 }; // Sky blue
+    pub const quantum = GlimmerColor{ .r = 0xD9, .g = 0x9C, .b = 0xB1 }; // Rose
+    pub const cosmic = GlimmerColor{ .r = 0xB1, .g = 0xD9, .b = 0x9C }; // Lime
+    pub const stellar = GlimmerColor{ .r = 0xD9, .g = 0x9C, .b = 0xD9 }; // Lavender
 
     /// Convert hex color to RGB components
     pub fn hexToRgb(hex: []const u8) !struct { r: u8, g: u8, b: u8 } {
@@ -65,4 +82,14 @@ test "GLIMMER color system" {
     try std.testing.expectEqual(@as(usize, 3), transition.len);
     try std.testing.expectEqualStrings(colors.primary, transition[0]);
     try std.testing.expectEqualStrings(colors.secondary, transition[2]);
+}
+
+test "GlimmerColor" {
+    const color1 = GlimmerColor{ .r = 0xFF, .g = 0x00, .b = 0x00 };
+    const color2 = GlimmerColor{ .r = 0x00, .g = 0x00, .b = 0xFF };
+    
+    const blended = GlimmerColor.blend(color1, color2, 0.5);
+    try std.testing.expect(blended.r == 0x7F);
+    try std.testing.expect(blended.g == 0x00);
+    try std.testing.expect(blended.b == 0x7F);
 } 

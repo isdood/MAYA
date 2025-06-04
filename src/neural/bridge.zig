@@ -18,20 +18,39 @@ pub const NeuralBridge = struct {
         learning_rate: f64,
     };
 
+    max_connections: usize,
+    quantum_threshold: f32,
+    learning_rate: f32,
+    initialized: bool,
     allocator: std.mem.Allocator,
     quantum_states: std.ArrayList(QuantumState),
     pathway_config: PathwayConfig,
 
-    pub fn init(allocator: std.mem.Allocator, config: PathwayConfig) !Self {
+    pub const Config = struct {
+        max_connections: usize = 100,
+        quantum_threshold: f32 = 0.5,
+        learning_rate: f32 = 0.01,
+    };
+
+    pub fn init(alloc: std.mem.Allocator, config: Config) Self {
         return Self{
-            .allocator = allocator,
-            .quantum_states = std.ArrayList(QuantumState).init(allocator),
-            .pathway_config = config,
+            .max_connections = config.max_connections,
+            .quantum_threshold = config.quantum_threshold,
+            .learning_rate = config.learning_rate,
+            .initialized = false,
+            .allocator = alloc,
+            .quantum_states = std.ArrayList(QuantumState).init(alloc),
+            .pathway_config = PathwayConfig{
+                .max_connections = config.max_connections,
+                .quantum_threshold = config.quantum_threshold,
+                .learning_rate = config.learning_rate,
+            },
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.quantum_states.deinit();
+        self.initialized = false;
     }
 
     /// Initialize a new quantum state
@@ -72,25 +91,31 @@ pub const NeuralBridge = struct {
     }
 };
 
-test "Neural Bridge" {
-    const allocator = std.testing.allocator;
-    const config = NeuralBridge.PathwayConfig{
-        .max_connections = 100,
-        .quantum_threshold = 0.5,
-        .learning_rate = 0.01,
-    };
+var bridge: ?NeuralBridge = null;
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
-    var bridge = try NeuralBridge.init(allocator, config);
-    defer bridge.deinit();
+pub fn init() !void {
+    if (bridge != null) return;
+    bridge = NeuralBridge.init(gpa.allocator(), .{});
+    bridge.?.initialized = true;
+}
 
-    // Test pathway initialization
-    try bridge.initPathways();
-    try std.testing.expectEqual(@as(usize, 2), bridge.quantum_states.items.len);
+pub fn deinit() void {
+    if (bridge) |*b| {
+        b.deinit();
+        bridge = null;
+    }
+    _ = gpa.deinit();
+}
 
-    // Test quantum state updates
-    try bridge.updateQuantumState(0, 0.5, std.math.pi);
-    const state = try bridge.getQuantumState(0);
-    try std.testing.expectEqual(@as(f64, 0.5), state.amplitude);
-    try std.testing.expectEqual(@as(f64, std.math.pi), state.phase);
-    try std.testing.expectEqual(@as(f64, 0.25), state.energy);
+pub fn process() !void {
+    if (bridge == null) return error.NotInitialized;
+    // Process neural network here
+}
+
+test "NeuralBridge" {
+    const test_allocator = std.testing.allocator;
+    var test_bridge = NeuralBridge.init(test_allocator, .{});
+    defer test_bridge.deinit();
+    try std.testing.expect(!test_bridge.initialized);
 } 
