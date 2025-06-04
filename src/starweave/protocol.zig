@@ -1,6 +1,6 @@
 const std = @import("std");
-const neural = @import("../neural/bridge.zig");
-const glimmer = @import("../glimmer/patterns.zig");
+const neural = @import("neural");
+const glimmer = @import("glimmer");
 
 /// Error severity levels for protocol messages
 pub const ErrorSeverity = enum {
@@ -135,7 +135,6 @@ pub const StarweaveProtocol = struct {
 
     /// Create a quantum state message
     pub fn createQuantumStateMessage(
-        self: *Self,
         state: neural.QuantumState,
         source: []const u8,
         target: []const u8,
@@ -152,7 +151,6 @@ pub const StarweaveProtocol = struct {
 
     /// Create a neural activity message
     pub fn createNeuralActivityMessage(
-        self: *Self,
         activity: f64,
         source: []const u8,
         target: []const u8,
@@ -169,7 +167,6 @@ pub const StarweaveProtocol = struct {
 
     /// Create a pattern update message
     pub fn createPatternUpdateMessage(
-        self: *Self,
         pattern: glimmer.GlimmerPattern,
         source: []const u8,
         target: []const u8,

@@ -20,6 +20,10 @@ pub fn build(b: *std.Build) void {
 
     const starweave_module = b.addModule("starweave", .{
         .root_source_file = .{ .cwd_relative = "src/starweave/protocol.zig" },
+        .imports = &.{
+            .{ .name = "neural", .module = neural_module },
+            .{ .name = "glimmer", .module = glimmer_module },
+        },
     });
 
     // Create library
