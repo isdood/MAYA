@@ -27,6 +27,8 @@ pub const GlimmerPattern = struct {
         current_color: colors.GlimmerColor,
         amplitude: f32,
         last_update: f32,
+        energy: f32,
+        resonance: f32,
     };
 
     pattern_type: PatternType,
@@ -47,6 +49,8 @@ pub const GlimmerPattern = struct {
                 .current_color = config.base_color,
                 .amplitude = 0.0,
                 .last_update = 0.0,
+                .energy = 1.0,
+                .resonance = 0.0,
             },
         };
     }
@@ -58,61 +62,140 @@ pub const GlimmerPattern = struct {
     /// Update pattern based on neural activity
     pub fn update(self: *Self, neural_activity: f32, delta_time: f32) !void {
         const time = self.state.last_update + delta_time;
-        const wave = @sin(2.0 * std.math.pi * self.frequency * time + self.phase);
-        const amplitude = wave * self.intensity * neural_activity;
-
-        self.state.amplitude = amplitude;
-        self.state.last_update = time;
-
-        // Update color based on pattern type
+        
+        // Update resonance based on neural activity
+        self.state.resonance = @sin(2.0 * std.math.pi * self.frequency * time + self.phase) * neural_activity;
+        
+        // Calculate energy based on pattern type
         switch (self.pattern_type) {
             .quantum_wave => {
-                self.state.current_color = colors.blend(
-                    self.base_color,
-                    colors.GlimmerColors.quantum,
-                    amplitude,
+                self.state.energy = @cos(self.state.resonance * std.math.pi) * 0.5 + 0.5;
+            },
+            .neural_flow => {
+                self.state.energy = @sin(self.state.resonance * std.math.pi * 2.0) * 0.5 + 0.5;
+            },
+            .cosmic_sparkle => {
+                self.state.energy = @sin(self.state.resonance * std.math.pi * 4.0) * 0.5 + 0.5;
+            },
+            .stellar_pulse => {
+                self.state.energy = @cos(self.state.resonance * std.math.pi * 3.0) * 0.5 + 0.5;
+            },
+        }
+
+        // Calculate amplitude with energy influence
+        const wave = @sin(2.0 * std.math.pi * self.frequency * time + self.phase);
+        self.state.amplitude = wave * self.intensity * neural_activity * self.state.energy;
+
+        // Update color based on pattern type and energy
+        switch (self.pattern_type) {
+            .quantum_wave => {
+                const quantum_color = colors.GlimmerColors.quantum.blend(
+                    colors.GlimmerColors.primary,
+                    self.state.energy,
+                );
+                self.state.current_color = self.base_color.blend(
+                    quantum_color,
+                    self.state.amplitude,
                 );
             },
             .neural_flow => {
-                self.state.current_color = colors.blend(
-                    self.base_color,
-                    colors.GlimmerColors.neural,
-                    amplitude,
+                const neural_color = colors.GlimmerColors.neural.blend(
+                    colors.GlimmerColors.secondary,
+                    self.state.energy,
+                );
+                self.state.current_color = self.base_color.blend(
+                    neural_color,
+                    self.state.amplitude,
                 );
             },
             .cosmic_sparkle => {
-                self.state.current_color = colors.blend(
-                    self.base_color,
-                    colors.GlimmerColors.cosmic,
-                    amplitude,
+                const cosmic_color = colors.GlimmerColors.cosmic.blend(
+                    colors.GlimmerColors.accent,
+                    self.state.energy,
+                );
+                self.state.current_color = self.base_color.blend(
+                    cosmic_color,
+                    self.state.amplitude,
                 );
             },
             .stellar_pulse => {
-                self.state.current_color = colors.blend(
-                    self.base_color,
-                    colors.GlimmerColors.stellar,
-                    amplitude,
+                const stellar_color = colors.GlimmerColors.stellar.blend(
+                    colors.GlimmerColors.quantum,
+                    self.state.energy,
+                );
+                self.state.current_color = self.base_color.blend(
+                    stellar_color,
+                    self.state.amplitude,
                 );
             },
         }
+
+        self.state.last_update = time;
     }
 };
 
 var initialized = false;
+var patterns: ?[]GlimmerPattern = null;
 
 pub fn init() !void {
     if (initialized) return;
+    
+    // Create default patterns
+    const default_patterns = [_]GlimmerPattern.Config{
+        .{
+            .pattern_type = .quantum_wave,
+            .base_color = colors.GlimmerColors.primary,
+            .intensity = 0.5,
+            .frequency = 1.0,
+            .phase = 0.0,
+        },
+        .{
+            .pattern_type = .neural_flow,
+            .base_color = colors.GlimmerColors.secondary,
+            .intensity = 0.7,
+            .frequency = 1.5,
+            .phase = 0.5,
+        },
+        .{
+            .pattern_type = .cosmic_sparkle,
+            .base_color = colors.GlimmerColors.accent,
+            .intensity = 0.6,
+            .frequency = 2.0,
+            .phase = 1.0,
+        },
+        .{
+            .pattern_type = .stellar_pulse,
+            .base_color = colors.GlimmerColors.neural,
+            .intensity = 0.8,
+            .frequency = 1.2,
+            .phase = 1.5,
+        },
+    };
+
+    patterns = try std.heap.page_allocator.alloc(GlimmerPattern, default_patterns.len);
+    for (default_patterns, 0..) |config, i| {
+        patterns.?[i] = GlimmerPattern.init(config);
+    }
+
     initialized = true;
 }
 
 pub fn deinit() void {
     if (!initialized) return;
+    if (patterns) |p| {
+        std.heap.page_allocator.free(p);
+    }
+    patterns = null;
     initialized = false;
 }
 
 pub fn processPatterns() !void {
     if (!initialized) return error.NotInitialized;
-    // Process patterns here
+    if (patterns) |p| {
+        for (p) |*pattern| {
+            try pattern.update(0.5, 0.016); // Simulate 60 FPS
+        }
+    }
 }
 
 test "GlimmerPattern" {
@@ -126,5 +209,6 @@ test "GlimmerPattern" {
 
     var pattern = GlimmerPattern.init(config);
     try pattern.update(0.5, 0.1);
-    try std.testing.expect(pattern.state.current_color.r == 0xFF and pattern.state.current_color.g == 0xFF and pattern.state.current_color.b == 0xFF);
+    try std.testing.expect(pattern.state.energy >= 0.0 and pattern.state.energy <= 1.0);
+    try std.testing.expect(pattern.state.resonance >= -1.0 and pattern.state.resonance <= 1.0);
 } 

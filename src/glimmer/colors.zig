@@ -14,6 +14,12 @@ pub const GlimmerColor = struct {
             .b = @as(u8, @intFromFloat(@as(f32, @floatFromInt(a.b)) * (1.0 - clamped_t) + @as(f32, @floatFromInt(b.b)) * clamped_t)),
         };
     }
+
+    pub fn toHex(self: GlimmerColor) [7]u8 {
+        var hex: [7]u8 = undefined;
+        _ = std.fmt.bufPrint(&hex, "#{X:0>2}{X:0>2}{X:0>2}", .{ self.r, self.g, self.b }) catch unreachable;
+        return hex;
+    }
 };
 
 pub const GlimmerColors = struct {
@@ -92,4 +98,7 @@ test "GlimmerColor" {
     try std.testing.expect(blended.r == 0x7F);
     try std.testing.expect(blended.g == 0x00);
     try std.testing.expect(blended.b == 0x7F);
+
+    const hex = color1.toHex();
+    try std.testing.expectEqualStrings("#FF0000", &hex);
 } 
