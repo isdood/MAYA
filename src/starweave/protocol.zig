@@ -86,7 +86,7 @@ pub const StarweaveProtocol = struct {
 
     allocator: std.mem.Allocator,
     message_queue: MessageQueue,
-    handlers: std.AutoHashMap(MessageType, MessageHandler),
+    handlers: std.AutoHashMap(MessageType, *const MessageHandler),
     initialized: bool,
 
     /// Message handler function type
@@ -96,7 +96,7 @@ pub const StarweaveProtocol = struct {
         return Self{
             .allocator = alloc,
             .message_queue = MessageQueue.init(alloc, 1000),
-            .handlers = std.AutoHashMap(MessageType, MessageHandler).init(alloc),
+            .handlers = std.AutoHashMap(MessageType, *const MessageHandler).init(alloc),
             .initialized = false,
         };
     }
@@ -108,7 +108,7 @@ pub const StarweaveProtocol = struct {
     }
 
     /// Register a message handler for a specific message type
-    pub fn registerHandler(self: *Self, msg_type: MessageType, handler: MessageHandler) !void {
+    pub fn registerHandler(self: *Self, msg_type: MessageType, handler: *const MessageHandler) !void {
         try self.handlers.put(msg_type, handler);
     }
 

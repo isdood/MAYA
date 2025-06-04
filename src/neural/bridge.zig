@@ -1,18 +1,18 @@
 const std = @import("std");
 
+/// Quantum state representation
+pub const QuantumState = struct {
+    amplitude: f64,
+    phase: f64,
+    energy: f64,
+    resonance: f64,
+    coherence: f64,
+};
+
 /// Neural Bridge for quantum state management and pathway initialization
 pub const NeuralBridge = struct {
     const Self = @This();
     
-    /// Quantum state representation
-    pub const QuantumState = struct {
-        amplitude: f64,
-        phase: f64,
-        energy: f64,
-        resonance: f64,
-        coherence: f64,
-    };
-
     /// Neural pathway configuration
     pub const PathwayConfig = struct {
         max_connections: usize,
