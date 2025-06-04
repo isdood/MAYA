@@ -31,6 +31,30 @@ pub const GlimmerPattern = struct {
         resonance: f32,
     };
 
+    pub const PatternTransition = struct {
+        target_config: Config,
+        duration: f32,
+        elapsed: f32,
+        easing: EasingFunction,
+
+        pub const EasingFunction = enum {
+            linear,
+            ease_in_out,
+            quantum_bounce,
+            neural_flow,
+        };
+
+        pub fn calculateProgress(self: *const PatternTransition) f32 {
+            const t = self.elapsed / self.duration;
+            return switch (self.easing) {
+                .linear => t,
+                .ease_in_out => 0.5 - 0.5 * @cos(t * std.math.pi),
+                .quantum_bounce => @sin(t * std.math.pi * 2.0) * 0.5 + 0.5,
+                .neural_flow => @sin(t * std.math.pi) * 0.5 + 0.5,
+            };
+        }
+    };
+
     pub const ValidationError = error{
         InvalidIntensity,
         InvalidFrequency,
@@ -45,6 +69,7 @@ pub const GlimmerPattern = struct {
     frequency: f32,
     phase: f32,
     state: PatternState,
+    transition: ?PatternTransition,
 
     pub fn init(config: Config) Self {
         return Self{
@@ -60,6 +85,7 @@ pub const GlimmerPattern = struct {
                 .energy = 1.0,
                 .resonance = 0.0,
             },
+            .transition = null,
         };
     }
 
@@ -71,6 +97,23 @@ pub const GlimmerPattern = struct {
     pub fn update(self: *Self, neural_activity: f32, delta_time: f32) !void {
         // Validate pattern before update
         try self.validate();
+
+        // Update transition if active
+        if (self.transition) |*transition| {
+            transition.elapsed += delta_time;
+            const progress = transition.calculateProgress();
+
+            if (progress >= 1.0) {
+                // Transition complete
+                self.* = Self.init(transition.target_config);
+                self.transition = null;
+            } else {
+                // Interpolate between current and target pattern
+                const interpolated = self.interpolatePatterns(transition.target_config, progress);
+                self.* = interpolated;
+                return;
+            }
+        }
 
         const time = self.state.last_update + delta_time;
         
@@ -202,13 +245,79 @@ pub const GlimmerPattern = struct {
 
         return base_resonance + frequency_factor + phase_factor;
     }
+
+    fn interpolatePatterns(source: *const Self, target_config: Config, progress: f32) Self {
+        const target = Self.init(target_config);
+        return Self{
+            .pattern_type = target.pattern_type,
+            .base_color = source.base_color.blend(target.base_color, progress),
+            .intensity = source.intensity + (target.intensity - source.intensity) * progress,
+            .frequency = source.frequency + (target.frequency - source.frequency) * progress,
+            .phase = source.phase + (target.phase - source.phase) * progress,
+            .state = .{
+                .current_color = source.state.current_color.blend(target.state.current_color, progress),
+                .amplitude = source.state.amplitude + (target.state.amplitude - source.state.amplitude) * progress,
+                .last_update = source.state.last_update,
+                .energy = source.state.energy + (target.state.energy - source.state.energy) * progress,
+                .resonance = source.state.resonance + (target.state.resonance - source.state.resonance) * progress,
+            },
+            .transition = null,
+        };
+    }
+
+    pub fn startTransition(self: *Self, target_config: Config, duration: f32, easing: PatternTransition.EasingFunction) void {
+        self.transition = .{
+            .target_config = target_config,
+            .duration = duration,
+            .elapsed = 0.0,
+            .easing = easing,
+        };
+    }
+
+    pub fn combinePatterns(pattern_list: []const Self, weights: []const f32) !Self {
+        if (pattern_list.len == 0 or pattern_list.len != weights.len) {
+            return error.InvalidPatternCombination;
+        }
+
+        var combined = Self.init(.{
+            .pattern_type = pattern_list[0].pattern_type,
+            .base_color = pattern_list[0].base_color,
+            .intensity = 0.0,
+            .frequency = 0.0,
+            .phase = 0.0,
+        });
+
+        var total_weight: f32 = 0.0;
+        for (weights) |w| {
+            total_weight += w;
+        }
+
+        if (total_weight == 0.0) {
+            return error.InvalidWeights;
+        }
+
+        // Normalize weights
+        for (pattern_list, 0..) |pattern, i| {
+            const normalized_weight = weights[i] / total_weight;
+            combined.intensity += pattern.intensity * normalized_weight;
+            combined.frequency += pattern.frequency * normalized_weight;
+            combined.phase += pattern.phase * normalized_weight;
+            combined.state.energy += pattern.state.energy * normalized_weight;
+            combined.state.resonance += pattern.state.resonance * normalized_weight;
+            combined.state.current_color = combined.state.current_color.blend(
+                pattern.state.current_color,
+                normalized_weight,
+            );
+        }
+
+        return combined;
+    }
 };
 
-var initialized = false;
-var patterns: ?[]GlimmerPattern = null;
+var global_patterns: ?[]GlimmerPattern = null;
 
 pub fn init() !void {
-    if (initialized) return;
+    if (global_patterns != null) return;
     
     // Create default patterns
     const default_patterns = [_]GlimmerPattern.Config{
@@ -242,26 +351,22 @@ pub fn init() !void {
         },
     };
 
-    patterns = try std.heap.page_allocator.alloc(GlimmerPattern, default_patterns.len);
+    global_patterns = try std.heap.page_allocator.alloc(GlimmerPattern, default_patterns.len);
     for (default_patterns, 0..) |config, i| {
-        patterns.?[i] = GlimmerPattern.init(config);
+        global_patterns.?[i] = GlimmerPattern.init(config);
     }
-
-    initialized = true;
 }
 
 pub fn deinit() void {
-    if (!initialized) return;
-    if (patterns) |p| {
+    if (global_patterns) |p| {
         std.heap.page_allocator.free(p);
     }
-    patterns = null;
-    initialized = false;
+    global_patterns = null;
 }
 
 pub fn processPatterns() !void {
-    if (!initialized) return error.NotInitialized;
-    if (patterns) |p| {
+    if (global_patterns == null) return error.NotInitialized;
+    if (global_patterns) |p| {
         for (p) |*pattern| {
             try pattern.update(0.5, 0.016); // Simulate 60 FPS
         }
@@ -305,4 +410,54 @@ test "PatternValidation" {
     };
     var invalid_pattern = GlimmerPattern.init(invalid_intensity_config);
     try std.testing.expectError(error.InvalidIntensity, invalid_pattern.validate());
+}
+
+test "PatternTransitions" {
+    const source_config = GlimmerPattern.Config{
+        .pattern_type = .quantum_wave,
+        .base_color = colors.GlimmerColors.primary,
+        .intensity = 0.5,
+        .frequency = 1.0,
+        .phase = 0.0,
+    };
+
+    const target_config = GlimmerPattern.Config{
+        .pattern_type = .neural_flow,
+        .base_color = colors.GlimmerColors.secondary,
+        .intensity = 0.7,
+        .frequency = 1.5,
+        .phase = 0.5,
+    };
+
+    var pattern = GlimmerPattern.init(source_config);
+    pattern.startTransition(target_config, 1.0, .ease_in_out);
+    try pattern.update(0.5, 0.5); // Update halfway through transition
+
+    try std.testing.expect(pattern.transition != null);
+    try std.testing.expect(pattern.intensity > 0.5 and pattern.intensity < 0.7);
+}
+
+test "PatternCombination" {
+    const test_patterns = [_]GlimmerPattern{
+        GlimmerPattern.init(.{
+            .pattern_type = .quantum_wave,
+            .base_color = colors.GlimmerColors.primary,
+            .intensity = 0.5,
+            .frequency = 1.0,
+            .phase = 0.0,
+        }),
+        GlimmerPattern.init(.{
+            .pattern_type = .neural_flow,
+            .base_color = colors.GlimmerColors.secondary,
+            .intensity = 0.7,
+            .frequency = 1.5,
+            .phase = 0.5,
+        }),
+    };
+
+    const weights = [_]f32{ 0.7, 0.3 };
+    const combined = try GlimmerPattern.combinePatterns(&test_patterns, &weights);
+
+    try std.testing.expect(combined.intensity > 0.5 and combined.intensity < 0.7);
+    try std.testing.expect(combined.frequency > 1.0 and combined.frequency < 1.5);
 } 
