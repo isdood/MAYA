@@ -218,31 +218,37 @@ pub const StarweaveProtocol = struct {
         }
     };
 
+    /// Message handler type
+    pub const MessageHandler = *const fn(*anyopaque, Message) anyerror!void;
+
+    /// Protocol state
     allocator: std.mem.Allocator,
     message_queue: MessageQueue,
-    handlers: std.AutoHashMap(MessageType, *const MessageHandler),
-    initialized: bool,
+    handlers: std.AutoHashMap(MessageType, MessageHandler),
+    context: *anyopaque,
 
-    /// Message handler function type
-    pub const MessageHandler = fn (message: Message) anyerror!void;
-
-    pub fn init(alloc: std.mem.Allocator) Self {
+    /// Initialize the protocol
+    pub fn init(allocator: std.mem.Allocator, context: *anyopaque) !Self {
         return Self{
-            .allocator = alloc,
-            .message_queue = MessageQueue.init(alloc, 1000),
-            .handlers = std.AutoHashMap(MessageType, *const MessageHandler).init(alloc),
-            .initialized = false,
+            .allocator = allocator,
+            .message_queue = try MessageQueue.init(allocator),
+            .handlers = std.AutoHashMap(MessageType, MessageHandler).init(allocator),
+            .context = context,
         };
     }
 
+    /// Deinitialize the protocol
     pub fn deinit(self: *Self) void {
         self.message_queue.deinit();
         self.handlers.deinit();
-        self.initialized = false;
     }
 
-    /// Register a message handler for a specific message type
-    pub fn registerHandler(self: *Self, msg_type: MessageType, handler: *const MessageHandler) !void {
+    /// Register a message handler
+    pub fn registerHandler(
+        self: *Self,
+        msg_type: MessageType,
+        handler: MessageHandler,
+    ) !void {
         try self.handlers.put(msg_type, handler);
     }
 
@@ -252,9 +258,16 @@ pub const StarweaveProtocol = struct {
         try message.validate();
 
         if (self.handlers.get(message.msg_type)) |handler| {
-            try handler(message);
+            try handler(self.context, message);
         } else {
             return error.NoHandlerRegistered;
+        }
+    }
+
+    /// Process all messages in the queue
+    pub fn processQueue(self: *Self) !void {
+        while (self.message_queue.dequeue()) |message| {
+            try self.processMessage(message);
         }
     }
 
@@ -263,13 +276,6 @@ pub const StarweaveProtocol = struct {
         // Validate message before sending
         try message.validate();
         try self.message_queue.enqueue(message);
-    }
-
-    /// Process all queued messages
-    pub fn processQueue(self: *Self) !void {
-        while (self.message_queue.dequeue()) |message| {
-            try self.processMessage(message);
-        }
     }
 
     /// Create a quantum state message
@@ -326,15 +332,45 @@ var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 pub fn init() !void {
     if (protocol != null) return;
-    protocol = StarweaveProtocol.init(gpa.allocator());
-    protocol.?.initialized = true;
+    
+    // Create global context
+    var neural_bridge = try neural.NeuralBridge.init(gpa.allocator(), .{
+        .max_connections = 100,
+        .quantum_threshold = 0.5,
+        .learning_rate = 0.01,
+        .resonance_decay = 0.95,
+        .coherence_threshold = 0.7,
+        .normalization_factor = 1.0,
+        .pattern_memory_size = 100,
+        .visualization_resolution = 1000,
+    });
+    
+    // Create a pattern for testing
+    const pattern = glimmer.GlimmerPattern.init(.{
+        .pattern_type = .quantum_wave,
+        .base_color = glimmer.colors.GlimmerColors.primary,
+        .intensity = 0.5,
+        .frequency = 1.0,
+        .phase = 0.0,
+    });
+    
+    const global_context = try gpa.allocator().create(struct {
+        neural_bridge: *neural.NeuralBridge,
+        pattern: glimmer.GlimmerPattern,
+    });
+    global_context.* = .{
+        .neural_bridge = &neural_bridge,
+        .pattern = pattern,
+    };
+    
+    protocol = try StarweaveProtocol.init(gpa.allocator(), global_context);
 }
 
 pub fn deinit() void {
     if (protocol) |*p| {
         p.deinit();
-        protocol = null;
     }
+    protocol = null;
     _ = gpa.deinit();
 }
 
@@ -345,16 +381,59 @@ pub fn process() !void {
 
 test "StarweaveProtocol" {
     const test_allocator = std.testing.allocator;
-    var test_protocol = StarweaveProtocol.init(test_allocator);
+    
+    // Create test context
+    var neural_bridge = try neural.NeuralBridge.init(test_allocator, .{
+        .max_connections = 100,
+        .quantum_threshold = 0.5,
+        .learning_rate = 0.01,
+        .resonance_decay = 0.95,
+        .coherence_threshold = 0.7,
+        .normalization_factor = 1.0,
+        .pattern_memory_size = 100,
+        .visualization_resolution = 1000,
+    });
+    defer neural_bridge.deinit();
+    
+    // Create a pattern for testing
+    const pattern = glimmer.GlimmerPattern.init(.{
+        .pattern_type = .quantum_wave,
+        .base_color = glimmer.colors.GlimmerColors.primary,
+        .intensity = 0.5,
+        .frequency = 1.0,
+        .phase = 0.0,
+    });
+    
+    const test_context = try test_allocator.create(struct {
+        neural_bridge: *neural.NeuralBridge,
+        pattern: glimmer.GlimmerPattern,
+    });
+    test_context.* = .{
+        .neural_bridge = &neural_bridge,
+        .pattern = pattern,
+    };
+    defer test_allocator.destroy(test_context);
+    
+    var test_protocol = try StarweaveProtocol.init(test_allocator, test_context);
     defer test_protocol.deinit();
 
-    // Test message creation and processing
-    const message = try test_protocol.createNeuralActivityMessage(
-        0.5,
-        "neural_bridge",
-        "pattern_system",
+    // Test message creation
+    const quantum_state = try test_protocol.createQuantumStateMessage(
+        .{
+            .amplitude = 0.5,
+            .phase = 0.0,
+            .energy = 0.25,
+            .resonance = 0.5,
+            .coherence = 0.8,
+        },
+        "test_source",
+        "test_target",
     );
-    try test_protocol.sendMessage(message);
+
+    // Test message sending
+    try test_protocol.sendMessage(quantum_state);
+
+    // Test message processing
     try test_protocol.processQueue();
 }
 
@@ -387,7 +466,40 @@ test "MessageQueue" {
 
 test "MessageValidation" {
     const test_allocator = std.testing.allocator;
-    var test_protocol = try StarweaveProtocol.init(test_allocator);
+    
+    // Create test context
+    var neural_bridge = try neural.NeuralBridge.init(test_allocator, .{
+        .max_connections = 100,
+        .quantum_threshold = 0.5,
+        .learning_rate = 0.01,
+        .resonance_decay = 0.95,
+        .coherence_threshold = 0.7,
+        .normalization_factor = 1.0,
+        .pattern_memory_size = 100,
+        .visualization_resolution = 1000,
+    });
+    defer neural_bridge.deinit();
+    
+    // Create a pattern for testing
+    const pattern = glimmer.GlimmerPattern.init(.{
+        .pattern_type = .quantum_wave,
+        .base_color = glimmer.colors.GlimmerColors.primary,
+        .intensity = 0.5,
+        .frequency = 1.0,
+        .phase = 0.0,
+    });
+    
+    const test_context = try test_allocator.create(struct {
+        neural_bridge: *neural.NeuralBridge,
+        pattern: glimmer.GlimmerPattern,
+    });
+    test_context.* = .{
+        .neural_bridge = &neural_bridge,
+        .pattern = pattern,
+    };
+    defer test_allocator.destroy(test_context);
+    
+    var test_protocol = try StarweaveProtocol.init(test_allocator, test_context);
     defer test_protocol.deinit();
 
     // Test valid quantum state message
