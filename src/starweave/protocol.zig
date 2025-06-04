@@ -1,82 +1,187 @@
 const std = @import("std");
+const neural = @import("../neural/bridge.zig");
+const glimmer = @import("../glimmer/patterns.zig");
 
-/// STARWEAVE protocol adapter for ecosystem integration
+/// Error severity levels for protocol messages
+pub const ErrorSeverity = enum {
+    info,
+    warning,
+    err,
+    critical
+};
+
+/// STARWEAVE Protocol for quantum-neural communication
 pub const StarweaveProtocol = struct {
     const Self = @This();
 
-    /// Protocol message types
+    /// Message types for quantum-neural communication
     pub const MessageType = enum {
         quantum_state,
-        neural_update,
-        cosmic_sync,
+        neural_activity,
+        pattern_update,
+        system_status,
+        error_report,
     };
 
     /// Protocol message structure
     pub const Message = struct {
         msg_type: MessageType,
-        payload: []const u8,
+        timestamp: f64,
+        data: union(enum) {
+            quantum_state: neural.QuantumState,
+            neural_activity: f64,
+            pattern_update: glimmer.GlimmerPattern,
+            system_status: SystemStatus,
+            error_report: ErrorReport,
+        },
+        priority: u8,
+        source: []const u8,
+        target: []const u8,
+
+        pub const SystemStatus = struct {
+            quantum_coherence: f64,
+            neural_resonance: f64,
+            pattern_stability: f64,
+            system_health: f64,
+        };
+
+        pub const ErrorReport = struct {
+            error_code: u32,
+            error_message: []const u8,
+            severity: ErrorSeverity,
+            context: []const u8,
+        };
     };
 
-    /// Protocol configuration
-    pub const Config = struct {
-        max_message_size: usize = 1024,
-        timeout_ms: u32 = 1000,
-        retry_count: u32 = 3,
+    /// Message queue for handling protocol messages
+    pub const MessageQueue = struct {
+        messages: std.ArrayList(Message),
+        max_size: usize,
+        allocator: std.mem.Allocator,
+
+        pub fn init(alloc: std.mem.Allocator, max_size: usize) MessageQueue {
+            return MessageQueue{
+                .messages = std.ArrayList(Message).init(alloc),
+                .max_size = max_size,
+                .allocator = alloc,
+            };
+        }
+
+        pub fn deinit(self: *MessageQueue) void {
+            self.messages.deinit();
+        }
+
+        pub fn enqueue(self: *MessageQueue, message: Message) !void {
+            if (self.messages.items.len >= self.max_size) {
+                return error.QueueFull;
+            }
+            try self.messages.append(message);
+        }
+
+        pub fn dequeue(self: *MessageQueue) ?Message {
+            if (self.messages.items.len == 0) return null;
+            return self.messages.orderedRemove(0);
+        }
     };
 
-    max_message_size: usize,
-    timeout_ms: u32,
-    retry_count: u32,
-    initialized: bool,
     allocator: std.mem.Allocator,
-    message_queue: std.ArrayList(Message),
+    message_queue: MessageQueue,
+    handlers: std.AutoHashMap(MessageType, MessageHandler),
+    initialized: bool,
 
-    pub fn init(alloc: std.mem.Allocator, config: Config) Self {
+    /// Message handler function type
+    pub const MessageHandler = fn (message: Message) anyerror!void;
+
+    pub fn init(alloc: std.mem.Allocator) Self {
         return Self{
-            .max_message_size = config.max_message_size,
-            .timeout_ms = config.timeout_ms,
-            .retry_count = config.retry_count,
-            .initialized = false,
             .allocator = alloc,
-            .message_queue = std.ArrayList(Message).init(alloc),
+            .message_queue = MessageQueue.init(alloc, 1000),
+            .handlers = std.AutoHashMap(MessageType, MessageHandler).init(alloc),
+            .initialized = false,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        for (self.message_queue.items) |msg| {
-            self.allocator.free(msg.payload);
-        }
         self.message_queue.deinit();
+        self.handlers.deinit();
         self.initialized = false;
     }
 
-    /// Send a message through the STARWEAVE protocol
-    pub fn sendMessage(self: *Self, msg_type: MessageType, payload: []const u8) !void {
-        if (payload.len > self.max_message_size) {
-            return error.PayloadTooLarge;
+    /// Register a message handler for a specific message type
+    pub fn registerHandler(self: *Self, msg_type: MessageType, handler: MessageHandler) !void {
+        try self.handlers.put(msg_type, handler);
+    }
+
+    /// Process a message through the appropriate handler
+    pub fn processMessage(self: *Self, message: Message) !void {
+        if (self.handlers.get(message.msg_type)) |handler| {
+            try handler(message);
+        } else {
+            return error.NoHandlerRegistered;
         }
-        const msg = Message{
-            .msg_type = msg_type,
-            .payload = try self.allocator.dupe(u8, payload),
+    }
+
+    /// Send a message through the protocol
+    pub fn sendMessage(self: *Self, message: Message) !void {
+        try self.message_queue.enqueue(message);
+    }
+
+    /// Process all queued messages
+    pub fn processQueue(self: *Self) !void {
+        while (self.message_queue.dequeue()) |message| {
+            try self.processMessage(message);
+        }
+    }
+
+    /// Create a quantum state message
+    pub fn createQuantumStateMessage(
+        self: *Self,
+        state: neural.QuantumState,
+        source: []const u8,
+        target: []const u8,
+    ) !Message {
+        return Message{
+            .msg_type = .quantum_state,
+            .timestamp = @as(f64, @floatFromInt(std.time.timestamp())),
+            .data = .{ .quantum_state = state },
+            .priority = 1,
+            .source = source,
+            .target = target,
         };
-        try self.message_queue.append(msg);
     }
 
-    /// Receive a message from the STARWEAVE protocol
-    pub fn receiveMessage(self: *Self) !?Message {
-        if (self.message_queue.items.len == 0) return null;
-        const msg = self.message_queue.orderedRemove(0);
-        return msg;
+    /// Create a neural activity message
+    pub fn createNeuralActivityMessage(
+        self: *Self,
+        activity: f64,
+        source: []const u8,
+        target: []const u8,
+    ) !Message {
+        return Message{
+            .msg_type = .neural_activity,
+            .timestamp = @as(f64, @floatFromInt(std.time.timestamp())),
+            .data = .{ .neural_activity = activity },
+            .priority = 2,
+            .source = source,
+            .target = target,
+        };
     }
 
-    /// Process a quantum state message
-    pub fn processQuantumState(self: *Self, state_data: []const u8) !void {
-        try self.sendMessage(.quantum_state, state_data);
-    }
-
-    /// Process a neural pattern message
-    pub fn processNeuralPattern(self: *Self, pattern_data: []const u8) !void {
-        try self.sendMessage(.neural_update, pattern_data);
+    /// Create a pattern update message
+    pub fn createPatternUpdateMessage(
+        self: *Self,
+        pattern: glimmer.GlimmerPattern,
+        source: []const u8,
+        target: []const u8,
+    ) !Message {
+        return Message{
+            .msg_type = .pattern_update,
+            .timestamp = @as(f64, @floatFromInt(std.time.timestamp())),
+            .data = .{ .pattern_update = pattern },
+            .priority = 3,
+            .source = source,
+            .target = target,
+        };
     }
 };
 
@@ -85,7 +190,7 @@ var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 pub fn init() !void {
     if (protocol != null) return;
-    protocol = StarweaveProtocol.init(gpa.allocator(), .{});
+    protocol = StarweaveProtocol.init(gpa.allocator());
     protocol.?.initialized = true;
 }
 
@@ -99,12 +204,47 @@ pub fn deinit() void {
 
 pub fn process() !void {
     if (protocol == null) return error.NotInitialized;
-    // Process protocol here
+    try protocol.?.processQueue();
 }
 
 test "StarweaveProtocol" {
     const test_allocator = std.testing.allocator;
-    var test_protocol = StarweaveProtocol.init(test_allocator, .{});
+    var test_protocol = StarweaveProtocol.init(test_allocator);
     defer test_protocol.deinit();
-    try std.testing.expect(!test_protocol.initialized);
+
+    // Test message creation and processing
+    const message = try test_protocol.createNeuralActivityMessage(
+        0.5,
+        "neural_bridge",
+        "pattern_system",
+    );
+    try test_protocol.sendMessage(message);
+    try test_protocol.processQueue();
+}
+
+test "MessageQueue" {
+    const test_allocator = std.testing.allocator;
+    var queue = StarweaveProtocol.MessageQueue.init(test_allocator, 10);
+    defer queue.deinit();
+
+    const message = StarweaveProtocol.Message{
+        .msg_type = .system_status,
+        .timestamp = 0.0,
+        .data = .{
+            .system_status = .{
+                .quantum_coherence = 0.8,
+                .neural_resonance = 0.7,
+                .pattern_stability = 0.9,
+                .system_health = 1.0,
+            },
+        },
+        .priority = 1,
+        .source = "test",
+        .target = "test",
+    };
+
+    try queue.enqueue(message);
+    const dequeued = queue.dequeue();
+    try std.testing.expect(dequeued != null);
+    try std.testing.expect(dequeued.?.msg_type == .system_status);
 } 
