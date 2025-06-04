@@ -31,6 +31,14 @@ pub const GlimmerPattern = struct {
         resonance: f32,
     };
 
+    pub const ValidationError = error{
+        InvalidIntensity,
+        InvalidFrequency,
+        InvalidPhase,
+        QuantumCoherenceViolation,
+        NeuralResonanceMismatch,
+    };
+
     pattern_type: PatternType,
     base_color: colors.GlimmerColor,
     intensity: f32,
@@ -61,6 +69,9 @@ pub const GlimmerPattern = struct {
 
     /// Update pattern based on neural activity
     pub fn update(self: *Self, neural_activity: f32, delta_time: f32) !void {
+        // Validate pattern before update
+        try self.validate();
+
         const time = self.state.last_update + delta_time;
         
         // Update resonance based on neural activity
@@ -131,6 +142,65 @@ pub const GlimmerPattern = struct {
         }
 
         self.state.last_update = time;
+    }
+
+    pub fn validate(self: *const Self) ValidationError!void {
+        // Validate basic parameters
+        if (self.intensity < 0.0 or self.intensity > 1.0) {
+            return ValidationError.InvalidIntensity;
+        }
+        if (self.frequency <= 0.0 or self.frequency > 10.0) {
+            return ValidationError.InvalidFrequency;
+        }
+        if (self.phase < 0.0 or self.phase > 2.0 * std.math.pi) {
+            return ValidationError.InvalidPhase;
+        }
+
+        // Validate quantum coherence
+        const coherence = self.calculateQuantumCoherence();
+        if (coherence < 0.7) {
+            return ValidationError.QuantumCoherenceViolation;
+        }
+
+        // Validate neural resonance
+        const resonance = self.calculateNeuralResonance();
+        if (resonance < 0.5) {
+            return ValidationError.NeuralResonanceMismatch;
+        }
+    }
+
+    fn calculateQuantumCoherence(self: *const Self) f32 {
+        // Calculate quantum coherence based on pattern type and state
+        var base_coherence: f32 = 0.0;
+        switch (self.pattern_type) {
+            .quantum_wave => base_coherence = 0.9,
+            .neural_flow => base_coherence = 0.8,
+            .cosmic_sparkle => base_coherence = 0.85,
+            .stellar_pulse => base_coherence = 0.75,
+        }
+
+        // Adjust coherence based on energy and resonance
+        const energy_factor = self.state.energy * 0.2;
+        const resonance_factor = @abs(self.state.resonance) * 0.1;
+
+        return base_coherence + energy_factor + resonance_factor;
+    }
+
+    fn calculateNeuralResonance(self: *const Self) f32 {
+        // Calculate neural resonance based on pattern type and frequency
+        var base_resonance: f32 = 0.0;
+        switch (self.pattern_type) {
+            .quantum_wave => base_resonance = 0.8,
+            .neural_flow => base_resonance = 0.9,
+            .cosmic_sparkle => base_resonance = 0.7,
+            .stellar_pulse => base_resonance = 0.85,
+        }
+
+        // Adjust resonance based on frequency and phase
+        const frequency_factor = (self.frequency / 10.0) * 0.1;
+        const phase_factor = (self.phase / (2.0 * std.math.pi)) * 0.1;
+
+        return base_resonance + frequency_factor + phase_factor;
     }
 };
 
@@ -211,4 +281,28 @@ test "GlimmerPattern" {
     try pattern.update(0.5, 0.1);
     try std.testing.expect(pattern.state.energy >= 0.0 and pattern.state.energy <= 1.0);
     try std.testing.expect(pattern.state.resonance >= -1.0 and pattern.state.resonance <= 1.0);
+}
+
+test "PatternValidation" {
+    // Test valid pattern
+    const valid_config = GlimmerPattern.Config{
+        .pattern_type = .quantum_wave,
+        .base_color = colors.GlimmerColors.primary,
+        .intensity = 0.5,
+        .frequency = 1.0,
+        .phase = 0.0,
+    };
+    var valid_pattern = GlimmerPattern.init(valid_config);
+    try valid_pattern.validate();
+
+    // Test invalid intensity
+    const invalid_intensity_config = GlimmerPattern.Config{
+        .pattern_type = .quantum_wave,
+        .base_color = colors.GlimmerColors.primary,
+        .intensity = 1.5, // Invalid intensity
+        .frequency = 1.0,
+        .phase = 0.0,
+    };
+    var invalid_pattern = GlimmerPattern.init(invalid_intensity_config);
+    try std.testing.expectError(error.InvalidIntensity, invalid_pattern.validate());
 } 
