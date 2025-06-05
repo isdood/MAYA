@@ -100,6 +100,37 @@ pub const MayaDictionary = struct {
         }
     };
 
+    /// Pattern similarity metrics
+    pub const PatternSimilarity = struct {
+        quantum_similarity: f64,
+        neural_similarity: f64,
+        relationship_overlap: f64,
+        total_score: f64,
+
+        pub fn calculate(self: *PatternSimilarity) void {
+            // Weighted combination of similarity factors
+            self.total_score = 
+                self.quantum_similarity * 0.4 +    // Quantum similarity is most important
+                self.neural_similarity * 0.3 +     // Neural similarity is second
+                self.relationship_overlap * 0.3;   // Relationship overlap is third
+        }
+    };
+
+    /// Pattern variation tracking
+    pub const PatternVariation = struct {
+        original_name: []const u8,
+        variation_name: []const u8,
+        similarity: PatternSimilarity,
+        timestamp: f64,
+        usage_count: u64,
+        is_merged: bool,
+
+        pub fn deinit(self: *PatternVariation, alloc: std.mem.Allocator) void {
+            alloc.free(self.original_name);
+            alloc.free(self.variation_name);
+        }
+    };
+
     allocator: std.mem.Allocator,
     patterns: std.StringHashMap(CorePattern),
     relationships: std.ArrayList(PatternRelationship),
@@ -112,8 +143,10 @@ pub const MayaDictionary = struct {
     storage_path: []const u8,
     compression_config: CompressionConfig,
     compressed_patterns: std.StringHashMap(CompressedPattern),
+    pattern_variations: std.ArrayList(PatternVariation),
+    similarity_threshold: f64 = 0.85, // Patterns with similarity > 0.85 are considered duplicates
 
-    /// Initialize with compression
+    /// Initialize with deduplication
     pub fn init(alloc: std.mem.Allocator, config: ConsolidationConfig, storage_path: []const u8) !Self {
         var self = Self{
             .allocator = alloc,
@@ -128,6 +161,7 @@ pub const MayaDictionary = struct {
             .storage_path = storage_path,
             .compression_config = .{},
             .compressed_patterns = std.StringHashMap(CompressedPattern).init(alloc),
+            .pattern_variations = std.ArrayList(PatternVariation).init(alloc),
         };
 
         // Load existing patterns if available
@@ -432,8 +466,196 @@ pub const MayaDictionary = struct {
         };
     }
 
-    /// Save patterns with compression
+    /// Calculate similarity between two patterns
+    fn calculatePatternSimilarity(self: *Self, pattern1: CorePattern, pattern2: CorePattern) !PatternSimilarity {
+        var similarity = PatternSimilarity{
+            .quantum_similarity = 0.0,
+            .neural_similarity = 0.0,
+            .relationship_overlap = 0.0,
+            .total_score = 0.0,
+        };
+
+        // Calculate quantum similarity using quantum state comparison
+        similarity.quantum_similarity = try self.calculateQuantumSimilarity(
+            pattern1.quantum_signature,
+            pattern2.quantum_signature
+        );
+
+        // Calculate neural similarity
+        similarity.neural_similarity = 1.0 - @abs(pattern1.neural_signature - pattern2.neural_signature);
+
+        // Calculate relationship overlap
+        similarity.relationship_overlap = try self.calculateRelationshipOverlap(
+            pattern1.related_patterns,
+            pattern2.related_patterns
+        );
+
+        similarity.calculate();
+        return similarity;
+    }
+
+    /// Calculate quantum similarity between two quantum states
+    fn calculateQuantumSimilarity(self: *Self, state1: neural.QuantumState, state2: neural.QuantumState) !f64 {
+        // Compare quantum coherence
+        const coherence_diff = @abs(state1.coherence - state2.coherence);
+        
+        // Compare quantum entanglement
+        const entanglement_diff = @abs(state1.entanglement - state2.entanglement);
+        
+        // Compare quantum superposition
+        const superposition_diff = @abs(state1.superposition - state2.superposition);
+        
+        // Normalize and combine differences
+        return 1.0 - (coherence_diff + entanglement_diff + superposition_diff) / 3.0;
+    }
+
+    /// Calculate overlap between two sets of related patterns
+    fn calculateRelationshipOverlap(self: *Self, rel1: std.ArrayList([]const u8), rel2: std.ArrayList([]const u8)) !f64 {
+        if (rel1.items.len == 0 and rel2.items.len == 0) return 1.0;
+        if (rel1.items.len == 0 or rel2.items.len == 0) return 0.0;
+
+        var common_count: usize = 0;
+        for (rel1.items) |pattern1| {
+            for (rel2.items) |pattern2| {
+                if (std.mem.eql(u8, pattern1, pattern2)) {
+                    common_count += 1;
+                    break;
+                }
+            }
+        }
+
+        return @as(f64, @floatFromInt(common_count)) / 
+            @max(@as(f64, @floatFromInt(rel1.items.len)), @as(f64, @floatFromInt(rel2.items.len)));
+    }
+
+    /// Check for and handle pattern duplicates
+    pub fn deduplicatePatterns(self: *Self) !void {
+        var it1 = self.patterns.iterator();
+        while (it1.next()) |entry1| {
+            const pattern1 = entry1.value_ptr;
+            var it2 = self.patterns.iterator();
+            
+            while (it2.next()) |entry2| {
+                const pattern2 = entry2.value_ptr;
+                
+                // Skip self-comparison and already processed pairs
+                if (std.mem.eql(u8, pattern1.name, pattern2.name)) continue;
+                
+                // Calculate similarity
+                const similarity = try self.calculatePatternSimilarity(pattern1.*, pattern2.*);
+                
+                // If patterns are similar enough, handle as variation
+                if (similarity.total_score >= self.similarity_threshold) {
+                    try self.handlePatternVariation(pattern1.*, pattern2.*, similarity);
+                }
+            }
+        }
+    }
+
+    /// Handle pattern variation by merging or tracking
+    fn handlePatternVariation(self: *Self, pattern1: CorePattern, pattern2: CorePattern, similarity: PatternSimilarity) !void {
+        // Determine which pattern is the "original" based on usage and confidence
+        const is_pattern1_original = pattern1.usage_count > pattern2.usage_count or 
+            (pattern1.usage_count == pattern2.usage_count and pattern1.confidence > pattern2.confidence);
+        
+        const original = if (is_pattern1_original) pattern1 else pattern2;
+        const variation = if (is_pattern1_original) pattern2 else pattern1;
+
+        // Create variation record
+        const variation_record = PatternVariation{
+            .original_name = try self.allocator.dupe(u8, original.name),
+            .variation_name = try self.allocator.dupe(u8, variation.name),
+            .similarity = similarity,
+            .timestamp = @floatFromInt(std.time.timestamp()),
+            .usage_count = variation.usage_count,
+            .is_merged = false,
+        };
+
+        // Add to variations list
+        try self.pattern_variations.append(variation_record);
+
+        // If similarity is very high, merge the patterns
+        if (similarity.total_score >= 0.95) {
+            try self.mergePatterns(original, variation);
+        }
+    }
+
+    /// Merge two similar patterns
+    fn mergePatterns(self: *Self, original: CorePattern, variation: CorePattern) !void {
+        // Update original pattern with combined metrics
+        if (self.patterns.get(original.name)) |original_ptr| {
+            original_ptr.confidence = @max(original.confidence, variation.confidence);
+            original_ptr.usage_count += variation.usage_count;
+            original_ptr.last_used = @max(original.last_used, variation.last_used);
+
+            // Merge related patterns
+            for (variation.related_patterns.items) |related| {
+                if (!self.hasRelatedPattern(original_ptr.*, related)) {
+                    try original_ptr.related_patterns.append(try self.allocator.dupe(u8, related));
+                }
+            }
+
+            // Update relationships
+            try self.updateRelationshipsAfterMerge(original.name, variation.name);
+        }
+
+        // Remove the variation pattern
+        _ = self.patterns.remove(variation.name);
+
+        // Mark variation as merged
+        for (self.pattern_variations.items) |*var| {
+            if (std.mem.eql(u8, var.variation_name, variation.name)) {
+                var.is_merged = true;
+                break;
+            }
+        }
+    }
+
+    /// Check if a pattern has a specific related pattern
+    fn hasRelatedPattern(self: *Self, pattern: CorePattern, related: []const u8) bool {
+        for (pattern.related_patterns.items) |existing| {
+            if (std.mem.eql(u8, existing, related)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Update relationships after pattern merge
+    fn updateRelationshipsAfterMerge(self: *Self, original_name: []const u8, variation_name: []const u8) !void {
+        var i: usize = 0;
+        while (i < self.relationships.items.len) {
+            const rel = self.relationships.items[i];
+            if (std.mem.eql(u8, rel.source, variation_name) or std.mem.eql(u8, rel.target, variation_name)) {
+                // Update relationship to point to original pattern
+                const new_source = if (std.mem.eql(u8, rel.source, variation_name)) 
+                    original_name else rel.source;
+                const new_target = if (std.mem.eql(u8, rel.target, variation_name)) 
+                    original_name else rel.target;
+
+                // Remove old relationship
+                _ = self.relationships.swapRemove(i);
+
+                // Add updated relationship if it's not a self-relationship
+                if (!std.mem.eql(u8, new_source, new_target)) {
+                    try self.relationships.append(.{
+                        .source = try self.allocator.dupe(u8, new_source),
+                        .target = try self.allocator.dupe(u8, new_target),
+                        .strength = rel.strength,
+                        .type = rel.type,
+                    });
+                }
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    /// Save patterns with deduplication info
     pub fn savePatterns(self: *Self) !void {
+        // First deduplicate patterns
+        try self.deduplicatePatterns();
+
         const file = try std.fs.cwd().createFile(self.storage_path, .{});
         defer file.close();
 
@@ -461,6 +683,19 @@ pub const MayaDictionary = struct {
             try writer.writeAll(compressed.quantum_data);
             try writer.writeAll(compressed.neural_data);
             try writer.writeAll(compressed.metadata);
+        }
+
+        // Write variation information
+        try writer.writeInt(u32, @intCast(self.pattern_variations.items.len), .little);
+        for (self.pattern_variations.items) |variation| {
+            try writer.writeInt(u32, @intCast(variation.original_name.len), .little);
+            try writer.writeAll(variation.original_name);
+            try writer.writeInt(u32, @intCast(variation.variation_name.len), .little);
+            try writer.writeAll(variation.variation_name);
+            try writer.writeFloat(f64, variation.similarity.total_score, .little);
+            try writer.writeFloat(f64, variation.timestamp, .little);
+            try writer.writeInt(u64, variation.usage_count, .little);
+            try writer.writeInt(u8, @intFromBool(variation.is_merged), .little);
         }
     }
 
