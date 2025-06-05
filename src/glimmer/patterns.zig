@@ -1,5 +1,5 @@
 const std = @import("std");
-const colors = @import("colors");
+pub const colors = @import("colors");
 
 /// GLIMMER pattern system for neural-responsive visual patterns
 pub const GlimmerPattern = struct {

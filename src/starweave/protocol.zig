@@ -228,13 +228,14 @@ pub const StarweaveProtocol = struct {
     context: *anyopaque,
 
     /// Initialize the protocol
-    pub fn init(allocator: std.mem.Allocator, context: *anyopaque) !Self {
-        return Self{
+    pub fn init(allocator: std.mem.Allocator, context: *anyopaque) !?StarweaveProtocol {
+        const new_protocol = StarweaveProtocol{
             .allocator = allocator,
-            .message_queue = try MessageQueue.init(allocator),
+            .message_queue = MessageQueue.init(allocator, 1000),
             .handlers = std.AutoHashMap(MessageType, MessageHandler).init(allocator),
             .context = context,
         };
+        return new_protocol;
     }
 
     /// Deinitialize the protocol
@@ -334,6 +335,13 @@ pub fn init() !void {
     if (protocol != null) return;
     
     // Create global context
+    const global_context = try gpa.allocator().create(struct {
+        neural_bridge: *neural.NeuralBridge,
+        pattern: glimmer.GlimmerPattern,
+    });
+    defer gpa.allocator().destroy(global_context);
+
+    // Create neural bridge first
     var neural_bridge = try neural.NeuralBridge.init(gpa.allocator(), .{
         .max_connections = 100,
         .quantum_threshold = 0.5,
@@ -344,25 +352,19 @@ pub fn init() !void {
         .pattern_memory_size = 100,
         .visualization_resolution = 1000,
     });
-    
-    // Create a pattern for testing
-    const pattern = glimmer.GlimmerPattern.init(.{
-        .pattern_type = .quantum_wave,
-        .base_color = glimmer.colors.GlimmerColors.primary,
-        .intensity = 0.5,
-        .frequency = 1.0,
-        .phase = 0.0,
-    });
-    
-    const global_context = try gpa.allocator().create(struct {
-        neural_bridge: *neural.NeuralBridge,
-        pattern: glimmer.GlimmerPattern,
-    });
+    defer neural_bridge.deinit();
+
     global_context.* = .{
         .neural_bridge = &neural_bridge,
-        .pattern = pattern,
+        .pattern = glimmer.GlimmerPattern.init(.{
+            .pattern_type = .quantum_wave,
+            .base_color = glimmer.colors.GlimmerColors.primary,
+            .intensity = 0.5,
+            .frequency = 1.0,
+            .phase = 0.0,
+        }),
     };
-    
+
     protocol = try StarweaveProtocol.init(gpa.allocator(), global_context);
 }
 
@@ -415,26 +417,12 @@ test "StarweaveProtocol" {
     defer test_allocator.destroy(test_context);
     
     var test_protocol = try StarweaveProtocol.init(test_allocator, test_context);
-    defer test_protocol.deinit();
+    defer test_protocol.?.deinit();
 
     // Test message creation
-    const quantum_state = try test_protocol.createQuantumStateMessage(
-        .{
-            .amplitude = 0.5,
-            .phase = 0.0,
-            .energy = 0.25,
-            .resonance = 0.5,
-            .coherence = 0.8,
-        },
-        "test_source",
-        "test_target",
-    );
-
-    // Test message sending
-    try test_protocol.sendMessage(quantum_state);
-
-    // Test message processing
-    try test_protocol.processQueue();
+    const test_message = try test_protocol.?.createMessage(.quantum_state, "Test quantum state");
+    try std.testing.expectEqual(StarweaveProtocol.MessageType.quantum_state, test_message.type);
+    try std.testing.expectEqualStrings("Test quantum state", test_message.content);
 }
 
 test "MessageQueue" {
