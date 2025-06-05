@@ -36,6 +36,7 @@ pub const ValidationError = error{
     InvalidPatternIntensity,
     InvalidPatternFrequency,
     InvalidPatternPhase,
+    InvalidSourceTarget,
 };
 
 /// STARWEAVE Protocol for quantum-neural communication
@@ -238,16 +239,26 @@ pub const StarweaveProtocol = struct {
     message_queue: MessageQueue,
     handlers: std.AutoHashMap(MessageType, MessageHandler),
     context: *anyopaque,
+    visualization_enabled: bool,
+    recovery_state: ?RecoveryState,
+
+    /// Error recovery state
+    const RecoveryState = struct {
+        retry_count: u32,
+        last_error: ?ValidationError,
+        recovery_timeout: i64,
+    };
 
     /// Initialize the protocol
-    pub fn init(allocator: std.mem.Allocator, context: *anyopaque) !?StarweaveProtocol {
-        const new_protocol = StarweaveProtocol{
-            .allocator = allocator,
-            .message_queue = MessageQueue.init(allocator, 1000),
-            .handlers = std.AutoHashMap(MessageType, MessageHandler).init(allocator),
+    pub fn init(alloc: std.mem.Allocator, context: *anyopaque) !Self {
+        return Self{
+            .allocator = alloc,
+            .message_queue = MessageQueue.init(alloc, 1000),
+            .handlers = std.AutoHashMap(MessageType, MessageHandler).init(alloc),
             .context = context,
+            .visualization_enabled = false,
+            .recovery_state = null,
         };
-        return new_protocol;
     }
 
     /// Deinitialize the protocol
@@ -265,15 +276,240 @@ pub const StarweaveProtocol = struct {
         try self.handlers.put(msg_type, handler);
     }
 
-    /// Process a message through the appropriate handler
-    pub fn processMessage(self: *Self, message: Message) !void {
-        // Validate message before processing
-        try message.validate();
+    /// Validates the basic structure of a message
+    fn validateMessageStructure(self: *Self, msg: Message) !void {
+        _ = self; // Mark self as used to avoid unused parameter warning
 
-        if (self.handlers.get(message.msg_type)) |handler| {
-            try handler(self.context, message);
-        } else {
-            return error.NoHandlerRegistered;
+        // Check if message type is valid
+        if (msg.msg_type == .quantum_state) {
+            if (msg.data.quantum_state.amplitude < 0.0 or msg.data.quantum_state.amplitude > 1.0) {
+                return ValidationError.InvalidQuantumAmplitude;
+            }
+        } else if (msg.msg_type == .neural_activity) {
+            if (msg.data.neural_activity < 0.0 or msg.data.neural_activity > 1.0) {
+                return ValidationError.InvalidNeuralAmplitude;
+            }
+        } else if (msg.msg_type == .pattern_update) {
+            if (msg.data.pattern_update.intensity < 0.0 or msg.data.pattern_update.intensity > 1.0) {
+                return ValidationError.InvalidPatternIntensity;
+            }
+        }
+
+        // Check if source and target are valid
+        if (msg.source.len == 0 or msg.target.len == 0) {
+            return ValidationError.InvalidSourceTarget;
+        }
+
+        // Check if timestamp is valid
+        if (msg.timestamp <= 0) {
+            return ValidationError.InvalidTimestamp;
+        }
+    }
+
+    /// Enable or disable visualization
+    pub fn setVisualizationEnabled(self: *Self, enabled: bool) void {
+        self.visualization_enabled = enabled;
+    }
+
+    /// Specialized handler for quantum state messages
+    fn handleQuantumState(self: *Self, msg: Message) !void {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
+
+        // Update neural bridge with quantum state
+        try context.neural_bridge.updateQuantumState(
+            0, // Default index
+            msg.data.quantum_state.amplitude,
+            msg.data.quantum_state.phase
+        );
+
+        // Process activity and detect patterns
+        try context.neural_bridge.processActivity(
+            msg.data.quantum_state.amplitude,
+            0.1 // Default delta time
+        );
+
+        // Update visualization if needed
+        if (self.visualization_enabled) {
+            try self.updateVisualization(msg);
+        }
+    }
+
+    /// Specialized handler for neural activity messages
+    fn handleNeuralActivity(self: *Self, msg: Message) !void {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
+
+        // Process neural activity (includes pattern detection and memory updates)
+        try context.neural_bridge.processActivity(msg.data.neural_activity, 0.1);
+
+        // Update visualization if needed
+        if (self.visualization_enabled) {
+            try self.updateVisualization(msg);
+        }
+    }
+
+    /// Specialized handler for pattern update messages
+    fn handlePatternUpdate(self: *Self, msg: Message) !void {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
+
+        // Update pattern
+        context.pattern = msg.data.pattern_update;
+
+        // Process pattern activity
+        try context.neural_bridge.processActivity(
+            msg.data.pattern_update.intensity,
+            0.1 // Default delta time
+        );
+
+        // Update visualization if needed
+        if (self.visualization_enabled) {
+            try self.updateVisualization(msg);
+        }
+    }
+
+    /// Attempts to recover from an error
+    fn attemptRecovery(self: *Self, err: ValidationError) !void {
+        // Initialize recovery state if needed
+        if (self.recovery_state == null) {
+            self.recovery_state = RecoveryState{
+                .retry_count = 0,
+                .last_error = err,
+                .recovery_timeout = std.time.milliTimestamp() + 5000, // 5 second timeout
+            };
+        }
+
+        const state = &self.recovery_state.?;
+
+        // Check if we've exceeded retry limit
+        if (state.retry_count >= 3) {
+            return error.MaxRetriesExceeded;
+        }
+
+        // Check if we've exceeded timeout
+        if (std.time.milliTimestamp() > state.recovery_timeout) {
+            return error.RecoveryTimeout;
+        }
+
+        // Increment retry count
+        state.retry_count += 1;
+
+        // Attempt recovery based on error type
+        switch (err) {
+            .InvalidQuantumAmplitude, .InvalidQuantumPhase, .InvalidQuantumEnergy,
+            .InvalidQuantumResonance, .InvalidQuantumCoherence => {
+                // Reset quantum state
+                try self.resetQuantumState();
+            },
+            .InvalidNeuralAmplitude => {
+                // Reset neural activity
+                try self.resetNeuralActivity();
+            },
+            .InvalidPatternIntensity, .InvalidPatternFrequency, .InvalidPatternPhase => {
+                // Reset pattern
+                try self.resetPattern();
+            },
+            else => {
+                // For other errors, just log and continue
+                std.log.err("Unhandled error during recovery: {}", .{err});
+            },
+        }
+    }
+
+    /// Resets quantum state to default values
+    fn resetQuantumState(self: *Self) !void {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @ptrCast(self.context));
+
+        try context.neural_bridge.resetQuantumState();
+    }
+
+    /// Resets neural activity to default values
+    fn resetNeuralActivity(self: *Self) !void {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @ptrCast(self.context));
+
+        try context.neural_bridge.resetActivity();
+    }
+
+    /// Resets pattern to default values
+    fn resetPattern(self: *Self) !void {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @ptrCast(self.context));
+
+        context.pattern = glimmer.GlimmerPattern.default();
+        try context.neural_bridge.synchronizePattern(context.pattern);
+    }
+
+    /// Updates visualization with message data
+    fn updateVisualization(self: *Self, msg: Message) !void {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
+
+        if (context.neural_bridge.visualization) |*viz| {
+            switch (msg.msg_type) {
+                .quantum_state => {
+                    try viz.update(
+                        msg.data.quantum_state.amplitude,
+                        null,
+                        &[_]neural.QuantumState{msg.data.quantum_state}
+                    );
+                },
+                .neural_activity => {
+                    try viz.update(
+                        msg.data.neural_activity,
+                        null,
+                        context.neural_bridge.quantum_states.items
+                    );
+                },
+                .pattern_update => {
+                    try viz.update(
+                        context.neural_bridge.current_activity,
+                        null,
+                        context.neural_bridge.quantum_states.items
+                    );
+                },
+                else => {},
+            }
+        }
+    }
+
+    /// Processes a message with error recovery
+    pub fn processMessage(self: *Self, msg: Message) !void {
+        // Validate message structure
+        try self.validateMessageStructure(msg);
+
+        // Validate message content
+        try self.validateMessage(msg);
+
+        // Handle message based on type
+        switch (msg.msg_type) {
+            .quantum_state => try self.handleQuantumState(msg),
+            .neural_activity => try self.handleNeuralActivity(msg),
+            .pattern_update => try self.handlePatternUpdate(msg),
+            else => return error.UnsupportedMessageType,
         }
     }
 
