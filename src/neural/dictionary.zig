@@ -44,26 +44,70 @@ pub const MayaDictionary = struct {
         };
     };
 
+    /// Memory consolidation settings
+    pub const ConsolidationConfig = struct {
+        max_patterns: usize = 1000,
+        min_confidence: f64 = 0.3,
+        consolidation_interval: f64 = 3600.0, // 1 hour
+        decay_rate: f64 = 0.1,
+        importance_threshold: f64 = 0.7,
+        max_storage_mb: usize = 100, // 100MB limit
+    };
+
+    /// Pattern importance metrics
+    pub const PatternImportance = struct {
+        usage_frequency: f64,
+        relationship_strength: f64,
+        quantum_significance: f64,
+        neural_impact: f64,
+        last_accessed: f64,
+        total_score: f64,
+
+        pub fn calculate(self: *PatternImportance) void {
+            // Weighted combination of factors
+            self.total_score = 
+                self.usage_frequency * 0.3 +
+                self.relationship_strength * 0.2 +
+                self.quantum_significance * 0.2 +
+                self.neural_impact * 0.2 +
+                (1.0 - (std.time.timestamp() - self.last_accessed) / 86400.0) * 0.1; // Recency bonus
+        }
+    };
+
     allocator: std.mem.Allocator,
     patterns: std.StringHashMap(CorePattern),
     relationships: std.ArrayList(PatternRelationship),
     learning_rate: f64,
     confidence_threshold: f64,
     max_patterns: usize,
+    config: ConsolidationConfig,
+    last_consolidation: f64,
+    pattern_importance: std.StringHashMap(PatternImportance),
+    storage_path: []const u8,
 
-    /// Initialize the dictionary with core patterns
-    pub fn init(alloc: std.mem.Allocator) !Self {
+    /// Initialize with persistence
+    pub fn init(alloc: std.mem.Allocator, config: ConsolidationConfig, storage_path: []const u8) !Self {
         var self = Self{
             .allocator = alloc,
             .patterns = std.StringHashMap(CorePattern).init(alloc),
             .relationships = std.ArrayList(PatternRelationship).init(alloc),
             .learning_rate = 0.1,
             .confidence_threshold = 0.7,
-            .max_patterns = 1000,
+            .max_patterns = config.max_patterns,
+            .config = config,
+            .last_consolidation = @floatFromInt(std.time.timestamp()),
+            .pattern_importance = std.StringHashMap(PatternImportance).init(alloc),
+            .storage_path = storage_path,
         };
 
-        // Initialize with core patterns
-        try self.initializeCorePatterns();
+        // Load existing patterns if available
+        try self.loadPatterns();
+        
+        // Initialize core patterns if no patterns exist
+        if (self.patterns.count() == 0) {
+            try self.initializeCorePatterns();
+        }
+
         return self;
     }
 
@@ -248,5 +292,170 @@ pub const MayaDictionary = struct {
             .type = relationship_type,
             .last_observed = @floatFromInt(std.time.timestamp()),
         });
+    }
+
+    /// Save patterns to disk
+    pub fn savePatterns(self: *Self) !void {
+        const file = try std.fs.cwd().createFile(self.storage_path, .{});
+        defer file.close();
+
+        var writer = file.writer();
+        
+        // Write pattern count
+        try writer.writeInt(u32, @intCast(self.patterns.count()), .little);
+        
+        // Write each pattern
+        var it = self.patterns.iterator();
+        while (it.next()) |entry| {
+            const pattern = entry.value_ptr;
+            
+            // Write pattern name
+            try writer.writeInt(u32, @intCast(pattern.name.len), .little);
+            try writer.writeAll(pattern.name);
+            
+            // Write pattern data
+            try writer.writeAll(&std.mem.toBytes(pattern.quantum_signature));
+            try writer.writeFloat(f64, pattern.neural_signature, .little);
+            try writer.writeFloat(f64, pattern.confidence, .little);
+            try writer.writeInt(u64, pattern.usage_count, .little);
+            try writer.writeFloat(f64, pattern.last_used, .little);
+            
+            // Write related patterns
+            try writer.writeInt(u32, @intCast(pattern.related_patterns.items.len), .little);
+            for (pattern.related_patterns.items) |related| {
+                try writer.writeInt(u32, @intCast(related.len), .little);
+                try writer.writeAll(related);
+            }
+        }
+    }
+
+    /// Load patterns from disk
+    pub fn loadPatterns(self: *Self) !void {
+        const file = std.fs.cwd().openFile(self.storage_path, .{}) catch return;
+        defer file.close();
+
+        var reader = file.reader();
+        
+        // Read pattern count
+        const count = try reader.readInt(u32, .little);
+        
+        // Read each pattern
+        var i: usize = 0;
+        while (i < count) : (i += 1) {
+            // Read pattern name
+            const name_len = try reader.readInt(u32, .little);
+            var name = try self.allocator.alloc(u8, name_len);
+            _ = try reader.read(name);
+            
+            // Read pattern data
+            var quantum_signature: neural.QuantumState = undefined;
+            _ = try reader.readAll(&std.mem.toBytes(&quantum_signature));
+            const neural_signature = try reader.readFloat(f64, .little);
+            const confidence = try reader.readFloat(f64, .little);
+            const usage_count = try reader.readInt(u64, .little);
+            const last_used = try reader.readFloat(f64, .little);
+            
+            // Read related patterns
+            const related_count = try reader.readInt(u32, .little);
+            var related_patterns = std.ArrayList([]const u8).init(self.allocator);
+            var j: usize = 0;
+            while (j < related_count) : (j += 1) {
+                const related_len = try reader.readInt(u32, .little);
+                var related = try self.allocator.alloc(u8, related_len);
+                _ = try reader.read(related);
+                try related_patterns.append(related);
+            }
+            
+            // Create pattern
+            try self.patterns.put(name, .{
+                .name = name,
+                .description = "Loaded pattern",
+                .quantum_signature = quantum_signature,
+                .neural_signature = neural_signature,
+                .glimmer_pattern = glimmer.GlimmerPattern.init(.{
+                    .pattern_type = .quantum_wave, // Default, will be updated
+                    .base_color = glimmer.colors.GlimmerColors.quantum,
+                    .intensity = 1.0,
+                    .frequency = 1.0,
+                    .phase = 0.0,
+                }),
+                .confidence = confidence,
+                .usage_count = usage_count,
+                .last_used = last_used,
+                .related_patterns = related_patterns,
+            });
+        }
+    }
+
+    /// Consolidate memory (prune and strengthen patterns)
+    pub fn consolidateMemory(self: *Self) !void {
+        const current_time = @floatFromInt(std.time.timestamp());
+        if (current_time - self.last_consolidation < self.config.consolidation_interval) {
+            return;
+        }
+
+        // Calculate importance scores
+        var it = self.patterns.iterator();
+        while (it.next()) |entry| {
+            const pattern = entry.value_ptr;
+            var importance = PatternImportance{
+                .usage_frequency = @floatFromInt(pattern.usage_count) / (current_time - pattern.last_used),
+                .relationship_strength = 0.0,
+                .quantum_significance = pattern.quantum_signature.coherence,
+                .neural_impact = pattern.neural_signature,
+                .last_accessed = pattern.last_used,
+                .total_score = 0.0,
+            };
+
+            // Calculate relationship strength
+            for (self.relationships.items) |rel| {
+                if (std.mem.eql(u8, rel.source, pattern.name) or 
+                    std.mem.eql(u8, rel.target, pattern.name)) {
+                    importance.relationship_strength += rel.strength;
+                }
+            }
+
+            importance.calculate();
+            try self.pattern_importance.put(pattern.name, importance);
+        }
+
+        // Sort patterns by importance
+        var patterns_to_keep = std.ArrayList(CorePattern).init(self.allocator);
+        defer patterns_to_keep.deinit();
+
+        var importance_it = self.pattern_importance.iterator();
+        while (importance_it.next()) |entry| {
+            const importance = entry.value_ptr;
+            if (importance.total_score >= self.config.importance_threshold) {
+                if (self.patterns.get(entry.key_ptr.*)) |pattern| {
+                    try patterns_to_keep.append(pattern.*);
+                }
+            }
+        }
+
+        // Clear and rebuild pattern storage
+        self.patterns.clearRetainingCapacity();
+        for (patterns_to_keep.items) |pattern| {
+            try self.patterns.put(pattern.name, pattern);
+        }
+
+        // Update consolidation time
+        self.last_consolidation = current_time;
+
+        // Save consolidated patterns
+        try self.savePatterns();
+    }
+
+    /// Check storage size and trigger consolidation if needed
+    pub fn checkStorageSize(self: *Self) !void {
+        const file = std.fs.cwd().openFile(self.storage_path, .{}) catch return;
+        defer file.close();
+
+        const stat = try file.stat();
+        const size_mb = stat.size / (1024 * 1024);
+
+        if (size_mb >= self.config.max_storage_mb) {
+            try self.consolidateMemory();
+        }
     }
 }; 
