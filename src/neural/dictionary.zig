@@ -74,6 +74,32 @@ pub const MayaDictionary = struct {
         }
     };
 
+    /// Compression settings
+    pub const CompressionConfig = struct {
+        min_compression: f64 = 0.0,    // No compression for most important patterns
+        max_compression: f64 = 0.8,    // Maximum compression for least important
+        compression_threshold: f64 = 0.5, // Importance threshold for compression
+        quantum_precision: u8 = 8,     // Bits of precision for quantum values
+        neural_precision: u8 = 8,      // Bits of precision for neural values
+    };
+
+    /// Compressed pattern data
+    pub const CompressedPattern = struct {
+        name: []const u8,
+        quantum_data: []u8,
+        neural_data: []u8,
+        metadata: []u8,
+        compression_level: f64,
+        original_size: usize,
+        compressed_size: usize,
+
+        pub fn deinit(self: *CompressedPattern, alloc: std.mem.Allocator) void {
+            alloc.free(self.quantum_data);
+            alloc.free(self.neural_data);
+            alloc.free(self.metadata);
+        }
+    };
+
     allocator: std.mem.Allocator,
     patterns: std.StringHashMap(CorePattern),
     relationships: std.ArrayList(PatternRelationship),
@@ -84,8 +110,10 @@ pub const MayaDictionary = struct {
     last_consolidation: f64,
     pattern_importance: std.StringHashMap(PatternImportance),
     storage_path: []const u8,
+    compression_config: CompressionConfig,
+    compressed_patterns: std.StringHashMap(CompressedPattern),
 
-    /// Initialize with persistence
+    /// Initialize with compression
     pub fn init(alloc: std.mem.Allocator, config: ConsolidationConfig, storage_path: []const u8) !Self {
         var self = Self{
             .allocator = alloc,
@@ -98,6 +126,8 @@ pub const MayaDictionary = struct {
             .last_consolidation = @floatFromInt(std.time.timestamp()),
             .pattern_importance = std.StringHashMap(PatternImportance).init(alloc),
             .storage_path = storage_path,
+            .compression_config = .{},
+            .compressed_patterns = std.StringHashMap(CompressedPattern).init(alloc),
         };
 
         // Load existing patterns if available
@@ -294,7 +324,115 @@ pub const MayaDictionary = struct {
         });
     }
 
-    /// Save patterns to disk
+    /// Compress a pattern based on its importance
+    fn compressPattern(self: *Self, pattern: CorePattern, importance: PatternImportance) !CompressedPattern {
+        const compression_level = if (importance.total_score >= self.compression_config.compression_threshold)
+            self.compression_config.min_compression
+        else
+            self.compression_config.max_compression * (1.0 - importance.total_score);
+
+        // Calculate original size
+        const original_size = @sizeOf(CorePattern) + pattern.name.len + 
+            pattern.related_patterns.items.len * @sizeOf([]const u8);
+
+        // Compress quantum data
+        var quantum_data = try self.allocator.alloc(u8, @sizeOf(neural.QuantumState));
+        const quantum_bytes = std.mem.toBytes(pattern.quantum_signature);
+        @memcpy(quantum_data, &quantum_bytes);
+
+        // Compress neural data
+        var neural_data = try self.allocator.alloc(u8, @sizeOf(f64));
+        const neural_bytes = std.mem.toBytes(pattern.neural_signature);
+        @memcpy(neural_data, &neural_bytes);
+
+        // Compress metadata
+        var metadata = try self.allocator.alloc(u8, @sizeOf(f64) * 3 + @sizeOf(usize));
+        var metadata_writer = std.io.fixedBufferStream(metadata).writer();
+        try metadata_writer.writeFloat(f64, pattern.confidence, .little);
+        try metadata_writer.writeInt(u64, pattern.usage_count, .little);
+        try metadata_writer.writeFloat(f64, pattern.last_used, .little);
+
+        // Apply compression based on level
+        if (compression_level > 0.0) {
+            // Reduce precision of quantum values
+            const quantum_precision = @as(u8, @intFromFloat(@round(
+                @as(f64, @floatFromInt(self.compression_config.quantum_precision)) * (1.0 - compression_level)
+            )));
+            try self.reducePrecision(quantum_data, quantum_precision);
+
+            // Reduce precision of neural values
+            const neural_precision = @as(u8, @intFromFloat(@round(
+                @as(f64, @floatFromInt(self.compression_config.neural_precision)) * (1.0 - compression_level)
+            )));
+            try self.reducePrecision(neural_data, neural_precision);
+        }
+
+        return CompressedPattern{
+            .name = pattern.name,
+            .quantum_data = quantum_data,
+            .neural_data = neural_data,
+            .metadata = metadata,
+            .compression_level = compression_level,
+            .original_size = original_size,
+            .compressed_size = quantum_data.len + neural_data.len + metadata.len,
+        };
+    }
+
+    /// Reduce precision of floating-point values
+    fn reducePrecision(self: *Self, data: []u8, precision: u8) !void {
+        const float_size = @sizeOf(f64);
+        var i: usize = 0;
+        while (i < data.len) : (i += float_size) {
+            if (i + float_size <= data.len) {
+                const value = std.mem.readInt(f64, data[i..][0..float_size], .little);
+                const reduced = self.reduceFloatPrecision(value, precision);
+                std.mem.writeInt(f64, data[i..][0..float_size], reduced, .little);
+            }
+        }
+    }
+
+    /// Reduce floating-point precision
+    fn reduceFloatPrecision(self: *Self, value: f64, precision: u8) f64 {
+        const factor = std.math.pow(f64, 2.0, @as(f64, @floatFromInt(precision)));
+        return @round(value * factor) / factor;
+    }
+
+    /// Decompress a pattern
+    fn decompressPattern(self: *Self, compressed: CompressedPattern) !CorePattern {
+        // Reconstruct quantum signature
+        var quantum_signature: neural.QuantumState = undefined;
+        @memcpy(&std.mem.toBytes(&quantum_signature), compressed.quantum_data);
+
+        // Reconstruct neural signature
+        var neural_signature: f64 = undefined;
+        @memcpy(&std.mem.toBytes(&neural_signature), compressed.neural_data);
+
+        // Reconstruct metadata
+        var metadata_reader = std.io.fixedBufferStream(compressed.metadata).reader();
+        const confidence = try metadata_reader.readFloat(f64, .little);
+        const usage_count = try metadata_reader.readInt(u64, .little);
+        const last_used = try metadata_reader.readFloat(f64, .little);
+
+        return CorePattern{
+            .name = compressed.name,
+            .description = "Decompressed pattern",
+            .quantum_signature = quantum_signature,
+            .neural_signature = neural_signature,
+            .glimmer_pattern = glimmer.GlimmerPattern.init(.{
+                .pattern_type = .quantum_wave,
+                .base_color = glimmer.colors.GlimmerColors.quantum,
+                .intensity = 1.0,
+                .frequency = 1.0,
+                .phase = 0.0,
+            }),
+            .confidence = confidence,
+            .usage_count = usage_count,
+            .last_used = last_used,
+            .related_patterns = std.ArrayList([]const u8).init(self.allocator),
+        };
+    }
+
+    /// Save patterns with compression
     pub fn savePatterns(self: *Self) !void {
         const file = try std.fs.cwd().createFile(self.storage_path, .{});
         defer file.close();
@@ -308,28 +446,25 @@ pub const MayaDictionary = struct {
         var it = self.patterns.iterator();
         while (it.next()) |entry| {
             const pattern = entry.value_ptr;
+            const importance = self.pattern_importance.get(pattern.name) orelse continue;
             
-            // Write pattern name
-            try writer.writeInt(u32, @intCast(pattern.name.len), .little);
-            try writer.writeAll(pattern.name);
-            
-            // Write pattern data
-            try writer.writeAll(&std.mem.toBytes(pattern.quantum_signature));
-            try writer.writeFloat(f64, pattern.neural_signature, .little);
-            try writer.writeFloat(f64, pattern.confidence, .little);
-            try writer.writeInt(u64, pattern.usage_count, .little);
-            try writer.writeFloat(f64, pattern.last_used, .little);
-            
-            // Write related patterns
-            try writer.writeInt(u32, @intCast(pattern.related_patterns.items.len), .little);
-            for (pattern.related_patterns.items) |related| {
-                try writer.writeInt(u32, @intCast(related.len), .little);
-                try writer.writeAll(related);
-            }
+            // Compress pattern
+            const compressed = try self.compressPattern(pattern.*, importance.*);
+            defer compressed.deinit(self.allocator);
+
+            // Write compressed data
+            try writer.writeInt(u32, @intCast(compressed.name.len), .little);
+            try writer.writeAll(compressed.name);
+            try writer.writeFloat(f64, compressed.compression_level, .little);
+            try writer.writeInt(u64, compressed.original_size, .little);
+            try writer.writeInt(u64, compressed.compressed_size, .little);
+            try writer.writeAll(compressed.quantum_data);
+            try writer.writeAll(compressed.neural_data);
+            try writer.writeAll(compressed.metadata);
         }
     }
 
-    /// Load patterns from disk
+    /// Load patterns with decompression
     pub fn loadPatterns(self: *Self) !void {
         const file = std.fs.cwd().openFile(self.storage_path, .{}) catch return;
         defer file.close();
@@ -346,44 +481,34 @@ pub const MayaDictionary = struct {
             const name_len = try reader.readInt(u32, .little);
             var name = try self.allocator.alloc(u8, name_len);
             _ = try reader.read(name);
-            
-            // Read pattern data
-            var quantum_signature: neural.QuantumState = undefined;
-            _ = try reader.readAll(&std.mem.toBytes(&quantum_signature));
-            const neural_signature = try reader.readFloat(f64, .little);
-            const confidence = try reader.readFloat(f64, .little);
-            const usage_count = try reader.readInt(u64, .little);
-            const last_used = try reader.readFloat(f64, .little);
-            
-            // Read related patterns
-            const related_count = try reader.readInt(u32, .little);
-            var related_patterns = std.ArrayList([]const u8).init(self.allocator);
-            var j: usize = 0;
-            while (j < related_count) : (j += 1) {
-                const related_len = try reader.readInt(u32, .little);
-                var related = try self.allocator.alloc(u8, related_len);
-                _ = try reader.read(related);
-                try related_patterns.append(related);
-            }
-            
-            // Create pattern
-            try self.patterns.put(name, .{
+
+            // Read compression info
+            const compression_level = try reader.readFloat(f64, .little);
+            const original_size = try reader.readInt(u64, .little);
+            const compressed_size = try reader.readInt(u64, .little);
+
+            // Read compressed data
+            var quantum_data = try self.allocator.alloc(u8, @sizeOf(neural.QuantumState));
+            _ = try reader.read(quantum_data);
+            var neural_data = try self.allocator.alloc(u8, @sizeOf(f64));
+            _ = try reader.read(neural_data);
+            var metadata = try self.allocator.alloc(u8, @sizeOf(f64) * 3 + @sizeOf(usize));
+            _ = try reader.read(metadata);
+
+            // Create compressed pattern
+            const compressed = CompressedPattern{
                 .name = name,
-                .description = "Loaded pattern",
-                .quantum_signature = quantum_signature,
-                .neural_signature = neural_signature,
-                .glimmer_pattern = glimmer.GlimmerPattern.init(.{
-                    .pattern_type = .quantum_wave, // Default, will be updated
-                    .base_color = glimmer.colors.GlimmerColors.quantum,
-                    .intensity = 1.0,
-                    .frequency = 1.0,
-                    .phase = 0.0,
-                }),
-                .confidence = confidence,
-                .usage_count = usage_count,
-                .last_used = last_used,
-                .related_patterns = related_patterns,
-            });
+                .quantum_data = quantum_data,
+                .neural_data = neural_data,
+                .metadata = metadata,
+                .compression_level = compression_level,
+                .original_size = original_size,
+                .compressed_size = compressed_size,
+            };
+
+            // Decompress pattern
+            const pattern = try self.decompressPattern(compressed);
+            try self.patterns.put(pattern.name, pattern);
         }
     }
 
