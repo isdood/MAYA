@@ -24,6 +24,18 @@ pub const ValidationError = error{
     QuantumCoherenceViolation,
     NeuralResonanceMismatch,
     PatternStabilityError,
+    EmptyMessageContent,
+    InvalidQuantumAmplitude,
+    InvalidQuantumPhase,
+    InvalidQuantumEnergy,
+    InvalidQuantumResonance,
+    InvalidQuantumCoherence,
+    InvalidNeuralAmplitude,
+    InvalidNeuralFrequency,
+    InvalidNeuralPhase,
+    InvalidPatternIntensity,
+    InvalidPatternFrequency,
+    InvalidPatternPhase,
 };
 
 /// STARWEAVE Protocol for quantum-neural communication
@@ -326,6 +338,114 @@ pub const StarweaveProtocol = struct {
             .target = target,
         };
     }
+
+    /// Validates a message
+    pub fn validateMessage(self: *Self, msg: Message) !void {
+        // Validate message structure
+        try self.validateMessageStructure(msg);
+
+        // Validate quantum coherence
+        try validateQuantumCoherence(msg);
+
+        // Validate neural resonance
+        try validateNeuralResonance(msg);
+
+        // Validate pattern stability
+        try validatePatternStability(msg);
+    }
+
+    /// Validates quantum coherence of the message
+    fn validateQuantumCoherence(msg: Message) !void {
+        // Check if the message type requires quantum validation
+        if (msg.msg_type == .quantum_state) {
+            // Verify quantum state coherence
+            const quantum_state = msg.data.quantum_state;
+
+            // Validate quantum parameters
+            if (quantum_state.amplitude < 0.0 or quantum_state.amplitude > 1.0) {
+                return ValidationError.InvalidQuantumAmplitude;
+            }
+            if (quantum_state.phase < 0.0 or quantum_state.phase > 2.0 * std.math.pi) {
+                return ValidationError.InvalidQuantumPhase;
+            }
+            if (quantum_state.energy < 0.0 or quantum_state.energy > 1.0) {
+                return ValidationError.InvalidQuantumEnergy;
+            }
+            if (quantum_state.resonance < 0.0 or quantum_state.resonance > 1.0) {
+                return ValidationError.InvalidQuantumResonance;
+            }
+            if (quantum_state.coherence < 0.0 or quantum_state.coherence > 1.0) {
+                return ValidationError.InvalidQuantumCoherence;
+            }
+        }
+    }
+
+    /// Validates neural resonance of the message
+    fn validateNeuralResonance(msg: Message) !void {
+        // Check if the message type requires neural validation
+        if (msg.msg_type == .neural_activity) {
+            // Verify neural activity parameters
+            const activity = msg.data.neural_activity;
+
+            // Validate neural parameters
+            if (activity < 0.0 or activity > 1.0) {
+                return ValidationError.InvalidNeuralAmplitude;
+            }
+        }
+    }
+
+    /// Validates pattern stability of the message
+    fn validatePatternStability(msg: Message) !void {
+        // Check if the message type requires pattern validation
+        if (msg.msg_type == .pattern_update) {
+            // Verify pattern parameters
+            const pattern = msg.data.pattern_update;
+
+            // Validate pattern parameters
+            if (pattern.intensity < 0.0 or pattern.intensity > 1.0) {
+                return ValidationError.InvalidPatternIntensity;
+            }
+            if (pattern.frequency < 0.0 or pattern.frequency > 100.0) {
+                return ValidationError.InvalidPatternFrequency;
+            }
+            if (pattern.phase < 0.0 or pattern.phase > 2.0 * std.math.pi) {
+                return ValidationError.InvalidPatternPhase;
+            }
+        }
+    }
+
+    /// Creates and validates a message
+    pub fn createMessage(self: *Self, msg_type: MessageType, content: []const u8) !Message {
+        const msg = Message{
+            .msg_type = msg_type,
+            .timestamp = std.time.milliTimestamp(),
+            .data = switch (msg_type) {
+                .quantum_state => blk: {
+                    const quantum_state = try std.json.parseFromSlice(neural.QuantumState, self.allocator, content, .{});
+                    defer quantum_state.deinit();
+                    break :blk .{ .quantum_state = quantum_state.value };
+                },
+                .neural_activity => blk: {
+                    const activity = try std.fmt.parseFloat(f32, content);
+                    break :blk .{ .neural_activity = activity };
+                },
+                .pattern_update => blk: {
+                    const pattern = try std.json.parseFromSlice(glimmer.GlimmerPattern, self.allocator, content, .{});
+                    defer pattern.deinit();
+                    break :blk .{ .pattern_update = pattern.value };
+                },
+                else => return error.UnsupportedMessageType,
+            },
+            .priority = 1,
+            .source = try self.allocator.dupe(u8, "test"),
+            .target = try self.allocator.dupe(u8, "test"),
+        };
+
+        // Validate the message before returning
+        try self.validateMessage(msg);
+
+        return msg;
+    }
 };
 
 var protocol: ?StarweaveProtocol = null;
@@ -420,9 +540,15 @@ test "StarweaveProtocol" {
     defer test_protocol.?.deinit();
 
     // Test message creation
-    const test_message = try test_protocol.?.createMessage(.quantum_state, "Test quantum state");
-    try std.testing.expectEqual(StarweaveProtocol.MessageType.quantum_state, test_message.type);
-    try std.testing.expectEqualStrings("Test quantum state", test_message.content);
+    const test_message = try test_protocol.?.createMessage(.quantum_state, 
+        \\{"amplitude": 0.5, "phase": 0.0, "energy": 0.25, "resonance": 0.5, "coherence": 0.8}
+    );
+    try std.testing.expectEqual(StarweaveProtocol.MessageType.quantum_state, test_message.msg_type);
+    try std.testing.expectEqual(@as(f32, 0.5), test_message.data.quantum_state.amplitude);
+    try std.testing.expectEqual(@as(f32, 0.0), test_message.data.quantum_state.phase);
+    try std.testing.expectEqual(@as(f32, 0.25), test_message.data.quantum_state.energy);
+    try std.testing.expectEqual(@as(f32, 0.5), test_message.data.quantum_state.resonance);
+    try std.testing.expectEqual(@as(f32, 0.8), test_message.data.quantum_state.coherence);
 }
 
 test "MessageQueue" {
