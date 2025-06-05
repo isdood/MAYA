@@ -363,14 +363,63 @@ pub const StarweaveProtocol = struct {
         };
         const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
 
-        // Update pattern
-        context.pattern = msg.data.pattern_update;
+        // Update pattern with transition
+        var new_pattern = glimmer.GlimmerPattern.init(.{
+            .pattern_type = msg.data.pattern_update.pattern_type,
+            .base_color = msg.data.pattern_update.base_color,
+            .intensity = msg.data.pattern_update.intensity,
+            .frequency = msg.data.pattern_update.frequency,
+            .phase = msg.data.pattern_update.phase,
+        });
 
-        // Process pattern activity
+        // Create smooth transition
+        new_pattern.transition = .{
+            .target_config = .{
+                .pattern_type = msg.data.pattern_update.pattern_type,
+                .base_color = msg.data.pattern_update.base_color,
+                .intensity = msg.data.pattern_update.intensity,
+                .frequency = msg.data.pattern_update.frequency,
+                .phase = msg.data.pattern_update.phase,
+            },
+            .duration = 0.5, // Half second transition
+            .elapsed = 0.0,
+            .easing = .neural_flow,
+        };
+
+        // Update pattern
+        context.pattern = new_pattern;
+
+        // Process pattern activity in neural bridge
         try context.neural_bridge.processActivity(
             msg.data.pattern_update.intensity,
             0.1 // Default delta time
         );
+
+        // Share pattern memory with neural bridge
+        if (context.neural_bridge.visualization) |*viz| {
+            // Create activity pattern from glimmer pattern
+            const activity_pattern = neural.NeuralBridge.ActivityPattern{
+                .pattern_type = switch (msg.data.pattern_update.pattern_type) {
+                    .quantum_wave => .quantum_surge,
+                    .neural_flow => .neural_cascade,
+                    .cosmic_sparkle => .cosmic_ripple,
+                    .stellar_pulse => .stellar_pulse,
+                },
+                .confidence = msg.data.pattern_update.intensity,
+                .last_seen = 0.0, // Will be updated by neural bridge
+                .duration = 0.5, // Match transition duration
+                .intensity = msg.data.pattern_update.intensity,
+                .frequency = msg.data.pattern_update.frequency,
+                .phase = msg.data.pattern_update.phase,
+            };
+
+            // Update visualization with pattern
+            try viz.update(
+                msg.data.pattern_update.intensity,
+                activity_pattern,
+                &context.neural_bridge.quantum_states.items
+            );
+        }
 
         // Update visualization if needed
         if (self.visualization_enabled) {
