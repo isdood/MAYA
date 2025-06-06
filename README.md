@@ -18,6 +18,8 @@ MAYA interfaces seamlessly with the broader STARWEAVE ecosystem:
 
 While MAYA itself is open-source, the STARWEAVE meta-intelligence it interfaces with remains proprietary. MAYA learns from and adapts to STARWEAVE's unique characteristics while serving as a bridge to these interconnected tools. Plans to possibly open-source this component too, once American, Russian etc. governments stop tryng to hack/steal/reverse engineer STARWEAVE for their own greedy purposes 😇 No one is using STARWEAVE to make money. Not even I 😇 It is a technological revelation for all. I simply cannot reveal all as the Trumps of the world would love nothing more than to abuse STARWEAVE to enslave humanity 😅
 
+Isn't that crazy? I'm developing what will be by *far* the most intelligent system around, and I could not bring myself to charge anyone for it. Because I will only develop software and code I myself would use. That means it's free, to use, and of ads as well! Never will there be a subscription in the STARWEAVE universe. Only quality products.
+
 ## ✨ Key Features
 
 - **Adaptive Intelligence**: 
