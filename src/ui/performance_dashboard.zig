@@ -3,6 +3,7 @@ const c = @cImport({
     @cInclude("imgui.h");
 });
 const PerformanceOptimizer = @import("../renderer/performance_optimizer.zig").PerformanceOptimizer;
+const PerformancePreset = @import("../renderer/performance_presets.zig").PerformancePreset;
 
 pub const PerformanceDashboard = struct {
     const Self = @This();
@@ -39,12 +40,26 @@ pub const PerformanceDashboard = struct {
     show_pipeline_metrics: bool,
     show_command_buffer_metrics: bool,
     show_recommendations: bool,
+    show_preset_editor: bool,
     
     // Performance optimizer
     optimizer: ?*PerformanceOptimizer,
     
+    // Performance presets
+    presets: std.ArrayList(*PerformancePreset),
+    current_preset: ?*PerformancePreset,
+    custom_presets_dir: []const u8,
+    
     logger: std.log.Logger,
     allocator: std.mem.Allocator,
+
+    // Add new fields for preset creation dialog
+    show_create_preset_dialog: bool,
+    new_preset_name: [256]u8,
+    new_preset_description: [512]u8,
+    new_preset_base: ?*PerformancePreset,
+    new_preset_name_len: usize,
+    new_preset_description_len: usize,
 
     pub fn init(allocator: std.mem.Allocator) !*Self {
         var self = try allocator.create(Self);
@@ -70,10 +85,41 @@ pub const PerformanceDashboard = struct {
             .show_pipeline_metrics = false,
             .show_command_buffer_metrics = false,
             .show_recommendations = true,
+            .show_preset_editor = false,
             .optimizer = try PerformanceOptimizer.init(allocator),
+            .presets = std.ArrayList(*PerformancePreset).init(allocator),
+            .current_preset = null,
+            .custom_presets_dir = "presets",
             .logger = std.log.scoped(.performance_dashboard),
             .allocator = allocator,
+            .show_create_preset_dialog = false,
+            .new_preset_name = [_]u8{0} ** 256,
+            .new_preset_description = [_]u8{0} ** 512,
+            .new_preset_base = null,
+            .new_preset_name_len = 0,
+            .new_preset_description_len = 0,
         };
+
+        // Create presets directory if it doesn't exist
+        std.fs.cwd().makeDir(self.custom_presets_dir) catch |err| switch (err) {
+            error.PathAlreadyExists => {},
+            else => return err,
+        };
+
+        // Load default presets
+        const default_presets = try PerformancePreset.createDefaultPresets(allocator);
+        for (default_presets) |preset| {
+            try self.presets.append(preset);
+        }
+
+        // Load custom presets
+        try self.loadCustomPresets();
+
+        // Set default preset
+        if (self.presets.items.len > 0) {
+            self.current_preset = self.presets.items[0];
+        }
+
         return self;
     }
 
@@ -81,7 +127,30 @@ pub const PerformanceDashboard = struct {
         if (self.optimizer) |*optimizer| {
             optimizer.deinit();
         }
+
+        // Free presets
+        for (self.presets.items) |preset| {
+            preset.deinit(allocator);
+        }
+        self.presets.deinit();
+
         allocator.destroy(self);
+    }
+
+    fn loadCustomPresets(self: *Self) !void {
+        var dir = try std.fs.cwd().openDir(self.custom_presets_dir, .{ .iterate = true });
+        defer dir.close();
+
+        var iterator = dir.iterate();
+        while (try iterator.next()) |entry| {
+            if (std.mem.endsWith(u8, entry.name, ".json")) {
+                const file_path = try std.fs.path.join(self.allocator, &[_][]const u8{ self.custom_presets_dir, entry.name });
+                defer self.allocator.free(file_path);
+
+                const preset = try PerformancePreset.loadFromFile(self.allocator, file_path);
+                try self.presets.append(preset);
+            }
+        }
     }
 
     pub fn updateMetrics(self: *Self, metrics: struct {
@@ -170,6 +239,8 @@ pub const PerformanceDashboard = struct {
             }
             c.igSameLine(0, 20);
             _ = c.igCheckbox("Show Recommendations", &self.show_recommendations);
+            c.igSameLine(0, 20);
+            _ = c.igCheckbox("Show Preset Editor", &self.show_preset_editor);
 
             // Basic metrics
             self.renderBasicMetrics();
@@ -199,6 +270,253 @@ pub const PerformanceDashboard = struct {
             if (self.show_recommendations) {
                 c.igSeparator();
                 self.renderRecommendations();
+            }
+
+            // Preset management
+            if (self.show_preset_editor) {
+                c.igSeparator();
+                self.renderPresetEditor();
+            }
+        }
+        c.igEnd();
+    }
+
+    fn renderPresetEditor(self: *Self) void {
+        if (c.igCollapsingHeader("Performance Presets", c.ImGuiTreeNodeFlags_None)) {
+            // Preset selector
+            if (c.igBeginCombo("Current Preset", if (self.current_preset) |preset| preset.name.ptr else "None")) {
+                for (self.presets.items) |preset| {
+                    const is_selected = self.current_preset == preset;
+                    if (c.igSelectable(preset.name.ptr, is_selected, c.ImGuiSelectableFlags_None, .{ .x = 0, .y = 0 })) {
+                        self.current_preset = preset;
+                    }
+                }
+                c.igEndCombo();
+            }
+
+            // Preset description
+            if (self.current_preset) |preset| {
+                c.igText("Description: %s", preset.description.ptr);
+                c.igText("Last Modified: %d", preset.last_modified);
+
+                // Quality settings
+                if (c.igCollapsingHeader("Quality Settings", c.ImGuiTreeNodeFlags_None)) {
+                    var msaa = @intCast(i32, preset.settings.msaa_level);
+                    if (c.igSliderInt("MSAA Level", &msaa, 0, 8)) {
+                        preset.settings.msaa_level = @intCast(u32, msaa);
+                    }
+
+                    var texture_quality = @enumToInt(preset.settings.texture_quality);
+                    if (c.igCombo("Texture Quality", &texture_quality, "Low\0Medium\0High\0Ultra\0", 4)) {
+                        preset.settings.texture_quality = @intToEnum(PerformancePreset.TextureQuality, texture_quality);
+                    }
+
+                    var shadow_quality = @enumToInt(preset.settings.shadow_quality);
+                    if (c.igCombo("Shadow Quality", &shadow_quality, "Low\0Medium\0High\0Ultra\0", 4)) {
+                        preset.settings.shadow_quality = @intToEnum(PerformancePreset.ShadowQuality, shadow_quality);
+                    }
+
+                    var aniso = @intCast(i32, preset.settings.anisotropic_filtering);
+                    if (c.igSliderInt("Anisotropic Filtering", &aniso, 0, 16)) {
+                        preset.settings.anisotropic_filtering = @intCast(u32, aniso);
+                    }
+
+                    var view_dist = preset.settings.view_distance;
+                    if (c.igSliderFloat("View Distance", &view_dist, 100.0, 2000.0, "%.0f")) {
+                        preset.settings.view_distance = view_dist;
+                    }
+                }
+
+                // Performance settings
+                if (c.igCollapsingHeader("Performance Settings", c.ImGuiTreeNodeFlags_None)) {
+                    var max_fps = @intCast(i32, preset.settings.max_fps);
+                    if (c.igSliderInt("Max FPS", &max_fps, 0, 240)) {
+                        preset.settings.max_fps = @intCast(u32, max_fps);
+                    }
+
+                    _ = c.igCheckbox("VSync", &preset.settings.vsync);
+                    _ = c.igCheckbox("Triple Buffering", &preset.settings.triple_buffering);
+                }
+
+                // Shader settings
+                if (c.igCollapsingHeader("Shader Settings", c.ImGuiTreeNodeFlags_None)) {
+                    var shader_quality = @enumToInt(preset.settings.shader_quality);
+                    if (c.igCombo("Shader Quality", &shader_quality, "Low\0Medium\0High\0Ultra\0", 4)) {
+                        preset.settings.shader_quality = @intToEnum(PerformancePreset.ShaderQuality, shader_quality);
+                    }
+
+                    var compute_quality = @enumToInt(preset.settings.compute_shader_quality);
+                    if (c.igCombo("Compute Shader Quality", &compute_quality, "Disabled\0Basic\0Advanced\0Full\0", 4)) {
+                        preset.settings.compute_shader_quality = @intToEnum(PerformancePreset.ComputeShaderQuality, compute_quality);
+                    }
+                }
+
+                // Memory settings
+                if (c.igCollapsingHeader("Memory Settings", c.ImGuiTreeNodeFlags_None)) {
+                    _ = c.igCheckbox("Texture Streaming", &preset.settings.texture_streaming);
+
+                    var cache_size = @intCast(i32, preset.settings.texture_cache_size / (1024 * 1024));
+                    if (c.igSliderInt("Texture Cache Size (MB)", &cache_size, 64, 4096)) {
+                        preset.settings.texture_cache_size = @intCast(u64, cache_size) * 1024 * 1024;
+                    }
+
+                    var lod_levels = @intCast(i32, preset.settings.geometry_lod_levels);
+                    if (c.igSliderInt("Geometry LOD Levels", &lod_levels, 1, 5)) {
+                        preset.settings.geometry_lod_levels = @intCast(u32, lod_levels);
+                    }
+                }
+
+                // Pipeline settings
+                if (c.igCollapsingHeader("Pipeline Settings", c.ImGuiTreeNodeFlags_None)) {
+                    var cache_size = @intCast(i32, preset.settings.pipeline_cache_size / (1024 * 1024));
+                    if (c.igSliderInt("Pipeline Cache Size (MB)", &cache_size, 32, 1024)) {
+                        preset.settings.pipeline_cache_size = @intCast(u64, cache_size) * 1024 * 1024;
+                    }
+
+                    _ = c.igCheckbox("Command Buffer Reuse", &preset.settings.command_buffer_reuse);
+                    _ = c.igCheckbox("Secondary Command Buffers", &preset.settings.secondary_command_buffers);
+                }
+
+                // Advanced settings
+                if (c.igCollapsingHeader("Advanced Settings", c.ImGuiTreeNodeFlags_None)) {
+                    _ = c.igCheckbox("Async Compute", &preset.settings.async_compute);
+                    _ = c.igCheckbox("Geometry Shaders", &preset.settings.geometry_shaders);
+                    _ = c.igCheckbox("Tessellation", &preset.settings.tessellation);
+                    _ = c.igCheckbox("Ray Tracing", &preset.settings.ray_tracing);
+                }
+
+                // Save/Load buttons
+                if (c.igButton("Save Preset", .{ .x = 120, .y = 0 })) {
+                    const file_path = std.fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ self.custom_presets_dir, preset.name }) catch continue;
+                    defer self.allocator.free(file_path);
+
+                    preset.saveToFile(file_path) catch |err| {
+                        self.logger.err("Failed to save preset: {}", .{err});
+                    };
+                }
+
+                c.igSameLine(0, 20);
+                if (c.igButton("Create New Preset", .{ .x = 120, .y = 0 })) {
+                    self.show_create_preset_dialog = true;
+                    self.new_preset_name = [_]u8{0} ** 256;
+                    self.new_preset_description = [_]u8{0} ** 512;
+                    self.new_preset_base = self.current_preset;
+                    self.new_preset_name_len = 0;
+                    self.new_preset_description_len = 0;
+                }
+            }
+        }
+
+        // Render create preset dialog
+        if (self.show_create_preset_dialog) {
+            self.renderCreatePresetDialog();
+        }
+    }
+
+    fn renderCreatePresetDialog(self: *Self) void {
+        const window_flags = c.ImGuiWindowFlags_AlwaysAutoResize | 
+                           c.ImGuiWindowFlags_NoSavedSettings |
+                           c.ImGuiWindowFlags_NoCollapse;
+
+        if (c.igBegin("Create New Preset", &self.show_create_preset_dialog, window_flags)) {
+            // Preset name input
+            c.igText("Preset Name:");
+            if (c.igInputText("##preset_name", &self.new_preset_name, 256, c.ImGuiInputTextFlags_None, null, null)) {
+                self.new_preset_name_len = std.mem.len(&self.new_preset_name);
+            }
+
+            // Preset description input
+            c.igText("Description:");
+            if (c.igInputTextMultiline("##preset_description", &self.new_preset_description, 512, .{ .x = 400, .y = 100 }, c.ImGuiInputTextFlags_None, null, null)) {
+                self.new_preset_description_len = std.mem.len(&self.new_preset_description);
+            }
+
+            // Base preset selection
+            c.igText("Base Preset:");
+            if (c.igBeginCombo("##base_preset", if (self.new_preset_base) |preset| preset.name.ptr else "None")) {
+                if (c.igSelectable("None", self.new_preset_base == null, c.ImGuiSelectableFlags_None, .{ .x = 0, .y = 0 })) {
+                    self.new_preset_base = null;
+                }
+                for (self.presets.items) |preset| {
+                    const is_selected = self.new_preset_base == preset;
+                    if (c.igSelectable(preset.name.ptr, is_selected, c.ImGuiSelectableFlags_None, .{ .x = 0, .y = 0 })) {
+                        self.new_preset_base = preset;
+                    }
+                }
+                c.igEndCombo();
+            }
+
+            c.igSpacing();
+            c.igSeparator();
+            c.igSpacing();
+
+            // Buttons
+            const button_size = .{ .x = 120, .y = 0 };
+            
+            if (c.igButton("Create", button_size)) {
+                if (self.new_preset_name_len > 0) {
+                    // Create new preset
+                    const settings = if (self.new_preset_base) |base| base.settings else PerformancePreset.Settings{
+                        .msaa_level = 2,
+                        .texture_quality = .medium,
+                        .shadow_quality = .medium,
+                        .anisotropic_filtering = 4,
+                        .view_distance = 500.0,
+                        .max_fps = 60,
+                        .vsync = true,
+                        .triple_buffering = true,
+                        .shader_quality = .medium,
+                        .compute_shader_quality = .advanced,
+                        .texture_streaming = true,
+                        .texture_cache_size = 512 * 1024 * 1024,
+                        .geometry_lod_levels = 3,
+                        .pipeline_cache_size = 128 * 1024 * 1024,
+                        .command_buffer_reuse = true,
+                        .secondary_command_buffers = true,
+                        .async_compute = true,
+                        .geometry_shaders = true,
+                        .tessellation = false,
+                        .ray_tracing = false,
+                    };
+
+                    const new_preset = PerformancePreset.init(
+                        self.allocator,
+                        self.new_preset_name[0..self.new_preset_name_len],
+                        self.new_preset_description[0..self.new_preset_description_len],
+                        settings,
+                    ) catch |err| {
+                        self.logger.err("Failed to create new preset: {}", .{err});
+                        return;
+                    };
+
+                    // Add to presets list
+                    self.presets.append(new_preset) catch |err| {
+                        self.logger.err("Failed to add new preset: {}", .{err});
+                        new_preset.deinit(self.allocator);
+                        return;
+                    };
+
+                    // Set as current preset
+                    self.current_preset = new_preset;
+
+                    // Save to file
+                    const file_path = std.fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ 
+                        self.custom_presets_dir, 
+                        self.new_preset_name[0..self.new_preset_name_len] 
+                    }) catch continue;
+                    defer self.allocator.free(file_path);
+
+                    new_preset.saveToFile(file_path) catch |err| {
+                        self.logger.err("Failed to save new preset: {}", .{err});
+                    };
+
+                    self.show_create_preset_dialog = false;
+                }
+            }
+
+            c.igSameLine(0, 20);
+            if (c.igButton("Cancel", button_size)) {
+                self.show_create_preset_dialog = false;
             }
         }
         c.igEnd();
