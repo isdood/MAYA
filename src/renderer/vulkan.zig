@@ -76,6 +76,66 @@ const VulkanRenderer = struct {
         vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
 
+    const REQUIRED_DEVICE_FEATURES = struct {
+        const features = vk.VkPhysicalDeviceFeatures{
+            .robustBufferAccess = vk.VK_FALSE,
+            .fullDrawIndexUint32 = vk.VK_FALSE,
+            .imageCubeArray = vk.VK_FALSE,
+            .independentBlend = vk.VK_FALSE,
+            .geometryShader = vk.VK_FALSE,
+            .tessellationShader = vk.VK_FALSE,
+            .sampleRateShading = vk.VK_FALSE,
+            .dualSrcBlend = vk.VK_FALSE,
+            .logicOp = vk.VK_FALSE,
+            .multiDrawIndirect = vk.VK_FALSE,
+            .drawIndirectFirstInstance = vk.VK_FALSE,
+            .depthClamp = vk.VK_FALSE,
+            .depthBiasClamp = vk.VK_FALSE,
+            .fillModeNonSolid = vk.VK_FALSE,
+            .depthBounds = vk.VK_FALSE,
+            .wideLines = vk.VK_FALSE,
+            .largePoints = vk.VK_FALSE,
+            .alphaToOne = vk.VK_FALSE,
+            .multiViewport = vk.VK_FALSE,
+            .samplerAnisotropy = vk.VK_FALSE,
+            .textureCompressionETC2 = vk.VK_FALSE,
+            .textureCompressionASTC_LDR = vk.VK_FALSE,
+            .textureCompressionBC = vk.VK_FALSE,
+            .occlusionQueryPrecise = vk.VK_FALSE,
+            .pipelineStatisticsQuery = vk.VK_FALSE,
+            .vertexPipelineStoresAndAtomics = vk.VK_FALSE,
+            .fragmentStoresAndAtomics = vk.VK_FALSE,
+            .shaderTessellationAndGeometryPointSize = vk.VK_FALSE,
+            .shaderImageGatherExtended = vk.VK_FALSE,
+            .shaderStorageImageExtendedFormats = vk.VK_FALSE,
+            .shaderStorageImageMultisample = vk.VK_FALSE,
+            .shaderStorageImageReadWithoutFormat = vk.VK_FALSE,
+            .shaderStorageImageWriteWithoutFormat = vk.VK_FALSE,
+            .shaderUniformBufferArrayDynamicIndexing = vk.VK_FALSE,
+            .shaderSampledImageArrayDynamicIndexing = vk.VK_FALSE,
+            .shaderStorageBufferArrayDynamicIndexing = vk.VK_FALSE,
+            .shaderStorageImageArrayDynamicIndexing = vk.VK_FALSE,
+            .shaderClipDistance = vk.VK_FALSE,
+            .shaderCullDistance = vk.VK_FALSE,
+            .shaderFloat64 = vk.VK_FALSE,
+            .shaderInt64 = vk.VK_FALSE,
+            .shaderInt16 = vk.VK_FALSE,
+            .shaderResourceResidency = vk.VK_FALSE,
+            .shaderResourceMinLod = vk.VK_FALSE,
+            .sparseBinding = vk.VK_FALSE,
+            .sparseResidencyBuffer = vk.VK_FALSE,
+            .sparseResidencyImage2D = vk.VK_FALSE,
+            .sparseResidencyImage3D = vk.VK_FALSE,
+            .sparseResidency2Samples = vk.VK_FALSE,
+            .sparseResidency4Samples = vk.VK_FALSE,
+            .sparseResidency8Samples = vk.VK_FALSE,
+            .sparseResidency16Samples = vk.VK_FALSE,
+            .sparseResidencyAliased = vk.VK_FALSE,
+            .variableMultisampleRate = vk.VK_FALSE,
+            .inheritedQueries = vk.VK_FALSE,
+        };
+    };
+
     pub fn init(allocator: std.mem.Allocator, window: *Window) !*VulkanRenderer {
         var self = try allocator.create(VulkanRenderer);
         self.* = VulkanRenderer{
@@ -413,8 +473,80 @@ const VulkanRenderer = struct {
         }
     }
 
+    fn checkDeviceExtensionSupport(physical_device: vk.VkPhysicalDevice) !void {
+        var extension_count: u32 = undefined;
+        _ = vk.vkEnumerateDeviceExtensionProperties(physical_device, null, &extension_count, null);
+
+        var available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
+        defer std.heap.page_allocator.free(available_extensions);
+        _ = vk.vkEnumerateDeviceExtensionProperties(physical_device, null, &extension_count, available_extensions.ptr);
+
+        for (REQUIRED_DEVICE_EXTENSIONS) |required_extension| {
+            var extension_found = false;
+            for (available_extensions) |extension| {
+                if (std.mem.eql(u8, std.mem.span(required_extension), std.mem.span(&extension.extensionName))) {
+                    extension_found = true;
+                    break;
+                }
+            }
+            if (!extension_found) {
+                return error.DeviceExtensionNotSupported;
+            }
+        }
+    }
+
+    fn isDeviceSuitable(physical_device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !bool {
+        // Check device extension support
+        try checkDeviceExtensionSupport(physical_device);
+
+        // Check swapchain support
+        var format_count: u32 = undefined;
+        _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, null);
+        if (format_count == 0) return false;
+
+        var present_mode_count: u32 = undefined;
+        _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, null);
+        if (present_mode_count == 0) return false;
+
+        // Check device features
+        var device_features: vk.VkPhysicalDeviceFeatures = undefined;
+        vk.vkGetPhysicalDeviceFeatures(physical_device, &device_features);
+
+        // Log device properties
+        var device_properties: vk.VkPhysicalDeviceProperties = undefined;
+        vk.vkGetPhysicalDeviceProperties(physical_device, &device_properties);
+        self.logger.info("Checking device: {s}", .{std.mem.span(&device_properties.deviceName)});
+
+        // Check queue families
+        var queue_family_count: u32 = undefined;
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, null);
+
+        var queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
+        defer std.heap.page_allocator.free(queue_families);
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.ptr);
+
+        var graphics_queue_found = false;
+        var present_queue_found = false;
+
+        for (queue_families) |queue_family, i| {
+            if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
+                graphics_queue_found = true;
+            }
+
+            var present_support: vk.VkBool32 = undefined;
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, @intCast(u32, i), surface, &present_support);
+            if (present_support != 0) {
+                present_queue_found = true;
+            }
+
+            if (graphics_queue_found and present_queue_found) break;
+        }
+
+        return graphics_queue_found and present_queue_found;
+    }
+
     fn pickPhysicalDevice(self: *VulkanRenderer) !void {
-        var device_count: u32 = 0;
+        var device_count: u32 = undefined;
         _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, null);
 
         if (device_count == 0) {
@@ -425,41 +557,83 @@ const VulkanRenderer = struct {
         defer std.heap.page_allocator.free(devices);
         _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, devices.ptr);
 
-        // For now, just pick the first device
-        self.physical_device = devices[0];
+        for (devices) |device| {
+            if (try isDeviceSuitable(device, self.surface)) {
+                self.physical_device = device;
+                var device_properties: vk.VkPhysicalDeviceProperties = undefined;
+                vk.vkGetPhysicalDeviceProperties(device, &device_properties);
+                self.logger.info("Selected physical device: {s}", .{std.mem.span(&device_properties.deviceName)});
+                return;
+            }
+        }
+
+        return error.NoSuitableDeviceFound;
     }
 
     fn createLogicalDevice(self: *VulkanRenderer) !void {
-        const queue_family_index: u32 = 0; // Assuming first queue family supports graphics
+        var queue_family_count: u32 = undefined;
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, null);
 
-        const queue_priority: f32 = 1.0;
-        const queue_create_info = vk.VkDeviceQueueCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = queue_family_index,
-            .queueCount = 1,
-            .pQueuePriorities = &queue_priority,
-            .pNext = null,
-            .flags = 0,
-        };
+        var queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
+        defer std.heap.page_allocator.free(queue_families);
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, queue_families.ptr);
+
+        var graphics_queue_family: ?u32 = null;
+        var present_queue_family: ?u32 = null;
+
+        for (queue_families) |queue_family, i| {
+            if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
+                graphics_queue_family = @intCast(u32, i);
+            }
+
+            var present_support: vk.VkBool32 = undefined;
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(self.physical_device, @intCast(u32, i), self.surface, &present_support);
+            if (present_support != 0) {
+                present_queue_family = @intCast(u32, i);
+            }
+
+            if (graphics_queue_family != null and present_queue_family != null) break;
+        }
+
+        if (graphics_queue_family == null or present_queue_family == null) {
+            return error.QueueFamilyNotFound;
+        }
+
+        const queue_priorities = [_]f32{1.0};
+        var queue_create_infos = std.ArrayList(vk.VkDeviceQueueCreateInfo).init(self.allocator);
+        defer queue_create_infos.deinit();
+
+        const unique_queue_families = [_]u32{ graphics_queue_family.?, present_queue_family.? };
+        for (unique_queue_families) |queue_family| {
+            const queue_create_info = vk.VkDeviceQueueCreateInfo{
+                .sType = vk.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .queueFamilyIndex = queue_family,
+                .queueCount = 1,
+                .pQueuePriorities = &queue_priorities,
+                .pNext = null,
+                .flags = 0,
+            };
+            try queue_create_infos.append(queue_create_info);
+        }
+
+        const device_features = REQUIRED_DEVICE_FEATURES.features;
 
         const device_create_info = vk.VkDeviceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .queueCreateInfoCount = 1,
-            .pQueueCreateInfos = &queue_create_info,
-            .enabledExtensionCount = 0,
-            .ppEnabledExtensionNames = null,
-            .enabledLayerCount = 0,
-            .ppEnabledLayerNames = null,
-            .pEnabledFeatures = null,
+            .queueCreateInfoCount = @intCast(u32, queue_create_infos.items.len),
+            .pQueueCreateInfos = queue_create_infos.items.ptr,
+            .enabledExtensionCount = REQUIRED_DEVICE_EXTENSIONS.len,
+            .ppEnabledExtensionNames = &REQUIRED_DEVICE_EXTENSIONS,
+            .pEnabledFeatures = &device_features,
+            .enabledLayerCount = if (VALIDATION_LAYERS.len > 0) @intCast(u32, VALIDATION_LAYERS.len) else 0,
+            .ppEnabledLayerNames = if (VALIDATION_LAYERS.len > 0) &VALIDATION_LAYERS else null,
             .pNext = null,
             .flags = 0,
         };
 
-        if (vk.vkCreateDevice(self.physical_device, &device_create_info, null, &self.device) != vk.VK_SUCCESS) {
-            return error.DeviceCreationFailed;
-        }
+        try checkVulkanResult(vk.vkCreateDevice(self.physical_device, &device_create_info, null, &self.device));
 
-        vk.vkGetDeviceQueue(self.device, queue_family_index, 0, &self.queue);
+        vk.vkGetDeviceQueue(self.device, graphics_queue_family.?, 0, &self.queue);
     }
 
     fn createSwapChain(self: *VulkanRenderer) !void {
