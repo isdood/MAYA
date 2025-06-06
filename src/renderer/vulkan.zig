@@ -65,6 +65,7 @@ const VulkanRenderer = struct {
     validation_layers_enabled: bool,
     allocator: std.mem.Allocator,
     logger: std.log.Logger,
+    feature_manager: FeatureManager,
 
     const MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -76,177 +77,251 @@ const VulkanRenderer = struct {
         vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
 
-    // Feature sets for different rendering techniques
-    const RenderingFeatures = struct {
-        // Basic rendering features
-        const Basic = struct {
-            const features = vk.VkPhysicalDeviceFeatures{
-                .robustBufferAccess = vk.VK_TRUE,
-                .fullDrawIndexUint32 = vk.VK_TRUE,
-                .independentBlend = vk.VK_TRUE,
-                .depthClamp = vk.VK_TRUE,
-                .depthBiasClamp = vk.VK_TRUE,
-                .fillModeNonSolid = vk.VK_TRUE,
-                .samplerAnisotropy = vk.VK_TRUE,
-                .textureCompressionBC = vk.VK_TRUE,
-                .shaderClipDistance = vk.VK_TRUE,
-                .shaderCullDistance = vk.VK_TRUE,
-                .shaderFloat64 = vk.VK_TRUE,
-                .shaderInt64 = vk.VK_TRUE,
-                .shaderInt16 = vk.VK_TRUE,
-                // ... other fields set to VK_FALSE
-            };
+    // Feature management system
+    const FeatureManager = struct {
+        const Self = @This();
+
+        // Feature support tracking
+        supported_features: vk.VkPhysicalDeviceFeatures,
+        enabled_features: vk.VkPhysicalDeviceFeatures,
+        fallback_level: FallbackLevel,
+
+        // Fallback levels for different feature sets
+        pub const FallbackLevel = enum {
+            full,      // All features supported
+            high,      // Most features supported
+            medium,    // Basic features + some advanced
+            basic,     // Only basic features
+            minimal,   // Minimal feature set
         };
 
-        // Advanced geometry features
-        const Geometry = struct {
-            const features = vk.VkPhysicalDeviceFeatures{
-                .geometryShader = vk.VK_TRUE,
-                .tessellationShader = vk.VK_TRUE,
-                .shaderTessellationAndGeometryPointSize = vk.VK_TRUE,
-                .multiViewport = vk.VK_TRUE,
-                .wideLines = vk.VK_TRUE,
-                .largePoints = vk.VK_TRUE,
-                // ... other fields set to VK_FALSE
-            };
-        };
+        // Initialize feature manager
+        pub fn init(physical_device: vk.VkPhysicalDevice) !Self {
+            var supported_features: vk.VkPhysicalDeviceFeatures = undefined;
+            vk.vkGetPhysicalDeviceFeatures(physical_device, &supported_features);
 
-        // Compute and storage features
-        const Compute = struct {
-            const features = vk.VkPhysicalDeviceFeatures{
-                .vertexPipelineStoresAndAtomics = vk.VK_TRUE,
-                .fragmentStoresAndAtomics = vk.VK_TRUE,
-                .shaderStorageImageExtendedFormats = vk.VK_TRUE,
-                .shaderStorageImageMultisample = vk.VK_TRUE,
-                .shaderStorageImageReadWithoutFormat = vk.VK_TRUE,
-                .shaderStorageImageWriteWithoutFormat = vk.VK_TRUE,
-                .shaderUniformBufferArrayDynamicIndexing = vk.VK_TRUE,
-                .shaderSampledImageArrayDynamicIndexing = vk.VK_TRUE,
-                .shaderStorageBufferArrayDynamicIndexing = vk.VK_TRUE,
-                .shaderStorageImageArrayDynamicIndexing = vk.VK_TRUE,
-                // ... other fields set to VK_FALSE
-            };
-        };
-
-        // Advanced texture features
-        const Texture = struct {
-            const features = vk.VkPhysicalDeviceFeatures{
-                .imageCubeArray = vk.VK_TRUE,
-                .textureCompressionETC2 = vk.VK_TRUE,
-                .textureCompressionASTC_LDR = vk.VK_TRUE,
-                .textureCompressionBC = vk.VK_TRUE,
-                .shaderResourceResidency = vk.VK_TRUE,
-                .shaderResourceMinLod = vk.VK_TRUE,
-                // ... other fields set to VK_FALSE
-            };
-        };
-
-        // Sparse resource features
-        const Sparse = struct {
-            const features = vk.VkPhysicalDeviceFeatures{
-                .sparseBinding = vk.VK_TRUE,
-                .sparseResidencyBuffer = vk.VK_TRUE,
-                .sparseResidencyImage2D = vk.VK_TRUE,
-                .sparseResidencyImage3D = vk.VK_TRUE,
-                .sparseResidency2Samples = vk.VK_TRUE,
-                .sparseResidency4Samples = vk.VK_TRUE,
-                .sparseResidency8Samples = vk.VK_TRUE,
-                .sparseResidency16Samples = vk.VK_TRUE,
-                .sparseResidencyAliased = vk.VK_TRUE,
-                // ... other fields set to VK_FALSE
-            };
-        };
-
-        // Query and statistics features
-        const Query = struct {
-            const features = vk.VkPhysicalDeviceFeatures{
-                .occlusionQueryPrecise = vk.VK_TRUE,
-                .pipelineStatisticsQuery = vk.VK_TRUE,
-                .inheritedQueries = vk.VK_TRUE,
-                // ... other fields set to VK_FALSE
-            };
-        };
-
-        // Combine all features
-        pub fn getAllFeatures() vk.VkPhysicalDeviceFeatures {
-            var features = vk.VkPhysicalDeviceFeatures{
-                .robustBufferAccess = vk.VK_FALSE,
-                .fullDrawIndexUint32 = vk.VK_FALSE,
-                .imageCubeArray = vk.VK_FALSE,
-                .independentBlend = vk.VK_FALSE,
-                .geometryShader = vk.VK_FALSE,
-                .tessellationShader = vk.VK_FALSE,
-                .sampleRateShading = vk.VK_FALSE,
-                .dualSrcBlend = vk.VK_FALSE,
-                .logicOp = vk.VK_FALSE,
-                .multiDrawIndirect = vk.VK_FALSE,
-                .drawIndirectFirstInstance = vk.VK_FALSE,
-                .depthClamp = vk.VK_FALSE,
-                .depthBiasClamp = vk.VK_FALSE,
-                .fillModeNonSolid = vk.VK_FALSE,
-                .depthBounds = vk.VK_FALSE,
-                .wideLines = vk.VK_FALSE,
-                .largePoints = vk.VK_FALSE,
-                .alphaToOne = vk.VK_FALSE,
-                .multiViewport = vk.VK_FALSE,
-                .samplerAnisotropy = vk.VK_FALSE,
-                .textureCompressionETC2 = vk.VK_FALSE,
-                .textureCompressionASTC_LDR = vk.VK_FALSE,
-                .textureCompressionBC = vk.VK_FALSE,
-                .occlusionQueryPrecise = vk.VK_FALSE,
-                .pipelineStatisticsQuery = vk.VK_FALSE,
-                .vertexPipelineStoresAndAtomics = vk.VK_FALSE,
-                .fragmentStoresAndAtomics = vk.VK_FALSE,
-                .shaderTessellationAndGeometryPointSize = vk.VK_FALSE,
-                .shaderImageGatherExtended = vk.VK_FALSE,
-                .shaderStorageImageExtendedFormats = vk.VK_FALSE,
-                .shaderStorageImageMultisample = vk.VK_FALSE,
-                .shaderStorageImageReadWithoutFormat = vk.VK_FALSE,
-                .shaderStorageImageWriteWithoutFormat = vk.VK_FALSE,
-                .shaderUniformBufferArrayDynamicIndexing = vk.VK_FALSE,
-                .shaderSampledImageArrayDynamicIndexing = vk.VK_FALSE,
-                .shaderStorageBufferArrayDynamicIndexing = vk.VK_FALSE,
-                .shaderStorageImageArrayDynamicIndexing = vk.VK_FALSE,
-                .shaderClipDistance = vk.VK_FALSE,
-                .shaderCullDistance = vk.VK_FALSE,
-                .shaderFloat64 = vk.VK_FALSE,
-                .shaderInt64 = vk.VK_FALSE,
-                .shaderInt16 = vk.VK_FALSE,
-                .shaderResourceResidency = vk.VK_FALSE,
-                .shaderResourceMinLod = vk.VK_FALSE,
-                .sparseBinding = vk.VK_FALSE,
-                .sparseResidencyBuffer = vk.VK_FALSE,
-                .sparseResidencyImage2D = vk.VK_FALSE,
-                .sparseResidencyImage3D = vk.VK_FALSE,
-                .sparseResidency2Samples = vk.VK_FALSE,
-                .sparseResidency4Samples = vk.VK_FALSE,
-                .sparseResidency8Samples = vk.VK_FALSE,
-                .sparseResidency16Samples = vk.VK_FALSE,
-                .sparseResidencyAliased = vk.VK_FALSE,
-                .variableMultisampleRate = vk.VK_FALSE,
-                .inheritedQueries = vk.VK_FALSE,
+            var self = Self{
+                .supported_features = supported_features,
+                .enabled_features = vk.VkPhysicalDeviceFeatures{
+                    .robustBufferAccess = vk.VK_FALSE,
+                    .fullDrawIndexUint32 = vk.VK_FALSE,
+                    .imageCubeArray = vk.VK_FALSE,
+                    .independentBlend = vk.VK_FALSE,
+                    .geometryShader = vk.VK_FALSE,
+                    .tessellationShader = vk.VK_FALSE,
+                    .sampleRateShading = vk.VK_FALSE,
+                    .dualSrcBlend = vk.VK_FALSE,
+                    .logicOp = vk.VK_FALSE,
+                    .multiDrawIndirect = vk.VK_FALSE,
+                    .drawIndirectFirstInstance = vk.VK_FALSE,
+                    .depthClamp = vk.VK_FALSE,
+                    .depthBiasClamp = vk.VK_FALSE,
+                    .fillModeNonSolid = vk.VK_FALSE,
+                    .depthBounds = vk.VK_FALSE,
+                    .wideLines = vk.VK_FALSE,
+                    .largePoints = vk.VK_FALSE,
+                    .alphaToOne = vk.VK_FALSE,
+                    .multiViewport = vk.VK_FALSE,
+                    .samplerAnisotropy = vk.VK_FALSE,
+                    .textureCompressionETC2 = vk.VK_FALSE,
+                    .textureCompressionASTC_LDR = vk.VK_FALSE,
+                    .textureCompressionBC = vk.VK_FALSE,
+                    .occlusionQueryPrecise = vk.VK_FALSE,
+                    .pipelineStatisticsQuery = vk.VK_FALSE,
+                    .vertexPipelineStoresAndAtomics = vk.VK_FALSE,
+                    .fragmentStoresAndAtomics = vk.VK_FALSE,
+                    .shaderTessellationAndGeometryPointSize = vk.VK_FALSE,
+                    .shaderImageGatherExtended = vk.VK_FALSE,
+                    .shaderStorageImageExtendedFormats = vk.VK_FALSE,
+                    .shaderStorageImageMultisample = vk.VK_FALSE,
+                    .shaderStorageImageReadWithoutFormat = vk.VK_FALSE,
+                    .shaderStorageImageWriteWithoutFormat = vk.VK_FALSE,
+                    .shaderUniformBufferArrayDynamicIndexing = vk.VK_FALSE,
+                    .shaderSampledImageArrayDynamicIndexing = vk.VK_FALSE,
+                    .shaderStorageBufferArrayDynamicIndexing = vk.VK_FALSE,
+                    .shaderStorageImageArrayDynamicIndexing = vk.VK_FALSE,
+                    .shaderClipDistance = vk.VK_FALSE,
+                    .shaderCullDistance = vk.VK_FALSE,
+                    .shaderFloat64 = vk.VK_FALSE,
+                    .shaderInt64 = vk.VK_FALSE,
+                    .shaderInt16 = vk.VK_FALSE,
+                    .shaderResourceResidency = vk.VK_FALSE,
+                    .shaderResourceMinLod = vk.VK_FALSE,
+                    .sparseBinding = vk.VK_FALSE,
+                    .sparseResidencyBuffer = vk.VK_FALSE,
+                    .sparseResidencyImage2D = vk.VK_FALSE,
+                    .sparseResidencyImage3D = vk.VK_FALSE,
+                    .sparseResidency2Samples = vk.VK_FALSE,
+                    .sparseResidency4Samples = vk.VK_FALSE,
+                    .sparseResidency8Samples = vk.VK_FALSE,
+                    .sparseResidency16Samples = vk.VK_FALSE,
+                    .sparseResidencyAliased = vk.VK_FALSE,
+                    .variableMultisampleRate = vk.VK_FALSE,
+                    .inheritedQueries = vk.VK_FALSE,
+                },
+                .fallback_level = .minimal,
             };
 
-            // Combine features from all sets
-            inline for (std.meta.fields(vk.VkPhysicalDeviceFeatures)) |field| {
-                if (@field(Basic.features, field.name) == vk.VK_TRUE or
-                    @field(Geometry.features, field.name) == vk.VK_TRUE or
-                    @field(Compute.features, field.name) == vk.VK_TRUE or
-                    @field(Texture.features, field.name) == vk.VK_TRUE or
-                    @field(Sparse.features, field.name) == vk.VK_TRUE or
-                    @field(Query.features, field.name) == vk.VK_TRUE)
-                {
-                    @field(features, field.name) = vk.VK_TRUE;
-                }
+            // Determine fallback level and enable features
+            try self.determineFallbackLevel();
+            try self.enableFeatures();
+
+            return self;
+        }
+
+        // Determine the appropriate fallback level based on device capabilities
+        fn determineFallbackLevel(self: *Self) !void {
+            // Check for full feature support
+            if (self.checkFeatureSet(.full)) {
+                self.fallback_level = .full;
+                return;
             }
 
-            return features;
-        }
-    };
+            // Check for high-level feature support
+            if (self.checkFeatureSet(.high)) {
+                self.fallback_level = .high;
+                return;
+            }
 
-    // Update REQUIRED_DEVICE_FEATURES to use the new feature sets
-    const REQUIRED_DEVICE_FEATURES = struct {
-        const features = RenderingFeatures.getAllFeatures();
+            // Check for medium-level feature support
+            if (self.checkFeatureSet(.medium)) {
+                self.fallback_level = .medium;
+                return;
+            }
+
+            // Check for basic feature support
+            if (self.checkFeatureSet(.basic)) {
+                self.fallback_level = .basic;
+                return;
+            }
+
+            // Fall back to minimal features
+            self.fallback_level = .minimal;
+        }
+
+        // Check if device supports a specific feature set
+        fn checkFeatureSet(self: *Self, level: FallbackLevel) bool {
+            return switch (level) {
+                .full => self.supported_features.geometryShader == vk.VK_TRUE and
+                        self.supported_features.tessellationShader == vk.VK_TRUE and
+                        self.supported_features.multiViewport == vk.VK_TRUE and
+                        self.supported_features.samplerAnisotropy == vk.VK_TRUE and
+                        self.supported_features.textureCompressionBC == vk.VK_TRUE and
+                        self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE,
+
+                .high => self.supported_features.geometryShader == vk.VK_TRUE and
+                        self.supported_features.samplerAnisotropy == vk.VK_TRUE and
+                        self.supported_features.textureCompressionBC == vk.VK_TRUE and
+                        self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE,
+
+                .medium => self.supported_features.samplerAnisotropy == vk.VK_TRUE and
+                          self.supported_features.textureCompressionBC == vk.VK_TRUE and
+                          self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE,
+
+                .basic => self.supported_features.robustBufferAccess == vk.VK_TRUE and
+                         self.supported_features.fullDrawIndexUint32 == vk.VK_TRUE and
+                         self.supported_features.independentBlend == vk.VK_TRUE,
+
+                .minimal => self.supported_features.robustBufferAccess == vk.VK_TRUE,
+            };
+        }
+
+        // Enable features based on fallback level
+        fn enableFeatures(self: *Self) !void {
+            switch (self.fallback_level) {
+                .full => {
+                    // Enable all features that are supported
+                    inline for (std.meta.fields(vk.VkPhysicalDeviceFeatures)) |field| {
+                        if (@field(self.supported_features, field.name) == vk.VK_TRUE) {
+                            @field(self.enabled_features, field.name) = vk.VK_TRUE;
+                        }
+                    }
+                },
+                .high => {
+                    // Enable high-level features
+                    self.enableFeatureSet(.high);
+                },
+                .medium => {
+                    // Enable medium-level features
+                    self.enableFeatureSet(.medium);
+                },
+                .basic => {
+                    // Enable basic features
+                    self.enableFeatureSet(.basic);
+                },
+                .minimal => {
+                    // Enable only essential features
+                    self.enableFeatureSet(.minimal);
+                },
+            }
+        }
+
+        // Enable a specific feature set
+        fn enableFeatureSet(self: *Self, level: FallbackLevel) void {
+            switch (level) {
+                .full => {
+                    if (self.supported_features.geometryShader == vk.VK_TRUE)
+                        self.enabled_features.geometryShader = vk.VK_TRUE;
+                    if (self.supported_features.tessellationShader == vk.VK_TRUE)
+                        self.enabled_features.tessellationShader = vk.VK_TRUE;
+                    if (self.supported_features.multiViewport == vk.VK_TRUE)
+                        self.enabled_features.multiViewport = vk.VK_TRUE;
+                    if (self.supported_features.samplerAnisotropy == vk.VK_TRUE)
+                        self.enabled_features.samplerAnisotropy = vk.VK_TRUE;
+                    if (self.supported_features.textureCompressionBC == vk.VK_TRUE)
+                        self.enabled_features.textureCompressionBC = vk.VK_TRUE;
+                    if (self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE)
+                        self.enabled_features.vertexPipelineStoresAndAtomics = vk.VK_TRUE;
+                },
+                .high => {
+                    if (self.supported_features.geometryShader == vk.VK_TRUE)
+                        self.enabled_features.geometryShader = vk.VK_TRUE;
+                    if (self.supported_features.samplerAnisotropy == vk.VK_TRUE)
+                        self.enabled_features.samplerAnisotropy = vk.VK_TRUE;
+                    if (self.supported_features.textureCompressionBC == vk.VK_TRUE)
+                        self.enabled_features.textureCompressionBC = vk.VK_TRUE;
+                    if (self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE)
+                        self.enabled_features.vertexPipelineStoresAndAtomics = vk.VK_TRUE;
+                },
+                .medium => {
+                    if (self.supported_features.samplerAnisotropy == vk.VK_TRUE)
+                        self.enabled_features.samplerAnisotropy = vk.VK_TRUE;
+                    if (self.supported_features.textureCompressionBC == vk.VK_TRUE)
+                        self.enabled_features.textureCompressionBC = vk.VK_TRUE;
+                    if (self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE)
+                        self.enabled_features.vertexPipelineStoresAndAtomics = vk.VK_TRUE;
+                },
+                .basic => {
+                    if (self.supported_features.robustBufferAccess == vk.VK_TRUE)
+                        self.enabled_features.robustBufferAccess = vk.VK_TRUE;
+                    if (self.supported_features.fullDrawIndexUint32 == vk.VK_TRUE)
+                        self.enabled_features.fullDrawIndexUint32 = vk.VK_TRUE;
+                    if (self.supported_features.independentBlend == vk.VK_TRUE)
+                        self.enabled_features.independentBlend = vk.VK_TRUE;
+                },
+                .minimal => {
+                    if (self.supported_features.robustBufferAccess == vk.VK_TRUE)
+                        self.enabled_features.robustBufferAccess = vk.VK_TRUE;
+                },
+            }
+        }
+
+        // Get enabled features for device creation
+        pub fn getEnabledFeatures(self: *const Self) vk.VkPhysicalDeviceFeatures {
+            return self.enabled_features;
+        }
+
+        // Log feature support and fallback level
+        pub fn logFeatureSupport(self: *const Self, logger: *Logger) void {
+            logger.info("Device feature support level: {s}", .{@tagName(self.fallback_level)});
+            logger.info("Enabled features:", .{});
+            
+            inline for (std.meta.fields(vk.VkPhysicalDeviceFeatures)) |field| {
+                if (@field(self.enabled_features, field.name) == vk.VK_TRUE) {
+                    logger.info("  - {s}: enabled", .{field.name});
+                }
+            }
+        }
     };
 
     pub fn init(allocator: std.mem.Allocator, window: *Window) !*VulkanRenderer {
@@ -278,6 +353,7 @@ const VulkanRenderer = struct {
             .framebuffer_resized = false,
             .debug_messenger = undefined,
             .validation_layers_enabled = false,
+            .feature_manager = undefined,
         };
 
         self.logger.info("Initializing Vulkan renderer", .{});
@@ -621,76 +697,17 @@ const VulkanRenderer = struct {
         _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, null);
         if (present_mode_count == 0) return false;
 
-        // Check device features
-        var device_features: vk.VkPhysicalDeviceFeatures = undefined;
-        vk.vkGetPhysicalDeviceFeatures(physical_device, &device_features);
+        // Initialize feature manager
+        var feature_manager = try FeatureManager.init(physical_device);
+        feature_manager.logFeatureSupport(&self.logger);
 
-        // Log available features by category
-        self.logger.info("Device features by category:", .{});
-        
-        // Basic features
-        self.logger.info("Basic features:", .{});
-        self.logger.info("  - Robust buffer access: {}", .{device_features.robustBufferAccess == vk.VK_TRUE});
-        self.logger.info("  - Sampler anisotropy: {}", .{device_features.samplerAnisotropy == vk.VK_TRUE});
-        self.logger.info("  - Texture compression: {}", .{device_features.textureCompressionBC == vk.VK_TRUE});
-
-        // Geometry features
-        self.logger.info("Geometry features:", .{});
-        self.logger.info("  - Geometry shader: {}", .{device_features.geometryShader == vk.VK_TRUE});
-        self.logger.info("  - Tessellation shader: {}", .{device_features.tessellationShader == vk.VK_TRUE});
-        self.logger.info("  - Multi viewport: {}", .{device_features.multiViewport == vk.VK_TRUE});
-
-        // Compute features
-        self.logger.info("Compute features:", .{});
-        self.logger.info("  - Vertex pipeline stores: {}", .{device_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE});
-        self.logger.info("  - Fragment stores: {}", .{device_features.fragmentStoresAndAtomics == vk.VK_TRUE});
-        self.logger.info("  - Storage image formats: {}", .{device_features.shaderStorageImageExtendedFormats == vk.VK_TRUE});
-
-        // Texture features
-        self.logger.info("Texture features:", .{});
-        self.logger.info("  - Cube array: {}", .{device_features.imageCubeArray == vk.VK_TRUE});
-        self.logger.info("  - ETC2 compression: {}", .{device_features.textureCompressionETC2 == vk.VK_TRUE});
-        self.logger.info("  - ASTC compression: {}", .{device_features.textureCompressionASTC_LDR == vk.VK_TRUE});
-
-        // Sparse features
-        self.logger.info("Sparse features:", .{});
-        self.logger.info("  - Sparse binding: {}", .{device_features.sparseBinding == vk.VK_TRUE});
-        self.logger.info("  - Sparse residency: {}", .{device_features.sparseResidencyBuffer == vk.VK_TRUE});
-
-        // Query features
-        self.logger.info("Query features:", .{});
-        self.logger.info("  - Precise occlusion: {}", .{device_features.occlusionQueryPrecise == vk.VK_TRUE});
-        self.logger.info("  - Pipeline statistics: {}", .{device_features.pipelineStatisticsQuery == vk.VK_TRUE});
-
-        // Check required features by category
-        if (!device_features.robustBufferAccess or
-            !device_features.samplerAnisotropy or
-            !device_features.textureCompressionBC)
-        {
-            self.logger.warn("Device does not support required basic features", .{});
-            return false;
+        // Check if device supports at least minimal features
+        if (feature_manager.fallback_level == .minimal) {
+            self.logger.warn("Device only supports minimal features", .{});
         }
 
-        if (!device_features.geometryShader or
-            !device_features.tessellationShader or
-            !device_features.multiViewport)
-        {
-            self.logger.warn("Device does not support required geometry features", .{});
-            return false;
-        }
-
-        if (!device_features.vertexPipelineStoresAndAtomics or
-            !device_features.fragmentStoresAndAtomics or
-            !device_features.shaderStorageImageExtendedFormats)
-        {
-            self.logger.warn("Device does not support required compute features", .{});
-            return false;
-        }
-
-        // Log device properties
-        var device_properties: vk.VkPhysicalDeviceProperties = undefined;
-        vk.vkGetPhysicalDeviceProperties(physical_device, &device_properties);
-        self.logger.info("Checking device: {s}", .{std.mem.span(&device_properties.deviceName)});
+        // Store feature manager
+        self.feature_manager = feature_manager;
 
         // Check queue families
         var queue_family_count: u32 = undefined;
@@ -791,15 +808,13 @@ const VulkanRenderer = struct {
             try queue_create_infos.append(queue_create_info);
         }
 
-        const device_features = REQUIRED_DEVICE_FEATURES.features;
-
         const device_create_info = vk.VkDeviceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .queueCreateInfoCount = @intCast(u32, queue_create_infos.items.len),
             .pQueueCreateInfos = queue_create_infos.items.ptr,
             .enabledExtensionCount = REQUIRED_DEVICE_EXTENSIONS.len,
             .ppEnabledExtensionNames = &REQUIRED_DEVICE_EXTENSIONS,
-            .pEnabledFeatures = &device_features,
+            .pEnabledFeatures = &self.feature_manager.getEnabledFeatures(),
             .enabledLayerCount = if (VALIDATION_LAYERS.len > 0) @intCast(u32, VALIDATION_LAYERS.len) else 0,
             .ppEnabledLayerNames = if (VALIDATION_LAYERS.len > 0) &VALIDATION_LAYERS else null,
             .pNext = null,
