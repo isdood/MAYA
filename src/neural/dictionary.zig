@@ -131,6 +131,48 @@ pub const MayaDictionary = struct {
         }
     };
 
+    /// Pattern version information
+    pub const PatternVersion = struct {
+        version: u32,
+        timestamp: f64,
+        quantum_signature: neural.QuantumState,
+        neural_signature: f64,
+        confidence: f64,
+        usage_count: u64,
+        change_type: VersionChangeType,
+        change_reason: []const u8,
+        parent_version: ?u32,
+
+        pub fn deinit(self: *PatternVersion, alloc: std.mem.Allocator) void {
+            alloc.free(self.change_reason);
+        }
+    };
+
+    /// Types of version changes
+    pub const VersionChangeType = enum {
+        initial,         // Initial version
+        evolution,       // Natural evolution through usage
+        merge,          // Result of pattern merging
+        adaptation,     // Adaptation to new context
+        optimization,   // Optimization of pattern
+        correction,     // Correction of pattern
+    };
+
+    /// Version history for a pattern
+    pub const VersionHistory = struct {
+        versions: std.ArrayList(PatternVersion),
+        current_version: u32,
+        last_update: f64,
+        evolution_rate: f64,  // How quickly the pattern evolves
+
+        pub fn deinit(self: *VersionHistory, alloc: std.mem.Allocator) void {
+            for (self.versions.items) |*version| {
+                version.deinit(alloc);
+            }
+            self.versions.deinit();
+        }
+    };
+
     allocator: std.mem.Allocator,
     patterns: std.StringHashMap(CorePattern),
     relationships: std.ArrayList(PatternRelationship),
@@ -145,8 +187,11 @@ pub const MayaDictionary = struct {
     compressed_patterns: std.StringHashMap(CompressedPattern),
     pattern_variations: std.ArrayList(PatternVariation),
     similarity_threshold: f64 = 0.85, // Patterns with similarity > 0.85 are considered duplicates
+    pattern_versions: std.StringHashMap(VersionHistory),
+    version_retention_period: f64 = 2592000.0, // 30 days in seconds
+    max_versions_per_pattern: u32 = 10,
 
-    /// Initialize with deduplication
+    /// Initialize with versioning
     pub fn init(alloc: std.mem.Allocator, config: ConsolidationConfig, storage_path: []const u8) !Self {
         var self = Self{
             .allocator = alloc,
@@ -162,6 +207,7 @@ pub const MayaDictionary = struct {
             .compression_config = .{},
             .compressed_patterns = std.StringHashMap(CompressedPattern).init(alloc),
             .pattern_variations = std.ArrayList(PatternVariation).init(alloc),
+            .pattern_versions = std.StringHashMap(VersionHistory).init(alloc),
         };
 
         // Load existing patterns if available
@@ -651,7 +697,122 @@ pub const MayaDictionary = struct {
         }
     }
 
-    /// Save patterns with deduplication info
+    /// Create initial version for a pattern
+    fn createInitialVersion(self: *Self, pattern: CorePattern) !void {
+        var history = VersionHistory{
+            .versions = std.ArrayList(PatternVersion).init(self.allocator),
+            .current_version = 1,
+            .last_update = @floatFromInt(std.time.timestamp()),
+            .evolution_rate = 0.1,
+        };
+
+        try history.versions.append(.{
+            .version = 1,
+            .timestamp = @floatFromInt(std.time.timestamp()),
+            .quantum_signature = pattern.quantum_signature,
+            .neural_signature = pattern.neural_signature,
+            .confidence = pattern.confidence,
+            .usage_count = pattern.usage_count,
+            .change_type = .initial,
+            .change_reason = try self.allocator.dupe(u8, "Initial pattern creation"),
+            .parent_version = null,
+        });
+
+        try self.pattern_versions.put(pattern.name, history);
+    }
+
+    /// Create new version of a pattern
+    pub fn createNewVersion(self: *Self, pattern: CorePattern, change_type: VersionChangeType, reason: []const u8) !void {
+        if (self.pattern_versions.get(pattern.name)) |history| {
+            const new_version = history.current_version + 1;
+            
+            // Create new version
+            try history.versions.append(.{
+                .version = new_version,
+                .timestamp = @floatFromInt(std.time.timestamp()),
+                .quantum_signature = pattern.quantum_signature,
+                .neural_signature = pattern.neural_signature,
+                .confidence = pattern.confidence,
+                .usage_count = pattern.usage_count,
+                .change_type = change_type,
+                .change_reason = try self.allocator.dupe(u8, reason),
+                .parent_version = history.current_version,
+            });
+
+            // Update history
+            history.current_version = new_version;
+            history.last_update = @floatFromInt(std.time.timestamp());
+
+            // Prune old versions if needed
+            try self.pruneOldVersions(pattern.name);
+        } else {
+            // Create initial version if none exists
+            try self.createInitialVersion(pattern);
+        }
+    }
+
+    /// Prune old versions based on retention policy
+    fn pruneOldVersions(self: *Self, pattern_name: []const u8) !void {
+        if (self.pattern_versions.get(pattern_name)) |history| {
+            const current_time = @floatFromInt(std.time.timestamp());
+            var i: usize = 0;
+            
+            while (i < history.versions.items.len) {
+                const version = history.versions.items[i];
+                if (current_time - version.timestamp > self.version_retention_period or 
+                    history.versions.items.len > self.max_versions_per_pattern) {
+                    // Keep initial version and last N versions
+                    if (version.version != 1 and 
+                        version.version < history.current_version - self.max_versions_per_pattern) {
+                        version.deinit(self.allocator);
+                        _ = history.versions.swapRemove(i);
+                    } else {
+                        i += 1;
+                    }
+                } else {
+                    i += 1;
+                }
+            }
+        }
+    }
+
+    /// Get version history for a pattern
+    pub fn getVersionHistory(self: *Self, pattern_name: []const u8) ?[]const PatternVersion {
+        if (self.pattern_versions.get(pattern_name)) |history| {
+            return history.versions.items;
+        }
+        return null;
+    }
+
+    /// Get specific version of a pattern
+    pub fn getPatternVersion(self: *Self, pattern_name: []const u8, version: u32) ?CorePattern {
+        if (self.pattern_versions.get(pattern_name)) |history| {
+            for (history.versions.items) |ver| {
+                if (ver.version == version) {
+                    return CorePattern{
+                        .name = pattern_name,
+                        .description = "Historical version",
+                        .quantum_signature = ver.quantum_signature,
+                        .neural_signature = ver.neural_signature,
+                        .glimmer_pattern = glimmer.GlimmerPattern.init(.{
+                            .pattern_type = .quantum_wave,
+                            .base_color = glimmer.colors.GlimmerColors.quantum,
+                            .intensity = 1.0,
+                            .frequency = 1.0,
+                            .phase = 0.0,
+                        }),
+                        .confidence = ver.confidence,
+                        .usage_count = ver.usage_count,
+                        .last_used = ver.timestamp,
+                        .related_patterns = std.ArrayList([]const u8).init(self.allocator),
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    /// Save patterns with version information
     pub fn savePatterns(self: *Self) !void {
         // First deduplicate patterns
         try self.deduplicatePatterns();
@@ -683,6 +844,25 @@ pub const MayaDictionary = struct {
             try writer.writeAll(compressed.quantum_data);
             try writer.writeAll(compressed.neural_data);
             try writer.writeAll(compressed.metadata);
+
+            // Write version history
+            if (self.pattern_versions.get(pattern.name)) |history| {
+                try writer.writeInt(u32, @intCast(history.versions.items.len), .little);
+                for (history.versions.items) |version| {
+                    try writer.writeInt(u32, version.version, .little);
+                    try writer.writeFloat(f64, version.timestamp, .little);
+                    try writer.writeAll(&std.mem.toBytes(version.quantum_signature));
+                    try writer.writeFloat(f64, version.neural_signature, .little);
+                    try writer.writeFloat(f64, version.confidence, .little);
+                    try writer.writeInt(u64, version.usage_count, .little);
+                    try writer.writeInt(u8, @intFromEnum(version.change_type), .little);
+                    try writer.writeInt(u32, @intCast(version.change_reason.len), .little);
+                    try writer.writeAll(version.change_reason);
+                    try writer.writeInt(u32, version.parent_version orelse 0, .little);
+                }
+            } else {
+                try writer.writeInt(u32, 0, .little);
+            }
         }
 
         // Write variation information
