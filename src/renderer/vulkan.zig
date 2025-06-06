@@ -4,6 +4,8 @@ const vk = @cImport({
 });
 const glfw = @import("glfw");
 const Window = @import("window.zig").Window;
+const ImGuiRenderer = @import("imgui.zig").ImGuiRenderer;
+const MainUI = @import("ui/main_ui.zig").MainUI;
 
 const VulkanError = error{
     ValidationLayerNotAvailable,
@@ -67,6 +69,8 @@ const VulkanRenderer = struct {
     logger: std.log.Logger,
     feature_manager: FeatureManager,
     performance_monitor: PerformanceMonitor,
+    imgui: ?*ImGuiRenderer,
+    ui: ?*MainUI,
 
     const MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -578,6 +582,8 @@ const VulkanRenderer = struct {
             .validation_layers_enabled = false,
             .feature_manager = undefined,
             .performance_monitor = undefined,
+            .imgui = null,
+            .ui = null,
         };
 
         self.logger.info("Initializing Vulkan renderer", .{});
@@ -634,6 +640,14 @@ const VulkanRenderer = struct {
             &self.logger,
             allocator,
         );
+
+        // Initialize ImGui after device creation
+        self.imgui = try ImGuiRenderer.init(self, window);
+        self.logger.info("ImGui initialized", .{});
+
+        // Initialize UI
+        self.ui = try MainUI.init(allocator);
+        self.logger.info("UI initialized", .{});
 
         return self;
     }
@@ -706,6 +720,16 @@ const VulkanRenderer = struct {
 
         // Clean up performance monitor
         self.performance_monitor.deinit();
+
+        // Cleanup ImGui
+        if (self.imgui) |*imgui| {
+            imgui.deinit(self.device);
+        }
+
+        // Cleanup UI
+        if (self.ui) |*ui| {
+            ui.deinit(self.allocator);
+        }
     }
 
     fn checkValidationLayerSupport() !void {
@@ -1853,6 +1877,16 @@ const VulkanRenderer = struct {
             // Clear old alerts
             self.performance_monitor.clearOldAlerts(300);
         }
+
+        // Begin ImGui frame
+        if (self.imgui) |*imgui| {
+            imgui.beginFrame();
+
+            // Render UI
+            if (self.ui) |*ui| {
+                ui.render();
+            }
+        }
     }
 
     fn recordCommandBuffer(self: *VulkanRenderer, command_buffer: vk.VkCommandBuffer, image_index: u32) !void {
@@ -1926,6 +1960,11 @@ const VulkanRenderer = struct {
             0, // first vertex
             0, // first instance
         );
+
+        // Render ImGui
+        if (self.imgui) |*imgui| {
+            imgui.endFrame(command_buffer);
+        }
 
         vk.vkCmdEndRenderPass(command_buffer);
 
