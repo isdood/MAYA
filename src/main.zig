@@ -6,6 +6,7 @@ const vk = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
 const colors = @import("glimmer/colors.zig").GlimmerColors;
+const renderer = @import("renderer/vulkan.zig");
 
 const Window = struct {
     handle: ?*glfw.GLFWwindow,
@@ -13,6 +14,7 @@ const Window = struct {
     height: u32,
     title: []const u8,
     color_scheme: colors.ColorScheme,
+    vulkan_renderer: ?renderer.VulkanRenderer,
 
     pub fn init(width: u32, height: u32, title: []const u8) !Window {
         if (glfw.glfwInit() == 0) {
@@ -34,16 +36,25 @@ const Window = struct {
             return error.WindowCreationFailed;
         };
 
-        return Window{
+        var window = Window{
             .handle = handle,
             .width = width,
             .height = height,
             .title = title,
             .color_scheme = colors.ColorScheme.dark(),
+            .vulkan_renderer = null,
         };
+
+        // Initialize Vulkan renderer
+        window.vulkan_renderer = try renderer.VulkanRenderer.init(handle);
+
+        return window;
     }
 
     pub fn deinit(self: *Window) void {
+        if (self.vulkan_renderer) |*renderer| {
+            renderer.deinit();
+        }
         if (self.handle) |handle| {
             glfw.glfwDestroyWindow(handle);
         }
@@ -67,6 +78,12 @@ const Window = struct {
             .height = @intCast(height),
         };
     }
+
+    pub fn drawFrame(self: *Window) !void {
+        if (self.vulkan_renderer) |*renderer| {
+            try renderer.drawFrame();
+        }
+    }
 };
 
 pub fn main() !void {
@@ -77,7 +94,6 @@ pub fn main() !void {
     // Main loop
     while (!window.shouldClose()) {
         Window.pollEvents();
-        
-        // TODO: Add rendering code here
+        try window.drawFrame();
     }
 } 
