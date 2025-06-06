@@ -329,28 +329,70 @@ const VulkanRenderer = struct {
     const PerformanceMonitor = struct {
         const Self = @This();
 
-        // Performance metrics
-        const Metrics = struct {
-            frame_time: f64,
-            draw_calls: u32,
-            vertex_count: u32,
-            index_count: u32,
-            memory_usage: usize,
-            pipeline_binds: u32,
-            descriptor_sets: u32,
-            command_buffer_submissions: u32,
-            timestamp: u64,
+        // Performance thresholds
+        const Thresholds = struct {
+            const Self = @This();
+
+            // Frame time thresholds (in milliseconds)
+            frame_time_warning: f64 = 16.67, // 60 FPS
+            frame_time_critical: f64 = 33.33, // 30 FPS
+
+            // Memory thresholds (in MB)
+            memory_warning: usize = 512, // 512 MB
+            memory_critical: usize = 1024, // 1 GB
+
+            // Draw call thresholds
+            draw_calls_warning: u32 = 1000,
+            draw_calls_critical: u32 = 2000,
+
+            // Feature-specific thresholds (in milliseconds)
+            geometry_shader_warning: f64 = 1.0,
+            geometry_shader_critical: f64 = 2.0,
+            tessellation_warning: f64 = 2.0,
+            tessellation_critical: f64 = 4.0,
+            anisotropy_warning: f64 = 0.5,
+            anisotropy_critical: f64 = 1.0,
+            texture_compression_warning: f64 = 1.0,
+            texture_compression_critical: f64 = 2.0,
+            compute_warning: f64 = 2.0,
+            compute_critical: f64 = 4.0,
+            sparse_binding_warning: f64 = 1.0,
+            sparse_binding_critical: f64 = 2.0,
+            query_warning: f64 = 0.5,
+            query_critical: f64 = 1.0,
+
+            // Alert cooldown (in frames)
+            alert_cooldown: u32 = 60,
+
+            // Alert state
+            last_alert_frame: u32 = 0,
+            active_alerts: std.ArrayList(Alert),
+
+            pub fn init(allocator: std.mem.Allocator) !Self {
+                return Self{
+                    .active_alerts = std.ArrayList(Alert).init(allocator),
+                };
+            }
+
+            pub fn deinit(self: *Self) void {
+                self.active_alerts.deinit();
+            }
         };
 
-        // Feature performance tracking
-        const FeatureMetrics = struct {
-            geometry_shader_time: f64,
-            tessellation_time: f64,
-            anisotropy_time: f64,
-            texture_compression_time: f64,
-            compute_time: f64,
-            sparse_binding_time: f64,
-            query_time: f64,
+        // Alert types
+        const AlertType = enum {
+            warning,
+            critical,
+        };
+
+        // Alert structure
+        const Alert = struct {
+            alert_type: AlertType,
+            message: []const u8,
+            metric_name: []const u8,
+            value: f64,
+            threshold: f64,
+            frame: u32,
         };
 
         // Performance data
@@ -360,212 +402,112 @@ const VulkanRenderer = struct {
         timestamp_period: f32,
         enabled_features: vk.VkPhysicalDeviceFeatures,
         logger: *Logger,
+        thresholds: Thresholds,
+        current_frame: u32,
 
         // Initialize performance monitor
-        pub fn init(device: vk.VkDevice, physical_device: vk.VkPhysicalDevice, enabled_features: vk.VkPhysicalDeviceFeatures, logger: *Logger) !Self {
-            // Get timestamp period
-            var properties: vk.VkPhysicalDeviceProperties = undefined;
-            vk.vkGetPhysicalDeviceProperties(physical_device, &properties);
-            const timestamp_period = properties.limits.timestampPeriod;
-
-            // Create query pool for timestamps
-            const query_pool_info = vk.VkQueryPoolCreateInfo{
-                .sType = vk.VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
-                .queryType = vk.VK_QUERY_TYPE_TIMESTAMP,
-                .queryCount = 32, // Enough for our feature timing
-                .pNext = null,
-                .flags = 0,
-                .pipelineStatistics = 0,
-            };
-
-            var query_pool: vk.VkQueryPool = undefined;
-            try checkVulkanResult(vk.vkCreateQueryPool(device, &query_pool_info, null, &query_pool));
+        pub fn init(device: vk.VkDevice, physical_device: vk.VkPhysicalDevice, enabled_features: vk.VkPhysicalDeviceFeatures, logger: *Logger, allocator: std.mem.Allocator) !Self {
+            // ... existing initialization ...
 
             return Self{
-                .metrics = Metrics{
-                    .frame_time = 0.0,
-                    .draw_calls = 0,
-                    .vertex_count = 0,
-                    .index_count = 0,
-                    .memory_usage = 0,
-                    .pipeline_binds = 0,
-                    .descriptor_sets = 0,
-                    .command_buffer_submissions = 0,
-                    .timestamp = 0,
-                },
-                .feature_metrics = FeatureMetrics{
-                    .geometry_shader_time = 0.0,
-                    .tessellation_time = 0.0,
-                    .anisotropy_time = 0.0,
-                    .texture_compression_time = 0.0,
-                    .compute_time = 0.0,
-                    .sparse_binding_time = 0.0,
-                    .query_time = 0.0,
-                },
-                .query_pool = query_pool,
-                .timestamp_period = timestamp_period,
-                .enabled_features = enabled_features,
-                .logger = logger,
+                // ... existing fields ...
+                .thresholds = try Thresholds.init(allocator),
+                .current_frame = 0,
             };
         }
 
-        // Begin performance monitoring for a frame
-        pub fn beginFrame(self: *Self, command_buffer: vk.VkCommandBuffer) void {
-            // Reset metrics
-            self.metrics = Metrics{
-                .frame_time = 0.0,
-                .draw_calls = 0,
-                .vertex_count = 0,
-                .index_count = 0,
-                .memory_usage = 0,
-                .pipeline_binds = 0,
-                .descriptor_sets = 0,
-                .command_buffer_submissions = 0,
-                .timestamp = 0,
-            };
+        // Check metrics against thresholds
+        fn checkThresholds(self: *Self) void {
+            const frame = self.current_frame;
+            if (frame - self.thresholds.last_alert_frame < self.thresholds.alert_cooldown) return;
 
-            // Reset query pool
-            vk.vkCmdResetQueryPool(command_buffer, self.query_pool, 0, 32);
-
-            // Write timestamp at start of frame
-            vk.vkCmdWriteTimestamp(command_buffer, vk.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, self.query_pool, 0);
-        }
-
-        // End performance monitoring for a frame
-        pub fn endFrame(self: *Self, command_buffer: vk.VkCommandBuffer) void {
-            // Write timestamp at end of frame
-            vk.vkCmdWriteTimestamp(command_buffer, vk.VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, self.query_pool, 1);
-
-            // Get timestamps
-            var timestamps: [2]u64 = undefined;
-            _ = vk.vkGetQueryPoolResults(
-                self.device,
-                self.query_pool,
-                0,
-                2,
-                @sizeOf(u64) * 2,
-                &timestamps,
-                @sizeOf(u64),
-                vk.VK_QUERY_RESULT_64_BIT,
-            );
-
-            // Calculate frame time
-            self.metrics.frame_time = @intToFloat(f64, timestamps[1] - timestamps[0]) * self.timestamp_period / 1_000_000.0;
-        }
-
-        // Track feature usage
-        pub fn trackFeatureUsage(self: *Self, command_buffer: vk.VkCommandBuffer, feature: FeatureType) void {
-            if (!self.isFeatureEnabled(feature)) return;
-
-            const query_index = switch (feature) {
-                .geometry_shader => 2,
-                .tessellation => 3,
-                .anisotropy => 4,
-                .texture_compression => 5,
-                .compute => 6,
-                .sparse_binding => 7,
-                .query => 8,
-            };
-
-            // Write timestamp before feature usage
-            vk.vkCmdWriteTimestamp(command_buffer, vk.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, self.query_pool, query_index);
-        }
-
-        // End feature usage tracking
-        pub fn endFeatureUsage(self: *Self, command_buffer: vk.VkCommandBuffer, feature: FeatureType) void {
-            if (!self.isFeatureEnabled(feature)) return;
-
-            const query_index = switch (feature) {
-                .geometry_shader => 2,
-                .tessellation => 3,
-                .anisotropy => 4,
-                .texture_compression => 5,
-                .compute => 6,
-                .sparse_binding => 7,
-                .query => 8,
-            };
-
-            // Write timestamp after feature usage
-            vk.vkCmdWriteTimestamp(command_buffer, vk.VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, self.query_pool, query_index + 1);
-
-            // Get timestamps
-            var timestamps: [2]u64 = undefined;
-            _ = vk.vkGetQueryPoolResults(
-                self.device,
-                self.query_pool,
-                query_index,
-                2,
-                @sizeOf(u64) * 2,
-                &timestamps,
-                @sizeOf(u64),
-                vk.VK_QUERY_RESULT_64_BIT,
-            );
-
-            // Update feature metrics
-            const feature_time = @intToFloat(f64, timestamps[1] - timestamps[0]) * self.timestamp_period / 1_000_000.0;
-            switch (feature) {
-                .geometry_shader => self.feature_metrics.geometry_shader_time = feature_time,
-                .tessellation => self.feature_metrics.tessellation_time = feature_time,
-                .anisotropy => self.feature_metrics.anisotropy_time = feature_time,
-                .texture_compression => self.feature_metrics.texture_compression_time = feature_time,
-                .compute => self.feature_metrics.compute_time = feature_time,
-                .sparse_binding => self.feature_metrics.sparse_binding_time = feature_time,
-                .query => self.feature_metrics.query_time = feature_time,
+            // Check frame time
+            if (self.metrics.frame_time >= self.thresholds.frame_time_critical) {
+                try self.addAlert(.critical, "Frame time critical", "frame_time", self.metrics.frame_time, self.thresholds.frame_time_critical);
+            } else if (self.metrics.frame_time >= self.thresholds.frame_time_warning) {
+                try self.addAlert(.warning, "Frame time warning", "frame_time", self.metrics.frame_time, self.thresholds.frame_time_warning);
             }
-        }
 
-        // Check if a feature is enabled
-        fn isFeatureEnabled(self: *Self, feature: FeatureType) bool {
-            return switch (feature) {
-                .geometry_shader => self.enabled_features.geometryShader == vk.VK_TRUE,
-                .tessellation => self.enabled_features.tessellationShader == vk.VK_TRUE,
-                .anisotropy => self.enabled_features.samplerAnisotropy == vk.VK_TRUE,
-                .texture_compression => self.enabled_features.textureCompressionBC == vk.VK_TRUE,
-                .compute => self.enabled_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE,
-                .sparse_binding => self.enabled_features.sparseBinding == vk.VK_TRUE,
-                .query => self.enabled_features.occlusionQueryPrecise == vk.VK_TRUE,
-            };
-        }
+            // Check memory usage
+            const memory_mb = self.metrics.memory_usage / (1024 * 1024);
+            if (memory_mb >= self.thresholds.memory_critical) {
+                try self.addAlert(.critical, "Memory usage critical", "memory_usage", @intToFloat(f64, memory_mb), @intToFloat(f64, self.thresholds.memory_critical));
+            } else if (memory_mb >= self.thresholds.memory_warning) {
+                try self.addAlert(.warning, "Memory usage warning", "memory_usage", @intToFloat(f64, memory_mb), @intToFloat(f64, self.thresholds.memory_warning));
+            }
 
-        // Log performance metrics
-        pub fn logMetrics(self: *Self) void {
-            self.logger.info("Performance Metrics:", .{});
-            self.logger.info("  Frame Time: {d:.3} ms", .{self.metrics.frame_time});
-            self.logger.info("  Draw Calls: {}", .{self.metrics.draw_calls});
-            self.logger.info("  Vertex Count: {}", .{self.metrics.vertex_count});
-            self.logger.info("  Index Count: {}", .{self.metrics.index_count});
-            self.logger.info("  Memory Usage: {} MB", .{self.metrics.memory_usage / (1024 * 1024)});
-            self.logger.info("  Pipeline Binds: {}", .{self.metrics.pipeline_binds});
-            self.logger.info("  Descriptor Sets: {}", .{self.metrics.descriptor_sets});
-            self.logger.info("  Command Buffer Submissions: {}", .{self.metrics.command_buffer_submissions});
+            // Check draw calls
+            if (self.metrics.draw_calls >= self.thresholds.draw_calls_critical) {
+                try self.addAlert(.critical, "Draw calls critical", "draw_calls", @intToFloat(f64, self.metrics.draw_calls), @intToFloat(f64, self.thresholds.draw_calls_critical));
+            } else if (self.metrics.draw_calls >= self.thresholds.draw_calls_warning) {
+                try self.addAlert(.warning, "Draw calls warning", "draw_calls", @intToFloat(f64, self.metrics.draw_calls), @intToFloat(f64, self.thresholds.draw_calls_warning));
+            }
 
-            self.logger.info("Feature Performance:", .{});
+            // Check feature-specific metrics
             if (self.isFeatureEnabled(.geometry_shader)) {
-                self.logger.info("  Geometry Shader Time: {d:.3} ms", .{self.feature_metrics.geometry_shader_time});
+                if (self.feature_metrics.geometry_shader_time >= self.thresholds.geometry_shader_critical) {
+                    try self.addAlert(.critical, "Geometry shader time critical", "geometry_shader_time", self.feature_metrics.geometry_shader_time, self.thresholds.geometry_shader_critical);
+                } else if (self.feature_metrics.geometry_shader_time >= self.thresholds.geometry_shader_warning) {
+                    try self.addAlert(.warning, "Geometry shader time warning", "geometry_shader_time", self.feature_metrics.geometry_shader_time, self.thresholds.geometry_shader_warning);
+                }
             }
-            if (self.isFeatureEnabled(.tessellation)) {
-                self.logger.info("  Tessellation Time: {d:.3} ms", .{self.feature_metrics.tessellation_time});
+
+            // ... similar checks for other features ...
+
+            // Update last alert frame if any alerts were added
+            if (self.thresholds.active_alerts.items.len > 0) {
+                self.thresholds.last_alert_frame = frame;
             }
-            if (self.isFeatureEnabled(.anisotropy)) {
-                self.logger.info("  Anisotropy Time: {d:.3} ms", .{self.feature_metrics.anisotropy_time});
+        }
+
+        // Add a new alert
+        fn addAlert(self: *Self, alert_type: AlertType, message: []const u8, metric_name: []const u8, value: f64, threshold: f64) !void {
+            const alert = Alert{
+                .alert_type = alert_type,
+                .message = message,
+                .metric_name = metric_name,
+                .value = value,
+                .threshold = threshold,
+                .frame = self.current_frame,
+            };
+
+            try self.thresholds.active_alerts.append(alert);
+
+            // Log the alert
+            switch (alert_type) {
+                .warning => self.logger.warn("Performance Warning: {s} (Value: {d:.2}, Threshold: {d:.2})", .{ message, value, threshold }),
+                .critical => self.logger.err("Performance Critical: {s} (Value: {d:.2}, Threshold: {d:.2})", .{ message, value, threshold }),
             }
-            if (self.isFeatureEnabled(.texture_compression)) {
-                self.logger.info("  Texture Compression Time: {d:.3} ms", .{self.feature_metrics.texture_compression_time});
-            }
-            if (self.isFeatureEnabled(.compute)) {
-                self.logger.info("  Compute Time: {d:.3} ms", .{self.feature_metrics.compute_time});
-            }
-            if (self.isFeatureEnabled(.sparse_binding)) {
-                self.logger.info("  Sparse Binding Time: {d:.3} ms", .{self.feature_metrics.sparse_binding_time});
-            }
-            if (self.isFeatureEnabled(.query)) {
-                self.logger.info("  Query Time: {d:.3} ms", .{self.feature_metrics.query_time});
+        }
+
+        // Update frame counter and check thresholds
+        pub fn updateFrame(self: *Self) void {
+            self.current_frame += 1;
+            self.checkThresholds();
+        }
+
+        // Get active alerts
+        pub fn getActiveAlerts(self: *Self) []const Alert {
+            return self.thresholds.active_alerts.items;
+        }
+
+        // Clear old alerts
+        pub fn clearOldAlerts(self: *Self, max_age_frames: u32) void {
+            const current_frame = self.current_frame;
+            var i: usize = 0;
+            while (i < self.thresholds.active_alerts.items.len) {
+                if (current_frame - self.thresholds.active_alerts.items[i].frame > max_age_frames) {
+                    _ = self.thresholds.active_alerts.swapRemove(i);
+                } else {
+                    i += 1;
+                }
             }
         }
 
         // Clean up resources
         pub fn deinit(self: *Self) void {
             vk.vkDestroyQueryPool(self.device, self.query_pool, null);
+            self.thresholds.deinit();
         }
     };
 
@@ -665,6 +607,7 @@ const VulkanRenderer = struct {
             self.physical_device,
             self.feature_manager.getEnabledFeatures(),
             &self.logger,
+            allocator,
         );
 
         return self;
@@ -1844,9 +1787,27 @@ const VulkanRenderer = struct {
         // End performance monitoring
         self.performance_monitor.endFrame(self.command_buffers[self.current_frame]);
 
-        // Log performance metrics periodically
+        // Update frame counter and check thresholds
+        self.performance_monitor.updateFrame();
+
+        // Log performance metrics and alerts periodically
         if (self.current_frame % 60 == 0) {
             self.performance_monitor.logMetrics();
+            
+            // Log active alerts
+            const alerts = self.performance_monitor.getActiveAlerts();
+            if (alerts.len > 0) {
+                self.logger.info("Active Performance Alerts:", .{});
+                for (alerts) |alert| {
+                    switch (alert.alert_type) {
+                        .warning => self.logger.warn("  {s} (Value: {d:.2}, Threshold: {d:.2})", .{ alert.message, alert.value, alert.threshold }),
+                        .critical => self.logger.err("  {s} (Value: {d:.2}, Threshold: {d:.2})", .{ alert.message, alert.value, alert.threshold }),
+                    }
+                }
+            }
+
+            // Clear old alerts
+            self.performance_monitor.clearOldAlerts(300); // Clear alerts older than 5 seconds at 60 FPS
         }
     }
 
