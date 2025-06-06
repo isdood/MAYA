@@ -324,8 +324,178 @@ const VulkanRenderer = struct {
     }
 
     fn createGraphicsPipeline(self: *VulkanRenderer) !void {
-        // TODO: Implement shader compilation and pipeline creation
-        // This is a placeholder for now
+        const shader = @import("shader.zig").ShaderModule;
+
+        // Load shaders
+        const vert_shader = try shader.loadFromFile(self.device, "shaders/triangle.vert");
+        defer vert_shader.deinit();
+        const frag_shader = try shader.loadFromFile(self.device, "shaders/triangle.frag");
+        defer frag_shader.deinit();
+
+        // Create shader stages
+        const vert_stage_info = vk.VkPipelineShaderStageCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = vk.VK_SHADER_STAGE_VERTEX_BIT,
+            .module = vert_shader.handle,
+            .pName = "main",
+            .pNext = null,
+            .flags = 0,
+            .pSpecializationInfo = null,
+        };
+
+        const frag_stage_info = vk.VkPipelineShaderStageCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = vk.VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = frag_shader.handle,
+            .pName = "main",
+            .pNext = null,
+            .flags = 0,
+            .pSpecializationInfo = null,
+        };
+
+        const shader_stages = [_]vk.VkPipelineShaderStageCreateInfo{
+            vert_stage_info,
+            frag_stage_info,
+        };
+
+        // Vertex input state
+        const vertex_input_info = vk.VkPipelineVertexInputStateCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            .vertexBindingDescriptionCount = 0,
+            .pVertexBindingDescriptions = null,
+            .vertexAttributeDescriptionCount = 0,
+            .pVertexAttributeDescriptions = null,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        // Input assembly state
+        const input_assembly = vk.VkPipelineInputAssemblyStateCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+            .topology = vk.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            .primitiveRestartEnable = vk.VK_FALSE,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        // Viewport state
+        var viewport = vk.VkViewport{
+            .x = 0.0,
+            .y = 0.0,
+            .width = 800.0, // TODO: Get from window
+            .height = 600.0,
+            .minDepth = 0.0,
+            .maxDepth = 1.0,
+        };
+
+        var scissor = vk.VkRect2D{
+            .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
+            .extent = vk.VkExtent2D{ .width = 800, .height = 600 }, // TODO: Get from window
+        };
+
+        const viewport_state = vk.VkPipelineViewportStateCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+            .viewportCount = 1,
+            .pViewports = &viewport,
+            .scissorCount = 1,
+            .pScissors = &scissor,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        // Rasterization state
+        const rasterizer = vk.VkPipelineRasterizationStateCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+            .depthClampEnable = vk.VK_FALSE,
+            .rasterizerDiscardEnable = vk.VK_FALSE,
+            .polygonMode = vk.VK_POLYGON_MODE_FILL,
+            .lineWidth = 1.0,
+            .cullMode = vk.VK_CULL_MODE_BACK_BIT,
+            .frontFace = vk.VK_FRONT_FACE_CLOCKWISE,
+            .depthBiasEnable = vk.VK_FALSE,
+            .depthBiasConstantFactor = 0.0,
+            .depthBiasClamp = 0.0,
+            .depthBiasSlopeFactor = 0.0,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        // Multisampling state
+        const multisampling = vk.VkPipelineMultisampleStateCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .sampleShadingEnable = vk.VK_FALSE,
+            .rasterizationSamples = vk.VK_SAMPLE_COUNT_1_BIT,
+            .minSampleShading = 1.0,
+            .pSampleMask = null,
+            .alphaToCoverageEnable = vk.VK_FALSE,
+            .alphaToOneEnable = vk.VK_FALSE,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        // Color blending state
+        const color_blend_attachment = vk.VkPipelineColorBlendAttachmentState{
+            .colorWriteMask = vk.VK_COLOR_COMPONENT_R_BIT | vk.VK_COLOR_COMPONENT_G_BIT | vk.VK_COLOR_COMPONENT_B_BIT | vk.VK_COLOR_COMPONENT_A_BIT,
+            .blendEnable = vk.VK_FALSE,
+            .srcColorBlendFactor = vk.VK_BLEND_FACTOR_ONE,
+            .dstColorBlendFactor = vk.VK_BLEND_FACTOR_ZERO,
+            .colorBlendOp = vk.VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = vk.VK_BLEND_FACTOR_ONE,
+            .dstAlphaBlendFactor = vk.VK_BLEND_FACTOR_ZERO,
+            .alphaBlendOp = vk.VK_BLEND_OP_ADD,
+        };
+
+        const color_blending = vk.VkPipelineColorBlendStateCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+            .logicOpEnable = vk.VK_FALSE,
+            .logicOp = vk.VK_LOGIC_OP_COPY,
+            .attachmentCount = 1,
+            .pAttachments = &color_blend_attachment,
+            .blendConstants = [4]f32{ 0.0, 0.0, 0.0, 0.0 },
+            .pNext = null,
+            .flags = 0,
+        };
+
+        // Pipeline layout
+        const pipeline_layout_info = vk.VkPipelineLayoutCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 0,
+            .pSetLayouts = null,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = null,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        if (vk.vkCreatePipelineLayout(self.device, &pipeline_layout_info, null, &self.pipeline_layout) != vk.VK_SUCCESS) {
+            return error.PipelineLayoutCreationFailed;
+        }
+
+        // Create graphics pipeline
+        const pipeline_info = vk.VkGraphicsPipelineCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = shader_stages.len,
+            .pStages = &shader_stages,
+            .pVertexInputState = &vertex_input_info,
+            .pInputAssemblyState = &input_assembly,
+            .pViewportState = &viewport_state,
+            .pRasterizationState = &rasterizer,
+            .pMultisampleState = &multisampling,
+            .pDepthStencilState = null,
+            .pColorBlendState = &color_blending,
+            .pDynamicState = null,
+            .layout = self.pipeline_layout,
+            .renderPass = self.render_pass,
+            .subpass = 0,
+            .basePipelineHandle = null,
+            .basePipelineIndex = -1,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        if (vk.vkCreateGraphicsPipelines(self.device, null, 1, &pipeline_info, null, &self.pipeline) != vk.VK_SUCCESS) {
+            return error.GraphicsPipelineCreationFailed;
+        }
     }
 
     fn createFramebuffers(self: *VulkanRenderer) !void {
@@ -364,7 +534,196 @@ const VulkanRenderer = struct {
     }
 
     fn createVertexBuffer(self: *VulkanRenderer) !void {
-        // TODO: Implement vertex buffer creation
+        const vertices = [_]struct {
+            pos: [2]f32,
+            color: [3]f32,
+        }{
+            .{ .pos = [2]f32{ 0.0, -0.5 }, .color = [3]f32{ 1.0, 0.0, 0.0 } },
+            .{ .pos = [2]f32{ 0.5, 0.5 }, .color = [3]f32{ 0.0, 1.0, 0.0 } },
+            .{ .pos = [2]f32{ -0.5, 0.5 }, .color = [3]f32{ 0.0, 0.0, 1.0 } },
+        };
+
+        const buffer_size = @sizeOf(@TypeOf(vertices));
+
+        // Create staging buffer
+        var staging_buffer: vk.VkBuffer = undefined;
+        var staging_buffer_memory: vk.VkDeviceMemory = undefined;
+
+        const buffer_info = vk.VkBufferCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = buffer_size,
+            .usage = vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .pNext = null,
+            .flags = 0,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+        };
+
+        if (vk.vkCreateBuffer(self.device, &buffer_info, null, &staging_buffer) != vk.VK_SUCCESS) {
+            return error.StagingBufferCreationFailed;
+        }
+
+        // Get memory requirements
+        var mem_requirements: vk.VkMemoryRequirements = undefined;
+        vk.vkGetBufferMemoryRequirements(self.device, staging_buffer, &mem_requirements);
+
+        // Find memory type
+        var memory_type_index: u32 = undefined;
+        var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
+        vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &memory_properties);
+
+        for (0..memory_properties.memoryTypeCount) |i| {
+            if ((mem_requirements.memoryTypeBits & (@as(u32, 1) << @intCast(i))) != 0 and
+                (memory_properties.memoryTypes[i].propertyFlags & vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0 and
+                (memory_properties.memoryTypes[i].propertyFlags & vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0)
+            {
+                memory_type_index = @intCast(i);
+                break;
+            }
+        }
+
+        const alloc_info = vk.VkMemoryAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = mem_requirements.size,
+            .memoryTypeIndex = memory_type_index,
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &staging_buffer_memory) != vk.VK_SUCCESS) {
+            return error.StagingMemoryAllocationFailed;
+        }
+
+        // Bind memory to buffer
+        if (vk.vkBindBufferMemory(self.device, staging_buffer, staging_buffer_memory, 0) != vk.VK_SUCCESS) {
+            return error.StagingMemoryBindingFailed;
+        }
+
+        // Map memory and copy data
+        var data: ?*anyopaque = null;
+        if (vk.vkMapMemory(self.device, staging_buffer_memory, 0, buffer_size, 0, &data) != vk.VK_SUCCESS) {
+            return error.MemoryMappingFailed;
+        }
+
+        @memcpy(@ptrCast(data), &vertices, buffer_size);
+        vk.vkUnmapMemory(self.device, staging_buffer_memory);
+
+        // Create vertex buffer
+        const vertex_buffer_info = vk.VkBufferCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = buffer_size,
+            .usage = vk.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .pNext = null,
+            .flags = 0,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+        };
+
+        if (vk.vkCreateBuffer(self.device, &vertex_buffer_info, null, &self.vertex_buffer) != vk.VK_SUCCESS) {
+            return error.VertexBufferCreationFailed;
+        }
+
+        // Get memory requirements for vertex buffer
+        vk.vkGetBufferMemoryRequirements(self.device, self.vertex_buffer, &mem_requirements);
+
+        // Find memory type for vertex buffer
+        for (0..memory_properties.memoryTypeCount) |i| {
+            if ((mem_requirements.memoryTypeBits & (@as(u32, 1) << @intCast(i))) != 0 and
+                (memory_properties.memoryTypes[i].propertyFlags & vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
+            {
+                memory_type_index = @intCast(i);
+                break;
+            }
+        }
+
+        const vertex_alloc_info = vk.VkMemoryAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = mem_requirements.size,
+            .memoryTypeIndex = memory_type_index,
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateMemory(self.device, &vertex_alloc_info, null, &self.vertex_buffer_memory) != vk.VK_SUCCESS) {
+            return error.VertexMemoryAllocationFailed;
+        }
+
+        if (vk.vkBindBufferMemory(self.device, self.vertex_buffer, self.vertex_buffer_memory, 0) != vk.VK_SUCCESS) {
+            return error.VertexMemoryBindingFailed;
+        }
+
+        // Copy data from staging buffer to vertex buffer
+        const command_buffer = try self.beginSingleTimeCommands();
+
+        const copy_region = vk.VkBufferCopy{
+            .srcOffset = 0,
+            .dstOffset = 0,
+            .size = buffer_size,
+        };
+
+        vk.vkCmdCopyBuffer(command_buffer, staging_buffer, self.vertex_buffer, 1, &copy_region);
+
+        try self.endSingleTimeCommands(command_buffer);
+
+        // Cleanup staging buffer
+        vk.vkDestroyBuffer(self.device, staging_buffer, null);
+        vk.vkFreeMemory(self.device, staging_buffer_memory, null);
+    }
+
+    fn beginSingleTimeCommands(self: *VulkanRenderer) !vk.VkCommandBuffer {
+        const alloc_info = vk.VkCommandBufferAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = self.command_pool,
+            .level = vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+            .pNext = null,
+        };
+
+        var command_buffer: vk.VkCommandBuffer = undefined;
+        if (vk.vkAllocateCommandBuffers(self.device, &alloc_info, &command_buffer) != vk.VK_SUCCESS) {
+            return error.CommandBufferAllocationFailed;
+        }
+
+        const begin_info = vk.VkCommandBufferBeginInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = vk.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            .pNext = null,
+            .pInheritanceInfo = null,
+        };
+
+        if (vk.vkBeginCommandBuffer(command_buffer, &begin_info) != vk.VK_SUCCESS) {
+            return error.CommandBufferBeginFailed;
+        }
+
+        return command_buffer;
+    }
+
+    fn endSingleTimeCommands(self: *VulkanRenderer, command_buffer: vk.VkCommandBuffer) !void {
+        if (vk.vkEndCommandBuffer(command_buffer) != vk.VK_SUCCESS) {
+            return error.CommandBufferEndFailed;
+        }
+
+        const submit_info = vk.VkSubmitInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &command_buffer,
+            .waitSemaphoreCount = 0,
+            .pWaitSemaphores = null,
+            .pWaitDstStageMask = null,
+            .signalSemaphoreCount = 0,
+            .pSignalSemaphores = null,
+            .pNext = null,
+        };
+
+        if (vk.vkQueueSubmit(self.queue, 1, &submit_info, null) != vk.VK_SUCCESS) {
+            return error.QueueSubmitFailed;
+        }
+
+        if (vk.vkQueueWaitIdle(self.queue) != vk.VK_SUCCESS) {
+            return error.QueueWaitIdleFailed;
+        }
+
+        vk.vkFreeCommandBuffers(self.device, self.command_pool, 1, &command_buffer);
     }
 
     fn createCommandBuffers(self: *VulkanRenderer) !void {
