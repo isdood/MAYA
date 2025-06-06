@@ -6,6 +6,7 @@ const glfw = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 const colors = @import("../glimmer/colors.zig").GlimmerColors;
+const Window = @import("window.zig").Window;
 
 const VulkanRenderer = struct {
     instance: vk.VkInstance,
@@ -30,8 +31,18 @@ const VulkanRenderer = struct {
     current_frame: usize,
     window: *glfw.GLFWwindow,
     framebuffer_resized: bool,
+    debug_messenger: vk.VkDebugUtilsMessengerEXT,
+    validation_layers_enabled: bool,
 
     const MAX_FRAMES_IN_FLIGHT = 2;
+
+    const VALIDATION_LAYERS = [_][*:0]const u8{
+        "VK_LAYER_KHRONOS_validation",
+    };
+
+    const REQUIRED_DEVICE_EXTENSIONS = [_][*:0]const u8{
+        vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    };
 
     pub fn init(window: *glfw.GLFWwindow) !VulkanRenderer {
         var self = VulkanRenderer{
@@ -57,6 +68,8 @@ const VulkanRenderer = struct {
             .current_frame = 0,
             .window = window,
             .framebuffer_resized = false,
+            .debug_messenger = undefined,
+            .validation_layers_enabled = false,
         };
 
         try self.createInstance();
@@ -83,6 +96,18 @@ const VulkanRenderer = struct {
         try vk.vkDeviceWaitIdle(self.device);
 
         self.cleanupSwapChain();
+
+        // Clean up debug messenger
+        if (VALIDATION_LAYERS.len > 0) {
+            const destroy_debug_utils_messenger_ext = @ptrCast(
+                fn (vk.VkInstance, vk.VkDebugUtilsMessengerEXT, ?*const vk.VkAllocationCallbacks) callconv(.C) void,
+                vk.vkGetInstanceProcAddr(self.instance, "vkDestroyDebugUtilsMessengerEXT"),
+            );
+
+            if (destroy_debug_utils_messenger_ext) |func| {
+                func(self.instance, self.debug_messenger, null);
+            }
+        }
 
         // Cleanup sync objects
         for (self.image_available_semaphores) |semaphore| {
@@ -115,7 +140,7 @@ const VulkanRenderer = struct {
         // Cleanup render pass
         vk.vkDestroyRenderPass(self.device, self.render_pass, null);
 
-        // Cleanup image views
+        // Clean up image views
         for (self.swapchain_image_views) |image_view| {
             vk.vkDestroyImageView(self.device, image_view, null);
         }
@@ -128,7 +153,110 @@ const VulkanRenderer = struct {
         vk.vkDestroyInstance(self.instance, null);
     }
 
+    fn checkValidationLayerSupport() !void {
+        var layer_count: u32 = undefined;
+        _ = vk.vkEnumerateInstanceLayerProperties(&layer_count, null);
+
+        var available_layers = try std.heap.page_allocator.alloc(vk.VkLayerProperties, layer_count);
+        defer std.heap.page_allocator.free(available_layers);
+        _ = vk.vkEnumerateInstanceLayerProperties(&layer_count, available_layers.ptr);
+
+        for (VALIDATION_LAYERS) |layer_name| {
+            var layer_found = false;
+            for (available_layers) |layer_properties| {
+                if (std.mem.eql(u8, std.mem.span(layer_name), std.mem.span(&layer_properties.layerName))) {
+                    layer_found = true;
+                    break;
+                }
+            }
+            if (!layer_found) {
+                return error.ValidationLayerNotAvailable;
+            }
+        }
+    }
+
+    fn getRequiredExtensions() ![][]const u8 {
+        var glfw_extension_count: u32 = undefined;
+        const glfw_extensions = glfw.glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+
+        var extensions = std.ArrayList([]const u8).init(std.heap.page_allocator);
+        defer extensions.deinit();
+
+        var i: usize = 0;
+        while (i < glfw_extension_count) : (i += 1) {
+            try extensions.append(std.mem.span(glfw_extensions[i]));
+        }
+
+        if (VALIDATION_LAYERS.len > 0) {
+            try extensions.append(vk.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
+
+        return extensions.toOwnedSlice();
+    }
+
+    fn debugCallback(
+        message_severity: vk.VkDebugUtilsMessageSeverityFlagBitsEXT,
+        message_type: vk.VkDebugUtilsMessageTypeFlagsEXT,
+        p_callback_data: ?*const vk.VkDebugUtilsMessengerCallbackDataEXT,
+        p_user_data: ?*anyopaque,
+    ) callconv(.C) vk.VkBool32 {
+        _ = message_type;
+        _ = p_user_data;
+
+        const severity = switch (message_severity) {
+            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT => "VERBOSE",
+            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT => "INFO",
+            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => "WARNING",
+            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT => "ERROR",
+            else => "UNKNOWN",
+        };
+
+        if (p_callback_data) |callback_data| {
+            std.debug.print("[{s}] {s}\n", .{ severity, std.mem.span(callback_data.pMessage) });
+        }
+
+        return vk.VK_FALSE;
+    }
+
+    fn setupDebugMessenger(self: *VulkanRenderer) !void {
+        if (VALIDATION_LAYERS.len == 0) return;
+
+        const create_info = vk.VkDebugUtilsMessengerCreateInfoEXT{
+            .sType = vk.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .messageSeverity = vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = vk.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                vk.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                vk.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            .pfnUserCallback = debugCallback,
+            .pUserData = null,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        const create_debug_utils_messenger_ext = @ptrCast(
+            fn (vk.VkInstance, *const vk.VkDebugUtilsMessengerCreateInfoEXT, ?*const vk.VkAllocationCallbacks, *vk.VkDebugUtilsMessengerEXT) callconv(.C) vk.VkResult,
+            vk.vkGetInstanceProcAddr(self.instance, "vkCreateDebugUtilsMessengerEXT"),
+        );
+
+        if (create_debug_utils_messenger_ext) |func| {
+            try checkVulkanResult(func(
+                self.instance,
+                &create_info,
+                null,
+                &self.debug_messenger,
+            ));
+        } else {
+            return error.FailedToLoadDebugUtilsMessenger;
+        }
+    }
+
     fn createInstance(self: *VulkanRenderer) !void {
+        if (VALIDATION_LAYERS.len > 0) {
+            try checkValidationLayerSupport();
+        }
+
         const app_info = vk.VkApplicationInfo{
             .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
             .pApplicationName = "MAYA",
@@ -139,22 +267,24 @@ const VulkanRenderer = struct {
             .pNext = null,
         };
 
-        var glfw_extension_count: u32 = 0;
-        const glfw_extensions = glfw.glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+        const extensions = try getRequiredExtensions();
+        defer std.heap.page_allocator.free(extensions);
 
         const create_info = vk.VkInstanceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &app_info,
-            .enabledExtensionCount = glfw_extension_count,
-            .ppEnabledExtensionNames = glfw_extensions,
-            .enabledLayerCount = 0,
-            .ppEnabledLayerNames = null,
+            .enabledExtensionCount = @intCast(u32, extensions.len),
+            .ppEnabledExtensionNames = @ptrCast([*]const [*:0]const u8, extensions.ptr),
+            .enabledLayerCount = if (VALIDATION_LAYERS.len > 0) @intCast(u32, VALIDATION_LAYERS.len) else 0,
+            .ppEnabledLayerNames = if (VALIDATION_LAYERS.len > 0) &VALIDATION_LAYERS else null,
             .pNext = null,
             .flags = 0,
         };
 
-        if (vk.vkCreateInstance(&create_info, null, &self.instance) != vk.VK_SUCCESS) {
-            return error.VulkanInstanceCreationFailed;
+        try checkVulkanResult(vk.vkCreateInstance(&create_info, null, &self.instance));
+
+        if (VALIDATION_LAYERS.len > 0) {
+            try self.setupDebugMessenger();
         }
     }
 
@@ -756,9 +886,7 @@ const VulkanRenderer = struct {
             .pNext = null,
         };
 
-        if (vk.vkQueueSubmit(self.queue, 1, &submit_info, null) != vk.VK_SUCCESS) {
-            return error.QueueSubmitFailed;
-        }
+        try checkVulkanResult(vk.vkQueueSubmit(self.queue, 1, &submit_info, null));
 
         if (vk.vkQueueWaitIdle(self.queue) != vk.VK_SUCCESS) {
             return error.QueueWaitIdleFailed;
