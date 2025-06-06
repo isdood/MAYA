@@ -66,6 +66,7 @@ const VulkanRenderer = struct {
     allocator: std.mem.Allocator,
     logger: std.log.Logger,
     feature_manager: FeatureManager,
+    performance_monitor: PerformanceMonitor,
 
     const MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -324,6 +325,261 @@ const VulkanRenderer = struct {
         }
     };
 
+    // Performance monitoring system
+    const PerformanceMonitor = struct {
+        const Self = @This();
+
+        // Performance metrics
+        const Metrics = struct {
+            frame_time: f64,
+            draw_calls: u32,
+            vertex_count: u32,
+            index_count: u32,
+            memory_usage: usize,
+            pipeline_binds: u32,
+            descriptor_sets: u32,
+            command_buffer_submissions: u32,
+            timestamp: u64,
+        };
+
+        // Feature performance tracking
+        const FeatureMetrics = struct {
+            geometry_shader_time: f64,
+            tessellation_time: f64,
+            anisotropy_time: f64,
+            texture_compression_time: f64,
+            compute_time: f64,
+            sparse_binding_time: f64,
+            query_time: f64,
+        };
+
+        // Performance data
+        metrics: Metrics,
+        feature_metrics: FeatureMetrics,
+        query_pool: vk.VkQueryPool,
+        timestamp_period: f32,
+        enabled_features: vk.VkPhysicalDeviceFeatures,
+        logger: *Logger,
+
+        // Initialize performance monitor
+        pub fn init(device: vk.VkDevice, physical_device: vk.VkPhysicalDevice, enabled_features: vk.VkPhysicalDeviceFeatures, logger: *Logger) !Self {
+            // Get timestamp period
+            var properties: vk.VkPhysicalDeviceProperties = undefined;
+            vk.vkGetPhysicalDeviceProperties(physical_device, &properties);
+            const timestamp_period = properties.limits.timestampPeriod;
+
+            // Create query pool for timestamps
+            const query_pool_info = vk.VkQueryPoolCreateInfo{
+                .sType = vk.VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+                .queryType = vk.VK_QUERY_TYPE_TIMESTAMP,
+                .queryCount = 32, // Enough for our feature timing
+                .pNext = null,
+                .flags = 0,
+                .pipelineStatistics = 0,
+            };
+
+            var query_pool: vk.VkQueryPool = undefined;
+            try checkVulkanResult(vk.vkCreateQueryPool(device, &query_pool_info, null, &query_pool));
+
+            return Self{
+                .metrics = Metrics{
+                    .frame_time = 0.0,
+                    .draw_calls = 0,
+                    .vertex_count = 0,
+                    .index_count = 0,
+                    .memory_usage = 0,
+                    .pipeline_binds = 0,
+                    .descriptor_sets = 0,
+                    .command_buffer_submissions = 0,
+                    .timestamp = 0,
+                },
+                .feature_metrics = FeatureMetrics{
+                    .geometry_shader_time = 0.0,
+                    .tessellation_time = 0.0,
+                    .anisotropy_time = 0.0,
+                    .texture_compression_time = 0.0,
+                    .compute_time = 0.0,
+                    .sparse_binding_time = 0.0,
+                    .query_time = 0.0,
+                },
+                .query_pool = query_pool,
+                .timestamp_period = timestamp_period,
+                .enabled_features = enabled_features,
+                .logger = logger,
+            };
+        }
+
+        // Begin performance monitoring for a frame
+        pub fn beginFrame(self: *Self, command_buffer: vk.VkCommandBuffer) void {
+            // Reset metrics
+            self.metrics = Metrics{
+                .frame_time = 0.0,
+                .draw_calls = 0,
+                .vertex_count = 0,
+                .index_count = 0,
+                .memory_usage = 0,
+                .pipeline_binds = 0,
+                .descriptor_sets = 0,
+                .command_buffer_submissions = 0,
+                .timestamp = 0,
+            };
+
+            // Reset query pool
+            vk.vkCmdResetQueryPool(command_buffer, self.query_pool, 0, 32);
+
+            // Write timestamp at start of frame
+            vk.vkCmdWriteTimestamp(command_buffer, vk.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, self.query_pool, 0);
+        }
+
+        // End performance monitoring for a frame
+        pub fn endFrame(self: *Self, command_buffer: vk.VkCommandBuffer) void {
+            // Write timestamp at end of frame
+            vk.vkCmdWriteTimestamp(command_buffer, vk.VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, self.query_pool, 1);
+
+            // Get timestamps
+            var timestamps: [2]u64 = undefined;
+            _ = vk.vkGetQueryPoolResults(
+                self.device,
+                self.query_pool,
+                0,
+                2,
+                @sizeOf(u64) * 2,
+                &timestamps,
+                @sizeOf(u64),
+                vk.VK_QUERY_RESULT_64_BIT,
+            );
+
+            // Calculate frame time
+            self.metrics.frame_time = @intToFloat(f64, timestamps[1] - timestamps[0]) * self.timestamp_period / 1_000_000.0;
+        }
+
+        // Track feature usage
+        pub fn trackFeatureUsage(self: *Self, command_buffer: vk.VkCommandBuffer, feature: FeatureType) void {
+            if (!self.isFeatureEnabled(feature)) return;
+
+            const query_index = switch (feature) {
+                .geometry_shader => 2,
+                .tessellation => 3,
+                .anisotropy => 4,
+                .texture_compression => 5,
+                .compute => 6,
+                .sparse_binding => 7,
+                .query => 8,
+            };
+
+            // Write timestamp before feature usage
+            vk.vkCmdWriteTimestamp(command_buffer, vk.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, self.query_pool, query_index);
+        }
+
+        // End feature usage tracking
+        pub fn endFeatureUsage(self: *Self, command_buffer: vk.VkCommandBuffer, feature: FeatureType) void {
+            if (!self.isFeatureEnabled(feature)) return;
+
+            const query_index = switch (feature) {
+                .geometry_shader => 2,
+                .tessellation => 3,
+                .anisotropy => 4,
+                .texture_compression => 5,
+                .compute => 6,
+                .sparse_binding => 7,
+                .query => 8,
+            };
+
+            // Write timestamp after feature usage
+            vk.vkCmdWriteTimestamp(command_buffer, vk.VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, self.query_pool, query_index + 1);
+
+            // Get timestamps
+            var timestamps: [2]u64 = undefined;
+            _ = vk.vkGetQueryPoolResults(
+                self.device,
+                self.query_pool,
+                query_index,
+                2,
+                @sizeOf(u64) * 2,
+                &timestamps,
+                @sizeOf(u64),
+                vk.VK_QUERY_RESULT_64_BIT,
+            );
+
+            // Update feature metrics
+            const feature_time = @intToFloat(f64, timestamps[1] - timestamps[0]) * self.timestamp_period / 1_000_000.0;
+            switch (feature) {
+                .geometry_shader => self.feature_metrics.geometry_shader_time = feature_time,
+                .tessellation => self.feature_metrics.tessellation_time = feature_time,
+                .anisotropy => self.feature_metrics.anisotropy_time = feature_time,
+                .texture_compression => self.feature_metrics.texture_compression_time = feature_time,
+                .compute => self.feature_metrics.compute_time = feature_time,
+                .sparse_binding => self.feature_metrics.sparse_binding_time = feature_time,
+                .query => self.feature_metrics.query_time = feature_time,
+            }
+        }
+
+        // Check if a feature is enabled
+        fn isFeatureEnabled(self: *Self, feature: FeatureType) bool {
+            return switch (feature) {
+                .geometry_shader => self.enabled_features.geometryShader == vk.VK_TRUE,
+                .tessellation => self.enabled_features.tessellationShader == vk.VK_TRUE,
+                .anisotropy => self.enabled_features.samplerAnisotropy == vk.VK_TRUE,
+                .texture_compression => self.enabled_features.textureCompressionBC == vk.VK_TRUE,
+                .compute => self.enabled_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE,
+                .sparse_binding => self.enabled_features.sparseBinding == vk.VK_TRUE,
+                .query => self.enabled_features.occlusionQueryPrecise == vk.VK_TRUE,
+            };
+        }
+
+        // Log performance metrics
+        pub fn logMetrics(self: *Self) void {
+            self.logger.info("Performance Metrics:", .{});
+            self.logger.info("  Frame Time: {d:.3} ms", .{self.metrics.frame_time});
+            self.logger.info("  Draw Calls: {}", .{self.metrics.draw_calls});
+            self.logger.info("  Vertex Count: {}", .{self.metrics.vertex_count});
+            self.logger.info("  Index Count: {}", .{self.metrics.index_count});
+            self.logger.info("  Memory Usage: {} MB", .{self.metrics.memory_usage / (1024 * 1024)});
+            self.logger.info("  Pipeline Binds: {}", .{self.metrics.pipeline_binds});
+            self.logger.info("  Descriptor Sets: {}", .{self.metrics.descriptor_sets});
+            self.logger.info("  Command Buffer Submissions: {}", .{self.metrics.command_buffer_submissions});
+
+            self.logger.info("Feature Performance:", .{});
+            if (self.isFeatureEnabled(.geometry_shader)) {
+                self.logger.info("  Geometry Shader Time: {d:.3} ms", .{self.feature_metrics.geometry_shader_time});
+            }
+            if (self.isFeatureEnabled(.tessellation)) {
+                self.logger.info("  Tessellation Time: {d:.3} ms", .{self.feature_metrics.tessellation_time});
+            }
+            if (self.isFeatureEnabled(.anisotropy)) {
+                self.logger.info("  Anisotropy Time: {d:.3} ms", .{self.feature_metrics.anisotropy_time});
+            }
+            if (self.isFeatureEnabled(.texture_compression)) {
+                self.logger.info("  Texture Compression Time: {d:.3} ms", .{self.feature_metrics.texture_compression_time});
+            }
+            if (self.isFeatureEnabled(.compute)) {
+                self.logger.info("  Compute Time: {d:.3} ms", .{self.feature_metrics.compute_time});
+            }
+            if (self.isFeatureEnabled(.sparse_binding)) {
+                self.logger.info("  Sparse Binding Time: {d:.3} ms", .{self.feature_metrics.sparse_binding_time});
+            }
+            if (self.isFeatureEnabled(.query)) {
+                self.logger.info("  Query Time: {d:.3} ms", .{self.feature_metrics.query_time});
+            }
+        }
+
+        // Clean up resources
+        pub fn deinit(self: *Self) void {
+            vk.vkDestroyQueryPool(self.device, self.query_pool, null);
+        }
+    };
+
+    // Feature types for performance monitoring
+    const FeatureType = enum {
+        geometry_shader,
+        tessellation,
+        anisotropy,
+        texture_compression,
+        compute,
+        sparse_binding,
+        query,
+    };
+
     pub fn init(allocator: std.mem.Allocator, window: *Window) !*VulkanRenderer {
         var self = try allocator.create(VulkanRenderer);
         self.* = VulkanRenderer{
@@ -354,6 +610,7 @@ const VulkanRenderer = struct {
             .debug_messenger = undefined,
             .validation_layers_enabled = false,
             .feature_manager = undefined,
+            .performance_monitor = undefined,
         };
 
         self.logger.info("Initializing Vulkan renderer", .{});
@@ -401,6 +658,14 @@ const VulkanRenderer = struct {
 
         // Set up resize callback
         try window.setResizeCallback(resizeCallback);
+
+        // Initialize performance monitor after device creation
+        self.performance_monitor = try PerformanceMonitor.init(
+            self.device,
+            self.physical_device,
+            self.feature_manager.getEnabledFeatures(),
+            &self.logger,
+        );
 
         return self;
     }
@@ -470,6 +735,9 @@ const VulkanRenderer = struct {
 
         self.allocator.destroy(self);
         self.logger.info("Vulkan renderer shutdown complete", .{});
+
+        // Clean up performance monitor
+        self.performance_monitor.deinit();
     }
 
     fn checkValidationLayerSupport() !void {
@@ -1562,6 +1830,24 @@ const VulkanRenderer = struct {
         }
 
         self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+        // Begin performance monitoring
+        self.performance_monitor.beginFrame(self.command_buffers[self.current_frame]);
+
+        // Track feature usage
+        self.performance_monitor.trackFeatureUsage(self.command_buffers[self.current_frame], .geometry_shader);
+        // ... geometry shader operations ...
+        self.performance_monitor.endFeatureUsage(self.command_buffers[self.current_frame], .geometry_shader);
+
+        // ... other feature tracking ...
+
+        // End performance monitoring
+        self.performance_monitor.endFrame(self.command_buffers[self.current_frame]);
+
+        // Log performance metrics periodically
+        if (self.current_frame % 60 == 0) {
+            self.performance_monitor.logMetrics();
+        }
     }
 
     fn recordCommandBuffer(self: *VulkanRenderer, command_buffer: vk.VkCommandBuffer, image_index: u32) !void {
