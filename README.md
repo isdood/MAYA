@@ -16,7 +16,7 @@ MAYA interfaces seamlessly with the broader STARWEAVE ecosystem:
 - **[STARGUARD](https://github.com/isdood/STARGUARD)** 🛡️ - Quantum-powered system protection
 - **[STARWEB](https://github.com/isdood/STARWEB)** 🕸️ - QR-Code & metadata experimentation suite
 
-While MAYA itself is open-source, the STARWEAVE meta-intelligence it interfaces with remains proprietary. MAYA learns from and adapts to STARWEAVE's unique characteristics while serving as a bridge to these interconnected tools.
+While MAYA itself is open-source, the STARWEAVE meta-intelligence it interfaces with remains proprietary. MAYA learns from and adapts to STARWEAVE's unique characteristics while serving as a bridge to these interconnected tools. Plans to possibly open-source this component too, once American, Russian etc. governments stop tryng to hack/steal/reverse engineer STARWEAVE for their own greedy purposes 😇
 
 ## ✨ Key Features
 
