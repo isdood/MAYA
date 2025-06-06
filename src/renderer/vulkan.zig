@@ -550,18 +550,18 @@ const VulkanRenderer = struct {
         };
 
         // Viewport state
-        var viewport = vk.VkViewport{
+        const viewport = vk.VkViewport{
             .x = 0.0,
             .y = 0.0,
-            .width = 800.0, // TODO: Get from window
-            .height = 600.0,
+            .width = @intToFloat(f32, self.swapchain_extent.width),
+            .height = @intToFloat(f32, self.swapchain_extent.height),
             .minDepth = 0.0,
             .maxDepth = 1.0,
         };
 
-        var scissor = vk.VkRect2D{
+        const scissor = vk.VkRect2D{
             .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
-            .extent = vk.VkExtent2D{ .width = 800, .height = 600 }, // TODO: Get from window
+            .extent = self.swapchain_extent,
         };
 
         const viewport_state = vk.VkPipelineViewportStateCreateInfo{
@@ -606,7 +606,10 @@ const VulkanRenderer = struct {
 
         // Color blending state
         const color_blend_attachment = vk.VkPipelineColorBlendAttachmentState{
-            .colorWriteMask = vk.VK_COLOR_COMPONENT_R_BIT | vk.VK_COLOR_COMPONENT_G_BIT | vk.VK_COLOR_COMPONENT_B_BIT | vk.VK_COLOR_COMPONENT_A_BIT,
+            .colorWriteMask = vk.VK_COLOR_COMPONENT_R_BIT |
+                vk.VK_COLOR_COMPONENT_G_BIT |
+                vk.VK_COLOR_COMPONENT_B_BIT |
+                vk.VK_COLOR_COMPONENT_A_BIT,
             .blendEnable = vk.VK_FALSE,
             .srcColorBlendFactor = vk.VK_BLEND_FACTOR_ONE,
             .dstColorBlendFactor = vk.VK_BLEND_FACTOR_ZERO,
@@ -638,9 +641,12 @@ const VulkanRenderer = struct {
             .flags = 0,
         };
 
-        if (vk.vkCreatePipelineLayout(self.device, &pipeline_layout_info, null, &self.pipeline_layout) != vk.VK_SUCCESS) {
-            return error.PipelineLayoutCreationFailed;
-        }
+        try checkVulkanResult(vk.vkCreatePipelineLayout(
+            self.device,
+            &pipeline_layout_info,
+            null,
+            &self.pipeline_layout,
+        ));
 
         // Create graphics pipeline
         const pipeline_info = vk.VkGraphicsPipelineCreateInfo{
@@ -664,9 +670,14 @@ const VulkanRenderer = struct {
             .flags = 0,
         };
 
-        if (vk.vkCreateGraphicsPipelines(self.device, null, 1, &pipeline_info, null, &self.pipeline) != vk.VK_SUCCESS) {
-            return error.GraphicsPipelineCreationFailed;
-        }
+        try checkVulkanResult(vk.vkCreateGraphicsPipelines(
+            self.device,
+            null,
+            1,
+            &pipeline_info,
+            null,
+            &self.pipeline,
+        ));
     }
 
     fn createFramebuffers(self: *VulkanRenderer) !void {
