@@ -358,13 +358,47 @@ const VulkanRenderer = struct {
             frag_stage_info,
         };
 
+        // Vertex binding description
+        const binding_description = vk.VkVertexInputBindingDescription{
+            .binding = 0,
+            .stride = @sizeOf(struct {
+                pos: [2]f32,
+                color: [3]f32,
+            }),
+            .inputRate = vk.VK_VERTEX_INPUT_RATE_VERTEX,
+        };
+
+        // Vertex attribute descriptions
+        const attribute_descriptions = [_]vk.VkVertexInputAttributeDescription{
+            // Position attribute
+            vk.VkVertexInputAttributeDescription{
+                .binding = 0,
+                .location = 0,
+                .format = vk.VK_FORMAT_R32G32_SFLOAT,
+                .offset = @offsetOf(struct {
+                    pos: [2]f32,
+                    color: [3]f32,
+                }, "pos"),
+            },
+            // Color attribute
+            vk.VkVertexInputAttributeDescription{
+                .binding = 0,
+                .location = 1,
+                .format = vk.VK_FORMAT_R32G32B32_SFLOAT,
+                .offset = @offsetOf(struct {
+                    pos: [2]f32,
+                    color: [3]f32,
+                }, "color"),
+            },
+        };
+
         // Vertex input state
         const vertex_input_info = vk.VkPipelineVertexInputStateCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            .vertexBindingDescriptionCount = 0,
-            .pVertexBindingDescriptions = null,
-            .vertexAttributeDescriptionCount = 0,
-            .pVertexAttributeDescriptions = null,
+            .vertexBindingDescriptionCount = 1,
+            .pVertexBindingDescriptions = &binding_description,
+            .vertexAttributeDescriptionCount = attribute_descriptions.len,
+            .pVertexAttributeDescriptions = &attribute_descriptions,
             .pNext = null,
             .flags = 0,
         };
