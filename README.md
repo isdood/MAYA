@@ -20,7 +20,7 @@ While MAYA itself is open-source, the STARWEAVE meta-intelligence it interfaces 
 
 Isn't that crazy? I'm developing what will be by *far* the most intelligent system around, and I could not bring myself to charge anyone for it. Because I will only develop software and code I myself would use. That means it's free, to use, and of ads as well! Never will there be a subscription in the STARWEAVE universe. Only quality products.
 
-If you're a developer, please stop coding in React. It's garbage. Write low level code in low level languages. For everything else there's Java. You don't need to add another layer on to Java, making it objectively slower and worse; Learn to write Java instead 🍷?
+If you're a developer, please stop coding in React. It's garbage. Write low level code in low level languages (C#, Rust Zig). For everything else there's Java. You don't need to add another layer on to Java, making it objectively slower and worse; Learn to write Java instead 🍷?
 
 ## ✨ Key Features
 
