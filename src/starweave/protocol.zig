@@ -39,6 +39,157 @@ pub const ValidationError = error{
     InvalidSourceTarget,
 };
 
+/// Validation cache for optimizing repeated validations
+pub const ValidationCache = struct {
+    const CacheEntry = struct {
+        hash: u64,
+        timestamp: i64,
+        is_valid: bool,
+        error: ?ValidationError,
+    };
+
+    entries: std.AutoHashMap(u64, CacheEntry),
+    max_size: usize,
+    allocator: std.mem.Allocator,
+    last_cleanup: i64,
+
+    pub fn init(alloc: std.mem.Allocator, max_size: usize) ValidationCache {
+        return ValidationCache{
+            .entries = std.AutoHashMap(u64, CacheEntry).init(alloc),
+            .max_size = max_size,
+            .allocator = alloc,
+            .last_cleanup = std.time.milliTimestamp(),
+        };
+    }
+
+    pub fn deinit(self: *ValidationCache) void {
+        self.entries.deinit();
+    }
+
+    fn cleanup(self: *ValidationCache) void {
+        const now = std.time.milliTimestamp();
+        if (now - self.last_cleanup < 60000) return; // Cleanup every minute
+
+        var it = self.entries.iterator();
+        while (it.next()) |entry| {
+            if (now - entry.value_ptr.timestamp > 300000) { // Remove entries older than 5 minutes
+                _ = self.entries.remove(entry.key_ptr.*);
+            }
+        }
+        self.last_cleanup = now;
+    }
+
+    pub fn get(self: *ValidationCache, hash: u64) ?CacheEntry {
+        self.cleanup();
+        return self.entries.get(hash);
+    }
+
+    pub fn put(self: *ValidationCache, hash: u64, is_valid: bool, err: ?ValidationError) !void {
+        if (self.entries.count() >= self.max_size) {
+            // Remove oldest entry
+            var oldest_time: i64 = std.math.maxInt(i64);
+            var oldest_key: ?u64 = null;
+            var it = self.entries.iterator();
+            while (it.next()) |entry| {
+                if (entry.value_ptr.timestamp < oldest_time) {
+                    oldest_time = entry.value_ptr.timestamp;
+                    oldest_key = entry.key_ptr.*;
+                }
+            }
+            if (oldest_key) |key| {
+                _ = self.entries.remove(key);
+            }
+        }
+
+        try self.entries.put(hash, .{
+            .hash = hash,
+            .timestamp = std.time.milliTimestamp(),
+            .is_valid = is_valid,
+            .error = err,
+        });
+    }
+};
+
+/// Recovery state tracking
+pub const RecoveryState = struct {
+    const Self = @This();
+
+    /// Current recovery attempt
+    attempt: u32,
+    /// Maximum number of recovery attempts
+    max_attempts: u32,
+    /// Last error encountered
+    last_error: ?ValidationError,
+    /// Timestamp of last recovery attempt
+    last_attempt_time: i64,
+    /// Recovery log entries
+    recovery_log: std.ArrayList(RecoveryLogEntry),
+    /// State snapshot before recovery
+    state_snapshot: ?StateSnapshot,
+    /// Retry delay in milliseconds
+    retry_delay: u32,
+    /// Recovery status
+    status: RecoveryStatus,
+
+    pub const RecoveryStatus = enum {
+        idle,
+        in_progress,
+        successful,
+        failed,
+    };
+
+    pub const RecoveryLogEntry = struct {
+        timestamp: i64,
+        error: ValidationError,
+        action: []const u8,
+        success: bool,
+    };
+
+    pub const StateSnapshot = struct {
+        quantum_state: ?neural.QuantumState,
+        neural_activity: ?f64,
+        pattern: ?glimmer.GlimmerPattern,
+        system_status: Message.SystemStatus,
+    };
+
+    pub fn init(allocator: std.mem.Allocator) !Self {
+        return Self{
+            .attempt = 0,
+            .max_attempts = 3,
+            .last_error = null,
+            .last_attempt_time = 0,
+            .recovery_log = std.ArrayList(RecoveryLogEntry).init(allocator),
+            .state_snapshot = null,
+            .retry_delay = 1000, // 1 second initial delay
+            .status = .idle,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.recovery_log.deinit();
+    }
+
+    pub fn logRecoveryAttempt(self: *Self, error: ValidationError, action: []const u8, success: bool) !void {
+        try self.recovery_log.append(.{
+            .timestamp = std.time.milliTimestamp(),
+            .error = error,
+            .action = action,
+            .success = success,
+        });
+    }
+
+    pub fn shouldRetry(self: *Self) bool {
+        return self.attempt < self.max_attempts and
+               (std.time.milliTimestamp() - self.last_attempt_time) >= self.retry_delay;
+    }
+
+    pub fn updateRetryDelay(self: *Self) void {
+        // Exponential backoff with jitter
+        const jitter = @as(f64, @floatFromInt(std.crypto.random.int(u32))) / @as(f64, @floatFromInt(std.math.maxInt(u32)));
+        self.retry_delay = @intCast(@as(u64, @intFromFloat(@as(f64, @floatFromInt(self.retry_delay)) * (1.5 + jitter))));
+    }
+};
+
 /// STARWEAVE Protocol for quantum-neural communication
 pub const StarweaveProtocol = struct {
     const Self = @This();
@@ -114,26 +265,50 @@ pub const StarweaveProtocol = struct {
             
             // Check amplitude range
             if (state.amplitude < 0 or state.amplitude > 1.0) {
-                return ValidationError.InvalidQuantumState;
+                return ValidationError.InvalidQuantumAmplitude;
             }
 
             // Check phase range
             if (state.phase < -std.math.pi or state.phase > std.math.pi) {
-                return ValidationError.InvalidQuantumState;
+                return ValidationError.InvalidQuantumPhase;
             }
 
             // Check energy consistency
             const expected_energy = state.amplitude * state.amplitude;
             if (@abs(state.energy - expected_energy) > 0.001) {
+                return ValidationError.InvalidQuantumEnergy;
+            }
+
+            // Enhanced quantum coherence validation
+            if (state.coherence < 0 or state.coherence > 1.0) {
+                return ValidationError.InvalidQuantumCoherence;
+            }
+
+            // Check coherence-energy relationship
+            const min_coherence = 0.5 * state.energy;
+            if (state.coherence < min_coherence) {
                 return ValidationError.QuantumCoherenceViolation;
             }
 
-            // Check resonance and coherence
+            // Check resonance-coherence relationship
             if (state.resonance < 0 or state.resonance > 1.0) {
-                return ValidationError.NeuralResonanceMismatch;
+                return ValidationError.InvalidQuantumResonance;
             }
-            if (state.coherence < 0 or state.coherence > 1.0) {
-                return ValidationError.PatternStabilityError;
+            const expected_coherence = 0.7 + (state.resonance * 0.3);
+            if (@abs(state.coherence - expected_coherence) > 0.2) {
+                return ValidationError.QuantumCoherenceViolation;
+            }
+
+            // Check phase-coherence relationship
+            const phase_coherence = @cos(state.phase) * 0.5 + 0.5;
+            if (@abs(state.coherence - phase_coherence) > 0.3) {
+                return ValidationError.QuantumCoherenceViolation;
+            }
+
+            // Check amplitude-coherence relationship
+            const amplitude_coherence = state.amplitude * 0.8 + 0.2;
+            if (@abs(state.coherence - amplitude_coherence) > 0.3) {
+                return ValidationError.QuantumCoherenceViolation;
             }
         }
 
@@ -241,13 +416,9 @@ pub const StarweaveProtocol = struct {
     context: *anyopaque,
     visualization_enabled: bool,
     recovery_state: ?RecoveryState,
-
-    /// Error recovery state
-    const RecoveryState = struct {
-        retry_count: u32,
-        last_error: ?ValidationError,
-        recovery_timeout: i64,
-    };
+    validation_cache: ValidationCache,
+    last_messages: std.ArrayList(Message),
+    max_message_history: usize,
 
     /// Initialize the protocol
     pub fn init(alloc: std.mem.Allocator, context: *anyopaque) !Self {
@@ -258,6 +429,9 @@ pub const StarweaveProtocol = struct {
             .context = context,
             .visualization_enabled = false,
             .recovery_state = null,
+            .validation_cache = ValidationCache.init(alloc, 1000),
+            .last_messages = std.ArrayList(Message).init(alloc),
+            .max_message_history = 100,
         };
     }
 
@@ -265,6 +439,7 @@ pub const StarweaveProtocol = struct {
     pub fn deinit(self: *Self) void {
         self.message_queue.deinit();
         self.handlers.deinit();
+        self.validation_cache.deinit();
     }
 
     /// Register a message handler
@@ -427,86 +602,196 @@ pub const StarweaveProtocol = struct {
         }
     }
 
-    /// Attempts to recover from an error
+    /// Enhanced error recovery with state restoration and retry logic
     fn attemptRecovery(self: *Self, err: ValidationError) !void {
         // Initialize recovery state if needed
         if (self.recovery_state == null) {
-            self.recovery_state = RecoveryState{
-                .retry_count = 0,
-                .last_error = err,
-                .recovery_timeout = std.time.milliTimestamp() + 5000, // 5 second timeout
-            };
+            self.recovery_state = try RecoveryState.init(self.allocator);
+        }
+        var recovery = &self.recovery_state.?;
+
+        // Check if we should attempt recovery
+        if (!recovery.shouldRetry()) {
+            return error.MaxRecoveryAttemptsExceeded;
         }
 
-        const state = &self.recovery_state.?;
-
-        // Check if we've exceeded retry limit
-        if (state.retry_count >= 3) {
-            return error.MaxRetriesExceeded;
+        // Take state snapshot if not already taken
+        if (recovery.state_snapshot == null) {
+            recovery.state_snapshot = try self.createStateSnapshot();
         }
 
-        // Check if we've exceeded timeout
-        if (std.time.milliTimestamp() > state.recovery_timeout) {
-            return error.RecoveryTimeout;
-        }
-
-        // Increment retry count
-        state.retry_count += 1;
+        // Update recovery state
+        recovery.attempt += 1;
+        recovery.last_error = err;
+        recovery.last_attempt_time = std.time.milliTimestamp();
+        recovery.status = .in_progress;
 
         // Attempt recovery based on error type
-        switch (err) {
-            .InvalidQuantumAmplitude, .InvalidQuantumPhase, .InvalidQuantumEnergy,
-            .InvalidQuantumResonance, .InvalidQuantumCoherence => {
-                // Reset quantum state
-                try self.resetQuantumState();
-            },
-            .InvalidNeuralAmplitude => {
-                // Reset neural activity
-                try self.resetNeuralActivity();
-            },
-            .InvalidPatternIntensity, .InvalidPatternFrequency, .InvalidPatternPhase => {
-                // Reset pattern
-                try self.resetPattern();
-            },
-            else => {
-                // For other errors, just log and continue
-                std.log.err("Unhandled error during recovery: {}", .{err});
-            },
+        const success = switch (err) {
+            .InvalidQuantumState, .InvalidQuantumAmplitude, .InvalidQuantumPhase,
+            .InvalidQuantumEnergy, .InvalidQuantumResonance, .InvalidQuantumCoherence,
+            .QuantumCoherenceViolation => try self.recoverQuantumState(),
+            .InvalidNeuralActivity => try self.recoverNeuralActivity(),
+            .InvalidPattern, .PatternStabilityError => try self.recoverPattern(),
+            .InvalidSystemStatus => try self.recoverSystemStatus(),
+            else => try self.defaultRecovery(),
+        };
+
+        // Log recovery attempt
+        try recovery.logRecoveryAttempt(err, @tagName(err), success);
+
+        if (success) {
+            recovery.status = .successful;
+            // Restore state if recovery was successful
+            try self.restoreState(recovery.state_snapshot.?);
+        } else {
+            recovery.status = .failed;
+            recovery.updateRetryDelay();
+            // If recovery failed, try to restore to last known good state
+            if (recovery.state_snapshot) |snapshot| {
+                try self.restoreState(snapshot);
+            }
         }
     }
 
-    /// Resets quantum state to default values
-    fn resetQuantumState(self: *Self) !void {
+    /// Create a snapshot of the current system state
+    fn createStateSnapshot(self: *Self) !RecoveryState.StateSnapshot {
         const ContextType = struct {
             neural_bridge: *neural.NeuralBridge,
             pattern: glimmer.GlimmerPattern,
         };
-        const context = @as(*ContextType, @ptrCast(self.context));
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
 
+        return RecoveryState.StateSnapshot{
+            .quantum_state = if (context.neural_bridge.quantum_states.items.len > 0)
+                context.neural_bridge.quantum_states.items[0]
+            else
+                null,
+            .neural_activity = context.neural_bridge.current_activity,
+            .pattern = context.pattern,
+            .system_status = .{
+                .quantum_coherence = 1.0,
+                .neural_resonance = 1.0,
+                .pattern_stability = 1.0,
+                .system_health = 1.0,
+            },
+        };
+    }
+
+    /// Restore system state from snapshot
+    fn restoreState(self: *Self, snapshot: RecoveryState.StateSnapshot) !void {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
+
+        // Restore quantum state
+        if (snapshot.quantum_state) |state| {
+            if (context.neural_bridge.quantum_states.items.len > 0) {
+                context.neural_bridge.quantum_states.items[0] = state;
+            } else {
+                try context.neural_bridge.quantum_states.append(state);
+            }
+        }
+
+        // Restore neural activity
+        context.neural_bridge.current_activity = snapshot.neural_activity orelse 0.0;
+
+        // Restore pattern
+        context.pattern = snapshot.pattern orelse glimmer.GlimmerPattern.default();
+
+        // Log state restoration
+        std.log.info("System state restored from snapshot", .{});
+    }
+
+    /// Recover quantum state
+    fn recoverQuantumState(self: *Self) !bool {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
+
+        // Reset quantum state to ground state
         try context.neural_bridge.resetQuantumState();
+        
+        // Verify recovery
+        const state = try context.neural_bridge.getQuantumState(0);
+        return state.coherence >= 0.5 and state.resonance >= 0.5;
     }
 
-    /// Resets neural activity to default values
-    fn resetNeuralActivity(self: *Self) !void {
+    /// Recover neural activity
+    fn recoverNeuralActivity(self: *Self) !bool {
         const ContextType = struct {
             neural_bridge: *neural.NeuralBridge,
             pattern: glimmer.GlimmerPattern,
         };
-        const context = @as(*ContextType, @ptrCast(self.context));
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
 
+        // Reset neural activity
         try context.neural_bridge.resetActivity();
+        
+        // Verify recovery
+        return context.neural_bridge.current_activity >= 0.3;
     }
 
-    /// Resets pattern to default values
-    fn resetPattern(self: *Self) !void {
+    /// Recover pattern
+    fn recoverPattern(self: *Self) !bool {
         const ContextType = struct {
             neural_bridge: *neural.NeuralBridge,
             pattern: glimmer.GlimmerPattern,
         };
-        const context = @as(*ContextType, @ptrCast(self.context));
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
 
+        // Reset pattern
         context.pattern = glimmer.GlimmerPattern.default();
         try context.neural_bridge.synchronizePattern(context.pattern);
+        
+        // Verify recovery
+        return context.pattern.stability >= 0.5;
+    }
+
+    /// Recover system status
+    fn recoverSystemStatus(self: *Self) !bool {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
+
+        // Reset all system components
+        try context.neural_bridge.resetQuantumState();
+        try context.neural_bridge.resetActivity();
+        context.pattern = glimmer.GlimmerPattern.default();
+        try context.neural_bridge.synchronizePattern(context.pattern);
+        
+        // Verify recovery
+        const state = try context.neural_bridge.getQuantumState(0);
+        return state.coherence >= 0.5 and
+               context.neural_bridge.current_activity >= 0.3 and
+               context.pattern.stability >= 0.5;
+    }
+
+    /// Default recovery procedure
+    fn defaultRecovery(self: *Self) !bool {
+        const ContextType = struct {
+            neural_bridge: *neural.NeuralBridge,
+            pattern: glimmer.GlimmerPattern,
+        };
+        const context = @as(*ContextType, @alignCast(@ptrCast(self.context)));
+
+        // Attempt to recover all components
+        try context.neural_bridge.resetQuantumState();
+        try context.neural_bridge.resetActivity();
+        context.pattern = glimmer.GlimmerPattern.default();
+        try context.neural_bridge.synchronizePattern(context.pattern);
+        
+        // Verify recovery
+        const state = try context.neural_bridge.getQuantumState(0);
+        return state.coherence >= 0.5 and
+               context.neural_bridge.current_activity >= 0.3 and
+               context.pattern.stability >= 0.5;
     }
 
     /// Updates visualization with message data
@@ -552,11 +837,43 @@ pub const StarweaveProtocol = struct {
 
         // Quantum coherence check
         if (msg.msg_type == .quantum_state) {
-            if (msg.data.quantum_state.coherence < 0.0 or msg.data.quantum_state.coherence > 1.0) {
+            const state = msg.data.quantum_state;
+            
+            // Check coherence range
+            if (state.coherence < 0.0 or state.coherence > 1.0) {
                 return error.InvalidQuantumCoherence;
             }
-            if (msg.data.quantum_state.amplitude < 0.0) {
+
+            // Check amplitude range
+            if (state.amplitude < 0.0 or state.amplitude > 1.0) {
                 return error.InvalidQuantumAmplitude;
+            }
+
+            // Check phase range
+            if (state.phase < -std.math.pi or state.phase > std.math.pi) {
+                return error.InvalidQuantumPhase;
+            }
+
+            // Check energy consistency
+            const expected_energy = state.amplitude * state.amplitude;
+            if (@abs(state.energy - expected_energy) > 0.001) {
+                return error.InvalidQuantumEnergy;
+            }
+
+            // Check resonance range
+            if (state.resonance < 0.0 or state.resonance > 1.0) {
+                return error.InvalidQuantumResonance;
+            }
+
+            // Check coherence relationships
+            const min_coherence = 0.5 * state.energy;
+            if (state.coherence < min_coherence) {
+                return error.QuantumCoherenceViolation;
+            }
+
+            const expected_coherence = 0.7 + (state.resonance * 0.3);
+            if (@abs(state.coherence - expected_coherence) > 0.2) {
+                return error.QuantumCoherenceViolation;
             }
         }
 
