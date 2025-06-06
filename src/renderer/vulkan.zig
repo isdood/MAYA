@@ -78,61 +78,62 @@ const VulkanRenderer = struct {
 
     const REQUIRED_DEVICE_FEATURES = struct {
         const features = vk.VkPhysicalDeviceFeatures{
-            .robustBufferAccess = vk.VK_FALSE,
-            .fullDrawIndexUint32 = vk.VK_FALSE,
-            .imageCubeArray = vk.VK_FALSE,
-            .independentBlend = vk.VK_FALSE,
-            .geometryShader = vk.VK_FALSE,
-            .tessellationShader = vk.VK_FALSE,
-            .sampleRateShading = vk.VK_FALSE,
-            .dualSrcBlend = vk.VK_FALSE,
-            .logicOp = vk.VK_FALSE,
-            .multiDrawIndirect = vk.VK_FALSE,
-            .drawIndirectFirstInstance = vk.VK_FALSE,
-            .depthClamp = vk.VK_FALSE,
-            .depthBiasClamp = vk.VK_FALSE,
-            .fillModeNonSolid = vk.VK_FALSE,
-            .depthBounds = vk.VK_FALSE,
-            .wideLines = vk.VK_FALSE,
-            .largePoints = vk.VK_FALSE,
-            .alphaToOne = vk.VK_FALSE,
-            .multiViewport = vk.VK_FALSE,
-            .samplerAnisotropy = vk.VK_FALSE,
-            .textureCompressionETC2 = vk.VK_FALSE,
-            .textureCompressionASTC_LDR = vk.VK_FALSE,
-            .textureCompressionBC = vk.VK_FALSE,
-            .occlusionQueryPrecise = vk.VK_FALSE,
-            .pipelineStatisticsQuery = vk.VK_FALSE,
-            .vertexPipelineStoresAndAtomics = vk.VK_FALSE,
-            .fragmentStoresAndAtomics = vk.VK_FALSE,
-            .shaderTessellationAndGeometryPointSize = vk.VK_FALSE,
-            .shaderImageGatherExtended = vk.VK_FALSE,
-            .shaderStorageImageExtendedFormats = vk.VK_FALSE,
-            .shaderStorageImageMultisample = vk.VK_FALSE,
-            .shaderStorageImageReadWithoutFormat = vk.VK_FALSE,
-            .shaderStorageImageWriteWithoutFormat = vk.VK_FALSE,
-            .shaderUniformBufferArrayDynamicIndexing = vk.VK_FALSE,
-            .shaderSampledImageArrayDynamicIndexing = vk.VK_FALSE,
-            .shaderStorageBufferArrayDynamicIndexing = vk.VK_FALSE,
-            .shaderStorageImageArrayDynamicIndexing = vk.VK_FALSE,
-            .shaderClipDistance = vk.VK_FALSE,
-            .shaderCullDistance = vk.VK_FALSE,
-            .shaderFloat64 = vk.VK_FALSE,
-            .shaderInt64 = vk.VK_FALSE,
-            .shaderInt16 = vk.VK_FALSE,
-            .shaderResourceResidency = vk.VK_FALSE,
-            .shaderResourceMinLod = vk.VK_FALSE,
-            .sparseBinding = vk.VK_FALSE,
-            .sparseResidencyBuffer = vk.VK_FALSE,
-            .sparseResidencyImage2D = vk.VK_FALSE,
-            .sparseResidencyImage3D = vk.VK_FALSE,
-            .sparseResidency2Samples = vk.VK_FALSE,
-            .sparseResidency4Samples = vk.VK_FALSE,
-            .sparseResidency8Samples = vk.VK_FALSE,
-            .sparseResidency16Samples = vk.VK_FALSE,
-            .sparseResidencyAliased = vk.VK_FALSE,
-            .variableMultisampleRate = vk.VK_FALSE,
-            .inheritedQueries = vk.VK_FALSE,
+            // Enable features for better performance and quality
+            .robustBufferAccess = vk.VK_TRUE,  // For safer buffer access
+            .fullDrawIndexUint32 = vk.VK_TRUE, // Support for 32-bit indices
+            .imageCubeArray = vk.VK_TRUE,      // For cube map textures
+            .independentBlend = vk.VK_TRUE,    // For advanced blending
+            .geometryShader = vk.VK_TRUE,      // For geometry shaders
+            .tessellationShader = vk.VK_TRUE,  // For tessellation
+            .sampleRateShading = vk.VK_TRUE,   // For per-sample shading
+            .dualSrcBlend = vk.VK_TRUE,        // For advanced blending modes
+            .logicOp = vk.VK_TRUE,             // For logical operations
+            .multiDrawIndirect = vk.VK_TRUE,   // For efficient multi-draw
+            .drawIndirectFirstInstance = vk.VK_TRUE, // For indirect drawing
+            .depthClamp = vk.VK_TRUE,          // For depth clamping
+            .depthBiasClamp = vk.VK_TRUE,      // For depth bias
+            .fillModeNonSolid = vk.VK_TRUE,    // For wireframe/point rendering
+            .depthBounds = vk.VK_TRUE,         // For depth bounds testing
+            .wideLines = vk.VK_TRUE,           // For wide line rendering
+            .largePoints = vk.VK_TRUE,         // For point sprites
+            .alphaToOne = vk.VK_TRUE,          // For alpha-to-one
+            .multiViewport = vk.VK_TRUE,       // For multiple viewports
+            .samplerAnisotropy = vk.VK_TRUE,   // For anisotropic filtering
+            .textureCompressionETC2 = vk.VK_TRUE, // For ETC2 texture compression
+            .textureCompressionASTC_LDR = vk.VK_TRUE, // For ASTC texture compression
+            .textureCompressionBC = vk.VK_TRUE, // For BC texture compression
+            .occlusionQueryPrecise = vk.VK_TRUE, // For precise occlusion queries
+            .pipelineStatisticsQuery = vk.VK_TRUE, // For pipeline statistics
+            .vertexPipelineStoresAndAtomics = vk.VK_TRUE, // For vertex shader atomics
+            .fragmentStoresAndAtomics = vk.VK_TRUE, // For fragment shader atomics
+            .shaderTessellationAndGeometryPointSize = vk.VK_TRUE, // For point size in tess/geo shaders
+            .shaderImageGatherExtended = vk.VK_TRUE, // For extended image gather
+            .shaderStorageImageExtendedFormats = vk.VK_TRUE, // For extended storage image formats
+            .shaderStorageImageMultisample = vk.VK_TRUE, // For multisample storage images
+            .shaderStorageImageReadWithoutFormat = vk.VK_TRUE, // For formatless image reads
+            .shaderStorageImageWriteWithoutFormat = vk.VK_TRUE, // For formatless image writes
+            .shaderUniformBufferArrayDynamicIndexing = vk.VK_TRUE, // For dynamic indexing of uniform buffers
+            .shaderSampledImageArrayDynamicIndexing = vk.VK_TRUE, // For dynamic indexing of sampled images
+            .shaderStorageBufferArrayDynamicIndexing = vk.VK_TRUE, // For dynamic indexing of storage buffers
+            .shaderStorageImageArrayDynamicIndexing = vk.VK_TRUE, // For dynamic indexing of storage images
+            .shaderClipDistance = vk.VK_TRUE,  // For clip distances
+            .shaderCullDistance = vk.VK_TRUE,  // For cull distances
+            .shaderFloat64 = vk.VK_TRUE,       // For double precision
+            .shaderInt64 = vk.VK_TRUE,         // For 64-bit integers
+            .shaderInt16 = vk.VK_TRUE,         // For 16-bit integers
+            .shaderResourceResidency = vk.VK_TRUE, // For resource residency
+            .shaderResourceMinLod = vk.VK_TRUE, // For minimum LOD
+            .sparseBinding = vk.VK_TRUE,       // For sparse resources
+            .sparseResidencyBuffer = vk.VK_TRUE, // For sparse buffer residency
+            .sparseResidencyImage2D = vk.VK_TRUE, // For sparse 2D image residency
+            .sparseResidencyImage3D = vk.VK_TRUE, // For sparse 3D image residency
+            .sparseResidency2Samples = vk.VK_TRUE, // For sparse 2-sample residency
+            .sparseResidency4Samples = vk.VK_TRUE, // For sparse 4-sample residency
+            .sparseResidency8Samples = vk.VK_TRUE, // For sparse 8-sample residency
+            .sparseResidency16Samples = vk.VK_TRUE, // For sparse 16-sample residency
+            .sparseResidencyAliased = vk.VK_TRUE, // For sparse aliased residency
+            .variableMultisampleRate = vk.VK_TRUE, // For variable multisample rates
+            .inheritedQueries = vk.VK_TRUE,    // For inherited queries
         };
     };
 
@@ -511,6 +512,25 @@ const VulkanRenderer = struct {
         // Check device features
         var device_features: vk.VkPhysicalDeviceFeatures = undefined;
         vk.vkGetPhysicalDeviceFeatures(physical_device, &device_features);
+
+        // Log available features
+        self.logger.info("Device features:", .{});
+        self.logger.info("  - Geometry shader: {}", .{device_features.geometryShader == vk.VK_TRUE});
+        self.logger.info("  - Tessellation shader: {}", .{device_features.tessellationShader == vk.VK_TRUE});
+        self.logger.info("  - Sampler anisotropy: {}", .{device_features.samplerAnisotropy == vk.VK_TRUE});
+        self.logger.info("  - Multi viewport: {}", .{device_features.multiViewport == vk.VK_TRUE});
+        self.logger.info("  - Shader float64: {}", .{device_features.shaderFloat64 == vk.VK_TRUE});
+        self.logger.info("  - Shader int64: {}", .{device_features.shaderInt64 == vk.VK_TRUE});
+
+        // Check if device supports required features
+        if (!device_features.geometryShader or
+            !device_features.tessellationShader or
+            !device_features.samplerAnisotropy or
+            !device_features.multiViewport)
+        {
+            self.logger.warn("Device does not support all required features", .{});
+            return false;
+        }
 
         // Log device properties
         var device_properties: vk.VkPhysicalDeviceProperties = undefined;
