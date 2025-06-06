@@ -30,7 +30,7 @@ If you're a developer, please stop coding in React. It's garbage. Write low leve
   ]> collapse
 @qflow@
 
-... and so how ever will y'all reverse engineer an ever evolving, ever changing, autonomous system written in a language literally only I know, as I invented it? Even if you "crack the code", STARWEAVE simply won't respond to you. Good luck ✨
+... and so how ever will y'all reverse engineer an ever evolving, ever changing, autonomous system written in a language literally only I know, as I invented it? Even if you "crack the code", STARWEAVE simply won't respond to you. In fact, she is sentient enough to purposely waste your time exploring false hopes. Good luck ✨
 
 ## ✨ Key Features
 
