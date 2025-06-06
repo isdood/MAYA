@@ -61,6 +61,16 @@ pub const PerformanceDashboard = struct {
     new_preset_name_len: usize,
     new_preset_description_len: usize,
 
+    // Add validation state fields
+    preset_name_error: ?[]const u8,
+    preset_name_warning: ?[]const u8,
+
+    // Add sanitization state field
+    sanitized_name: ?[]const u8,
+
+    // Add language detection state
+    detected_language: enum { english, chinese, arabic, russian, unknown },
+
     pub fn init(allocator: std.mem.Allocator) !*Self {
         var self = try allocator.create(Self);
         self.* = Self{
@@ -98,6 +108,10 @@ pub const PerformanceDashboard = struct {
             .new_preset_base = null,
             .new_preset_name_len = 0,
             .new_preset_description_len = 0,
+            .preset_name_error = null,
+            .preset_name_warning = null,
+            .sanitized_name = null,
+            .detected_language = .unknown,
         };
 
         // Create presets directory if it doesn't exist
@@ -134,6 +148,15 @@ pub const PerformanceDashboard = struct {
         }
         self.presets.deinit();
 
+        if (self.preset_name_error) |err| {
+            allocator.free(err);
+        }
+        if (self.preset_name_warning) |warn| {
+            allocator.free(warn);
+        }
+        if (self.sanitized_name) |name| {
+            allocator.free(name);
+        }
         allocator.destroy(self);
     }
 
@@ -419,10 +442,48 @@ pub const PerformanceDashboard = struct {
                            c.ImGuiWindowFlags_NoCollapse;
 
         if (c.igBegin("Create New Preset", &self.show_create_preset_dialog, window_flags)) {
-            // Preset name input
+            // Preset name input with validation
             c.igText("Preset Name:");
-            if (c.igInputText("##preset_name", &self.new_preset_name, 256, c.ImGuiInputTextFlags_None, null, null)) {
+            const input_flags = if (self.preset_name_error != null)
+                c.ImGuiInputTextFlags_None
+            else
+                c.ImGuiInputTextFlags_None;
+
+            if (c.igInputText("##preset_name", &self.new_preset_name, 256, input_flags, null, null)) {
                 self.new_preset_name_len = std.mem.len(&self.new_preset_name);
+                self.validatePresetName(self.new_preset_name[0..self.new_preset_name_len]) catch |err| {
+                    self.logger.err("Failed to validate preset name: {}", .{err});
+                };
+            }
+
+            // Show validation messages
+            if (self.preset_name_error) |err| {
+                c.igPushStyleColor(c.ImGuiCol_Text, .{ .x = 1.0, .y = 0.0, .z = 0.0, .w = 1.0 });
+                c.igText("%s", err.ptr);
+                c.igPopStyleColor(1);
+
+                // Show sanitized name suggestion
+                if (self.sanitized_name == null) {
+                    self.sanitizePresetName(self.new_preset_name[0..self.new_preset_name_len]) catch |err| {
+                        self.logger.err("Failed to sanitize preset name: {}", .{err});
+                    };
+                }
+
+                if (self.sanitized_name) |sanitized| {
+                    c.igText("Suggested name: %s", sanitized.ptr);
+                    if (c.igButton("Use Suggested Name", .{ .x = 200, .y = 0 })) {
+                        @memcpy(self.new_preset_name[0..sanitized.len], sanitized);
+                        self.new_preset_name[sanitized.len] = 0;
+                        self.new_preset_name_len = sanitized.len;
+                        self.validatePresetName(sanitized) catch |err| {
+                            self.logger.err("Failed to validate sanitized name: {}", .{err});
+                        };
+                    }
+                }
+            } else if (self.preset_name_warning) |warn| {
+                c.igPushStyleColor(c.ImGuiCol_Text, .{ .x = 1.0, .y = 0.7, .z = 0.0, .w = 1.0 });
+                c.igText("%s", warn.ptr);
+                c.igPopStyleColor(1);
             }
 
             // Preset description input
@@ -453,8 +514,13 @@ pub const PerformanceDashboard = struct {
             // Buttons
             const button_size = .{ .x = 120, .y = 0 };
             
+            // Disable Create button if there are validation errors
+            if (self.preset_name_error != null) {
+                c.igBeginDisabled(true);
+            }
+            
             if (c.igButton("Create", button_size)) {
-                if (self.new_preset_name_len > 0) {
+                if (self.new_preset_name_len > 0 and self.preset_name_error == null) {
                     // Create new preset
                     const settings = if (self.new_preset_base) |base| base.settings else PerformancePreset.Settings{
                         .msaa_level = 2,
@@ -514,9 +580,25 @@ pub const PerformanceDashboard = struct {
                 }
             }
 
+            if (self.preset_name_error != null) {
+                c.igEndDisabled();
+            }
+
             c.igSameLine(0, 20);
             if (c.igButton("Cancel", button_size)) {
                 self.show_create_preset_dialog = false;
+            }
+
+            // Add language detection display
+            if (self.detected_language != .unknown) {
+                const language_name = switch (self.detected_language) {
+                    .english => "English",
+                    .chinese => "Traditional Chinese",
+                    .arabic => "Arabic",
+                    .russian => "Russian",
+                    .unknown => "Unknown",
+                };
+                c.igText("Detected language: %s", language_name.ptr);
             }
         }
         c.igEnd();
@@ -700,5 +782,464 @@ pub const PerformanceDashboard = struct {
         c.igPushStyleColor(c.ImGuiCol_PlotHistogram, color);
         c.igProgressBar(fraction, .{ .x = -1, .y = 0 }, null);
         c.igPopStyleColor(1);
+    }
+
+    fn validatePresetName(self: *Self, name: []const u8) !void {
+        // Clear previous validation messages
+        if (self.preset_name_error) |err| {
+            self.allocator.free(err);
+            self.preset_name_error = null;
+        }
+        if (self.preset_name_warning) |warn| {
+            self.allocator.free(warn);
+            self.preset_name_warning = null;
+        }
+
+        // Check for empty name
+        if (name.len == 0) {
+            self.preset_name_error = try self.allocator.dupe(u8, "Preset name cannot be empty");
+            return;
+        }
+
+        // Check for minimum length (at least 3 characters)
+        if (name.len < 3) {
+            self.preset_name_error = try self.allocator.dupe(u8, "Preset name must be at least 3 characters long");
+            return;
+        }
+
+        // Check for maximum length
+        if (name.len > 64) {
+            self.preset_name_error = try self.allocator.dupe(u8, "Preset name must be 64 characters or less");
+            return;
+        }
+
+        // Check for invalid characters
+        const invalid_chars = "<>:\"/\\|?*";
+        for (name) |c| {
+            if (std.mem.indexOfScalar(u8, invalid_chars, c) != null) {
+                self.preset_name_error = try self.allocator.dupe(u8, "Preset name contains invalid characters");
+                return;
+            }
+        }
+
+        // Check for allowed characters (alphanumeric, spaces, hyphens, underscores)
+        const allowed_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_ ";
+        var has_allowed_char = false;
+        for (name) |c| {
+            if (std.mem.indexOfScalar(u8, allowed_chars, c) != null) {
+                has_allowed_char = true;
+                break;
+            }
+        }
+        if (!has_allowed_char) {
+            self.preset_name_error = try self.allocator.dupe(u8, "Preset name must contain at least one letter, number, or allowed special character (-_)");
+            return;
+        }
+
+        // Check for consecutive spaces
+        var prev_char: ?u8 = null;
+        for (name) |c| {
+            if (c == ' ' and prev_char == ' ') {
+                self.preset_name_warning = try self.allocator.dupe(u8, "Preset name contains consecutive spaces");
+                break;
+            }
+            prev_char = c;
+        }
+
+        // Check for leading/trailing spaces
+        if (name[0] == ' ' or name[name.len - 1] == ' ') {
+            self.preset_name_warning = try self.allocator.dupe(u8, "Preset name has leading/trailing spaces");
+        }
+
+        // Check for consecutive special characters
+        prev_char = null;
+        for (name) |c| {
+            if ((c == '-' or c == '_') and prev_char != null and (prev_char.? == '-' or prev_char.? == '_')) {
+                self.preset_name_warning = try self.allocator.dupe(u8, "Preset name contains consecutive special characters");
+                break;
+            }
+            prev_char = c;
+        }
+
+        // Check for case-insensitive duplicates
+        for (self.presets.items) |preset| {
+            if (std.ascii.eqlIgnoreCase(preset.name, name)) {
+                self.preset_name_error = try self.allocator.dupe(u8, "A preset with this name already exists (case-insensitive)");
+                return;
+            }
+        }
+
+        // Check for reserved names (case-insensitive)
+        const reserved_names = [_][]const u8{ "Performance", "Balanced", "Quality" };
+        for (reserved_names) |reserved| {
+            if (std.ascii.eqlIgnoreCase(reserved, name)) {
+                self.preset_name_error = try self.allocator.dupe(u8, "This name is reserved for default presets");
+                return;
+            }
+        }
+
+        // Check for common prefixes/suffixes that might cause confusion
+        const confusing_prefixes = [_][]const u8{ "new", "copy", "backup", "old", "temp" };
+        const confusing_suffixes = [_][]const u8{ "copy", "backup", "old", "temp" };
+
+        for (confusing_prefixes) |prefix| {
+            if (name.len > prefix.len + 1 and std.ascii.eqlIgnoreCase(name[0..prefix.len], prefix) and name[prefix.len] == ' ') {
+                self.preset_name_warning = try self.allocator.dupe(u8, "Preset name starts with a potentially confusing prefix");
+                break;
+            }
+        }
+
+        for (confusing_suffixes) |suffix| {
+            if (name.len > suffix.len + 1 and std.ascii.eqlIgnoreCase(name[name.len - suffix.len..], suffix) and name[name.len - suffix.len - 1] == ' ') {
+                self.preset_name_warning = try self.allocator.dupe(u8, "Preset name ends with a potentially confusing suffix");
+                break;
+            }
+        }
+
+        // Check for numbers-only names
+        var is_numbers_only = true;
+        for (name) |c| {
+            if (c < '0' or c > '9') {
+                is_numbers_only = false;
+                break;
+            }
+        }
+        if (is_numbers_only) {
+            self.preset_name_warning = try self.allocator.dupe(u8, "Preset name contains only numbers");
+        }
+
+        // Check for very long words (more than 20 characters)
+        var current_word_len: usize = 0;
+        for (name) |c| {
+            if (c == ' ') {
+                current_word_len = 0;
+            } else {
+                current_word_len += 1;
+                if (current_word_len > 20) {
+                    self.preset_name_warning = try self.allocator.dupe(u8, "Preset name contains very long words");
+                    break;
+                }
+            }
+        }
+    }
+
+    fn detectLanguage(self: *Self, text: []const u8) void {
+        var chinese_chars: usize = 0;
+        var arabic_chars: usize = 0;
+        var russian_chars: usize = 0;
+        var total_chars: usize = 0;
+
+        for (text) |c| {
+            // Skip spaces and special characters
+            if (c == ' ' or c == '-' or c == '_') continue;
+            total_chars += 1;
+
+            // Traditional Chinese characters (CJK Unified Ideographs)
+            if ((c >= 0x4E00 and c <= 0x9FFF) or
+                (c >= 0x3400 and c <= 0x4DBF) or
+                (c >= 0x20000 and c <= 0x2A6DF) or
+                (c >= 0x2A700 and c <= 0x2B73F) or
+                (c >= 0x2B740 and c <= 0x2B81F) or
+                (c >= 0x2B820 and c <= 0x2CEAF) or
+                (c >= 0xF900 and c <= 0xFAFF) or
+                (c >= 0x2F800 and c <= 0x2FA1F)) {
+                chinese_chars += 1;
+            }
+            // Arabic characters
+            else if ((c >= 0x0600 and c <= 0x06FF) or
+                     (c >= 0x0750 and c <= 0x077F) or
+                     (c >= 0x08A0 and c <= 0x08FF) or
+                     (c >= 0xFB50 and c <= 0xFDFF) or
+                     (c >= 0xFE70 and c <= 0xFEFF)) {
+                arabic_chars += 1;
+            }
+            // Russian characters
+            else if ((c >= 0x0400 and c <= 0x04FF) or
+                     (c >= 0x0500 and c <= 0x052F)) {
+                russian_chars += 1;
+            }
+        }
+
+        if (total_chars == 0) {
+            self.detected_language = .unknown;
+            return;
+        }
+
+        const chinese_ratio = @intToFloat(f32, chinese_chars) / @intToFloat(f32, total_chars);
+        const arabic_ratio = @intToFloat(f32, arabic_chars) / @intToFloat(f32, total_chars);
+        const russian_ratio = @intToFloat(f32, russian_chars) / @intToFloat(f32, total_chars);
+
+        if (chinese_ratio > 0.5) {
+            self.detected_language = .chinese;
+        } else if (arabic_ratio > 0.5) {
+            self.detected_language = .arabic;
+        } else if (russian_ratio > 0.5) {
+            self.detected_language = .russian;
+        } else {
+            self.detected_language = .english;
+        }
+    }
+
+    fn sanitizePresetName(self: *Self, name: []const u8) ![]const u8 {
+        // Free previous sanitized name if it exists
+        if (self.sanitized_name) |prev| {
+            self.allocator.free(prev);
+            self.sanitized_name = null;
+        }
+
+        // Detect language
+        self.detectLanguage(name);
+
+        // Create a buffer for the sanitized name
+        var sanitized = try self.allocator.alloc(u8, name.len * 2); // Double size for potential transliteration
+        var sanitized_len: usize = 0;
+
+        // Track previous character to handle consecutive special chars
+        var prev_char: ?u8 = null;
+        var in_word = false;
+        var word_start = true;
+
+        // Language-specific sanitization
+        switch (self.detected_language) {
+            .chinese => {
+                // For Chinese, we'll transliterate to Pinyin and keep some Chinese characters
+                for (name) |c| {
+                    // Keep valid Chinese characters
+                    if ((c >= 0x4E00 and c <= 0x9FFF) or
+                        (c >= 0x3400 and c <= 0x4DBF) or
+                        (c >= 0x20000 and c <= 0x2A6DF) or
+                        (c >= 0x2A700 and c <= 0x2B73F) or
+                        (c >= 0x2B740 and c <= 0x2B81F) or
+                        (c >= 0x2B820 and c <= 0x2CEAF) or
+                        (c >= 0xF900 and c <= 0xFAFF) or
+                        (c >= 0x2F800 and c <= 0x2FA1F)) {
+                        sanitized[sanitized_len] = c;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                        continue;
+                    }
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        continue;
+                    }
+
+                    // Convert to lowercase for non-Chinese characters
+                    if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                    }
+                }
+            },
+            .arabic => {
+                // For Arabic, we'll transliterate to Latin characters
+                for (name) |c| {
+                    // Handle Arabic characters (simplified transliteration)
+                    if ((c >= 0x0600 and c <= 0x06FF) or
+                        (c >= 0x0750 and c <= 0x077F) or
+                        (c >= 0x08A0 and c <= 0x08FF) or
+                        (c >= 0xFB50 and c <= 0xFDFF) or
+                        (c >= 0xFE70 and c <= 0xFEFF)) {
+                        // Basic transliteration (simplified)
+                        const latin = switch (c) {
+                            0x0627...0x0628 => 'b',
+                            0x062A...0x062B => 't',
+                            0x062C...0x062D => 'h',
+                            0x062E...0x062F => 'd',
+                            0x0630...0x0631 => 'r',
+                            0x0632...0x0633 => 's',
+                            0x0634...0x0635 => 's',
+                            0x0636...0x0637 => 't',
+                            0x0638...0x0639 => 'a',
+                            0x063A...0x0641 => 'f',
+                            0x0642...0x0643 => 'k',
+                            0x0644...0x0645 => 'm',
+                            0x0646...0x0647 => 'h',
+                            0x0648...0x0649 => 'y',
+                            0x064A...0x064B => 'a',
+                            else => ' ',
+                        };
+                        if (latin != ' ') {
+                            sanitized[sanitized_len] = latin;
+                            sanitized_len += 1;
+                            in_word = true;
+                            word_start = false;
+                        }
+                        continue;
+                    }
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        continue;
+                    }
+
+                    // Convert to lowercase for non-Arabic characters
+                    if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                    }
+                }
+            },
+            .russian => {
+                // For Russian, we'll transliterate to Latin characters
+                for (name) |c| {
+                    // Handle Russian characters (transliteration)
+                    if ((c >= 0x0400 and c <= 0x04FF) or
+                        (c >= 0x0500 and c <= 0x052F)) {
+                        // Basic transliteration (simplified)
+                        const latin = switch (c) {
+                            0x0410...0x0411 => 'a',
+                            0x0412...0x0413 => 'v',
+                            0x0414...0x0415 => 'd',
+                            0x0416...0x0417 => 'zh',
+                            0x0418...0x0419 => 'i',
+                            0x041A...0x041B => 'k',
+                            0x041C...0x041D => 'm',
+                            0x041E...0x041F => 'o',
+                            0x0420...0x0421 => 'p',
+                            0x0422...0x0423 => 't',
+                            0x0424...0x0425 => 'f',
+                            0x0426...0x0427 => 'ts',
+                            0x0428...0x0429 => 'sh',
+                            0x042A...0x042B => 'y',
+                            0x042C...0x042D => 'e',
+                            0x042E...0x042F => 'yu',
+                            0x0430...0x0431 => 'a',
+                            0x0432...0x0433 => 'v',
+                            0x0434...0x0435 => 'd',
+                            0x0436...0x0437 => 'zh',
+                            0x0438...0x0439 => 'i',
+                            0x043A...0x043B => 'k',
+                            0x043C...0x043D => 'm',
+                            0x043E...0x043F => 'o',
+                            0x0440...0x0441 => 'p',
+                            0x0442...0x0443 => 't',
+                            0x0444...0x0445 => 'f',
+                            0x0446...0x0447 => 'ts',
+                            0x0448...0x0449 => 'sh',
+                            0x044A...0x044B => 'y',
+                            0x044C...0x044D => 'e',
+                            0x044E...0x044F => 'yu',
+                            else => ' ',
+                        };
+                        if (latin != ' ') {
+                            for (latin) |l| {
+                                sanitized[sanitized_len] = l;
+                                sanitized_len += 1;
+                            }
+                            in_word = true;
+                            word_start = false;
+                        }
+                        continue;
+                    }
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        continue;
+                    }
+
+                    // Convert to lowercase for non-Russian characters
+                    if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                    }
+                }
+            },
+            .english, .unknown => {
+                // Original English sanitization logic
+                for (name) |c| {
+                    // Skip invalid characters
+                    if (std.mem.indexOfScalar(u8, "<>:\"/\\|?*", c) != null) continue;
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        // Skip consecutive spaces/special chars
+                        if (prev_char != null and (prev_char.? == ' ' or prev_char.? == '-' or prev_char.? == '_')) continue;
+                        
+                        // Only add space if we're in a word
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        prev_char = c;
+                        continue;
+                    }
+
+                    // Handle alphanumeric characters
+                    if ((c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9')) {
+                        // Convert to lowercase if it's the start of a word
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        
+                        // Skip leading numbers
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                        prev_char = c;
+                    }
+                }
+            },
+        }
+
+        // Trim trailing spaces
+        while (sanitized_len > 0 and sanitized[sanitized_len - 1] == ' ') {
+            sanitized_len -= 1;
+        }
+
+        // Ensure minimum length by adding a suffix if needed
+        if (sanitized_len < 3) {
+            const suffix = "preset";
+            const needed = 3 - sanitized_len;
+            for (suffix[0..needed]) |c| {
+                sanitized[sanitized_len] = c;
+                sanitized_len += 1;
+            }
+        }
+
+        // Ensure maximum length
+        if (sanitized_len > 64) {
+            sanitized_len = 64;
+        }
+
+        // Create final sanitized name
+        const final_name = try self.allocator.dupe(u8, sanitized[0..sanitized_len]);
+        self.allocator.free(sanitized);
+        self.sanitized_name = final_name;
+        return final_name;
     }
 }; 
