@@ -29,6 +29,7 @@ const VulkanRenderer = struct {
     in_flight_fences: []vk.VkFence,
     current_frame: usize,
     window: *glfw.GLFWwindow,
+    framebuffer_resized: bool,
 
     const MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -55,6 +56,7 @@ const VulkanRenderer = struct {
             .in_flight_fences = undefined,
             .current_frame = 0,
             .window = window,
+            .framebuffer_resized = false,
         };
 
         try self.createInstance();
@@ -71,11 +73,16 @@ const VulkanRenderer = struct {
         try self.createCommandBuffers();
         try self.createSyncObjects();
 
+        // Set up resize callback
+        try window.setResizeCallback(resizeCallback);
+
         return self;
     }
 
     pub fn deinit(self: *VulkanRenderer) void {
-        vk.vkDeviceWaitIdle(self.device);
+        try vk.vkDeviceWaitIdle(self.device);
+
+        self.cleanupSwapChain();
 
         // Cleanup sync objects
         for (self.image_available_semaphores) |semaphore| {
@@ -803,13 +810,67 @@ const VulkanRenderer = struct {
         }
     }
 
-    pub fn drawFrame(self: *VulkanRenderer) !void {
-        // Wait for the previous frame to finish
-        _ = vk.vkWaitForFences(self.device, 1, &self.in_flight_fences[self.current_frame], vk.VK_TRUE, std.math.maxInt(u64));
+    fn resizeCallback(window: *glfw.GLFWwindow, width: i32, height: i32) void {
+        if (width == 0 or height == 0) return; // Minimized window
 
-        // Acquire an image from the swapchain
+        const self = @fieldParentPtr(VulkanRenderer, "window", window);
+        self.framebuffer_resized = true;
+    }
+
+    fn recreateSwapChain(self: *VulkanRenderer) !void {
+        var width: i32 = 0;
+        var height: i32 = 0;
+        self.window.getFramebufferSize(&width, &height);
+        while (width == 0 or height == 0) {
+            self.window.getFramebufferSize(&width, &height);
+            self.window.waitEvents();
+        }
+
+        try vk.vkDeviceWaitIdle(self.device);
+
+        self.cleanupSwapChain();
+
+        try self.createSwapChain();
+        try self.createImageViews();
+        try self.createRenderPass();
+        try self.createGraphicsPipeline();
+        try self.createFramebuffers();
+        try self.createCommandBuffers();
+    }
+
+    fn cleanupSwapChain(self: *VulkanRenderer) void {
+        // Clean up framebuffers
+        for (self.framebuffers) |framebuffer| {
+            vk.vkDestroyFramebuffer(self.device, framebuffer, null);
+        }
+
+        // Clean up graphics pipeline
+        vk.vkDestroyPipeline(self.device, self.pipeline, null);
+        vk.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
+
+        // Clean up render pass
+        vk.vkDestroyRenderPass(self.device, self.render_pass, null);
+
+        // Clean up image views
+        for (self.swapchain_image_views) |image_view| {
+            vk.vkDestroyImageView(self.device, image_view, null);
+        }
+
+        // Clean up swapchain
+        vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
+    }
+
+    pub fn drawFrame(self: *VulkanRenderer) !void {
+        try vk.vkWaitForFences(
+            self.device,
+            1,
+            &self.in_flight_fences[self.current_frame],
+            vk.VK_TRUE,
+            std.math.maxInt(u64),
+        );
+
         var image_index: u32 = undefined;
-        _ = vk.vkAcquireNextImageKHR(
+        const result = vk.vkAcquireNextImageKHR(
             self.device,
             self.swapchain,
             std.math.maxInt(u64),
@@ -818,11 +879,70 @@ const VulkanRenderer = struct {
             &image_index,
         );
 
-        // Reset the fence for the current frame
-        _ = vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]);
+        if (result == vk.VK_ERROR_OUT_OF_DATE_KHR) {
+            self.framebuffer_resized = false;
+            try self.recreateSwapChain();
+            return;
+        } else if (result != vk.VK_SUCCESS and result != vk.VK_SUBOPTIMAL_KHR) {
+            return error.FailedToAcquireSwapChainImage;
+        }
 
-        // Record the command buffer
-        const command_buffer = self.command_buffers[image_index];
+        // Reset fence only if we're submitting work
+        try vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]);
+
+        try vk.vkResetCommandBuffer(self.command_buffers[self.current_frame], 0);
+        try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
+
+        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
+        const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
+
+        const submit_info = vk.VkSubmitInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = wait_semaphores.len,
+            .pWaitSemaphores = &wait_semaphores,
+            .pWaitDstStageMask = &wait_stages,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &self.command_buffers[self.current_frame],
+            .signalSemaphoreCount = signal_semaphores.len,
+            .pSignalSemaphores = &signal_semaphores,
+            .pNext = null,
+        };
+
+        try checkVulkanResult(vk.vkQueueSubmit(
+            self.queue,
+            1,
+            &submit_info,
+            self.in_flight_fences[self.current_frame],
+        ));
+
+        const present_info = vk.VkPresentInfoKHR{
+            .sType = vk.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .waitSemaphoreCount = signal_semaphores.len,
+            .pWaitSemaphores = &signal_semaphores,
+            .swapchainCount = 1,
+            .pSwapchains = &self.swapchain,
+            .pImageIndices = &image_index,
+            .pResults = null,
+            .pNext = null,
+        };
+
+        const present_result = vk.vkQueuePresentKHR(self.queue, &present_info);
+
+        if (present_result == vk.VK_ERROR_OUT_OF_DATE_KHR or
+            present_result == vk.VK_SUBOPTIMAL_KHR or
+            self.framebuffer_resized)
+        {
+            self.framebuffer_resized = false;
+            try self.recreateSwapChain();
+        } else if (present_result != vk.VK_SUCCESS) {
+            return error.FailedToPresentSwapChainImage;
+        }
+
+        self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+    }
+
+    fn recordCommandBuffer(self: *VulkanRenderer, command_buffer: vk.VkCommandBuffer, image_index: u32) !void {
         const begin_info = vk.VkCommandBufferBeginInfo{
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = 0,
@@ -830,7 +950,13 @@ const VulkanRenderer = struct {
             .pInheritanceInfo = null,
         };
 
-        _ = vk.vkBeginCommandBuffer(command_buffer, &begin_info);
+        try checkVulkanResult(vk.vkBeginCommandBuffer(command_buffer, &begin_info));
+
+        const clear_color = vk.VkClearValue{
+            .color = vk.VkClearColorValue{
+                .float32 = [_]f32{ 0.0, 0.0, 0.0, 1.0 },
+            },
+        };
 
         const render_pass_info = vk.VkRenderPassBeginInfo{
             .sType = vk.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -841,54 +967,37 @@ const VulkanRenderer = struct {
                 .extent = vk.VkExtent2D{ .width = 800, .height = 600 }, // TODO: Get from window
             },
             .clearValueCount = 1,
-            .pClearValues = &vk.VkClearValue{
-                .color = vk.VkClearColorValue{
-                    .float32 = [4]f32{ 0.0, 0.0, 0.0, 1.0 },
-                },
-            },
+            .pClearValues = &clear_color,
             .pNext = null,
         };
 
         vk.vkCmdBeginRenderPass(command_buffer, &render_pass_info, vk.VK_SUBPASS_CONTENTS_INLINE);
+
+        // Bind the graphics pipeline
         vk.vkCmdBindPipeline(command_buffer, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, self.pipeline);
-        vk.vkCmdDraw(command_buffer, 3, 1, 0, 0); // Draw a triangle
+
+        // Bind the vertex buffer
+        const vertex_buffers = [_]vk.VkBuffer{self.vertex_buffer};
+        const offsets = [_]vk.VkDeviceSize{0};
+        vk.vkCmdBindVertexBuffers(
+            command_buffer,
+            0, // first binding
+            1, // binding count
+            &vertex_buffers,
+            &offsets,
+        );
+
+        // Draw the triangle
+        vk.vkCmdDraw(
+            command_buffer,
+            3, // vertex count
+            1, // instance count
+            0, // first vertex
+            0, // first instance
+        );
+
         vk.vkCmdEndRenderPass(command_buffer);
 
-        if (vk.vkEndCommandBuffer(command_buffer) != vk.VK_SUCCESS) {
-            return error.CommandBufferRecordingFailed;
-        }
-
-        // Submit the command buffer
-        const submit_info = vk.VkSubmitInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &self.image_available_semaphores[self.current_frame],
-            .pWaitDstStageMask = &[_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
-            .commandBufferCount = 1,
-            .pCommandBuffers = &command_buffer,
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &self.render_finished_semaphores[self.current_frame],
-            .pNext = null,
-        };
-
-        if (vk.vkQueueSubmit(self.queue, 1, &submit_info, self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
-            return error.QueueSubmitFailed;
-        }
-
-        // Present the image
-        const present_info = vk.VkPresentInfoKHR{
-            .sType = vk.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &self.render_finished_semaphores[self.current_frame],
-            .swapchainCount = 1,
-            .pSwapchains = &self.swapchain,
-            .pImageIndices = &image_index,
-            .pResults = null,
-            .pNext = null,
-        };
-
-        _ = vk.vkQueuePresentKHR(self.queue, &present_info);
-
-        self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+        try checkVulkanResult(vk.vkEndCommandBuffer(command_buffer));
     }
 }; 
