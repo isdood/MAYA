@@ -2,11 +2,41 @@ const std = @import("std");
 const vk = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
-const glfw = @cImport({
-    @cInclude("GLFW/glfw3.h");
-});
-const colors = @import("../glimmer/colors.zig").GlimmerColors;
+const glfw = @import("glfw");
 const Window = @import("window.zig").Window;
+
+const VulkanError = error{
+    ValidationLayerNotAvailable,
+    FailedToLoadDebugUtilsMessenger,
+    FailedToCreateInstance,
+    FailedToCreateSurface,
+    FailedToPickPhysicalDevice,
+    FailedToCreateLogicalDevice,
+    FailedToCreateSwapChain,
+    FailedToCreateImageViews,
+    FailedToCreateRenderPass,
+    FailedToCreateGraphicsPipeline,
+    FailedToCreateFramebuffers,
+    FailedToCreateCommandPool,
+    FailedToCreateCommandBuffers,
+    FailedToCreateSyncObjects,
+    FailedToAcquireSwapChainImage,
+    FailedToPresentSwapChainImage,
+    OutOfMemory,
+    DeviceLost,
+    SurfaceLost,
+    OutOfDate,
+    Suboptimal,
+    Unknown,
+};
+
+const LogLevel = enum {
+    Debug,
+    Info,
+    Warning,
+    Error,
+    Fatal,
+};
 
 const VulkanRenderer = struct {
     instance: vk.VkInstance,
@@ -29,10 +59,12 @@ const VulkanRenderer = struct {
     render_finished_semaphores: []vk.VkSemaphore,
     in_flight_fences: []vk.VkFence,
     current_frame: usize,
-    window: *glfw.GLFWwindow,
+    window: *Window,
     framebuffer_resized: bool,
     debug_messenger: vk.VkDebugUtilsMessengerEXT,
     validation_layers_enabled: bool,
+    allocator: std.mem.Allocator,
+    logger: std.log.Logger,
 
     const MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -44,8 +76,11 @@ const VulkanRenderer = struct {
         vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
 
-    pub fn init(window: *glfw.GLFWwindow) !VulkanRenderer {
-        var self = VulkanRenderer{
+    pub fn init(allocator: std.mem.Allocator, window: *Window) !*VulkanRenderer {
+        var self = try allocator.create(VulkanRenderer);
+        self.* = VulkanRenderer{
+            .allocator = allocator,
+            .logger = std.log.scoped(.vulkan),
             .instance = undefined,
             .surface = undefined,
             .physical_device = undefined,
@@ -72,19 +107,48 @@ const VulkanRenderer = struct {
             .validation_layers_enabled = false,
         };
 
+        self.logger.info("Initializing Vulkan renderer", .{});
         try self.createInstance();
+        self.logger.info("Vulkan instance created", .{});
+
+        try self.setupDebugMessenger();
+        self.logger.info("Debug messenger setup complete", .{});
+
         try self.createSurface();
+        self.logger.info("Surface created", .{});
+
         try self.pickPhysicalDevice();
+        self.logger.info("Physical device selected", .{});
+
         try self.createLogicalDevice();
+        self.logger.info("Logical device created", .{});
+
         try self.createSwapChain();
+        self.logger.info("Swapchain created", .{});
+
         try self.createImageViews();
+        self.logger.info("Image views created", .{});
+
         try self.createRenderPass();
+        self.logger.info("Render pass created", .{});
+
         try self.createGraphicsPipeline();
+        self.logger.info("Graphics pipeline created", .{});
+
         try self.createFramebuffers();
+        self.logger.info("Framebuffers created", .{});
+
         try self.createCommandPool();
+        self.logger.info("Command pool created", .{});
+
         try self.createVertexBuffer();
+        self.logger.info("Vertex buffer created", .{});
+
         try self.createCommandBuffers();
+        self.logger.info("Command buffers created", .{});
+
         try self.createSyncObjects();
+        self.logger.info("Sync objects created", .{});
 
         // Set up resize callback
         try window.setResizeCallback(resizeCallback);
@@ -93,11 +157,13 @@ const VulkanRenderer = struct {
     }
 
     pub fn deinit(self: *VulkanRenderer) void {
+        self.logger.info("Shutting down Vulkan renderer", .{});
+
         try vk.vkDeviceWaitIdle(self.device);
 
         self.cleanupSwapChain();
+        self.logger.info("Swapchain cleaned up", .{});
 
-        // Clean up debug messenger
         if (VALIDATION_LAYERS.len > 0) {
             const destroy_debug_utils_messenger_ext = @ptrCast(
                 fn (vk.VkInstance, vk.VkDebugUtilsMessengerEXT, ?*const vk.VkAllocationCallbacks) callconv(.C) void,
@@ -106,6 +172,7 @@ const VulkanRenderer = struct {
 
             if (destroy_debug_utils_messenger_ext) |func| {
                 func(self.instance, self.debug_messenger, null);
+                self.logger.info("Debug messenger destroyed", .{});
             }
         }
 
@@ -151,6 +218,9 @@ const VulkanRenderer = struct {
         // Cleanup device and instance
         vk.vkDestroyDevice(self.device, null);
         vk.vkDestroyInstance(self.instance, null);
+
+        self.allocator.destroy(self);
+        self.logger.info("Vulkan renderer shutdown complete", .{});
     }
 
     fn checkValidationLayerSupport() !void {
@@ -194,6 +264,55 @@ const VulkanRenderer = struct {
         return extensions.toOwnedSlice();
     }
 
+    fn logVulkanResult(comptime level: LogLevel, result: vk.VkResult, comptime fmt: []const u8, args: anytype) void {
+        const message = std.fmt.allocPrint(self.allocator, fmt, args) catch return;
+        defer self.allocator.free(message);
+
+        switch (level) {
+            .Debug => self.logger.debug("{s}: {s}", .{ message, @tagName(result) }),
+            .Info => self.logger.info("{s}: {s}", .{ message, @tagName(result) }),
+            .Warning => self.logger.warn("{s}: {s}", .{ message, @tagName(result) }),
+            .Error => self.logger.err("{s}: {s}", .{ message, @tagName(result) }),
+            .Fatal => self.logger.err("{s}: {s}", .{ message, @tagName(result) }),
+        }
+    }
+
+    fn checkVulkanResult(result: vk.VkResult) !void {
+        switch (result) {
+            vk.VK_SUCCESS => {},
+            vk.VK_NOT_READY => return error.NotReady,
+            vk.VK_TIMEOUT => return error.Timeout,
+            vk.VK_EVENT_SET => return error.EventSet,
+            vk.VK_EVENT_RESET => return error.EventReset,
+            vk.VK_INCOMPLETE => return error.Incomplete,
+            vk.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
+            vk.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
+            vk.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
+            vk.VK_ERROR_DEVICE_LOST => return error.DeviceLost,
+            vk.VK_ERROR_MEMORY_MAP_FAILED => return error.MemoryMapFailed,
+            vk.VK_ERROR_LAYER_NOT_PRESENT => return error.LayerNotPresent,
+            vk.VK_ERROR_EXTENSION_NOT_PRESENT => return error.ExtensionNotPresent,
+            vk.VK_ERROR_FEATURE_NOT_PRESENT => return error.FeatureNotPresent,
+            vk.VK_ERROR_INCOMPATIBLE_DRIVER => return error.IncompatibleDriver,
+            vk.VK_ERROR_TOO_MANY_OBJECTS => return error.TooManyObjects,
+            vk.VK_ERROR_FORMAT_NOT_SUPPORTED => return error.FormatNotSupported,
+            vk.VK_ERROR_FRAGMENTED_POOL => return error.FragmentedPool,
+            vk.VK_ERROR_UNKNOWN => return error.Unknown,
+            vk.VK_ERROR_OUT_OF_POOL_MEMORY => return error.OutOfPoolMemory,
+            vk.VK_ERROR_INVALID_EXTERNAL_HANDLE => return error.InvalidExternalHandle,
+            vk.VK_ERROR_FRAGMENTATION => return error.Fragmentation,
+            vk.VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS => return error.InvalidOpaqueCaptureAddress,
+            vk.VK_ERROR_SURFACE_LOST_KHR => return error.SurfaceLost,
+            vk.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR => return error.NativeWindowInUse,
+            vk.VK_SUBOPTIMAL_KHR => return error.Suboptimal,
+            vk.VK_ERROR_OUT_OF_DATE_KHR => return error.OutOfDate,
+            vk.VK_ERROR_INCOMPATIBLE_DISPLAY_KHR => return error.IncompatibleDisplay,
+            vk.VK_ERROR_VALIDATION_FAILED_EXT => return error.ValidationFailed,
+            vk.VK_ERROR_INVALID_SHADER_NV => return error.InvalidShader,
+            else => return error.Unknown,
+        }
+    }
+
     fn debugCallback(
         message_severity: vk.VkDebugUtilsMessageSeverityFlagBitsEXT,
         message_type: vk.VkDebugUtilsMessageTypeFlagsEXT,
@@ -201,18 +320,18 @@ const VulkanRenderer = struct {
         p_user_data: ?*anyopaque,
     ) callconv(.C) vk.VkBool32 {
         _ = message_type;
-        _ = p_user_data;
+        const self = @ptrCast(*VulkanRenderer, @alignCast(@alignOf(VulkanRenderer), p_user_data));
 
         const severity = switch (message_severity) {
-            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT => "VERBOSE",
-            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT => "INFO",
-            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => "WARNING",
-            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT => "ERROR",
-            else => "UNKNOWN",
+            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT => LogLevel.Debug,
+            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT => LogLevel.Info,
+            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => LogLevel.Warning,
+            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT => LogLevel.Error,
+            else => LogLevel.Info,
         };
 
         if (p_callback_data) |callback_data| {
-            std.debug.print("[{s}] {s}\n", .{ severity, std.mem.span(callback_data.pMessage) });
+            self.logVulkanResult(severity, vk.VK_SUCCESS, "{s}", .{std.mem.span(callback_data.pMessage)});
         }
 
         return vk.VK_FALSE;
@@ -230,7 +349,7 @@ const VulkanRenderer = struct {
                 vk.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                 vk.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
             .pfnUserCallback = debugCallback,
-            .pUserData = null,
+            .pUserData = self,
             .pNext = null,
             .flags = 0,
         };
@@ -289,7 +408,7 @@ const VulkanRenderer = struct {
     }
 
     fn createSurface(self: *VulkanRenderer) !void {
-        if (glfw.glfwCreateWindowSurface(self.instance, self.window, null, &self.surface) != vk.VK_SUCCESS) {
+        if (glfw.glfwCreateWindowSurface(self.instance, self.window.handle, null, &self.surface) != vk.VK_SUCCESS) {
             return error.SurfaceCreationFailed;
         }
     }
@@ -549,27 +668,27 @@ const VulkanRenderer = struct {
             .flags = 0,
         };
 
-        // Viewport state
-        const viewport = vk.VkViewport{
-            .x = 0.0,
-            .y = 0.0,
-            .width = @intToFloat(f32, self.swapchain_extent.width),
-            .height = @intToFloat(f32, self.swapchain_extent.height),
-            .minDepth = 0.0,
-            .maxDepth = 1.0,
+        // Dynamic state
+        const dynamic_states = [_]vk.VkDynamicState{
+            vk.VK_DYNAMIC_STATE_VIEWPORT,
+            vk.VK_DYNAMIC_STATE_SCISSOR,
         };
 
-        const scissor = vk.VkRect2D{
-            .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
-            .extent = self.swapchain_extent,
+        const dynamic_state = vk.VkPipelineDynamicStateCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            .dynamicStateCount = dynamic_states.len,
+            .pDynamicStates = &dynamic_states,
+            .pNext = null,
+            .flags = 0,
         };
 
+        // Viewport state (now with dynamic viewport and scissor)
         const viewport_state = vk.VkPipelineViewportStateCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
             .viewportCount = 1,
-            .pViewports = &viewport,
+            .pViewports = null, // Will be set dynamically
             .scissorCount = 1,
-            .pScissors = &scissor,
+            .pScissors = null, // Will be set dynamically
             .pNext = null,
             .flags = 0,
         };
@@ -660,7 +779,7 @@ const VulkanRenderer = struct {
             .pMultisampleState = &multisampling,
             .pDepthStencilState = null,
             .pColorBlendState = &color_blending,
-            .pDynamicState = null,
+            .pDynamicState = &dynamic_state,
             .layout = self.pipeline_layout,
             .renderPass = self.render_pass,
             .subpass = 0,
@@ -1114,6 +1233,24 @@ const VulkanRenderer = struct {
 
         // Bind the graphics pipeline
         vk.vkCmdBindPipeline(command_buffer, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, self.pipeline);
+
+        // Set dynamic viewport
+        const viewport = vk.VkViewport{
+            .x = 0.0,
+            .y = 0.0,
+            .width = @intToFloat(f32, self.swapchain_extent.width),
+            .height = @intToFloat(f32, self.swapchain_extent.height),
+            .minDepth = 0.0,
+            .maxDepth = 1.0,
+        };
+        vk.vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+
+        // Set dynamic scissor
+        const scissor = vk.VkRect2D{
+            .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
+            .extent = self.swapchain_extent,
+        };
+        vk.vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
         // Bind the vertex buffer
         const vertex_buffers = [_]vk.VkBuffer{self.vertex_buffer};
