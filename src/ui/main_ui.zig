@@ -3,6 +3,7 @@ const c = @cImport({
     @cInclude("imgui.h");
 });
 const PerformanceDashboard = @import("performance_dashboard.zig").PerformanceDashboard;
+const Renderer = @import("../renderer/renderer.zig").Renderer;
 
 pub const MainUI = struct {
     const Self = @This();
@@ -11,15 +12,17 @@ pub const MainUI = struct {
     show_performance_window: bool,
     show_settings_window: bool,
     performance_dashboard: ?*PerformanceDashboard,
+    renderer: ?*Renderer,
     logger: std.log.Logger,
 
-    pub fn init(allocator: std.mem.Allocator) !*Self {
+    pub fn init(allocator: std.mem.Allocator, renderer: ?*Renderer) !*Self {
         var self = try allocator.create(Self);
         self.* = Self{
             .show_demo_window = true,
             .show_performance_window = true,
             .show_settings_window = false,
             .performance_dashboard = try PerformanceDashboard.init(allocator),
+            .renderer = renderer,
             .logger = std.log.scoped(.ui),
         };
         return self;
@@ -60,16 +63,12 @@ pub const MainUI = struct {
         // Performance dashboard
         if (self.show_performance_window) {
             if (self.performance_dashboard) |*dashboard| {
-                // Update metrics
-                const io = c.igGetIO();
-                dashboard.updateMetrics(.{
-                    .fps = 1.0 / io.*.DeltaTime,
-                    .frame_time = io.*.DeltaTime * 1000.0,
-                    .gpu_usage = 75.0, // TODO: Get from performance monitor
-                    .vram_usage = 45.0, // TODO: Get from performance monitor
-                    .cpu_usage = 60.0, // TODO: Get from performance monitor
-                    .memory_usage = 30.0, // TODO: Get from performance monitor
-                });
+                // Get real metrics from renderer
+                if (self.renderer) |*renderer| {
+                    if (renderer.getPerformanceMetrics()) |metrics| {
+                        dashboard.updateMetrics(metrics);
+                    }
+                }
 
                 // Render dashboard
                 dashboard.render();
