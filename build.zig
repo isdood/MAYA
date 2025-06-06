@@ -45,7 +45,7 @@ pub fn build(b: *std.Build) void {
     // Create main executable
     const exe = b.addExecutable(.{
         .name = "maya",
-        .root_source_file = .{ .cwd_relative = "src/core/main.zig" },
+        .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -55,21 +55,48 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("neural", neural_module);
     exe.root_module.addImport("starweave", starweave_module);
 
+    exe.addModule("glimmer-colors", b.addModule("glimmer-colors", .{
+        .source_file = .{ .path = "src/glimmer/colors.zig" },
+    }));
+    exe.linkLibC();
+    exe.linkSystemLibrary("glfw");
+    exe.linkSystemLibrary("vulkan");
+    exe.linkSystemLibrary("freetype");
+    exe.linkSystemLibrary("harfbuzz");
+
+    // Add include paths
+    exe.addIncludePath(.{ .path = "/usr/include" });
+    exe.addIncludePath(.{ .path = "/usr/include/freetype2" });
+    exe.addIncludePath(.{ .path = "/usr/include/harfbuzz" });
+
+    // Add compile definitions
+    exe.defineCMacro("VK_USE_PLATFORM_XLIB_KHR", "1");
+    exe.defineCMacro("GLFW_INCLUDE_VULKAN", "1");
+
     b.installArtifact(exe);
 
-    // Add tests
-    const main_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/core/main.zig" },
+    // Create run command
+    const run_cmd = b.addRunArtifact(exe);
+    run_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
+
+    // Create run step
+    const run_step = b.step("run", "Run the MAYA GUI");
+    run_step.dependOn(&run_cmd.step);
+
+    // Create test step
+    const unit_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
+    unit_tests.addModule("glimmer-colors", b.addModule("glimmer-colors", .{
+        .source_file = .{ .path = "src/glimmer/colors.zig" },
+    }));
 
-    // Add dependencies to tests
-    main_tests.root_module.addImport("glimmer", glimmer_module);
-    main_tests.root_module.addImport("neural", neural_module);
-    main_tests.root_module.addImport("starweave", starweave_module);
-
-    const run_main_tests = b.addRunArtifact(main_tests);
-    const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&run_main_tests.step);
+    const run_unit_tests = b.addRunArtifact(unit_tests);
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_unit_tests.step);
 }
