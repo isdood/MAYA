@@ -366,257 +366,174 @@ const VulkanRenderer = struct {
 
             // Alert state
             last_alert_frame: u32 = 0,
-            active_alerts: std.ArrayList(Alert),
-
-            // Threshold presets
-            const Preset = enum {
-                aggressive,    // Strict thresholds for high-performance systems
-                balanced,     // Default balanced thresholds
-                relaxed,      // Relaxed thresholds for lower-end systems
-                custom,       // User-defined thresholds
-            };
-
-            // Preset configurations
-            const preset_configs = std.ComptimeStringMap(PresetConfig, .{
-                .{ "aggressive", .{
-                    .frame_time_warning = 11.11,    // 90 FPS
-                    .frame_time_critical = 16.67,   // 60 FPS
-                    .memory_warning = 256,          // 256 MB
-                    .memory_critical = 512,         // 512 MB
-                    .draw_calls_warning = 500,
-                    .draw_calls_critical = 1000,
-                    .geometry_shader_warning = 0.5,
-                    .geometry_shader_critical = 1.0,
-                    .tessellation_warning = 1.0,
-                    .tessellation_critical = 2.0,
-                    .anisotropy_warning = 0.25,
-                    .anisotropy_critical = 0.5,
-                    .texture_compression_warning = 0.5,
-                    .texture_compression_critical = 1.0,
-                    .compute_warning = 1.0,
-                    .compute_critical = 2.0,
-                    .sparse_binding_warning = 0.5,
-                    .sparse_binding_critical = 1.0,
-                    .query_warning = 0.25,
-                    .query_critical = 0.5,
-                }},
-                .{ "balanced", .{
-                    .frame_time_warning = 16.67,    // 60 FPS
-                    .frame_time_critical = 33.33,   // 30 FPS
-                    .memory_warning = 512,          // 512 MB
-                    .memory_critical = 1024,        // 1 GB
-                    .draw_calls_warning = 1000,
-                    .draw_calls_critical = 2000,
-                    .geometry_shader_warning = 1.0,
-                    .geometry_shader_critical = 2.0,
-                    .tessellation_warning = 2.0,
-                    .tessellation_critical = 4.0,
-                    .anisotropy_warning = 0.5,
-                    .anisotropy_critical = 1.0,
-                    .texture_compression_warning = 1.0,
-                    .texture_compression_critical = 2.0,
-                    .compute_warning = 2.0,
-                    .compute_critical = 4.0,
-                    .sparse_binding_warning = 1.0,
-                    .sparse_binding_critical = 2.0,
-                    .query_warning = 0.5,
-                    .query_critical = 1.0,
-                }},
-                .{ "relaxed", .{
-                    .frame_time_warning = 33.33,    // 30 FPS
-                    .frame_time_critical = 66.67,   // 15 FPS
-                    .memory_warning = 1024,         // 1 GB
-                    .memory_critical = 2048,        // 2 GB
-                    .draw_calls_warning = 2000,
-                    .draw_calls_critical = 4000,
-                    .geometry_shader_warning = 2.0,
-                    .geometry_shader_critical = 4.0,
-                    .tessellation_warning = 4.0,
-                    .tessellation_critical = 8.0,
-                    .anisotropy_warning = 1.0,
-                    .anisotropy_critical = 2.0,
-                    .texture_compression_warning = 2.0,
-                    .texture_compression_critical = 4.0,
-                    .compute_warning = 4.0,
-                    .compute_critical = 8.0,
-                    .sparse_binding_warning = 2.0,
-                    .sparse_binding_critical = 4.0,
-                    .query_warning = 1.0,
-                    .query_critical = 2.0,
-                }},
-            });
-
-            // Current preset
-            current_preset: Preset = .balanced,
-
-            // Apply a preset configuration
-            pub fn applyPreset(self: *Self, preset: Preset) void {
-                if (preset == .custom) return; // Don't override custom settings
-
-                if (preset_configs.get(@tagName(preset))) |config| {
-                    self.frame_time_warning = config.frame_time_warning;
-                    self.frame_time_critical = config.frame_time_critical;
-                    self.memory_warning = config.memory_warning;
-                    self.memory_critical = config.memory_critical;
-                    self.draw_calls_warning = config.draw_calls_warning;
-                    self.draw_calls_critical = config.draw_calls_critical;
-                    self.geometry_shader_warning = config.geometry_shader_warning;
-                    self.geometry_shader_critical = config.geometry_shader_critical;
-                    self.tessellation_warning = config.tessellation_warning;
-                    self.tessellation_critical = config.tessellation_critical;
-                    self.anisotropy_warning = config.anisotropy_warning;
-                    self.anisotropy_critical = config.anisotropy_critical;
-                    self.texture_compression_warning = config.texture_compression_warning;
-                    self.texture_compression_critical = config.texture_compression_critical;
-                    self.compute_warning = config.compute_warning;
-                    self.compute_critical = config.compute_critical;
-                    self.sparse_binding_warning = config.sparse_binding_warning;
-                    self.sparse_binding_critical = config.sparse_binding_critical;
-                    self.query_warning = config.query_warning;
-                    self.query_critical = config.query_critical;
-
-                    self.current_preset = preset;
-                }
-            }
-
-            // Set custom threshold for a specific metric
-            pub fn setCustomThreshold(self: *Self, metric: MetricType, warning: f64, critical: f64) void {
-                switch (metric) {
-                    .frame_time => {
-                        self.frame_time_warning = warning;
-                        self.frame_time_critical = critical;
-                    },
-                    .memory => {
-                        self.memory_warning = @floatToInt(usize, warning);
-                        self.memory_critical = @floatToInt(usize, critical);
-                    },
-                    .draw_calls => {
-                        self.draw_calls_warning = @floatToInt(u32, warning);
-                        self.draw_calls_critical = @floatToInt(u32, critical);
-                    },
-                    .geometry_shader => {
-                        self.geometry_shader_warning = warning;
-                        self.geometry_shader_critical = critical;
-                    },
-                    .tessellation => {
-                        self.tessellation_warning = warning;
-                        self.tessellation_critical = critical;
-                    },
-                    .anisotropy => {
-                        self.anisotropy_warning = warning;
-                        self.anisotropy_critical = critical;
-                    },
-                    .texture_compression => {
-                        self.texture_compression_warning = warning;
-                        self.texture_compression_critical = critical;
-                    },
-                    .compute => {
-                        self.compute_warning = warning;
-                        self.compute_critical = critical;
-                    },
-                    .sparse_binding => {
-                        self.sparse_binding_warning = warning;
-                        self.sparse_binding_critical = critical;
-                    },
-                    .query => {
-                        self.query_warning = warning;
-                        self.query_critical = critical;
-                    },
-                }
-                self.current_preset = .custom;
-            }
-
-            // Get current threshold values for a metric
-            pub fn getThresholds(self: *Self, metric: MetricType) struct { warning: f64, critical: f64 } {
-                return switch (metric) {
-                    .frame_time => .{ .warning = self.frame_time_warning, .critical = self.frame_time_critical },
-                    .memory => .{ .warning = @intToFloat(f64, self.memory_warning), .critical = @intToFloat(f64, self.memory_critical) },
-                    .draw_calls => .{ .warning = @intToFloat(f64, self.draw_calls_warning), .critical = @intToFloat(f64, self.draw_calls_critical) },
-                    .geometry_shader => .{ .warning = self.geometry_shader_warning, .critical = self.geometry_shader_critical },
-                    .tessellation => .{ .warning = self.tessellation_warning, .critical = self.tessellation_critical },
-                    .anisotropy => .{ .warning = self.anisotropy_warning, .critical = self.anisotropy_critical },
-                    .texture_compression => .{ .warning = self.texture_compression_warning, .critical = self.texture_compression_critical },
-                    .compute => .{ .warning = self.compute_warning, .critical = self.compute_critical },
-                    .sparse_binding => .{ .warning = self.sparse_binding_warning, .critical = self.sparse_binding_critical },
-                    .query => .{ .warning = self.query_warning, .critical = self.query_critical },
-                };
-            }
-
-            // Metric types for threshold configuration
-            const MetricType = enum {
-                frame_time,
-                memory,
-                draw_calls,
-                geometry_shader,
-                tessellation,
-                anisotropy,
-                texture_compression,
-                compute,
-                sparse_binding,
-                query,
-            };
-
-            // Preset configuration structure
-            const PresetConfig = struct {
-                frame_time_warning: f64,
-                frame_time_critical: f64,
-                memory_warning: usize,
-                memory_critical: usize,
-                draw_calls_warning: u32,
-                draw_calls_critical: u32,
-                geometry_shader_warning: f64,
-                geometry_shader_critical: f64,
-                tessellation_warning: f64,
-                tessellation_critical: f64,
-                anisotropy_warning: f64,
-                anisotropy_critical: f64,
-                texture_compression_warning: f64,
-                texture_compression_critical: f64,
-                compute_warning: f64,
-                compute_critical: f64,
-                sparse_binding_warning: f64,
-                sparse_binding_critical: f64,
-                query_warning: f64,
-                query_critical: f64,
-            };
-
-            pub fn init(allocator: std.mem.Allocator) !Self {
-                var self = Self{
-                    .active_alerts = std.ArrayList(Alert).init(allocator),
-                };
-                self.applyPreset(.balanced); // Apply default preset
-                return self;
-            }
-
-            pub fn deinit(self: *Self) void {
-                self.active_alerts.deinit();
-            }
+            alert_active: bool = false,
         };
 
-        // ... rest of PerformanceMonitor implementation ...
+        // Performance presets
+        const Preset = enum {
+            aggressive,
+            balanced,
+            relaxed,
+            custom,
+        };
 
-        // Add methods to PerformanceMonitor for threshold management
-        pub fn setPreset(self: *Self, preset: Thresholds.Preset) void {
-            self.thresholds.applyPreset(preset);
-            self.logger.info("Applied performance preset: {s}", .{@tagName(preset)});
+        // Preset configurations
+        const PRESET_CONFIGS = std.ComptimeStringMap(Thresholds, .{
+            .{ "aggressive", .{
+                .frame_time_warning = 11.11,    // 90 FPS
+                .frame_time_critical = 16.67,   // 60 FPS
+                .memory_warning = 256,          // 256 MB
+                .memory_critical = 512,         // 512 MB
+                .draw_calls_warning = 500,
+                .draw_calls_critical = 1000,
+                .geometry_shader_warning = 0.5,
+                .geometry_shader_critical = 1.0,
+                .tessellation_warning = 1.0,
+                .tessellation_critical = 2.0,
+                .anisotropy_warning = 0.25,
+                .anisotropy_critical = 0.5,
+                .texture_compression_warning = 0.5,
+                .texture_compression_critical = 1.0,
+                .compute_warning = 1.0,
+                .compute_critical = 2.0,
+                .sparse_binding_warning = 0.5,
+                .sparse_binding_critical = 1.0,
+                .query_warning = 0.25,
+                .query_critical = 0.5,
+            }},
+            .{ "balanced", .{
+                .frame_time_warning = 16.67,    // 60 FPS
+                .frame_time_critical = 33.33,   // 30 FPS
+                .memory_warning = 512,          // 512 MB
+                .memory_critical = 1024,        // 1 GB
+                .draw_calls_warning = 1000,
+                .draw_calls_critical = 2000,
+                .geometry_shader_warning = 1.0,
+                .geometry_shader_critical = 2.0,
+                .tessellation_warning = 2.0,
+                .tessellation_critical = 4.0,
+                .anisotropy_warning = 0.5,
+                .anisotropy_critical = 1.0,
+                .texture_compression_warning = 1.0,
+                .texture_compression_critical = 2.0,
+                .compute_warning = 2.0,
+                .compute_critical = 4.0,
+                .sparse_binding_warning = 1.0,
+                .sparse_binding_critical = 2.0,
+                .query_warning = 0.5,
+                .query_critical = 1.0,
+            }},
+            .{ "relaxed", .{
+                .frame_time_warning = 33.33,    // 30 FPS
+                .frame_time_critical = 66.67,   // 15 FPS
+                .memory_warning = 1024,         // 1 GB
+                .memory_critical = 2048,        // 2 GB
+                .draw_calls_warning = 2000,
+                .draw_calls_critical = 4000,
+                .geometry_shader_warning = 2.0,
+                .geometry_shader_critical = 4.0,
+                .tessellation_warning = 4.0,
+                .tessellation_critical = 8.0,
+                .anisotropy_warning = 1.0,
+                .anisotropy_critical = 2.0,
+                .texture_compression_warning = 2.0,
+                .texture_compression_critical = 4.0,
+                .compute_warning = 4.0,
+                .compute_critical = 8.0,
+                .sparse_binding_warning = 2.0,
+                .sparse_binding_critical = 4.0,
+                .query_warning = 1.0,
+                .query_critical = 2.0,
+            }},
+        });
+
+        // Current preset
+        current_preset: Preset = .balanced,
+        thresholds: Thresholds = PRESET_CONFIGS.get("balanced").?,
+        logger: *std.log.Logger,
+
+        // Initialize performance monitor
+        pub fn init(logger: *std.log.Logger) Self {
+            return Self{
+                .logger = logger,
+            };
         }
 
-        pub fn setCustomThreshold(self: *Self, metric: Thresholds.MetricType, warning: f64, critical: f64) void {
-            self.thresholds.setCustomThreshold(metric, warning, critical);
-            self.logger.info("Set custom threshold for {s}: warning={d:.2}, critical={d:.2}", .{
-                @tagName(metric),
-                warning,
-                critical,
-            });
+        // Select appropriate preset based on hardware capabilities
+        pub fn selectPresetBasedOnHardware(self: *Self, physical_device: vk.VkPhysicalDevice) void {
+            var device_properties: vk.VkPhysicalDeviceProperties = undefined;
+            vk.vkGetPhysicalDeviceProperties(physical_device, &device_properties);
+
+            // Get device memory properties
+            var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
+            vk.vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
+
+            // Calculate total device memory in MB
+            var total_memory_mb: usize = 0;
+            var i: usize = 0;
+            while (i < memory_properties.memoryHeapCount) : (i += 1) {
+                if (memory_properties.memoryHeaps[i].flags & vk.VK_MEMORY_HEAP_DEVICE_LOCAL_BIT != 0) {
+                    total_memory_mb += @divTrunc(memory_properties.memoryHeaps[i].size, 1024 * 1024);
+                }
+            }
+
+            // Score device capabilities
+            var score: f32 = 0;
+
+            // Score based on device type
+            score += switch (device_properties.deviceType) {
+                vk.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU => 100,
+                vk.VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU => 50,
+                vk.VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU => 30,
+                else => 10,
+            };
+
+            // Score based on memory
+            if (total_memory_mb >= 8192) { // 8GB+
+                score += 50;
+            } else if (total_memory_mb >= 4096) { // 4GB+
+                score += 30;
+            } else if (total_memory_mb >= 2048) { // 2GB+
+                score += 20;
+            } else if (total_memory_mb >= 1024) { // 1GB+
+                score += 10;
+            }
+
+            // Score based on max compute work group size
+            const max_work_group_size = device_properties.limits.maxComputeWorkGroupSize[0] *
+                device_properties.limits.maxComputeWorkGroupSize[1] *
+                device_properties.limits.maxComputeWorkGroupSize[2];
+            if (max_work_group_size >= 1024) {
+                score += 20;
+            } else if (max_work_group_size >= 512) {
+                score += 15;
+            } else if (max_work_group_size >= 256) {
+                score += 10;
+            }
+
+            // Select preset based on score
+            if (score >= 150) {
+                self.setPreset(.aggressive);
+                self.logger.info("Selected aggressive preset based on hardware score: {d}", .{score});
+            } else if (score >= 100) {
+                self.setPreset(.balanced);
+                self.logger.info("Selected balanced preset based on hardware score: {d}", .{score});
+            } else {
+                self.setPreset(.relaxed);
+                self.logger.info("Selected relaxed preset based on hardware score: {d}", .{score});
+            }
         }
 
-        pub fn getCurrentThresholds(self: *Self, metric: Thresholds.MetricType) struct { warning: f64, critical: f64 } {
-            return self.thresholds.getThresholds(metric);
+        // Apply a preset configuration
+        pub fn setPreset(self: *Self, preset: Preset) void {
+            self.current_preset = preset;
+            if (preset != .custom) {
+                self.thresholds = PRESET_CONFIGS.get(@tagName(preset)).?;
+                self.logger.info("Applied {s} performance preset", .{@tagName(preset)});
+            }
         }
 
-        pub fn getCurrentPreset(self: *Self) Thresholds.Preset {
-            return self.thresholds.current_preset;
-        }
+        // ... existing code ...
     };
 
     // Feature types for performance monitoring
@@ -1027,6 +944,10 @@ const VulkanRenderer = struct {
 
         // Store feature manager
         self.feature_manager = feature_manager;
+
+        // Initialize performance monitor and select preset based on hardware
+        self.performance_monitor = PerformanceMonitor.init(&self.logger);
+        self.performance_monitor.selectPresetBasedOnHardware(physical_device);
 
         // Check queue families
         var queue_family_count: u32 = undefined;
