@@ -1058,13 +1058,7 @@ pub fn init() !void {
 
     global_context.* = .{
         .neural_bridge = &neural_bridge,
-        .pattern = glimmer.GlimmerPattern.init(.{
-            .pattern_type = .quantum_wave,
-            .base_color = glimmer.colors.GlimmerColors.primary,
-            .intensity = 0.5,
-            .frequency = 1.0,
-            .phase = 0.0,
-        }),
+        .pattern = glimmer.GlimmerPattern.init("default", .quantum_wave),
     };
 
     protocol = try StarweaveProtocol.init(gpa.allocator(), global_context);
