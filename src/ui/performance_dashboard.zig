@@ -549,6 +549,100 @@ pub const PerformanceDashboard = struct {
                     .ray_tracing = false,
                 };
 
+                // Color coding legend
+                c.igText("Color Legend:");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }, "Low");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }, "Medium");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }, "High");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 }, "Ultra");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.8, .y = 0.4, .z = 0.8, .w = 1.0 }, "Advanced");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.4, .y = 0.4, .z = 0.4, .w = 1.0 }, "Disabled");
+
+                c.igSpacing();
+                c.igSeparator();
+                c.igSpacing();
+
+                // Helper functions for color coding
+                fn setQualityColor(quality: enum { low, medium, high, ultra }) void {
+                    const color = switch (quality) {
+                        .low => .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 },     // Red
+                        .medium => .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 },  // Yellow
+                        .high => .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 },    // Green
+                        .ultra => .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 },   // Blue
+                    };
+                    c.igPushStyleColor(c.ImGuiCol_Text, color);
+                }
+
+                fn setMSAAColor(level: u32) void {
+                    const color = switch (level) {
+                        0...1 => .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 },    // Red
+                        2...4 => .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 },    // Yellow
+                        5...8 => .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 },    // Green
+                        else => .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 },     // Blue
+                    };
+                    c.igPushStyleColor(c.ImGuiCol_Text, color);
+                }
+
+                fn setAnisotropicColor(level: u32) void {
+                    const color = switch (level) {
+                        0...2 => .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 },    // Red
+                        4...8 => .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 },    // Yellow
+                        9...12 => .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 },   // Green
+                        else => .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 },     // Blue
+                    };
+                    c.igPushStyleColor(c.ImGuiCol_Text, color);
+                }
+
+                fn setViewDistanceColor(distance: f32) void {
+                    const color = if (distance < 300.0)
+                        .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }              // Red
+                    else if (distance < 500.0)
+                        .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }              // Yellow
+                    else if (distance < 1000.0)
+                        .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }              // Green
+                    else
+                        .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 };             // Blue
+                    c.igPushStyleColor(c.ImGuiCol_Text, color);
+                }
+
+                fn setFPSColor(fps: u32) void {
+                    const color = if (fps < 30)
+                        .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }              // Red
+                    else if (fps < 60)
+                        .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }              // Yellow
+                    else if (fps < 120)
+                        .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }              // Green
+                    else
+                        .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 };             // Blue
+                    c.igPushStyleColor(c.ImGuiCol_Text, color);
+                }
+
+                fn setCacheSizeColor(size_mb: f32) void {
+                    const color = if (size_mb < 256.0)
+                        .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }              // Red
+                    else if (size_mb < 512.0)
+                        .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }              // Yellow
+                    else if (size_mb < 1024.0)
+                        .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }              // Green
+                    else
+                        .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 };             // Blue
+                    c.igPushStyleColor(c.ImGuiCol_Text, color);
+                }
+
+                fn setFeatureColor(enabled: bool) void {
+                    const color = if (enabled)
+                        .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }              // Green
+                    else
+                        .{ .x = 0.4, .y = 0.4, .z = 0.4, .w = 1.0 };             // Gray
+                    c.igPushStyleColor(c.ImGuiCol_Text, color);
+                }
+
                 // Render settings in a table format
                 if (c.igBeginTable("##settings_table", 2, c.ImGuiTableFlags_Borders | c.ImGuiTableFlags_RowBg, .{ .x = 0, .y = 0 }, 0)) {
                     // Table headers
@@ -558,17 +652,6 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextColumn();
                     c.igText("Value");
 
-                    // Helper function for quality level colors
-                    fn setQualityColor(quality: enum { low, medium, high, ultra }) void {
-                        const color = switch (quality) {
-                            .low => .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 },     // Red
-                            .medium => .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 },  // Yellow
-                            .high => .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 },    // Green
-                            .ultra => .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 },   // Blue
-                        };
-                        c.igPushStyleColor(c.ImGuiCol_Text, color);
-                    }
-
                     // MSAA Level
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
@@ -577,7 +660,9 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Multi-Sample Anti-Aliasing level. Higher values provide smoother edges but impact performance.");
                     }
                     c.igTableNextColumn();
+                    setMSAAColor(settings.msaa_level);
                     c.igText("%d", settings.msaa_level);
+                    c.igPopStyleColor(1);
 
                     // Texture Quality
                     c.igTableNextRow(0, 0);
@@ -611,7 +696,9 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Texture filtering quality for angled surfaces. Higher values improve texture clarity at angles.");
                     }
                     c.igTableNextColumn();
+                    setAnisotropicColor(settings.anisotropic_filtering);
                     c.igText("%dx", settings.anisotropic_filtering);
+                    c.igPopStyleColor(1);
 
                     // View Distance
                     c.igTableNextRow(0, 0);
@@ -621,7 +708,9 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Maximum distance at which objects are rendered. Higher values increase draw distance but impact performance.");
                     }
                     c.igTableNextColumn();
+                    setViewDistanceColor(settings.view_distance);
                     c.igText("%.1f", settings.view_distance);
+                    c.igPopStyleColor(1);
 
                     // Max FPS
                     c.igTableNextRow(0, 0);
@@ -631,7 +720,9 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Maximum frames per second. Lower values can reduce power consumption and heat generation.");
                     }
                     c.igTableNextColumn();
+                    setFPSColor(settings.max_fps);
                     c.igText("%d", settings.max_fps);
+                    c.igPopStyleColor(1);
 
                     // V-Sync
                     c.igTableNextRow(0, 0);
@@ -685,6 +776,7 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Streams textures as needed. Reduces memory usage but may cause texture pop-in.");
                     }
                     c.igTableNextColumn();
+                    setFeatureColor(settings.texture_streaming);
                     c.igText("%s", if (settings.texture_streaming) "Enabled" else "Disabled");
 
                     // Texture Cache Size
@@ -695,7 +787,9 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Maximum memory allocated for texture caching. Higher values reduce texture loading but increase memory usage.");
                     }
                     c.igTableNextColumn();
+                    setCacheSizeColor(@intToFloat(f32, settings.texture_cache_size) / (1024 * 1024));
                     c.igText("%.1f MB", @intToFloat(f32, settings.texture_cache_size) / (1024 * 1024));
+                    c.igPopStyleColor(1);
 
                     // Geometry LOD Levels
                     c.igTableNextRow(0, 0);
@@ -715,67 +809,32 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Maximum memory allocated for pipeline state caching. Reduces pipeline creation overhead.");
                     }
                     c.igTableNextColumn();
+                    setCacheSizeColor(@intToFloat(f32, settings.pipeline_cache_size) / (1024 * 1024));
                     c.igText("%.1f MB", @intToFloat(f32, settings.pipeline_cache_size) / (1024 * 1024));
+                    c.igPopStyleColor(1);
 
-                    // Command Buffer Reuse
-                    c.igTableNextRow(0, 0);
-                    c.igTableNextColumn();
-                    c.igText("Command Buffer Reuse");
-                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
-                        c.igSetTooltip("Reuses command buffers to reduce CPU overhead. May increase memory usage but improves performance.");
-                    }
-                    c.igTableNextColumn();
-                    c.igText("%s", if (settings.command_buffer_reuse) "Enabled" else "Disabled");
+                    // Feature toggles with color coding
+                    const feature_settings = .{
+                        .{ "Command Buffer Reuse", settings.command_buffer_reuse },
+                        .{ "Secondary Command Buffers", settings.secondary_command_buffers },
+                        .{ "Async Compute", settings.async_compute },
+                        .{ "Geometry Shaders", settings.geometry_shaders },
+                        .{ "Tessellation", settings.tessellation },
+                        .{ "Ray Tracing", settings.ray_tracing },
+                    };
 
-                    // Secondary Command Buffers
-                    c.igTableNextRow(0, 0);
-                    c.igTableNextColumn();
-                    c.igText("Secondary Command Buffers");
-                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
-                        c.igSetTooltip("Uses secondary command buffers for better parallel command recording. Improves multi-threaded performance.");
+                    for (feature_settings) |feature| {
+                        c.igTableNextRow(0, 0);
+                        c.igTableNextColumn();
+                        c.igText("%s", feature[0].ptr);
+                        if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                            c.igSetTooltip("Feature toggle. Green indicates enabled, gray indicates disabled.");
+                        }
+                        c.igTableNextColumn();
+                        setFeatureColor(feature[1]);
+                        c.igText("%s", if (feature[1]) "Enabled" else "Disabled");
+                        c.igPopStyleColor(1);
                     }
-                    c.igTableNextColumn();
-                    c.igText("%s", if (settings.secondary_command_buffers) "Enabled" else "Disabled");
-
-                    // Async Compute
-                    c.igTableNextRow(0, 0);
-                    c.igTableNextColumn();
-                    c.igText("Async Compute");
-                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
-                        c.igSetTooltip("Enables asynchronous compute operations. Improves GPU utilization but may increase complexity.");
-                    }
-                    c.igTableNextColumn();
-                    c.igText("%s", if (settings.async_compute) "Enabled" else "Disabled");
-
-                    // Geometry Shaders
-                    c.igTableNextRow(0, 0);
-                    c.igTableNextColumn();
-                    c.igText("Geometry Shaders");
-                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
-                        c.igSetTooltip("Enables geometry shader support. Required for certain advanced rendering effects.");
-                    }
-                    c.igTableNextColumn();
-                    c.igText("%s", if (settings.geometry_shaders) "Enabled" else "Disabled");
-
-                    // Tessellation
-                    c.igTableNextRow(0, 0);
-                    c.igTableNextColumn();
-                    c.igText("Tessellation");
-                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
-                        c.igSetTooltip("Enables hardware tessellation. Provides smoother surfaces but requires significant GPU power.");
-                    }
-                    c.igTableNextColumn();
-                    c.igText("%s", if (settings.tessellation) "Enabled" else "Disabled");
-
-                    // Ray Tracing
-                    c.igTableNextRow(0, 0);
-                    c.igTableNextColumn();
-                    c.igText("Ray Tracing");
-                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
-                        c.igSetTooltip("Enables hardware-accelerated ray tracing. Provides realistic lighting and reflections but requires significant GPU power.");
-                    }
-                    c.igTableNextColumn();
-                    c.igText("%s", if (settings.ray_tracing) "Enabled" else "Disabled");
 
                     c.igEndTable();
                 }

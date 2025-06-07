@@ -107,6 +107,8 @@
 2. Consider trade-offs between feature support and compatibility
 3. Plan for future scalability of the rendering system
 4. Ensure maintainability of the codebase
+5. Add performance impact indicators (e.g., CPU/GPU/Memory icons)
+6. Add a legend explaining the color coding
 
 ### Future Considerations
 1. Support for multiple rendering APIs
