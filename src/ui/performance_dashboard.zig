@@ -69,7 +69,19 @@ pub const PerformanceDashboard = struct {
     sanitized_name: ?[]const u8,
 
     // Add language detection state
-    detected_language: enum { english, chinese, arabic, russian, unknown },
+    detected_language: enum { 
+        english, 
+        chinese_traditional, 
+        chinese_simplified,
+        japanese,
+        korean,
+        thai,
+        vietnamese,
+        french,
+        arabic, 
+        russian, 
+        unknown 
+    },
 
     pub fn init(allocator: std.mem.Allocator) !*Self {
         var self = try allocator.create(Self);
@@ -589,11 +601,17 @@ pub const PerformanceDashboard = struct {
                 self.show_create_preset_dialog = false;
             }
 
-            // Add language detection display
+            // Update language detection display
             if (self.detected_language != .unknown) {
                 const language_name = switch (self.detected_language) {
                     .english => "English",
-                    .chinese => "Traditional Chinese",
+                    .chinese_traditional => "Traditional Chinese",
+                    .chinese_simplified => "Simplified Chinese",
+                    .japanese => "Japanese",
+                    .korean => "Korean",
+                    .thai => "Thai",
+                    .vietnamese => "Vietnamese",
+                    .french => "French",
                     .arabic => "Arabic",
                     .russian => "Russian",
                     .unknown => "Unknown",
@@ -924,7 +942,13 @@ pub const PerformanceDashboard = struct {
     }
 
     fn detectLanguage(self: *Self, text: []const u8) void {
-        var chinese_chars: usize = 0;
+        var chinese_trad_chars: usize = 0;
+        var chinese_simp_chars: usize = 0;
+        var japanese_chars: usize = 0;
+        var korean_chars: usize = 0;
+        var thai_chars: usize = 0;
+        var vietnamese_chars: usize = 0;
+        var french_chars: usize = 0;
         var arabic_chars: usize = 0;
         var russian_chars: usize = 0;
         var total_chars: usize = 0;
@@ -943,7 +967,48 @@ pub const PerformanceDashboard = struct {
                 (c >= 0x2B820 and c <= 0x2CEAF) or
                 (c >= 0xF900 and c <= 0xFAFF) or
                 (c >= 0x2F800 and c <= 0x2FA1F)) {
-                chinese_chars += 1;
+                // Check for Simplified Chinese specific characters
+                if ((c >= 0x4E00 and c <= 0x9FFF) and
+                    (c == 0x4E0C or c == 0x4E0D or c == 0x4E0E or c == 0x4E0F or
+                     c == 0x4E10 or c == 0x4E11 or c == 0x4E12 or c == 0x4E13 or
+                     c == 0x4E14 or c == 0x4E15 or c == 0x4E16 or c == 0x4E17)) {
+                    chinese_simp_chars += 1;
+                } else {
+                    chinese_trad_chars += 1;
+                }
+            }
+            // Japanese characters (Hiragana, Katakana, Kanji)
+            else if ((c >= 0x3040 and c <= 0x309F) or  // Hiragana
+                     (c >= 0x30A0 and c <= 0x30FF) or  // Katakana
+                     (c >= 0x4E00 and c <= 0x9FFF) or  // Kanji
+                     (c >= 0x3000 and c <= 0x303F)) {  // Japanese punctuation
+                japanese_chars += 1;
+            }
+            // Korean characters (Hangul)
+            else if ((c >= 0xAC00 and c <= 0xD7AF) or  // Hangul syllables
+                     (c >= 0x1100 and c <= 0x11FF) or  // Hangul Jamo
+                     (c >= 0x3130 and c <= 0x318F) or  // Hangul Compatibility Jamo
+                     (c >= 0xA960 and c <= 0xA97F) or  // Hangul Jamo Extended-A
+                     (c >= 0xD7B0 and c <= 0xD7FF)) {  // Hangul Jamo Extended-B
+                korean_chars += 1;
+            }
+            // Thai characters
+            else if ((c >= 0x0E00 and c <= 0x0E7F) or  // Thai
+                     (c >= 0x0E80 and c <= 0x0EFF)) {  // Thai Extended
+                thai_chars += 1;
+            }
+            // Vietnamese characters (Latin with diacritics)
+            else if ((c >= 0x00C0 and c <= 0x00FF) or  // Latin-1 Supplement
+                     (c >= 0x0100 and c <= 0x017F) or  // Latin Extended-A
+                     (c >= 0x0180 and c <= 0x024F) or  // Latin Extended-B
+                     (c >= 0x1E00 and c <= 0x1EFF)) {  // Latin Extended Additional
+                vietnamese_chars += 1;
+            }
+            // French characters (Latin with accents)
+            else if ((c >= 0x00C0 and c <= 0x00FF) or  // Latin-1 Supplement
+                     (c >= 0x0100 and c <= 0x017F) or  // Latin Extended-A
+                     (c >= 0x0180 and c <= 0x024F)) {  // Latin Extended-B
+                french_chars += 1;
             }
             // Arabic characters
             else if ((c >= 0x0600 and c <= 0x06FF) or
@@ -965,12 +1030,30 @@ pub const PerformanceDashboard = struct {
             return;
         }
 
-        const chinese_ratio = @intToFloat(f32, chinese_chars) / @intToFloat(f32, total_chars);
+        const chinese_trad_ratio = @intToFloat(f32, chinese_trad_chars) / @intToFloat(f32, total_chars);
+        const chinese_simp_ratio = @intToFloat(f32, chinese_simp_chars) / @intToFloat(f32, total_chars);
+        const japanese_ratio = @intToFloat(f32, japanese_chars) / @intToFloat(f32, total_chars);
+        const korean_ratio = @intToFloat(f32, korean_chars) / @intToFloat(f32, total_chars);
+        const thai_ratio = @intToFloat(f32, thai_chars) / @intToFloat(f32, total_chars);
+        const vietnamese_ratio = @intToFloat(f32, vietnamese_chars) / @intToFloat(f32, total_chars);
+        const french_ratio = @intToFloat(f32, french_chars) / @intToFloat(f32, total_chars);
         const arabic_ratio = @intToFloat(f32, arabic_chars) / @intToFloat(f32, total_chars);
         const russian_ratio = @intToFloat(f32, russian_chars) / @intToFloat(f32, total_chars);
 
-        if (chinese_ratio > 0.5) {
-            self.detected_language = .chinese;
+        if (japanese_ratio > 0.5) {
+            self.detected_language = .japanese;
+        } else if (korean_ratio > 0.5) {
+            self.detected_language = .korean;
+        } else if (thai_ratio > 0.5) {
+            self.detected_language = .thai;
+        } else if (vietnamese_ratio > 0.5) {
+            self.detected_language = .vietnamese;
+        } else if (french_ratio > 0.5) {
+            self.detected_language = .french;
+        } else if (chinese_simp_ratio > chinese_trad_ratio and chinese_simp_ratio > 0.3) {
+            self.detected_language = .chinese_simplified;
+        } else if (chinese_trad_ratio > 0.3) {
+            self.detected_language = .chinese_traditional;
         } else if (arabic_ratio > 0.5) {
             self.detected_language = .arabic;
         } else if (russian_ratio > 0.5) {
@@ -1001,7 +1084,7 @@ pub const PerformanceDashboard = struct {
 
         // Language-specific sanitization
         switch (self.detected_language) {
-            .chinese => {
+            .chinese_traditional, .chinese_simplified => {
                 // For Chinese, we'll transliterate to Pinyin and keep some Chinese characters
                 for (name) |c| {
                     // Keep valid Chinese characters
@@ -1032,6 +1115,81 @@ pub const PerformanceDashboard = struct {
                     }
 
                     // Convert to lowercase for non-Chinese characters
+                    if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                    }
+                }
+            },
+            .japanese => {
+                // For Japanese, we'll transliterate to Romaji and keep some Japanese characters
+                for (name) |c| {
+                    // Keep valid Japanese characters
+                    if ((c >= 0x3040 and c <= 0x309F) or  // Hiragana
+                        (c >= 0x30A0 and c <= 0x30FF) or  // Katakana
+                        (c >= 0x4E00 and c <= 0x9FFF) or  // Kanji
+                        (c >= 0x3000 and c <= 0x303F)) {  // Japanese punctuation
+                        sanitized[sanitized_len] = c;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                        continue;
+                    }
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        continue;
+                    }
+
+                    // Convert to lowercase for non-Japanese characters
+                    if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                    }
+                }
+            },
+            .korean => {
+                // For Korean, we'll transliterate to Latin characters and keep some Hangul
+                for (name) |c| {
+                    // Keep valid Korean characters
+                    if ((c >= 0xAC00 and c <= 0xD7AF) or  // Hangul syllables
+                        (c >= 0x1100 and c <= 0x11FF) or  // Hangul Jamo
+                        (c >= 0x3130 and c <= 0x318F) or  // Hangul Compatibility Jamo
+                        (c >= 0xA960 and c <= 0xA97F) or  // Hangul Jamo Extended-A
+                        (c >= 0xD7B0 and c <= 0xD7FF)) {  // Hangul Jamo Extended-B
+                        sanitized[sanitized_len] = c;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                        continue;
+                    }
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        continue;
+                    }
+
+                    // Convert to lowercase for non-Korean characters
                     if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
                         var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
                         if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
@@ -1166,6 +1324,114 @@ pub const PerformanceDashboard = struct {
                     }
 
                     // Convert to lowercase for non-Russian characters
+                    if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                    }
+                }
+            },
+            .thai => {
+                // For Thai, we'll keep Thai characters and transliterate to Latin
+                for (name) |c| {
+                    // Keep valid Thai characters
+                    if ((c >= 0x0E00 and c <= 0x0E7F) or  // Thai
+                        (c >= 0x0E80 and c <= 0x0EFF)) {  // Thai Extended
+                        sanitized[sanitized_len] = c;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                        continue;
+                    }
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        continue;
+                    }
+
+                    // Convert to lowercase for non-Thai characters
+                    if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                    }
+                }
+            },
+            .vietnamese => {
+                // For Vietnamese, we'll keep diacritics and transliterate to Latin
+                for (name) |c| {
+                    // Keep valid Vietnamese characters
+                    if ((c >= 0x00C0 and c <= 0x00FF) or  // Latin-1 Supplement
+                        (c >= 0x0100 and c <= 0x017F) or  // Latin Extended-A
+                        (c >= 0x0180 and c <= 0x024F) or  // Latin Extended-B
+                        (c >= 0x1E00 and c <= 0x1EFF)) {  // Latin Extended Additional
+                        sanitized[sanitized_len] = c;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                        continue;
+                    }
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        continue;
+                    }
+
+                    // Convert to lowercase for non-Vietnamese characters
+                    if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
+                        var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
+                        if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
+                        sanitized[sanitized_len] = char_to_add;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                    }
+                }
+            },
+            .french => {
+                // For French, we'll keep accents and transliterate to Latin
+                for (name) |c| {
+                    // Keep valid French characters
+                    if ((c >= 0x00C0 and c <= 0x00FF) or  // Latin-1 Supplement
+                        (c >= 0x0100 and c <= 0x017F) or  // Latin Extended-A
+                        (c >= 0x0180 and c <= 0x024F)) {  // Latin Extended-B
+                        sanitized[sanitized_len] = c;
+                        sanitized_len += 1;
+                        in_word = true;
+                        word_start = false;
+                        continue;
+                    }
+
+                    // Handle spaces and special characters
+                    if (c == ' ' or c == '-' or c == '_') {
+                        if (in_word) {
+                            sanitized[sanitized_len] = ' ';
+                            sanitized_len += 1;
+                            in_word = false;
+                            word_start = true;
+                        }
+                        continue;
+                    }
+
+                    // Convert to lowercase for non-French characters
                     if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')) {
                         var char_to_add = if (word_start and c >= 'A' and c <= 'Z') c + 32 else c;
                         if (word_start and char_to_add >= '0' and char_to_add <= '9') continue;
