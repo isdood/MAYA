@@ -1,5 +1,6 @@
 const std = @import("std");
 const vk = @cImport({
+    @cDefine("VK_USE_PLATFORM_XCB_KHR", "1");
     @cInclude("vulkan/vulkan.h");
 });
 const glfw = @cImport({
@@ -943,8 +944,7 @@ pub const VulkanRenderer = struct {
         _ = width;
         _ = height;
         const ptr = glfw.glfwGetWindowUserPointer(window);
-        const aligned_ptr = @alignCast(@alignOf(Self), ptr);
-        const self = @ptrCast(*Self, aligned_ptr);
+        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
         self.framebuffer_resized = true;
     }
 
