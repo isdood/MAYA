@@ -55,9 +55,12 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("neural", neural_module);
     exe.root_module.addImport("starweave", starweave_module);
 
-    exe.addModule("glimmer-colors", b.addModule("glimmer-colors", .{
-        .source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
-    }));
+    // Add glimmer-colors module
+    const glimmer_colors_module = b.addModule("glimmer-colors", .{
+        .root_source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
+    });
+    exe.root_module.addImport("glimmer-colors", glimmer_colors_module);
+
     exe.linkLibC();
     exe.linkSystemLibrary("glfw");
     exe.linkSystemLibrary("vulkan");
@@ -70,8 +73,12 @@ pub fn build(b: *std.Build) void {
     exe.addIncludePath(.{ .cwd_relative = "/usr/include/harfbuzz" });
 
     // Add compile definitions
-    exe.defineCMacro("VK_USE_PLATFORM_XLIB_KHR", "1");
-    exe.defineCMacro("GLFW_INCLUDE_VULKAN", "1");
+    exe.root_module.addImport("VK_USE_PLATFORM_XLIB_KHR", b.addModule("VK_USE_PLATFORM_XLIB_KHR", .{
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
+    }));
+    exe.root_module.addImport("GLFW_INCLUDE_VULKAN", b.addModule("GLFW_INCLUDE_VULKAN", .{
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
+    }));
 
     b.installArtifact(exe);
 
@@ -92,9 +99,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    unit_tests.addModule("glimmer-colors", b.addModule("glimmer-colors", .{
-        .source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
-    }));
+
+    // Add glimmer-colors module to tests
+    unit_tests.root_module.addImport("glimmer-colors", glimmer_colors_module);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run unit tests");

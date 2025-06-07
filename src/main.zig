@@ -52,8 +52,8 @@ const Window = struct {
     }
 
     pub fn deinit(self: *Window) void {
-        if (self.vulkan_renderer) |*renderer| {
-            renderer.deinit();
+        if (self.vulkan_renderer) |*vulkan_renderer| {
+            vulkan_renderer.deinit();
         }
         if (self.handle) |handle| {
             glfw.glfwDestroyWindow(handle);
@@ -80,8 +80,8 @@ const Window = struct {
     }
 
     pub fn drawFrame(self: *Window) !void {
-        if (self.vulkan_renderer) |*renderer| {
-            try renderer.drawFrame();
+        if (self.vulkan_renderer) |*vulkan_renderer| {
+            try vulkan_renderer.drawFrame();
         }
     }
 };

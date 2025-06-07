@@ -128,33 +128,16 @@ pub const GlimmerColors = struct {
     };
 };
 
-test "GLIMMER color system" {
-    const colors = GlimmerColors;
+test "Color operations" {
+    const color1 = GlimmerColors.Color.init(0xFF, 0x00, 0x00, 0xFF);
+    const color2 = GlimmerColors.Color.init(0x00, 0x00, 0xFF, 0xFF);
     
-    // Test hex to RGB conversion
-    const rgb = try colors.hexToRgb(colors.primary);
-    try std.testing.expectEqual(@as(u8, 0xB1), rgb.r);
-    try std.testing.expectEqual(@as(u8, 0x9C), rgb.g);
-    try std.testing.expectEqual(@as(u8, 0xD9), rgb.b);
-
-    // Test color transition
-    const transition = try colors.createTransition(colors.primary, colors.secondary, 3);
-    defer std.heap.page_allocator.free(transition);
-    
-    try std.testing.expectEqual(@as(usize, 3), transition.len);
-    try std.testing.expectEqualStrings(colors.primary, transition[0]);
-    try std.testing.expectEqualStrings(colors.secondary, transition[2]);
-}
-
-test "GlimmerColor" {
-    const color1 = GlimmerColor{ .r = 0xFF, .g = 0x00, .b = 0x00 };
-    const color2 = GlimmerColor{ .r = 0x00, .g = 0x00, .b = 0xFF };
-    
-    const blended = GlimmerColor.blend(color1, color2, 0.5);
+    const blended = GlimmerColors.Color.blend(color1, color2, 0.5);
     try std.testing.expect(blended.r == 0x7F);
     try std.testing.expect(blended.g == 0x00);
     try std.testing.expect(blended.b == 0x7F);
+    try std.testing.expect(blended.a == 0xFF);
 
     const hex = color1.toHex();
-    try std.testing.expectEqualStrings("#FF0000", &hex);
+    try std.testing.expectEqual(@as(u32, 0xFF0000FF), hex);
 } 

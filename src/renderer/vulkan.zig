@@ -2,65 +2,195 @@ const std = @import("std");
 const vk = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
-const glfw = @import("glfw");
-const Window = @import("window.zig").Window;
-const ImGuiRenderer = @import("imgui.zig").ImGuiRenderer;
-const MainUI = @import("ui/main_ui.zig").MainUI;
+const glfw = @cImport({
+    @cInclude("GLFW/glfw3.h");
+});
 
-const VulkanError = error{
-    ValidationLayerNotAvailable,
-    FailedToLoadDebugUtilsMessenger,
-    FailedToCreateInstance,
-    FailedToCreateSurface,
-    FailedToPickPhysicalDevice,
-    FailedToCreateLogicalDevice,
-    FailedToCreateSwapChain,
-    FailedToCreateImageViews,
-    FailedToCreateRenderPass,
-    FailedToCreateGraphicsPipeline,
-    FailedToCreateFramebuffers,
-    FailedToCreateCommandPool,
-    FailedToCreateCommandBuffers,
-    FailedToCreateSyncObjects,
-    FailedToAcquireSwapChainImage,
-    FailedToPresentSwapChainImage,
-    OutOfMemory,
-    DeviceLost,
-    SurfaceLost,
-    OutOfDate,
-    Suboptimal,
-    Unknown,
-};
+const Logger = std.log.Logger;
 
-const LogLevel = enum {
-    Debug,
-    Info,
-    Warning,
-    Error,
-    Fatal,
-};
+pub const VulkanRenderer = struct {
+    const Self = @This();
 
-const VulkanRenderer = struct {
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
     device: vk.VkDevice,
     queue: vk.VkQueue,
-    command_pool: vk.VkCommandPool,
     swapchain: vk.VkSwapchainKHR,
     swapchain_images: []vk.VkImage,
     swapchain_image_views: []vk.VkImageView,
+    swapchain_format: vk.VkFormat,
+    swapchain_extent: vk.VkExtent2D,
     render_pass: vk.VkRenderPass,
-    framebuffers: []vk.VkFramebuffer,
-    pipeline: vk.VkPipeline,
     pipeline_layout: vk.VkPipelineLayout,
-    vertex_buffer: vk.VkBuffer,
-    vertex_buffer_memory: vk.VkDeviceMemory,
+    graphics_pipeline: vk.VkPipeline,
+    framebuffers: []vk.VkFramebuffer,
+    command_pool: vk.VkCommandPool,
     command_buffers: []vk.VkCommandBuffer,
     image_available_semaphores: []vk.VkSemaphore,
     render_finished_semaphores: []vk.VkSemaphore,
     in_flight_fences: []vk.VkFence,
     current_frame: usize,
+    allocator: std.mem.Allocator,
+    logger: Logger,
+
+    pub fn init(window: *glfw.GLFWwindow) !Self {
+        var self = Self{
+            .instance = undefined,
+            .surface = undefined,
+            .physical_device = undefined,
+            .device = undefined,
+            .queue = undefined,
+            .swapchain = undefined,
+            .swapchain_images = undefined,
+            .swapchain_image_views = undefined,
+            .swapchain_format = undefined,
+            .swapchain_extent = undefined,
+            .render_pass = undefined,
+            .pipeline_layout = undefined,
+            .graphics_pipeline = undefined,
+            .framebuffers = undefined,
+            .command_pool = undefined,
+            .command_buffers = undefined,
+            .image_available_semaphores = undefined,
+            .render_finished_semaphores = undefined,
+            .in_flight_fences = undefined,
+            .current_frame = 0,
+            .allocator = std.heap.page_allocator,
+            .logger = std.log.scoped(.vulkan),
+        };
+
+        try self.createInstance();
+        try self.createSurface(window);
+        try self.pickPhysicalDevice();
+        try self.createLogicalDevice();
+        try self.createSwapChain();
+        try self.createImageViews();
+        try self.createRenderPass();
+        try self.createGraphicsPipeline();
+        try self.createFramebuffers();
+        try self.createCommandPool();
+        try self.createCommandBuffers();
+        try self.createSyncObjects();
+
+        return self;
+    }
+
+    pub fn deinit(self: *Self) void {
+        vk.vkDeviceWaitIdle(self.device);
+
+        for (self.in_flight_fences) |fence| {
+            vk.vkDestroyFence(self.device, fence, null);
+        }
+        for (self.render_finished_semaphores) |semaphore| {
+            vk.vkDestroySemaphore(self.device, semaphore, null);
+        }
+        for (self.image_available_semaphores) |semaphore| {
+            vk.vkDestroySemaphore(self.device, semaphore, null);
+        }
+        vk.vkDestroyCommandPool(self.device, self.command_pool, null);
+        for (self.framebuffers) |framebuffer| {
+            vk.vkDestroyFramebuffer(self.device, framebuffer, null);
+        }
+        vk.vkDestroyPipeline(self.device, self.graphics_pipeline, null);
+        vk.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
+        vk.vkDestroyRenderPass(self.device, self.render_pass, null);
+        for (self.swapchain_image_views) |image_view| {
+            vk.vkDestroyImageView(self.device, image_view, null);
+        }
+        vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
+        vk.vkDestroyDevice(self.device, null);
+        vk.vkDestroySurfaceKHR(self.instance, self.surface, null);
+        vk.vkDestroyInstance(self.instance, null);
+    }
+
+    fn createInstance(self: *Self) !void {
+        const app_info = vk.VkApplicationInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pApplicationName = "MAYA",
+            .applicationVersion = vk.VK_MAKE_VERSION(1, 0, 0),
+            .pEngineName = "No Engine",
+            .engineVersion = vk.VK_MAKE_VERSION(1, 0, 0),
+            .apiVersion = vk.VK_API_VERSION_1_0,
+            .pNext = null,
+        };
+
+        const extensions = [_][*:0]const u8{
+            vk.VK_KHR_surface,
+            vk.VK_KHR_xlib_surface,
+        };
+
+        const create_info = vk.VkInstanceCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &app_info,
+            .enabledExtensionCount = extensions.len,
+            .ppEnabledExtensionNames = &extensions,
+            .enabledLayerCount = 0,
+            .ppEnabledLayerNames = null,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        if (vk.vkCreateInstance(&create_info, null, &self.instance) != vk.VK_SUCCESS) {
+            return error.InstanceCreationFailed;
+        }
+    }
+
+    fn createSurface(self: *Self, window: *glfw.GLFWwindow) !void {
+        if (glfw.glfwCreateWindowSurface(self.instance, window, null, &self.surface) != vk.VK_SUCCESS) {
+            return error.SurfaceCreationFailed;
+        }
+    }
+
+    fn pickPhysicalDevice(self: *Self) !void {
+        var device_count: u32 = undefined;
+        _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, null);
+
+        if (device_count == 0) {
+            return error.NoVulkanDevicesFound;
+        }
+
+        const devices = try self.allocator.alloc(vk.VkPhysicalDevice, device_count);
+        defer self.allocator.free(devices);
+        _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, devices.ptr);
+
+        for (devices) |device| {
+            if (try isDeviceSuitable(device, self.surface)) {
+                self.physical_device = device;
+                var device_properties: vk.VkPhysicalDeviceProperties = undefined;
+                vk.vkGetPhysicalDeviceProperties(device, &device_properties);
+                self.logger.info("Selected physical device: {s}", .{std.mem.span(&device_properties.deviceName)});
+                return;
+            }
+        }
+
+        return error.NoSuitableDeviceFound;
+    }
+
+    fn createLogicalDevice(self: *Self) !void {
+        var queue_family_count: u32 = undefined;
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, null);
+
+        const queue_families = try self.allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
+        defer self.allocator.free(queue_families);
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, queue_families.ptr);
+
+        var graphics_queue_family: ?u32 = null;
+        var present_queue_family: ?u32 = null;
+
+        var i: usize = 0;
+        for (queue_families) |queue_family| {
+            if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
+                graphics_queue_family = @intCast(i);
+            }
+
+            var present_support: vk.VkBool32 = undefined;
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(self.physical_device, @intCast(i), self.surface, &present_support);
+            if (present_support != 0) {
+                present_queue_family = @intCast(i);
+            }
+
+            if (graphics_queue_family != null and present_queue_family != null) break;
     window: *Window,
     framebuffer_resized: bool,
     debug_messenger: vk.VkDebugUtilsMessengerEXT,
@@ -968,18 +1098,20 @@ const VulkanRenderer = struct {
         var graphics_queue_found = false;
         var present_queue_found = false;
 
-        for (queue_families) |queue_family, i| {
+        var i: usize = 0;
+        for (queue_families) |queue_family| {
             if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
                 graphics_queue_found = true;
             }
 
             var present_support: vk.VkBool32 = undefined;
-            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, @intCast(u32, i), surface, &present_support);
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, @intCast(u32, i), self.surface, &present_support);
             if (present_support != 0) {
                 present_queue_found = true;
             }
 
             if (graphics_queue_found and present_queue_found) break;
+            i += 1;
         }
 
         return graphics_queue_found and present_queue_found;
@@ -1021,7 +1153,8 @@ const VulkanRenderer = struct {
         var graphics_queue_family: ?u32 = null;
         var present_queue_family: ?u32 = null;
 
-        for (queue_families) |queue_family, i| {
+        var i: usize = 0;
+        for (queue_families) |queue_family| {
             if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
                 graphics_queue_family = @intCast(u32, i);
             }
@@ -1033,6 +1166,7 @@ const VulkanRenderer = struct {
             }
 
             if (graphics_queue_family != null and present_queue_family != null) break;
+            i += 1;
         }
 
         if (graphics_queue_family == null or present_queue_family == null) {
