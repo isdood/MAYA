@@ -565,6 +565,15 @@ pub const PerformanceDashboard = struct {
                 c.igTextColored(.{ .x = 0.4, .y = 0.4, .z = 0.4, .w = 1.0 }, "Disabled");
 
                 c.igSpacing();
+                c.igText("Impact Legend:");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.2, .y = 0.6, .z = 0.8, .w = 1.0 }, "💻 CPU");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.8, .y = 0.4, .z = 0.2, .w = 1.0 }, "🎮 GPU");
+                c.igSameLine(0, 20);
+                c.igTextColored(.{ .x = 0.6, .y = 0.4, .z = 0.8, .w = 1.0 }, "💾 Memory");
+
+                c.igSpacing();
                 c.igSeparator();
                 c.igSpacing();
 
@@ -643,6 +652,33 @@ pub const PerformanceDashboard = struct {
                     c.igPushStyleColor(c.ImGuiCol_Text, color);
                 }
 
+                // Helper function for impact indicators
+                fn renderImpactIndicators(cpu: u8, gpu: u8, memory: u8) void {
+                    const impact_color = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 };
+                    const high_impact_color = .{ .x = 1.0, .y = 0.4, .z = 0.4, .w = 1.0 };
+
+                    // CPU Impact
+                    c.igSameLine(0, 5);
+                    c.igTextColored(if (cpu > 2) high_impact_color else impact_color, "💻");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("CPU Impact: %d/5", cpu);
+                    }
+
+                    // GPU Impact
+                    c.igSameLine(0, 5);
+                    c.igTextColored(if (gpu > 2) high_impact_color else impact_color, "🎮");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("GPU Impact: %d/5", gpu);
+                    }
+
+                    // Memory Impact
+                    c.igSameLine(0, 5);
+                    c.igTextColored(if (memory > 2) high_impact_color else impact_color, "💾");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Memory Impact: %d/5", memory);
+                    }
+                }
+
                 // Render settings in a table format
                 if (c.igBeginTable("##settings_table", 2, c.ImGuiTableFlags_Borders | c.ImGuiTableFlags_RowBg, .{ .x = 0, .y = 0 }, 0)) {
                     // Table headers
@@ -663,6 +699,7 @@ pub const PerformanceDashboard = struct {
                     setMSAAColor(settings.msaa_level);
                     c.igText("%d", settings.msaa_level);
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(2, 4, 1);
 
                     // Texture Quality
                     c.igTableNextRow(0, 0);
@@ -675,6 +712,7 @@ pub const PerformanceDashboard = struct {
                     setQualityColor(settings.texture_quality);
                     c.igText("%s", @tagName(settings.texture_quality));
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(1, 3, 4);
 
                     // Shadow Quality
                     c.igTableNextRow(0, 0);
@@ -687,6 +725,7 @@ pub const PerformanceDashboard = struct {
                     setQualityColor(settings.shadow_quality);
                     c.igText("%s", @tagName(settings.shadow_quality));
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(1, 4, 2);
 
                     // Anisotropic Filtering
                     c.igTableNextRow(0, 0);
@@ -699,6 +738,7 @@ pub const PerformanceDashboard = struct {
                     setAnisotropicColor(settings.anisotropic_filtering);
                     c.igText("%dx", settings.anisotropic_filtering);
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(1, 3, 1);
 
                     // View Distance
                     c.igTableNextRow(0, 0);
@@ -711,6 +751,7 @@ pub const PerformanceDashboard = struct {
                     setViewDistanceColor(settings.view_distance);
                     c.igText("%.1f", settings.view_distance);
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(3, 4, 3);
 
                     // Max FPS
                     c.igTableNextRow(0, 0);
@@ -723,6 +764,7 @@ pub const PerformanceDashboard = struct {
                     setFPSColor(settings.max_fps);
                     c.igText("%d", settings.max_fps);
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(2, 3, 1);
 
                     // V-Sync
                     c.igTableNextRow(0, 0);
@@ -732,7 +774,10 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Vertical synchronization. Reduces screen tearing but may introduce input lag.");
                     }
                     c.igTableNextColumn();
+                    setFeatureColor(settings.vsync);
                     c.igText("%s", if (settings.vsync) "Enabled" else "Disabled");
+                    c.igPopStyleColor(1);
+                    renderImpactIndicators(1, 1, 0);
 
                     // Triple Buffering
                     c.igTableNextRow(0, 0);
@@ -742,7 +787,10 @@ pub const PerformanceDashboard = struct {
                         c.igSetTooltip("Uses three buffers to reduce screen tearing. May increase latency but provides smoother frame delivery.");
                     }
                     c.igTableNextColumn();
+                    setFeatureColor(settings.triple_buffering);
                     c.igText("%s", if (settings.triple_buffering) "Enabled" else "Disabled");
+                    c.igPopStyleColor(1);
+                    renderImpactIndicators(1, 1, 2);
 
                     // Shader Quality
                     c.igTableNextRow(0, 0);
@@ -755,6 +803,7 @@ pub const PerformanceDashboard = struct {
                     setQualityColor(settings.shader_quality);
                     c.igText("%s", @tagName(settings.shader_quality));
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(2, 4, 1);
 
                     // Compute Shader Quality
                     c.igTableNextRow(0, 0);
@@ -767,6 +816,7 @@ pub const PerformanceDashboard = struct {
                     setQualityColor(settings.compute_shader_quality);
                     c.igText("%s", @tagName(settings.compute_shader_quality));
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(3, 5, 2);
 
                     // Texture Streaming
                     c.igTableNextRow(0, 0);
@@ -778,6 +828,8 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextColumn();
                     setFeatureColor(settings.texture_streaming);
                     c.igText("%s", if (settings.texture_streaming) "Enabled" else "Disabled");
+                    c.igPopStyleColor(1);
+                    renderImpactIndicators(2, 1, 3);
 
                     // Texture Cache Size
                     c.igTableNextRow(0, 0);
@@ -790,6 +842,7 @@ pub const PerformanceDashboard = struct {
                     setCacheSizeColor(@intToFloat(f32, settings.texture_cache_size) / (1024 * 1024));
                     c.igText("%.1f MB", @intToFloat(f32, settings.texture_cache_size) / (1024 * 1024));
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(1, 1, 4);
 
                     // Geometry LOD Levels
                     c.igTableNextRow(0, 0);
@@ -800,6 +853,7 @@ pub const PerformanceDashboard = struct {
                     }
                     c.igTableNextColumn();
                     c.igText("%d", settings.geometry_lod_levels);
+                    renderImpactIndicators(2, 2, 2);
 
                     // Pipeline Cache Size
                     c.igTableNextRow(0, 0);
@@ -812,15 +866,16 @@ pub const PerformanceDashboard = struct {
                     setCacheSizeColor(@intToFloat(f32, settings.pipeline_cache_size) / (1024 * 1024));
                     c.igText("%.1f MB", @intToFloat(f32, settings.pipeline_cache_size) / (1024 * 1024));
                     c.igPopStyleColor(1);
+                    renderImpactIndicators(1, 1, 3);
 
                     // Feature toggles with color coding
                     const feature_settings = .{
-                        .{ "Command Buffer Reuse", settings.command_buffer_reuse },
-                        .{ "Secondary Command Buffers", settings.secondary_command_buffers },
-                        .{ "Async Compute", settings.async_compute },
-                        .{ "Geometry Shaders", settings.geometry_shaders },
-                        .{ "Tessellation", settings.tessellation },
-                        .{ "Ray Tracing", settings.ray_tracing },
+                        .{ "Command Buffer Reuse", settings.command_buffer_reuse, 2, 1, 2 },
+                        .{ "Secondary Command Buffers", settings.secondary_command_buffers, 3, 2, 1 },
+                        .{ "Async Compute", settings.async_compute, 2, 4, 1 },
+                        .{ "Geometry Shaders", settings.geometry_shaders, 1, 3, 1 },
+                        .{ "Tessellation", settings.tessellation, 2, 5, 2 },
+                        .{ "Ray Tracing", settings.ray_tracing, 3, 5, 3 },
                     };
 
                     for (feature_settings) |feature| {
@@ -834,6 +889,7 @@ pub const PerformanceDashboard = struct {
                         setFeatureColor(feature[1]);
                         c.igText("%s", if (feature[1]) "Enabled" else "Disabled");
                         c.igPopStyleColor(1);
+                        renderImpactIndicators(feature[2], feature[3], feature[4]);
                     }
 
                     c.igEndTable();
