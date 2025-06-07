@@ -191,981 +191,6 @@ pub const VulkanRenderer = struct {
             }
 
             if (graphics_queue_family != null and present_queue_family != null) break;
-    window: *Window,
-    framebuffer_resized: bool,
-    debug_messenger: vk.VkDebugUtilsMessengerEXT,
-    validation_layers_enabled: bool,
-    allocator: std.mem.Allocator,
-    logger: std.log.Logger,
-    feature_manager: FeatureManager,
-    performance_monitor: PerformanceMonitor,
-    imgui: ?*ImGuiRenderer,
-    ui: ?*MainUI,
-    // Add depth buffer fields
-    depth_image: vk.VkImage,
-    depth_image_memory: vk.VkDeviceMemory,
-    depth_image_view: vk.VkImageView,
-    swapchain_extent: vk.VkExtent2D,
-
-    // Uniform buffer for rotation
-    uniform_buffer: vk.VkBuffer,
-    uniform_buffer_memory: vk.VkDeviceMemory,
-    uniform_buffer_mapped: ?*anyopaque,
-    rotation: f32 = 0.0,
-
-    const MAX_FRAMES_IN_FLIGHT = 2;
-
-    const VALIDATION_LAYERS = [_][*:0]const u8{
-        "VK_LAYER_KHRONOS_validation",
-    };
-
-    const REQUIRED_DEVICE_EXTENSIONS = [_][*:0]const u8{
-        vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    };
-
-    // Feature management system
-    const FeatureManager = struct {
-        const Self = @This();
-
-        // Feature support tracking
-        supported_features: vk.VkPhysicalDeviceFeatures,
-        enabled_features: vk.VkPhysicalDeviceFeatures,
-        fallback_level: FallbackLevel,
-
-        // Fallback levels for different feature sets
-        pub const FallbackLevel = enum {
-            full,      // All features supported
-            high,      // Most features supported
-            medium,    // Basic features + some advanced
-            basic,     // Only basic features
-            minimal,   // Minimal feature set
-        };
-
-        // Initialize feature manager
-        pub fn init(physical_device: vk.VkPhysicalDevice) !Self {
-            var supported_features: vk.VkPhysicalDeviceFeatures = undefined;
-            vk.vkGetPhysicalDeviceFeatures(physical_device, &supported_features);
-
-            var self = Self{
-                .supported_features = supported_features,
-                .enabled_features = vk.VkPhysicalDeviceFeatures{
-                    .robustBufferAccess = vk.VK_FALSE,
-                    .fullDrawIndexUint32 = vk.VK_FALSE,
-                    .imageCubeArray = vk.VK_FALSE,
-                    .independentBlend = vk.VK_FALSE,
-                    .geometryShader = vk.VK_FALSE,
-                    .tessellationShader = vk.VK_FALSE,
-                    .sampleRateShading = vk.VK_FALSE,
-                    .dualSrcBlend = vk.VK_FALSE,
-                    .logicOp = vk.VK_FALSE,
-                    .multiDrawIndirect = vk.VK_FALSE,
-                    .drawIndirectFirstInstance = vk.VK_FALSE,
-                    .depthClamp = vk.VK_FALSE,
-                    .depthBiasClamp = vk.VK_FALSE,
-                    .fillModeNonSolid = vk.VK_FALSE,
-                    .depthBounds = vk.VK_FALSE,
-                    .wideLines = vk.VK_FALSE,
-                    .largePoints = vk.VK_FALSE,
-                    .alphaToOne = vk.VK_FALSE,
-                    .multiViewport = vk.VK_FALSE,
-                    .samplerAnisotropy = vk.VK_FALSE,
-                    .textureCompressionETC2 = vk.VK_FALSE,
-                    .textureCompressionASTC_LDR = vk.VK_FALSE,
-                    .textureCompressionBC = vk.VK_FALSE,
-                    .occlusionQueryPrecise = vk.VK_FALSE,
-                    .pipelineStatisticsQuery = vk.VK_FALSE,
-                    .vertexPipelineStoresAndAtomics = vk.VK_FALSE,
-                    .fragmentStoresAndAtomics = vk.VK_FALSE,
-                    .shaderTessellationAndGeometryPointSize = vk.VK_FALSE,
-                    .shaderImageGatherExtended = vk.VK_FALSE,
-                    .shaderStorageImageExtendedFormats = vk.VK_FALSE,
-                    .shaderStorageImageMultisample = vk.VK_FALSE,
-                    .shaderStorageImageReadWithoutFormat = vk.VK_FALSE,
-                    .shaderStorageImageWriteWithoutFormat = vk.VK_FALSE,
-                    .shaderUniformBufferArrayDynamicIndexing = vk.VK_FALSE,
-                    .shaderSampledImageArrayDynamicIndexing = vk.VK_FALSE,
-                    .shaderStorageBufferArrayDynamicIndexing = vk.VK_FALSE,
-                    .shaderStorageImageArrayDynamicIndexing = vk.VK_FALSE,
-                    .shaderClipDistance = vk.VK_FALSE,
-                    .shaderCullDistance = vk.VK_FALSE,
-                    .shaderFloat64 = vk.VK_FALSE,
-                    .shaderInt64 = vk.VK_FALSE,
-                    .shaderInt16 = vk.VK_FALSE,
-                    .shaderResourceResidency = vk.VK_FALSE,
-                    .shaderResourceMinLod = vk.VK_FALSE,
-                    .sparseBinding = vk.VK_FALSE,
-                    .sparseResidencyBuffer = vk.VK_FALSE,
-                    .sparseResidencyImage2D = vk.VK_FALSE,
-                    .sparseResidencyImage3D = vk.VK_FALSE,
-                    .sparseResidency2Samples = vk.VK_FALSE,
-                    .sparseResidency4Samples = vk.VK_FALSE,
-                    .sparseResidency8Samples = vk.VK_FALSE,
-                    .sparseResidency16Samples = vk.VK_FALSE,
-                    .sparseResidencyAliased = vk.VK_FALSE,
-                    .variableMultisampleRate = vk.VK_FALSE,
-                    .inheritedQueries = vk.VK_FALSE,
-                },
-                .fallback_level = .minimal,
-            };
-
-            // Determine fallback level and enable features
-            try self.determineFallbackLevel();
-            try self.enableFeatures();
-
-            return self;
-        }
-
-        // Determine the appropriate fallback level based on device capabilities
-        fn determineFallbackLevel(self: *Self) !void {
-            // Check for full feature support
-            if (self.checkFeatureSet(.full)) {
-                self.fallback_level = .full;
-                return;
-            }
-
-            // Check for high-level feature support
-            if (self.checkFeatureSet(.high)) {
-                self.fallback_level = .high;
-                return;
-            }
-
-            // Check for medium-level feature support
-            if (self.checkFeatureSet(.medium)) {
-                self.fallback_level = .medium;
-                return;
-            }
-
-            // Check for basic feature support
-            if (self.checkFeatureSet(.basic)) {
-                self.fallback_level = .basic;
-                return;
-            }
-
-            // Fall back to minimal features
-            self.fallback_level = .minimal;
-        }
-
-        // Check if device supports a specific feature set
-        fn checkFeatureSet(self: *Self, level: FallbackLevel) bool {
-            return switch (level) {
-                .full => self.supported_features.geometryShader == vk.VK_TRUE and
-                        self.supported_features.tessellationShader == vk.VK_TRUE and
-                        self.supported_features.multiViewport == vk.VK_TRUE and
-                        self.supported_features.samplerAnisotropy == vk.VK_TRUE and
-                        self.supported_features.textureCompressionBC == vk.VK_TRUE and
-                        self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE,
-
-                .high => self.supported_features.geometryShader == vk.VK_TRUE and
-                        self.supported_features.samplerAnisotropy == vk.VK_TRUE and
-                        self.supported_features.textureCompressionBC == vk.VK_TRUE and
-                        self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE,
-
-                .medium => self.supported_features.samplerAnisotropy == vk.VK_TRUE and
-                          self.supported_features.textureCompressionBC == vk.VK_TRUE and
-                          self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE,
-
-                .basic => self.supported_features.robustBufferAccess == vk.VK_TRUE and
-                         self.supported_features.fullDrawIndexUint32 == vk.VK_TRUE and
-                         self.supported_features.independentBlend == vk.VK_TRUE,
-
-                .minimal => self.supported_features.robustBufferAccess == vk.VK_TRUE,
-            };
-        }
-
-        // Enable features based on fallback level
-        fn enableFeatures(self: *Self) !void {
-            switch (self.fallback_level) {
-                .full => {
-                    // Enable all features that are supported
-                    inline for (std.meta.fields(vk.VkPhysicalDeviceFeatures)) |field| {
-                        if (@field(self.supported_features, field.name) == vk.VK_TRUE) {
-                            @field(self.enabled_features, field.name) = vk.VK_TRUE;
-                        }
-                    }
-                },
-                .high => {
-                    // Enable high-level features
-                    self.enableFeatureSet(.high);
-                },
-                .medium => {
-                    // Enable medium-level features
-                    self.enableFeatureSet(.medium);
-                },
-                .basic => {
-                    // Enable basic features
-                    self.enableFeatureSet(.basic);
-                },
-                .minimal => {
-                    // Enable only essential features
-                    self.enableFeatureSet(.minimal);
-                },
-            }
-        }
-
-        // Enable a specific feature set
-        fn enableFeatureSet(self: *Self, level: FallbackLevel) void {
-            switch (level) {
-                .full => {
-                    if (self.supported_features.geometryShader == vk.VK_TRUE)
-                        self.enabled_features.geometryShader = vk.VK_TRUE;
-                    if (self.supported_features.tessellationShader == vk.VK_TRUE)
-                        self.enabled_features.tessellationShader = vk.VK_TRUE;
-                    if (self.supported_features.multiViewport == vk.VK_TRUE)
-                        self.enabled_features.multiViewport = vk.VK_TRUE;
-                    if (self.supported_features.samplerAnisotropy == vk.VK_TRUE)
-                        self.enabled_features.samplerAnisotropy = vk.VK_TRUE;
-                    if (self.supported_features.textureCompressionBC == vk.VK_TRUE)
-                        self.enabled_features.textureCompressionBC = vk.VK_TRUE;
-                    if (self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE)
-                        self.enabled_features.vertexPipelineStoresAndAtomics = vk.VK_TRUE;
-                },
-                .high => {
-                    if (self.supported_features.geometryShader == vk.VK_TRUE)
-                        self.enabled_features.geometryShader = vk.VK_TRUE;
-                    if (self.supported_features.samplerAnisotropy == vk.VK_TRUE)
-                        self.enabled_features.samplerAnisotropy = vk.VK_TRUE;
-                    if (self.supported_features.textureCompressionBC == vk.VK_TRUE)
-                        self.enabled_features.textureCompressionBC = vk.VK_TRUE;
-                    if (self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE)
-                        self.enabled_features.vertexPipelineStoresAndAtomics = vk.VK_TRUE;
-                },
-                .medium => {
-                    if (self.supported_features.samplerAnisotropy == vk.VK_TRUE)
-                        self.enabled_features.samplerAnisotropy = vk.VK_TRUE;
-                    if (self.supported_features.textureCompressionBC == vk.VK_TRUE)
-                        self.enabled_features.textureCompressionBC = vk.VK_TRUE;
-                    if (self.supported_features.vertexPipelineStoresAndAtomics == vk.VK_TRUE)
-                        self.enabled_features.vertexPipelineStoresAndAtomics = vk.VK_TRUE;
-                },
-                .basic => {
-                    if (self.supported_features.robustBufferAccess == vk.VK_TRUE)
-                        self.enabled_features.robustBufferAccess = vk.VK_TRUE;
-                    if (self.supported_features.fullDrawIndexUint32 == vk.VK_TRUE)
-                        self.enabled_features.fullDrawIndexUint32 = vk.VK_TRUE;
-                    if (self.supported_features.independentBlend == vk.VK_TRUE)
-                        self.enabled_features.independentBlend = vk.VK_TRUE;
-                },
-                .minimal => {
-                    if (self.supported_features.robustBufferAccess == vk.VK_TRUE)
-                        self.enabled_features.robustBufferAccess = vk.VK_TRUE;
-                },
-            }
-        }
-
-        // Get enabled features for device creation
-        pub fn getEnabledFeatures(self: *const Self) vk.VkPhysicalDeviceFeatures {
-            return self.enabled_features;
-        }
-
-        // Log feature support and fallback level
-        pub fn logFeatureSupport(self: *const Self, logger: *Logger) void {
-            logger.info("Device feature support level: {s}", .{@tagName(self.fallback_level)});
-            logger.info("Enabled features:", .{});
-            
-            inline for (std.meta.fields(vk.VkPhysicalDeviceFeatures)) |field| {
-                if (@field(self.enabled_features, field.name) == vk.VK_TRUE) {
-                    logger.info("  - {s}: enabled", .{field.name});
-                }
-            }
-        }
-    };
-
-    // Performance monitoring system
-    const PerformanceMonitor = struct {
-        const Self = @This();
-
-        // Performance thresholds
-        const Thresholds = struct {
-            const Self = @This();
-
-            // Frame time thresholds (in milliseconds)
-            frame_time_warning: f64 = 16.67, // 60 FPS
-            frame_time_critical: f64 = 33.33, // 30 FPS
-
-            // Memory thresholds (in MB)
-            memory_warning: usize = 512, // 512 MB
-            memory_critical: usize = 1024, // 1 GB
-
-            // Draw call thresholds
-            draw_calls_warning: u32 = 1000,
-            draw_calls_critical: u32 = 2000,
-
-            // Feature-specific thresholds (in milliseconds)
-            geometry_shader_warning: f64 = 1.0,
-            geometry_shader_critical: f64 = 2.0,
-            tessellation_warning: f64 = 2.0,
-            tessellation_critical: f64 = 4.0,
-            anisotropy_warning: f64 = 0.5,
-            anisotropy_critical: f64 = 1.0,
-            texture_compression_warning: f64 = 1.0,
-            texture_compression_critical: f64 = 2.0,
-            compute_warning: f64 = 2.0,
-            compute_critical: f64 = 4.0,
-            sparse_binding_warning: f64 = 1.0,
-            sparse_binding_critical: f64 = 2.0,
-            query_warning: f64 = 0.5,
-            query_critical: f64 = 1.0,
-
-            // Alert cooldown (in frames)
-            alert_cooldown: u32 = 60,
-
-            // Alert state
-            last_alert_frame: u32 = 0,
-            alert_active: bool = false,
-        };
-
-        // Performance presets
-        const Preset = enum {
-            aggressive,
-            balanced,
-            relaxed,
-            custom,
-        };
-
-        // Preset configurations
-        const PRESET_CONFIGS = std.ComptimeStringMap(Thresholds, .{
-            .{ "aggressive", .{
-                .frame_time_warning = 11.11,    // 90 FPS
-                .frame_time_critical = 16.67,   // 60 FPS
-                .memory_warning = 256,          // 256 MB
-                .memory_critical = 512,         // 512 MB
-                .draw_calls_warning = 500,
-                .draw_calls_critical = 1000,
-                .geometry_shader_warning = 0.5,
-                .geometry_shader_critical = 1.0,
-                .tessellation_warning = 1.0,
-                .tessellation_critical = 2.0,
-                .anisotropy_warning = 0.25,
-                .anisotropy_critical = 0.5,
-                .texture_compression_warning = 0.5,
-                .texture_compression_critical = 1.0,
-                .compute_warning = 1.0,
-                .compute_critical = 2.0,
-                .sparse_binding_warning = 0.5,
-                .sparse_binding_critical = 1.0,
-                .query_warning = 0.25,
-                .query_critical = 0.5,
-            }},
-            .{ "balanced", .{
-                .frame_time_warning = 16.67,    // 60 FPS
-                .frame_time_critical = 33.33,   // 30 FPS
-                .memory_warning = 512,          // 512 MB
-                .memory_critical = 1024,        // 1 GB
-                .draw_calls_warning = 1000,
-                .draw_calls_critical = 2000,
-                .geometry_shader_warning = 1.0,
-                .geometry_shader_critical = 2.0,
-                .tessellation_warning = 2.0,
-                .tessellation_critical = 4.0,
-                .anisotropy_warning = 0.5,
-                .anisotropy_critical = 1.0,
-                .texture_compression_warning = 1.0,
-                .texture_compression_critical = 2.0,
-                .compute_warning = 2.0,
-                .compute_critical = 4.0,
-                .sparse_binding_warning = 1.0,
-                .sparse_binding_critical = 2.0,
-                .query_warning = 0.5,
-                .query_critical = 1.0,
-            }},
-            .{ "relaxed", .{
-                .frame_time_warning = 33.33,    // 30 FPS
-                .frame_time_critical = 66.67,   // 15 FPS
-                .memory_warning = 1024,         // 1 GB
-                .memory_critical = 2048,        // 2 GB
-                .draw_calls_warning = 2000,
-                .draw_calls_critical = 4000,
-                .geometry_shader_warning = 2.0,
-                .geometry_shader_critical = 4.0,
-                .tessellation_warning = 4.0,
-                .tessellation_critical = 8.0,
-                .anisotropy_warning = 1.0,
-                .anisotropy_critical = 2.0,
-                .texture_compression_warning = 2.0,
-                .texture_compression_critical = 4.0,
-                .compute_warning = 4.0,
-                .compute_critical = 8.0,
-                .sparse_binding_warning = 2.0,
-                .sparse_binding_critical = 4.0,
-                .query_warning = 1.0,
-                .query_critical = 2.0,
-            }},
-        });
-
-        // Current preset
-        current_preset: Preset = .balanced,
-        thresholds: Thresholds = PRESET_CONFIGS.get("balanced").?,
-        logger: *std.log.Logger,
-
-        // Initialize performance monitor
-        pub fn init(logger: *std.log.Logger) Self {
-            return Self{
-                .logger = logger,
-            };
-        }
-
-        // Select appropriate preset based on hardware capabilities
-        pub fn selectPresetBasedOnHardware(self: *Self, physical_device: vk.VkPhysicalDevice) void {
-            var device_properties: vk.VkPhysicalDeviceProperties = undefined;
-            vk.vkGetPhysicalDeviceProperties(physical_device, &device_properties);
-
-            // Get device memory properties
-            var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
-            vk.vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
-
-            // Calculate total device memory in MB
-            var total_memory_mb: usize = 0;
-            var i: usize = 0;
-            while (i < memory_properties.memoryHeapCount) : (i += 1) {
-                if (memory_properties.memoryHeaps[i].flags & vk.VK_MEMORY_HEAP_DEVICE_LOCAL_BIT != 0) {
-                    total_memory_mb += @divTrunc(memory_properties.memoryHeaps[i].size, 1024 * 1024);
-                }
-            }
-
-            // Score device capabilities
-            var score: f32 = 0;
-
-            // Score based on device type
-            score += switch (device_properties.deviceType) {
-                vk.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU => 100,
-                vk.VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU => 50,
-                vk.VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU => 30,
-                else => 10,
-            };
-
-            // Score based on memory
-            if (total_memory_mb >= 8192) { // 8GB+
-                score += 50;
-            } else if (total_memory_mb >= 4096) { // 4GB+
-                score += 30;
-            } else if (total_memory_mb >= 2048) { // 2GB+
-                score += 20;
-            } else if (total_memory_mb >= 1024) { // 1GB+
-                score += 10;
-            }
-
-            // Score based on max compute work group size
-            const max_work_group_size = device_properties.limits.maxComputeWorkGroupSize[0] *
-                device_properties.limits.maxComputeWorkGroupSize[1] *
-                device_properties.limits.maxComputeWorkGroupSize[2];
-            if (max_work_group_size >= 1024) {
-                score += 20;
-            } else if (max_work_group_size >= 512) {
-                score += 15;
-            } else if (max_work_group_size >= 256) {
-                score += 10;
-            }
-
-            // Select preset based on score
-            if (score >= 150) {
-                self.setPreset(.aggressive);
-                self.logger.info("Selected aggressive preset based on hardware score: {d}", .{score});
-            } else if (score >= 100) {
-                self.setPreset(.balanced);
-                self.logger.info("Selected balanced preset based on hardware score: {d}", .{score});
-            } else {
-                self.setPreset(.relaxed);
-                self.logger.info("Selected relaxed preset based on hardware score: {d}", .{score});
-            }
-        }
-
-        // Apply a preset configuration
-        pub fn setPreset(self: *Self, preset: Preset) void {
-            self.current_preset = preset;
-            if (preset != .custom) {
-                self.thresholds = PRESET_CONFIGS.get(@tagName(preset)).?;
-                self.logger.info("Applied {s} performance preset", .{@tagName(preset)});
-            }
-        }
-
-        // ... existing code ...
-    };
-
-    // Feature types for performance monitoring
-    const FeatureType = enum {
-        geometry_shader,
-        tessellation,
-        anisotropy,
-        texture_compression,
-        compute,
-        sparse_binding,
-        query,
-    };
-
-    pub fn init(allocator: std.mem.Allocator, window: *Window) !*VulkanRenderer {
-        var self = try allocator.create(VulkanRenderer);
-        errdefer allocator.destroy(self);
-
-        self.allocator = allocator;
-        self.logger = std.log.scoped(.vulkan);
-        self.window = window;
-        self.framebuffer_resized = false;
-
-        try self.createInstance();
-        self.logger.info("Vulkan instance created", .{});
-
-        try self.setupDebugMessenger();
-        self.logger.info("Debug messenger setup complete", .{});
-
-        try self.createSurface();
-        self.logger.info("Surface created", .{});
-
-        try self.pickPhysicalDevice();
-        self.logger.info("Physical device selected", .{});
-
-        try self.createLogicalDevice();
-        self.logger.info("Logical device created", .{});
-
-        try self.createSwapChain();
-        self.logger.info("Swapchain created", .{});
-
-        try self.createImageViews();
-        self.logger.info("Image views created", .{});
-
-        try self.createDepthResources();
-        self.logger.info("Depth resources created", .{});
-
-        try self.createRenderPass();
-        self.logger.info("Render pass created", .{});
-
-        try self.createDescriptorSetLayout();
-        self.logger.info("Descriptor set layout created", .{});
-
-        try self.createGraphicsPipeline();
-        self.logger.info("Graphics pipeline created", .{});
-
-        try self.createFramebuffers();
-        self.logger.info("Framebuffers created", .{});
-
-        try self.createCommandPool();
-        self.logger.info("Command pool created", .{});
-
-        try self.createUniformBuffers();
-        self.logger.info("Uniform buffers created", .{});
-
-        try self.createDescriptorPool();
-        self.logger.info("Descriptor pool created", .{});
-
-        try self.createDescriptorSets();
-        self.logger.info("Descriptor sets created", .{});
-
-        try self.createCommandBuffers();
-        self.logger.info("Command buffers created", .{});
-
-        try self.createSyncObjects();
-        self.logger.info("Sync objects created", .{});
-
-        try self.createVertexBuffer();
-        self.logger.info("Vertex buffer created", .{});
-
-        return self;
-    }
-
-    pub fn deinit(self: *VulkanRenderer) void {
-        self.logger.info("Shutting down Vulkan renderer", .{});
-
-        try vk.vkDeviceWaitIdle(self.device);
-
-        self.cleanupSwapChain();
-        self.logger.info("Swapchain cleaned up", .{});
-
-        if (VALIDATION_LAYERS.len > 0) {
-            const destroy_debug_utils_messenger_ext = @ptrCast(
-                fn (vk.VkInstance, vk.VkDebugUtilsMessengerEXT, ?*const vk.VkAllocationCallbacks) callconv(.C) void,
-                vk.vkGetInstanceProcAddr(self.instance, "vkDestroyDebugUtilsMessengerEXT"),
-            );
-
-            if (destroy_debug_utils_messenger_ext) |func| {
-                func(self.instance, self.debug_messenger, null);
-                self.logger.info("Debug messenger destroyed", .{});
-            }
-        }
-
-        // Cleanup sync objects
-        for (self.image_available_semaphores) |semaphore| {
-            vk.vkDestroySemaphore(self.device, semaphore, null);
-        }
-        for (self.render_finished_semaphores) |semaphore| {
-            vk.vkDestroySemaphore(self.device, semaphore, null);
-        }
-        for (self.in_flight_fences) |fence| {
-            vk.vkDestroyFence(self.device, fence, null);
-        }
-
-        // Cleanup command buffers and pool
-        vk.vkFreeCommandBuffers(self.device, self.command_pool, @intCast(self.command_buffers.len), self.command_buffers.ptr);
-        vk.vkDestroyCommandPool(self.device, self.command_pool, null);
-
-        // Cleanup vertex buffer
-        vk.vkDestroyBuffer(self.device, self.vertex_buffer, null);
-        vk.vkFreeMemory(self.device, self.vertex_buffer_memory, null);
-
-        // Cleanup depth resources
-        vk.vkDestroyImageView(self.device, self.depth_image_view, null);
-        vk.vkDestroyImage(self.device, self.depth_image, null);
-        vk.vkFreeMemory(self.device, self.depth_image_memory, null);
-
-        // Cleanup graphics pipeline
-        vk.vkDestroyPipeline(self.device, self.pipeline, null);
-        vk.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
-
-        // Cleanup framebuffers
-        for (self.framebuffers) |framebuffer| {
-            vk.vkDestroyFramebuffer(self.device, framebuffer, null);
-        }
-
-        // Cleanup render pass
-        vk.vkDestroyRenderPass(self.device, self.render_pass, null);
-
-        // Clean up image views
-        for (self.swapchain_image_views) |image_view| {
-            vk.vkDestroyImageView(self.device, image_view, null);
-        }
-
-        // Cleanup swapchain
-        vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
-
-        // Cleanup device and instance
-        vk.vkDestroyDevice(self.device, null);
-        vk.vkDestroyInstance(self.instance, null);
-
-        self.allocator.destroy(self);
-        self.logger.info("Vulkan renderer shutdown complete", .{});
-
-        // Clean up performance monitor
-        self.performance_monitor.deinit();
-
-        // Cleanup ImGui
-        if (self.imgui) |*imgui| {
-            imgui.deinit(self.device);
-        }
-
-        // Cleanup UI
-        if (self.ui) |*ui| {
-            ui.deinit(self.allocator);
-        }
-    }
-
-    fn checkValidationLayerSupport() !void {
-        var layer_count: u32 = undefined;
-        _ = vk.vkEnumerateInstanceLayerProperties(&layer_count, null);
-
-        var available_layers = try std.heap.page_allocator.alloc(vk.VkLayerProperties, layer_count);
-        defer std.heap.page_allocator.free(available_layers);
-        _ = vk.vkEnumerateInstanceLayerProperties(&layer_count, available_layers.ptr);
-
-        for (VALIDATION_LAYERS) |layer_name| {
-            var layer_found = false;
-            for (available_layers) |layer_properties| {
-                if (std.mem.eql(u8, std.mem.span(layer_name), std.mem.span(&layer_properties.layerName))) {
-                    layer_found = true;
-                    break;
-                }
-            }
-            if (!layer_found) {
-                return error.ValidationLayerNotAvailable;
-            }
-        }
-    }
-
-    fn getRequiredExtensions() ![][]const u8 {
-        var glfw_extension_count: u32 = undefined;
-        const glfw_extensions = glfw.glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-
-        var extensions = std.ArrayList([]const u8).init(std.heap.page_allocator);
-        defer extensions.deinit();
-
-        var i: usize = 0;
-        while (i < glfw_extension_count) : (i += 1) {
-            try extensions.append(std.mem.span(glfw_extensions[i]));
-        }
-
-        if (VALIDATION_LAYERS.len > 0) {
-            try extensions.append(vk.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
-
-        return extensions.toOwnedSlice();
-    }
-
-    fn logVulkanResult(comptime level: LogLevel, result: vk.VkResult, comptime fmt: []const u8, args: anytype) void {
-        const message = std.fmt.allocPrint(self.allocator, fmt, args) catch return;
-        defer self.allocator.free(message);
-
-        switch (level) {
-            .Debug => self.logger.debug("{s}: {s}", .{ message, @tagName(result) }),
-            .Info => self.logger.info("{s}: {s}", .{ message, @tagName(result) }),
-            .Warning => self.logger.warn("{s}: {s}", .{ message, @tagName(result) }),
-            .Error => self.logger.err("{s}: {s}", .{ message, @tagName(result) }),
-            .Fatal => self.logger.err("{s}: {s}", .{ message, @tagName(result) }),
-        }
-    }
-
-    fn checkVulkanResult(result: vk.VkResult) !void {
-        switch (result) {
-            vk.VK_SUCCESS => {},
-            vk.VK_NOT_READY => return error.NotReady,
-            vk.VK_TIMEOUT => return error.Timeout,
-            vk.VK_EVENT_SET => return error.EventSet,
-            vk.VK_EVENT_RESET => return error.EventReset,
-            vk.VK_INCOMPLETE => return error.Incomplete,
-            vk.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-            vk.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-            vk.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
-            vk.VK_ERROR_DEVICE_LOST => return error.DeviceLost,
-            vk.VK_ERROR_MEMORY_MAP_FAILED => return error.MemoryMapFailed,
-            vk.VK_ERROR_LAYER_NOT_PRESENT => return error.LayerNotPresent,
-            vk.VK_ERROR_EXTENSION_NOT_PRESENT => return error.ExtensionNotPresent,
-            vk.VK_ERROR_FEATURE_NOT_PRESENT => return error.FeatureNotPresent,
-            vk.VK_ERROR_INCOMPATIBLE_DRIVER => return error.IncompatibleDriver,
-            vk.VK_ERROR_TOO_MANY_OBJECTS => return error.TooManyObjects,
-            vk.VK_ERROR_FORMAT_NOT_SUPPORTED => return error.FormatNotSupported,
-            vk.VK_ERROR_FRAGMENTED_POOL => return error.FragmentedPool,
-            vk.VK_ERROR_UNKNOWN => return error.Unknown,
-            vk.VK_ERROR_OUT_OF_POOL_MEMORY => return error.OutOfPoolMemory,
-            vk.VK_ERROR_INVALID_EXTERNAL_HANDLE => return error.InvalidExternalHandle,
-            vk.VK_ERROR_FRAGMENTATION => return error.Fragmentation,
-            vk.VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS => return error.InvalidOpaqueCaptureAddress,
-            vk.VK_ERROR_SURFACE_LOST_KHR => return error.SurfaceLost,
-            vk.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR => return error.NativeWindowInUse,
-            vk.VK_SUBOPTIMAL_KHR => return error.Suboptimal,
-            vk.VK_ERROR_OUT_OF_DATE_KHR => return error.OutOfDate,
-            vk.VK_ERROR_INCOMPATIBLE_DISPLAY_KHR => return error.IncompatibleDisplay,
-            vk.VK_ERROR_VALIDATION_FAILED_EXT => return error.ValidationFailed,
-            vk.VK_ERROR_INVALID_SHADER_NV => return error.InvalidShader,
-            else => return error.Unknown,
-        }
-    }
-
-    fn debugCallback(
-        message_severity: vk.VkDebugUtilsMessageSeverityFlagBitsEXT,
-        message_type: vk.VkDebugUtilsMessageTypeFlagsEXT,
-        p_callback_data: ?*const vk.VkDebugUtilsMessengerCallbackDataEXT,
-        p_user_data: ?*anyopaque,
-    ) callconv(.C) vk.VkBool32 {
-        _ = message_type;
-        const self = @ptrCast(*VulkanRenderer, @alignCast(@alignOf(VulkanRenderer), p_user_data));
-
-        const severity = switch (message_severity) {
-            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT => LogLevel.Debug,
-            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT => LogLevel.Info,
-            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => LogLevel.Warning,
-            vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT => LogLevel.Error,
-            else => LogLevel.Info,
-        };
-
-        if (p_callback_data) |callback_data| {
-            self.logVulkanResult(severity, vk.VK_SUCCESS, "{s}", .{std.mem.span(callback_data.pMessage)});
-        }
-
-        return vk.VK_FALSE;
-    }
-
-    fn setupDebugMessenger(self: *VulkanRenderer) !void {
-        if (VALIDATION_LAYERS.len == 0) return;
-
-        const create_info = vk.VkDebugUtilsMessengerCreateInfoEXT{
-            .sType = vk.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-            .messageSeverity = vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-            .messageType = vk.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                vk.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                vk.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-            .pfnUserCallback = debugCallback,
-            .pUserData = self,
-            .pNext = null,
-            .flags = 0,
-        };
-
-        const create_debug_utils_messenger_ext = @ptrCast(
-            fn (vk.VkInstance, *const vk.VkDebugUtilsMessengerCreateInfoEXT, ?*const vk.VkAllocationCallbacks, *vk.VkDebugUtilsMessengerEXT) callconv(.C) vk.VkResult,
-            vk.vkGetInstanceProcAddr(self.instance, "vkCreateDebugUtilsMessengerEXT"),
-        );
-
-        if (create_debug_utils_messenger_ext) |func| {
-            try checkVulkanResult(func(
-                self.instance,
-                &create_info,
-                null,
-                &self.debug_messenger,
-            ));
-        } else {
-            return error.FailedToLoadDebugUtilsMessenger;
-        }
-    }
-
-    fn createInstance(self: *VulkanRenderer) !void {
-        if (VALIDATION_LAYERS.len > 0) {
-            try checkValidationLayerSupport();
-        }
-
-        const app_info = vk.VkApplicationInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
-            .pApplicationName = "MAYA",
-            .applicationVersion = vk.VK_MAKE_VERSION(1, 0, 0),
-            .pEngineName = "No Engine",
-            .engineVersion = vk.VK_MAKE_VERSION(1, 0, 0),
-            .apiVersion = vk.VK_API_VERSION_1_0,
-            .pNext = null,
-        };
-
-        const extensions = try getRequiredExtensions();
-        defer std.heap.page_allocator.free(extensions);
-
-        const create_info = vk.VkInstanceCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-            .pApplicationInfo = &app_info,
-            .enabledExtensionCount = @intCast(u32, extensions.len),
-            .ppEnabledExtensionNames = @ptrCast([*]const [*:0]const u8, extensions.ptr),
-            .enabledLayerCount = if (VALIDATION_LAYERS.len > 0) @intCast(u32, VALIDATION_LAYERS.len) else 0,
-            .ppEnabledLayerNames = if (VALIDATION_LAYERS.len > 0) &VALIDATION_LAYERS else null,
-            .pNext = null,
-            .flags = 0,
-        };
-
-        try checkVulkanResult(vk.vkCreateInstance(&create_info, null, &self.instance));
-
-        if (VALIDATION_LAYERS.len > 0) {
-            try self.setupDebugMessenger();
-        }
-    }
-
-    fn createSurface(self: *VulkanRenderer) !void {
-        if (glfw.glfwCreateWindowSurface(self.instance, self.window.handle, null, &self.surface) != vk.VK_SUCCESS) {
-            return error.SurfaceCreationFailed;
-        }
-    }
-
-    fn checkDeviceExtensionSupport(physical_device: vk.VkPhysicalDevice) !void {
-        var extension_count: u32 = undefined;
-        _ = vk.vkEnumerateDeviceExtensionProperties(physical_device, null, &extension_count, null);
-
-        var available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
-        defer std.heap.page_allocator.free(available_extensions);
-        _ = vk.vkEnumerateDeviceExtensionProperties(physical_device, null, &extension_count, available_extensions.ptr);
-
-        for (REQUIRED_DEVICE_EXTENSIONS) |required_extension| {
-            var extension_found = false;
-            for (available_extensions) |extension| {
-                if (std.mem.eql(u8, std.mem.span(required_extension), std.mem.span(&extension.extensionName))) {
-                    extension_found = true;
-                    break;
-                }
-            }
-            if (!extension_found) {
-                return error.DeviceExtensionNotSupported;
-            }
-        }
-    }
-
-    fn isDeviceSuitable(physical_device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !bool {
-        // Check device extension support
-        try checkDeviceExtensionSupport(physical_device);
-
-        // Check swapchain support
-        var format_count: u32 = undefined;
-        _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, null);
-        if (format_count == 0) return false;
-
-        var present_mode_count: u32 = undefined;
-        _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, null);
-        if (present_mode_count == 0) return false;
-
-        // Initialize feature manager
-        var feature_manager = try FeatureManager.init(physical_device);
-        feature_manager.logFeatureSupport(&self.logger);
-
-        // Check if device supports at least minimal features
-        if (feature_manager.fallback_level == .minimal) {
-            self.logger.warn("Device only supports minimal features", .{});
-        }
-
-        // Store feature manager
-        self.feature_manager = feature_manager;
-
-        // Initialize performance monitor and select preset based on hardware
-        self.performance_monitor = PerformanceMonitor.init(&self.logger);
-        self.performance_monitor.selectPresetBasedOnHardware(physical_device);
-
-        // Check queue families
-        var queue_family_count: u32 = undefined;
-        vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, null);
-
-        var queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
-        defer std.heap.page_allocator.free(queue_families);
-        vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.ptr);
-
-        var graphics_queue_found = false;
-        var present_queue_found = false;
-
-        var i: usize = 0;
-        for (queue_families) |queue_family| {
-            if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
-                graphics_queue_found = true;
-            }
-
-            var present_support: vk.VkBool32 = undefined;
-            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, @intCast(u32, i), self.surface, &present_support);
-            if (present_support != 0) {
-                present_queue_found = true;
-            }
-
-            if (graphics_queue_found and present_queue_found) break;
-            i += 1;
-        }
-
-        return graphics_queue_found and present_queue_found;
-    }
-
-    fn pickPhysicalDevice(self: *VulkanRenderer) !void {
-        var device_count: u32 = undefined;
-        _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, null);
-
-        if (device_count == 0) {
-            return error.NoVulkanDevicesFound;
-        }
-
-        var devices = try std.heap.page_allocator.alloc(vk.VkPhysicalDevice, device_count);
-        defer std.heap.page_allocator.free(devices);
-        _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, devices.ptr);
-
-        for (devices) |device| {
-            if (try isDeviceSuitable(device, self.surface)) {
-                self.physical_device = device;
-                var device_properties: vk.VkPhysicalDeviceProperties = undefined;
-                vk.vkGetPhysicalDeviceProperties(device, &device_properties);
-                self.logger.info("Selected physical device: {s}", .{std.mem.span(&device_properties.deviceName)});
-                return;
-            }
-        }
-
-        return error.NoSuitableDeviceFound;
-    }
-
-    fn createLogicalDevice(self: *VulkanRenderer) !void {
-        var queue_family_count: u32 = undefined;
-        vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, null);
-
-        var queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
-        defer std.heap.page_allocator.free(queue_families);
-        vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, queue_families.ptr);
-
-        var graphics_queue_family: ?u32 = null;
-        var present_queue_family: ?u32 = null;
-
-        var i: usize = 0;
-        for (queue_families) |queue_family| {
-            if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
-                graphics_queue_family = @intCast(u32, i);
-            }
-
-            var present_support: vk.VkBool32 = undefined;
-            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(self.physical_device, @intCast(u32, i), self.surface, &present_support);
-            if (present_support != 0) {
-                present_queue_family = @intCast(u32, i);
-            }
-
-            if (graphics_queue_family != null and present_queue_family != null) break;
             i += 1;
         }
 
@@ -1208,7 +233,7 @@ pub const VulkanRenderer = struct {
         vk.vkGetDeviceQueue(self.device, graphics_queue_family.?, 0, &self.queue);
     }
 
-    fn createSwapChain(self: *VulkanRenderer) !void {
+    fn createSwapChain(self: *Self) !void {
         // Basic swapchain creation - will be expanded
         var surface_capabilities: vk.VkSurfaceCapabilitiesKHR = undefined;
         _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(self.physical_device, self.surface, &surface_capabilities);
@@ -1245,7 +270,7 @@ pub const VulkanRenderer = struct {
         _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &image_count, self.swapchain_images.ptr);
     }
 
-    fn createImageViews(self: *VulkanRenderer) !void {
+    fn createImageViews(self: *Self) !void {
         self.swapchain_image_views = try std.heap.page_allocator.alloc(vk.VkImageView, self.swapchain_images.len);
 
         for (self.swapchain_images, 0..) |image, i| {
@@ -1277,7 +302,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createDepthResources(self: *VulkanRenderer) !void {
+    fn createDepthResources(self: *Self) !void {
         const depth_format = try self.findDepthFormat();
 
         const image_info = vk.VkImageCreateInfo{
@@ -1354,7 +379,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createRenderPass(self: *VulkanRenderer) !void {
+    fn createRenderPass(self: *Self) !void {
         const color_attachment = vk.VkAttachmentDescription{
             .format = vk.VK_FORMAT_B8G8R8A8_UNORM,
             .samples = vk.VK_SAMPLE_COUNT_1_BIT,
@@ -1430,7 +455,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createGraphicsPipeline(self: *VulkanRenderer) !void {
+    fn createGraphicsPipeline(self: *Self) !void {
         const shader = @import("shader.zig").ShaderModule;
 
         // Load shaders
@@ -1666,7 +691,7 @@ pub const VulkanRenderer = struct {
         ));
     }
 
-    fn createFramebuffers(self: *VulkanRenderer) !void {
+    fn createFramebuffers(self: *Self) !void {
         self.framebuffers = try std.heap.page_allocator.alloc(vk.VkFramebuffer, self.swapchain_image_views.len);
 
         for (self.swapchain_image_views, 0..) |image_view, i| {
@@ -1689,7 +714,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createCommandPool(self: *VulkanRenderer) !void {
+    fn createCommandPool(self: *Self) !void {
         const pool_info = vk.VkCommandPoolCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .queueFamilyIndex = 0, // TODO: Get from device
@@ -1702,7 +727,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createUniformBuffers(self: *VulkanRenderer) !void {
+    fn createUniformBuffers(self: *Self) !void {
         const buffer_size = @sizeOf([4][4]f32);
 
         const buffer_info = vk.VkBufferCreateInfo{
@@ -1757,7 +782,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn updateUniformBuffer(self: *VulkanRenderer) void {
+    fn updateUniformBuffer(self: *Self) void {
         const rotation_matrix = createRotationMatrix(self.rotation);
         @memcpy(@ptrCast([*]u8, self.uniform_buffer_mapped), @ptrCast([*]const u8, &rotation_matrix), @sizeOf([4][4]f32));
     }
@@ -1773,7 +798,7 @@ pub const VulkanRenderer = struct {
         };
     }
 
-    fn createDescriptorSetLayout(self: *VulkanRenderer) !void {
+    fn createDescriptorSetLayout(self: *Self) !void {
         const descriptor_set_layout_info = vk.VkDescriptorSetLayoutCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .bindingCount = 1,
@@ -1798,7 +823,7 @@ pub const VulkanRenderer = struct {
         ));
     }
 
-    fn createDescriptorPool(self: *VulkanRenderer) !void {
+    fn createDescriptorPool(self: *Self) !void {
         const pool_sizes = [_]vk.VkDescriptorPoolSize{
             vk.VkDescriptorPoolSize{
                 .type = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -1823,7 +848,7 @@ pub const VulkanRenderer = struct {
         ));
     }
 
-    fn createDescriptorSets(self: *VulkanRenderer) !void {
+    fn createDescriptorSets(self: *Self) !void {
         const descriptor_set_alloc_info = vk.VkDescriptorSetAllocateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = self.descriptor_pool,
@@ -1860,7 +885,7 @@ pub const VulkanRenderer = struct {
         vk.vkUpdateDescriptorSets(self.device, 1, &write_descriptor_set, 0, null);
     }
 
-    fn createCommandBuffers(self: *VulkanRenderer) !void {
+    fn createCommandBuffers(self: *Self) !void {
         self.command_buffers = try std.heap.page_allocator.alloc(vk.VkCommandBuffer, self.framebuffers.len);
 
         const alloc_info = vk.VkCommandBufferAllocateInfo{
@@ -1876,7 +901,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createSyncObjects(self: *VulkanRenderer) !void {
+    fn createSyncObjects(self: *Self) !void {
         self.image_available_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, MAX_FRAMES_IN_FLIGHT);
         self.render_finished_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, MAX_FRAMES_IN_FLIGHT);
         self.in_flight_fences = try std.heap.page_allocator.alloc(vk.VkFence, MAX_FRAMES_IN_FLIGHT);
@@ -1910,7 +935,7 @@ pub const VulkanRenderer = struct {
         self.framebuffer_resized = true;
     }
 
-    fn recreateSwapChain(self: *VulkanRenderer) !void {
+    fn recreateSwapChain(self: *Self) !void {
         var width: i32 = 0;
         var height: i32 = 0;
         self.window.getFramebufferSize(&width, &height);
@@ -1932,7 +957,7 @@ pub const VulkanRenderer = struct {
         try self.createCommandBuffers();
     }
 
-    fn cleanupSwapChain(self: *VulkanRenderer) void {
+    fn cleanupSwapChain(self: *Self) void {
         // Clean up framebuffers
         for (self.framebuffers) |framebuffer| {
             vk.vkDestroyFramebuffer(self.device, framebuffer, null);
@@ -1959,7 +984,7 @@ pub const VulkanRenderer = struct {
         vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
     }
 
-    pub fn drawFrame(self: *VulkanRenderer) !void {
+    pub fn drawFrame(self: *Self) !void {
         // Wait for the previous frame to finish
         try checkVulkanResult(vk.vkWaitForFences(
             self.device,
@@ -2052,7 +1077,7 @@ pub const VulkanRenderer = struct {
         self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
-    fn recordCommandBuffer(self: *VulkanRenderer, command_buffer: vk.VkCommandBuffer, image_index: u32) !void {
+    fn recordCommandBuffer(self: *Self, command_buffer: vk.VkCommandBuffer, image_index: u32) !void {
         const begin_info = vk.VkCommandBufferBeginInfo{
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = 0,
@@ -2107,7 +1132,7 @@ pub const VulkanRenderer = struct {
     }
 
     fn findSupportedFormat(
-        self: *VulkanRenderer,
+        self: *Self,
         candidates: []const vk.VkFormat,
         tiling: vk.VkImageTiling,
         features: vk.VkFormatFeatureFlags,
@@ -2126,7 +1151,7 @@ pub const VulkanRenderer = struct {
         return error.FormatNotSupported;
     }
 
-    fn findDepthFormat(self: *VulkanRenderer) !vk.VkFormat {
+    fn findDepthFormat(self: *Self) !vk.VkFormat {
         return try self.findSupportedFormat(
             &[_]vk.VkFormat{
                 vk.VK_FORMAT_D32_SFLOAT,
@@ -2138,7 +1163,7 @@ pub const VulkanRenderer = struct {
         );
     }
 
-    fn findMemoryType(self: *VulkanRenderer, type_filter: u32, properties: vk.VkMemoryPropertyFlags) !u32 {
+    fn findMemoryType(self: *Self, type_filter: u32, properties: vk.VkMemoryPropertyFlags) !u32 {
         var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
         vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &memory_properties);
 

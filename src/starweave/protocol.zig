@@ -45,7 +45,7 @@ pub const ValidationCache = struct {
         hash: u64,
         timestamp: i64,
         is_valid: bool,
-        error: ?ValidationError,
+        validation_error: ?ValidationError,
     };
 
     entries: std.AutoHashMap(u64, CacheEntry),
@@ -105,7 +105,7 @@ pub const ValidationCache = struct {
             .hash = hash,
             .timestamp = std.time.milliTimestamp(),
             .is_valid = is_valid,
-            .error = err,
+            .validation_error = err,
         });
     }
 };
