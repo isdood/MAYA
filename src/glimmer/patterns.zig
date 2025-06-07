@@ -392,7 +392,7 @@ test "PatternValidation" {
     // Test valid pattern
     const valid_config = GlimmerPattern.Config{
         .pattern_type = .quantum_wave,
-        .base_color = colors.GlimmerColors.primary,
+        .base_color = colors.GlimmerColors.quantum_blue,
         .intensity = 0.5,
         .frequency = 1.0,
         .phase = 0.0,
@@ -403,7 +403,7 @@ test "PatternValidation" {
     // Test invalid intensity
     const invalid_intensity_config = GlimmerPattern.Config{
         .pattern_type = .quantum_wave,
-        .base_color = colors.GlimmerColors.primary,
+        .base_color = colors.GlimmerColors.quantum_blue,
         .intensity = 1.5, // Invalid intensity
         .frequency = 1.0,
         .phase = 0.0,
