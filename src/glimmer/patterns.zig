@@ -331,7 +331,7 @@ pub fn init() !void {
         },
         .{
             .pattern_type = .cosmic_sparkle,
-            .base_color = colors.GlimmerColors.cosmic_blue,
+            .base_color = colors.GlimmerColors.cosmic_gold,
             .intensity = 0.6,
             .frequency = 2.0,
             .phase = 1.0,

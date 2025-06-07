@@ -943,7 +943,8 @@ pub const VulkanRenderer = struct {
         _ = width;
         _ = height;
         const ptr = glfw.glfwGetWindowUserPointer(window);
-        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
+        const aligned_ptr = @alignCast(@alignOf(Self), ptr);
+        const self = @ptrCast(*Self, aligned_ptr);
         self.framebuffer_resized = true;
     }
 
@@ -1302,7 +1303,7 @@ pub const VulkanRenderer = struct {
 
         var i: u32 = 0;
         while (i < queue_family_count) : (i += 1) {
-            const graphics_bit = @intCast(vk.VK_QUEUE_GRAPHICS_BIT);
+            const graphics_bit = @as(u32, @intCast(vk.VK_QUEUE_GRAPHICS_BIT));
             if (queue_families[i].queueFlags & graphics_bit != 0) {
                 indices.graphics_family = i;
             }
