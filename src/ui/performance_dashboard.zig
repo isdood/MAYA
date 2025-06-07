@@ -549,29 +549,50 @@ pub const PerformanceDashboard = struct {
                     .ray_tracing = false,
                 };
 
-                // Color coding legend
-                c.igText("Color Legend:");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }, "Low");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }, "Medium");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }, "High");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 }, "Ultra");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.8, .y = 0.4, .z = 0.8, .w = 1.0 }, "Advanced");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.4, .y = 0.4, .z = 0.4, .w = 1.0 }, "Disabled");
-
-                c.igSpacing();
-                c.igText("Impact Legend:");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.2, .y = 0.6, .z = 0.8, .w = 1.0 }, "💻 CPU");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.8, .y = 0.4, .z = 0.2, .w = 1.0 }, "🎮 GPU");
-                c.igSameLine(0, 20);
-                c.igTextColored(.{ .x = 0.6, .y = 0.4, .z = 0.8, .w = 1.0 }, "💾 Memory");
+                // Compact legend button
+                c.igSameLine(c.igGetWindowWidth() - 30, 0);
+                if (c.igButton("ℹ️", .{ .x = 25, .y = 25 })) {
+                    // Button is just for show, actual info is in tooltip
+                }
+                if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                    c.igBeginTooltip();
+                    c.igPushTextWrapPos(c.igGetFontSize() * 35.0);
+                    
+                    // Quality Levels
+                    c.igText("Quality Levels:");
+                    c.igTextColored(.{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }, "● Low");
+                    c.igTextColored(.{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }, "● Medium");
+                    c.igTextColored(.{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }, "● High");
+                    c.igTextColored(.{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 }, "● Ultra");
+                    c.igTextColored(.{ .x = 0.8, .y = 0.4, .z = 0.8, .w = 1.0 }, "● Advanced");
+                    c.igTextColored(.{ .x = 0.4, .y = 0.4, .z = 0.4, .w = 1.0 }, "● Disabled");
+                    
+                    c.igSpacing();
+                    c.igSeparator();
+                    c.igSpacing();
+                    
+                    // Performance Impact
+                    c.igText("Performance Impact:");
+                    c.igTextColored(.{ .x = 0.2, .y = 0.6, .z = 0.8, .w = 1.0 }, "💻 CPU");
+                    c.igTextColored(.{ .x = 0.8, .y = 0.4, .z = 0.2, .w = 1.0 }, "🎮 GPU");
+                    c.igTextColored(.{ .x = 0.6, .y = 0.4, .z = 0.8, .w = 1.0 }, "💾 Memory");
+                    c.igText("Impact levels: 1-5 (higher = more impact)");
+                    c.igTextColored(.{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 }, "● Normal impact");
+                    c.igTextColored(.{ .x = 1.0, .y = 0.4, .z = 0.4, .w = 1.0 }, "● High impact");
+                    
+                    c.igSpacing();
+                    c.igSeparator();
+                    c.igSpacing();
+                    
+                    // Tips
+                    c.igText("Tips:");
+                    c.igBulletText("Hover over settings for detailed information");
+                    c.igBulletText("Hover over impact icons for specific impact levels");
+                    c.igBulletText("Red indicators show high performance impact");
+                    
+                    c.igPopTextWrapPos();
+                    c.igEndTooltip();
+                }
 
                 c.igSpacing();
                 c.igSeparator();
