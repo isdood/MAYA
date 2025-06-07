@@ -558,10 +558,24 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextColumn();
                     c.igText("Value");
 
+                    // Helper function for quality level colors
+                    fn setQualityColor(quality: enum { low, medium, high, ultra }) void {
+                        const color = switch (quality) {
+                            .low => .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 },     // Red
+                            .medium => .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 },  // Yellow
+                            .high => .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 },    // Green
+                            .ultra => .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 },   // Blue
+                        };
+                        c.igPushStyleColor(c.ImGuiCol_Text, color);
+                    }
+
                     // MSAA Level
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("MSAA Level");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Multi-Sample Anti-Aliasing level. Higher values provide smoother edges but impact performance.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%d", settings.msaa_level);
 
@@ -569,20 +583,33 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Texture Quality");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Overall texture resolution and quality. Affects memory usage and visual fidelity.");
+                    }
                     c.igTableNextColumn();
+                    setQualityColor(settings.texture_quality);
                     c.igText("%s", @tagName(settings.texture_quality));
+                    c.igPopStyleColor(1);
 
                     // Shadow Quality
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Shadow Quality");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Shadow map resolution and filtering quality. Higher settings provide more detailed shadows.");
+                    }
                     c.igTableNextColumn();
+                    setQualityColor(settings.shadow_quality);
                     c.igText("%s", @tagName(settings.shadow_quality));
+                    c.igPopStyleColor(1);
 
                     // Anisotropic Filtering
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Anisotropic Filtering");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Texture filtering quality for angled surfaces. Higher values improve texture clarity at angles.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%dx", settings.anisotropic_filtering);
 
@@ -590,6 +617,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("View Distance");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Maximum distance at which objects are rendered. Higher values increase draw distance but impact performance.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%.1f", settings.view_distance);
 
@@ -597,6 +627,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Max FPS");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Maximum frames per second. Lower values can reduce power consumption and heat generation.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%d", settings.max_fps);
 
@@ -604,6 +637,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("V-Sync");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Vertical synchronization. Reduces screen tearing but may introduce input lag.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.vsync) "Enabled" else "Disabled");
 
@@ -611,6 +647,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Triple Buffering");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Uses three buffers to reduce screen tearing. May increase latency but provides smoother frame delivery.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.triple_buffering) "Enabled" else "Disabled");
 
@@ -618,20 +657,33 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Shader Quality");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Overall shader complexity and effects quality. Higher settings enable more advanced visual effects.");
+                    }
                     c.igTableNextColumn();
+                    setQualityColor(settings.shader_quality);
                     c.igText("%s", @tagName(settings.shader_quality));
+                    c.igPopStyleColor(1);
 
                     // Compute Shader Quality
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Compute Shader Quality");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Quality of compute shader effects. Higher settings enable more advanced particle and simulation effects.");
+                    }
                     c.igTableNextColumn();
+                    setQualityColor(settings.compute_shader_quality);
                     c.igText("%s", @tagName(settings.compute_shader_quality));
+                    c.igPopStyleColor(1);
 
                     // Texture Streaming
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Texture Streaming");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Streams textures as needed. Reduces memory usage but may cause texture pop-in.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.texture_streaming) "Enabled" else "Disabled");
 
@@ -639,6 +691,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Texture Cache Size");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Maximum memory allocated for texture caching. Higher values reduce texture loading but increase memory usage.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%.1f MB", @intToFloat(f32, settings.texture_cache_size) / (1024 * 1024));
 
@@ -646,6 +701,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Geometry LOD Levels");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Number of detail levels for geometry. Higher values provide smoother transitions between detail levels.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%d", settings.geometry_lod_levels);
 
@@ -653,6 +711,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Pipeline Cache Size");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Maximum memory allocated for pipeline state caching. Reduces pipeline creation overhead.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%.1f MB", @intToFloat(f32, settings.pipeline_cache_size) / (1024 * 1024));
 
@@ -660,6 +721,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Command Buffer Reuse");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Reuses command buffers to reduce CPU overhead. May increase memory usage but improves performance.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.command_buffer_reuse) "Enabled" else "Disabled");
 
@@ -667,6 +731,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Secondary Command Buffers");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Uses secondary command buffers for better parallel command recording. Improves multi-threaded performance.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.secondary_command_buffers) "Enabled" else "Disabled");
 
@@ -674,6 +741,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Async Compute");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Enables asynchronous compute operations. Improves GPU utilization but may increase complexity.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.async_compute) "Enabled" else "Disabled");
 
@@ -681,6 +751,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Geometry Shaders");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Enables geometry shader support. Required for certain advanced rendering effects.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.geometry_shaders) "Enabled" else "Disabled");
 
@@ -688,6 +761,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Tessellation");
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Enables hardware tessellation. Provides smoother surfaces but requires significant GPU power.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.tessellation) "Enabled" else "Disabled");
 
@@ -695,7 +771,9 @@ pub const PerformanceDashboard = struct {
                     c.igTableNextRow(0, 0);
                     c.igTableNextColumn();
                     c.igText("Ray Tracing");
-                    c.igTableNextColumn();
+                    if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                        c.igSetTooltip("Enables hardware-accelerated ray tracing. Provides realistic lighting and reflections but requires significant GPU power.");
+                    }
                     c.igTableNextColumn();
                     c.igText("%s", if (settings.ray_tracing) "Enabled" else "Disabled");
 
