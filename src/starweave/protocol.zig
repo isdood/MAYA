@@ -140,7 +140,7 @@ pub const RecoveryState = struct {
 
     pub const RecoveryLogEntry = struct {
         timestamp: i64,
-        error: ValidationError,
+        validation_error: ValidationError,
         action: []const u8,
         success: bool,
     };
@@ -172,7 +172,7 @@ pub const RecoveryState = struct {
     pub fn logRecoveryAttempt(self: *Self, error: ValidationError, action: []const u8, success: bool) !void {
         try self.recovery_log.append(.{
             .timestamp = std.time.milliTimestamp(),
-            .error = error,
+            .validation_error = error,
             .action = action,
             .success = success,
         });

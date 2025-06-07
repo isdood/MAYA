@@ -172,8 +172,8 @@ pub const VulkanRenderer = struct {
         var queue_family_count: u32 = undefined;
         vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, null);
 
-        const queue_families = try self.allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
-        defer self.allocator.free(queue_families);
+        var queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
+        defer std.heap.page_allocator.free(queue_families);
         vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, queue_families.ptr);
 
         var graphics_queue_family: ?u32 = null;
@@ -182,56 +182,48 @@ pub const VulkanRenderer = struct {
         var i: usize = 0;
         for (queue_families) |queue_family| {
             if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
-                graphics_queue_family = @intCast(i);
+                graphics_queue_family = @intCast(u32, i);
             }
 
             var present_support: vk.VkBool32 = undefined;
-            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(self.physical_device, @intCast(i), self.surface, &present_support);
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(self.physical_device, @intCast(u32, i), self.surface, &present_support);
             if (present_support != 0) {
-                present_queue_family = @intCast(i);
+                present_queue_family = @intCast(u32, i);
             }
 
             if (graphics_queue_family != null and present_queue_family != null) break;
             i += 1;
         }
 
-        if (graphics_queue_family == null or present_queue_family == null) {
-            return error.QueueFamilyNotFound;
-        }
-
-        const queue_priorities = [_]f32{1.0};
-        var queue_create_infos = std.ArrayList(vk.VkDeviceQueueCreateInfo).init(self.allocator);
+        var queue_create_infos = std.ArrayList(vk.VkDeviceQueueCreateInfo).init(std.heap.page_allocator);
         defer queue_create_infos.deinit();
 
-        const unique_queue_families = [_]u32{ graphics_queue_family.?, present_queue_family.? };
-        for (unique_queue_families) |queue_family| {
-            const queue_create_info = vk.VkDeviceQueueCreateInfo{
+        const queue_priority = [_]f32{1.0};
+        if (graphics_queue_family) |family| {
+            try queue_create_infos.append(vk.VkDeviceQueueCreateInfo{
                 .sType = vk.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                .queueFamilyIndex = queue_family,
+                .queueFamilyIndex = family,
                 .queueCount = 1,
-                .pQueuePriorities = &queue_priorities,
+                .pQueuePriorities = &queue_priority,
                 .pNext = null,
                 .flags = 0,
-            };
-            try queue_create_infos.append(queue_create_info);
+            });
         }
 
         const device_create_info = vk.VkDeviceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .queueCreateInfoCount = @intCast(u32, queue_create_infos.items.len),
             .pQueueCreateInfos = queue_create_infos.items.ptr,
-            .enabledExtensionCount = REQUIRED_DEVICE_EXTENSIONS.len,
+            .enabledExtensionCount = @intCast(u32, REQUIRED_DEVICE_EXTENSIONS.len),
             .ppEnabledExtensionNames = &REQUIRED_DEVICE_EXTENSIONS,
-            .pEnabledFeatures = &self.feature_manager.getEnabledFeatures(),
-            .enabledLayerCount = if (VALIDATION_LAYERS.len > 0) @intCast(u32, VALIDATION_LAYERS.len) else 0,
-            .ppEnabledLayerNames = if (VALIDATION_LAYERS.len > 0) &VALIDATION_LAYERS else null,
+            .enabledLayerCount = 0,
+            .ppEnabledLayerNames = null,
+            .pEnabledFeatures = null,
             .pNext = null,
             .flags = 0,
         };
 
         try checkVulkanResult(vk.vkCreateDevice(self.physical_device, &device_create_info, null, &self.device));
-
-        vk.vkGetDeviceQueue(self.device, graphics_queue_family.?, 0, &self.queue);
     }
 
     fn createSwapChain(self: *Self) !void {
@@ -785,7 +777,7 @@ pub const VulkanRenderer = struct {
 
     fn updateUniformBuffer(self: *Self) void {
         const rotation_matrix = createRotationMatrix(self.rotation);
-        @memcpy(@ptrCast([*]u8, self.uniform_buffer_mapped), @ptrCast([*]const u8, &rotation_matrix), @sizeOf([4][4]f32));
+        std.mem.copy(u8, @ptrCast([*]u8, self.uniform_buffer_mapped)[0..@sizeOf([4][4]f32)], @ptrCast([*]const u8, &rotation_matrix)[0..@sizeOf([4][4]f32)]);
     }
 
     fn createRotationMatrix(angle: f32) [4][4]f32 {
@@ -1256,5 +1248,27 @@ pub const VulkanRenderer = struct {
         }
 
         return graphics_queue_found and present_queue_found;
+    }
+
+    fn checkDeviceExtensionSupport(device: vk.VkPhysicalDevice) !void {
+        var extension_count: u32 = undefined;
+        _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, null);
+
+        var available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
+        defer std.heap.page_allocator.free(available_extensions);
+        _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, available_extensions.ptr);
+
+        for (REQUIRED_DEVICE_EXTENSIONS) |required_extension| {
+            var extension_found = false;
+            for (available_extensions) |extension| {
+                if (std.mem.eql(u8, std.mem.span(required_extension), std.mem.span(&extension.extensionName))) {
+                    extension_found = true;
+                    break;
+                }
+            }
+            if (!extension_found) {
+                return error.DeviceExtensionNotSupported;
+            }
+        }
     }
 }; 

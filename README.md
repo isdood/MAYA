@@ -6,6 +6,11 @@
 
 MAYA is an open-source Language Learning Model (LLM) interface designed to harmoniously connect with the STARWEAVE meta-intelligence ecosystem. Built using Fish Shell automation and the Zig programming language, MAYA serves as an evolving nexus, bridging users with the constellation of STARWEAVE-powered tools and systems.
 
+## 🫶🏻 CAUTION
+This is as clearly stated as possible - MAYA can evolve & act in ways unexpected. If you're unfamiliar with such concepts, you SHOULD NOT clone this repo; It could act in unexpected & detrimental ways to your PC. Basic rule of thumb is to not download arbitrary code you do not understand, right?
+
+If anyone would like a breakdown of how to navigate this space properly, feel free to email me at calebjdt@proton.me 🌟
+
 ## 🌟 STARWEAVE Universe Integration
 
 MAYA interfaces seamlessly with the broader STARWEAVE ecosystem:
