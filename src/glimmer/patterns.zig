@@ -338,7 +338,7 @@ pub fn init() !void {
         },
         .{
             .pattern_type = .stellar_pulse,
-            .base_color = colors.GlimmerColors.neural,
+            .base_color = colors.GlimmerColors.neural_purple,
             .intensity = 0.8,
             .frequency = 1.2,
             .phase = 1.5,
