@@ -45,7 +45,7 @@ pub fn build(b: *std.Build) void {
     // Create main executable
     const exe = b.addExecutable(.{
         .name = "maya",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -56,7 +56,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("starweave", starweave_module);
 
     exe.addModule("glimmer-colors", b.addModule("glimmer-colors", .{
-        .source_file = .{ .path = "src/glimmer/colors.zig" },
+        .source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
     }));
     exe.linkLibC();
     exe.linkSystemLibrary("glfw");
@@ -65,9 +65,9 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("harfbuzz");
 
     // Add include paths
-    exe.addIncludePath(.{ .path = "/usr/include" });
-    exe.addIncludePath(.{ .path = "/usr/include/freetype2" });
-    exe.addIncludePath(.{ .path = "/usr/include/harfbuzz" });
+    exe.addIncludePath(.{ .cwd_relative = "/usr/include" });
+    exe.addIncludePath(.{ .cwd_relative = "/usr/include/freetype2" });
+    exe.addIncludePath(.{ .cwd_relative = "/usr/include/harfbuzz" });
 
     // Add compile definitions
     exe.defineCMacro("VK_USE_PLATFORM_XLIB_KHR", "1");
@@ -88,12 +88,12 @@ pub fn build(b: *std.Build) void {
 
     // Create test step
     const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
     unit_tests.addModule("glimmer-colors", b.addModule("glimmer-colors", .{
-        .source_file = .{ .path = "src/glimmer/colors.zig" },
+        .source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
     }));
 
     const run_unit_tests = b.addRunArtifact(unit_tests);

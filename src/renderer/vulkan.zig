@@ -77,6 +77,12 @@ const VulkanRenderer = struct {
     depth_image_view: vk.VkImageView,
     swapchain_extent: vk.VkExtent2D,
 
+    // Uniform buffer for rotation
+    uniform_buffer: vk.VkBuffer,
+    uniform_buffer_memory: vk.VkDeviceMemory,
+    uniform_buffer_mapped: ?*anyopaque,
+    rotation: f32 = 0.0,
+
     const MAX_FRAMES_IN_FLIGHT = 2;
 
     const VALIDATION_LAYERS = [_][*:0]const u8{
@@ -558,45 +564,13 @@ const VulkanRenderer = struct {
 
     pub fn init(allocator: std.mem.Allocator, window: *Window) !*VulkanRenderer {
         var self = try allocator.create(VulkanRenderer);
-        self.* = VulkanRenderer{
-            .allocator = allocator,
-            .logger = std.log.scoped(.vulkan),
-            .instance = undefined,
-            .surface = undefined,
-            .physical_device = undefined,
-            .device = undefined,
-            .queue = undefined,
-            .command_pool = undefined,
-            .swapchain = undefined,
-            .swapchain_images = undefined,
-            .swapchain_image_views = undefined,
-            .render_pass = undefined,
-            .framebuffers = undefined,
-            .pipeline = undefined,
-            .pipeline_layout = undefined,
-            .vertex_buffer = undefined,
-            .vertex_buffer_memory = undefined,
-            .command_buffers = undefined,
-            .image_available_semaphores = undefined,
-            .render_finished_semaphores = undefined,
-            .in_flight_fences = undefined,
-            .current_frame = 0,
-            .window = window,
-            .framebuffer_resized = false,
-            .debug_messenger = undefined,
-            .validation_layers_enabled = false,
-            .feature_manager = undefined,
-            .performance_monitor = undefined,
-            .imgui = null,
-            .ui = null,
-            // Add depth buffer fields
-            .depth_image = undefined,
-            .depth_image_memory = undefined,
-            .depth_image_view = undefined,
-            .swapchain_extent = undefined,
-        };
+        errdefer allocator.destroy(self);
 
-        self.logger.info("Initializing Vulkan renderer", .{});
+        self.allocator = allocator;
+        self.logger = std.log.scoped(.vulkan);
+        self.window = window;
+        self.framebuffer_resized = false;
+
         try self.createInstance();
         self.logger.info("Vulkan instance created", .{});
 
@@ -624,6 +598,9 @@ const VulkanRenderer = struct {
         try self.createRenderPass();
         self.logger.info("Render pass created", .{});
 
+        try self.createDescriptorSetLayout();
+        self.logger.info("Descriptor set layout created", .{});
+
         try self.createGraphicsPipeline();
         self.logger.info("Graphics pipeline created", .{});
 
@@ -633,8 +610,14 @@ const VulkanRenderer = struct {
         try self.createCommandPool();
         self.logger.info("Command pool created", .{});
 
-        try self.createVertexBuffer();
-        self.logger.info("Vertex buffer created", .{});
+        try self.createUniformBuffers();
+        self.logger.info("Uniform buffers created", .{});
+
+        try self.createDescriptorPool();
+        self.logger.info("Descriptor pool created", .{});
+
+        try self.createDescriptorSets();
+        self.logger.info("Descriptor sets created", .{});
 
         try self.createCommandBuffers();
         self.logger.info("Command buffers created", .{});
@@ -642,25 +625,8 @@ const VulkanRenderer = struct {
         try self.createSyncObjects();
         self.logger.info("Sync objects created", .{});
 
-        // Set up resize callback
-        try window.setResizeCallback(resizeCallback);
-
-        // Initialize performance monitor after device creation
-        self.performance_monitor = try PerformanceMonitor.init(
-            self.device,
-            self.physical_device,
-            self.feature_manager.getEnabledFeatures(),
-            &self.logger,
-            allocator,
-        );
-
-        // Initialize ImGui after device creation
-        self.imgui = try ImGuiRenderer.init(self, window);
-        self.logger.info("ImGui initialized", .{});
-
-        // Initialize UI
-        self.ui = try MainUI.init(allocator);
-        self.logger.info("UI initialized", .{});
+        try self.createVertexBuffer();
+        self.logger.info("Vertex buffer created", .{});
 
         return self;
     }
@@ -1602,37 +1568,13 @@ const VulkanRenderer = struct {
         }
     }
 
-    fn createVertexBuffer(self: *VulkanRenderer) !void {
-        const vertices = [_]struct {
-            pos: [3]f32,
-            color: [3]f32,
-        }{
-            // Front triangle (closest)
-            .{ .pos = [3]f32{ 0.0, -0.5, 0.0 }, .color = [3]f32{ 1.0, 0.0, 0.0 } },
-            .{ .pos = [3]f32{ 0.5, 0.5, 0.0 }, .color = [3]f32{ 0.0, 1.0, 0.0 } },
-            .{ .pos = [3]f32{ -0.5, 0.5, 0.0 }, .color = [3]f32{ 0.0, 0.0, 1.0 } },
-            
-            // Middle triangle
-            .{ .pos = [3]f32{ 0.0, -0.5, 0.5 }, .color = [3]f32{ 1.0, 1.0, 0.0 } },
-            .{ .pos = [3]f32{ 0.5, 0.5, 0.5 }, .color = [3]f32{ 0.0, 1.0, 1.0 } },
-            .{ .pos = [3]f32{ -0.5, 0.5, 0.5 }, .color = [3]f32{ 1.0, 0.0, 1.0 } },
-            
-            // Back triangle (furthest)
-            .{ .pos = [3]f32{ 0.0, -0.5, 1.0 }, .color = [3]f32{ 0.5, 0.5, 0.5 } },
-            .{ .pos = [3]f32{ 0.5, 0.5, 1.0 }, .color = [3]f32{ 0.5, 0.5, 0.5 } },
-            .{ .pos = [3]f32{ -0.5, 0.5, 1.0 }, .color = [3]f32{ 0.5, 0.5, 0.5 } },
-        };
-
-        const buffer_size = @sizeOf(@TypeOf(vertices));
-
-        // Create staging buffer
-        var staging_buffer: vk.VkBuffer = undefined;
-        var staging_buffer_memory: vk.VkDeviceMemory = undefined;
+    fn createUniformBuffers(self: *VulkanRenderer) !void {
+        const buffer_size = @sizeOf([4][4]f32);
 
         const buffer_info = vk.VkBufferCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size = buffer_size,
-            .usage = vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            .usage = vk.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
             .pNext = null,
             .flags = 0,
@@ -1640,15 +1582,13 @@ const VulkanRenderer = struct {
             .pQueueFamilyIndices = null,
         };
 
-        if (vk.vkCreateBuffer(self.device, &buffer_info, null, &staging_buffer) != vk.VK_SUCCESS) {
-            return error.StagingBufferCreationFailed;
+        if (vk.vkCreateBuffer(self.device, &buffer_info, null, &self.uniform_buffer) != vk.VK_SUCCESS) {
+            return error.UniformBufferCreationFailed;
         }
 
-        // Get memory requirements
         var mem_requirements: vk.VkMemoryRequirements = undefined;
-        vk.vkGetBufferMemoryRequirements(self.device, staging_buffer, &mem_requirements);
+        vk.vkGetBufferMemoryRequirements(self.device, self.uniform_buffer, &mem_requirements);
 
-        // Find memory type for staging buffer
         var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
         vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &memory_properties);
 
@@ -1670,137 +1610,120 @@ const VulkanRenderer = struct {
             .pNext = null,
         };
 
-        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &staging_buffer_memory) != vk.VK_SUCCESS) {
-            return error.StagingMemoryAllocationFailed;
+        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.uniform_buffer_memory) != vk.VK_SUCCESS) {
+            return error.UniformMemoryAllocationFailed;
         }
 
-        if (vk.vkBindBufferMemory(self.device, staging_buffer, staging_buffer_memory, 0) != vk.VK_SUCCESS) {
-            return error.StagingMemoryBindingFailed;
+        if (vk.vkBindBufferMemory(self.device, self.uniform_buffer, self.uniform_buffer_memory, 0) != vk.VK_SUCCESS) {
+            return error.UniformMemoryBindingFailed;
         }
 
-        // Map memory and copy data
-        var data: ?*anyopaque = null;
-        if (vk.vkMapMemory(self.device, staging_buffer_memory, 0, buffer_size, 0, &data) != vk.VK_SUCCESS) {
-            return error.MemoryMappingFailed;
+        if (vk.vkMapMemory(self.device, self.uniform_buffer_memory, 0, buffer_size, 0, &self.uniform_buffer_mapped) != vk.VK_SUCCESS) {
+            return error.UniformMemoryMappingFailed;
         }
+    }
 
-        @memcpy(@ptrCast([*]u8, data), @ptrCast([*]const u8, &vertices), buffer_size);
-        vk.vkUnmapMemory(self.device, staging_buffer_memory);
+    fn updateUniformBuffer(self: *VulkanRenderer) void {
+        const rotation_matrix = createRotationMatrix(self.rotation);
+        @memcpy(@ptrCast([*]u8, self.uniform_buffer_mapped), @ptrCast([*]const u8, &rotation_matrix), @sizeOf([4][4]f32));
+    }
 
-        // Create vertex buffer
-        const vertex_buffer_info = vk.VkBufferCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = buffer_size,
-            .usage = vk.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+    fn createRotationMatrix(angle: f32) [4][4]f32 {
+        const c = @cos(angle);
+        const s = @sin(angle);
+        return [4][4]f32{
+            [4]f32{ c, -s, 0.0, 0.0 },
+            [4]f32{ s, c, 0.0, 0.0 },
+            [4]f32{ 0.0, 0.0, 1.0, 0.0 },
+            [4]f32{ 0.0, 0.0, 0.0, 1.0 },
+        };
+    }
+
+    fn createDescriptorSetLayout(self: *VulkanRenderer) !void {
+        const descriptor_set_layout_info = vk.VkDescriptorSetLayoutCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindings = &[_]vk.VkDescriptorSetLayoutBinding{
+                vk.VkDescriptorSetLayoutBinding{
+                    .binding = 0,
+                    .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                    .descriptorCount = 1,
+                    .stageFlags = vk.VK_SHADER_STAGE_VERTEX_BIT,
+                    .pImmutableSamplers = null,
+                },
+            },
             .pNext = null,
             .flags = 0,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = null,
         };
 
-        if (vk.vkCreateBuffer(self.device, &vertex_buffer_info, null, &self.vertex_buffer) != vk.VK_SUCCESS) {
-            return error.VertexBufferCreationFailed;
-        }
-
-        // Get memory requirements for vertex buffer
-        vk.vkGetBufferMemoryRequirements(self.device, self.vertex_buffer, &mem_requirements);
-
-        // Find memory type for vertex buffer
-        for (0..memory_properties.memoryTypeCount) |i| {
-            if ((mem_requirements.memoryTypeBits & (@as(u32, 1) << @intCast(i))) != 0 and
-                (memory_properties.memoryTypes[i].propertyFlags & vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
-            {
-                memory_type_index = @intCast(i);
-                break;
-            }
-        }
-
-        const vertex_alloc_info = vk.VkMemoryAllocateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = mem_requirements.size,
-            .memoryTypeIndex = memory_type_index,
-            .pNext = null,
-        };
-
-        if (vk.vkAllocateMemory(self.device, &vertex_alloc_info, null, &self.vertex_buffer_memory) != vk.VK_SUCCESS) {
-            return error.VertexMemoryAllocationFailed;
-        }
-
-        if (vk.vkBindBufferMemory(self.device, self.vertex_buffer, self.vertex_buffer_memory, 0) != vk.VK_SUCCESS) {
-            return error.VertexMemoryBindingFailed;
-        }
-
-        // Copy data from staging buffer to vertex buffer
-        const command_buffer = try self.beginSingleTimeCommands();
-
-        const copy_region = vk.VkBufferCopy{
-            .srcOffset = 0,
-            .dstOffset = 0,
-            .size = buffer_size,
-        };
-
-        vk.vkCmdCopyBuffer(command_buffer, staging_buffer, self.vertex_buffer, 1, &copy_region);
-
-        try self.endSingleTimeCommands(command_buffer);
-
-        // Cleanup staging buffer
-        vk.vkDestroyBuffer(self.device, staging_buffer, null);
-        vk.vkFreeMemory(self.device, staging_buffer_memory, null);
+        try checkVulkanResult(vk.vkCreateDescriptorSetLayout(
+            self.device,
+            &descriptor_set_layout_info,
+            null,
+            &self.descriptor_set_layout,
+        ));
     }
 
-    fn beginSingleTimeCommands(self: *VulkanRenderer) !vk.VkCommandBuffer {
-        const alloc_info = vk.VkCommandBufferAllocateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = self.command_pool,
-            .level = vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
-            .pNext = null,
+    fn createDescriptorPool(self: *VulkanRenderer) !void {
+        const pool_sizes = [_]vk.VkDescriptorPoolSize{
+            vk.VkDescriptorPoolSize{
+                .type = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+            },
         };
 
-        var command_buffer: vk.VkCommandBuffer = undefined;
-        if (vk.vkAllocateCommandBuffers(self.device, &alloc_info, &command_buffer) != vk.VK_SUCCESS) {
-            return error.CommandBufferAllocationFailed;
-        }
-
-        const begin_info = vk.VkCommandBufferBeginInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            .flags = vk.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        const pool_info = vk.VkDescriptorPoolCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .maxSets = 1,
+            .poolSizeCount = pool_sizes.len,
+            .pPoolSizes = pool_sizes.ptr,
             .pNext = null,
-            .pInheritanceInfo = null,
+            .flags = 0,
         };
 
-        if (vk.vkBeginCommandBuffer(command_buffer, &begin_info) != vk.VK_SUCCESS) {
-            return error.CommandBufferBeginFailed;
-        }
-
-        return command_buffer;
+        try checkVulkanResult(vk.vkCreateDescriptorPool(
+            self.device,
+            &pool_info,
+            null,
+            &self.descriptor_pool,
+        ));
     }
 
-    fn endSingleTimeCommands(self: *VulkanRenderer, command_buffer: vk.VkCommandBuffer) !void {
-        if (vk.vkEndCommandBuffer(command_buffer) != vk.VK_SUCCESS) {
-            return error.CommandBufferEndFailed;
-        }
-
-        const submit_info = vk.VkSubmitInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &command_buffer,
-            .waitSemaphoreCount = 0,
-            .pWaitSemaphores = null,
-            .pWaitDstStageMask = null,
-            .signalSemaphoreCount = 0,
-            .pSignalSemaphores = null,
+    fn createDescriptorSets(self: *VulkanRenderer) !void {
+        const descriptor_set_alloc_info = vk.VkDescriptorSetAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = self.descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &self.descriptor_set_layout,
             .pNext = null,
         };
 
-        try checkVulkanResult(vk.vkQueueSubmit(self.queue, 1, &submit_info, null));
+        try checkVulkanResult(vk.vkAllocateDescriptorSets(
+            self.device,
+            &descriptor_set_alloc_info,
+            &self.descriptor_set,
+        ));
 
-        if (vk.vkQueueWaitIdle(self.queue) != vk.VK_SUCCESS) {
-            return error.QueueWaitIdleFailed;
-        }
+        const buffer_info = vk.VkDescriptorBufferInfo{
+            .buffer = self.uniform_buffer,
+            .offset = 0,
+            .range = @sizeOf([4][4]f32),
+        };
 
-        vk.vkFreeCommandBuffers(self.device, self.command_pool, 1, &command_buffer);
+        const write_descriptor_set = vk.VkWriteDescriptorSet{
+            .sType = vk.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = self.descriptor_set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pImageInfo = null,
+            .pBufferInfo = &buffer_info,
+            .pTexelBufferView = null,
+            .pNext = null,
+        };
+
+        vk.vkUpdateDescriptorSets(self.device, 1, &write_descriptor_set, 0, null);
     }
 
     fn createCommandBuffers(self: *VulkanRenderer) !void {
@@ -1903,16 +1826,18 @@ const VulkanRenderer = struct {
     }
 
     pub fn drawFrame(self: *VulkanRenderer) !void {
-        try vk.vkWaitForFences(
+        // Wait for the previous frame to finish
+        try checkVulkanResult(vk.vkWaitForFences(
             self.device,
             1,
             &self.in_flight_fences[self.current_frame],
             vk.VK_TRUE,
             std.math.maxInt(u64),
-        );
+        ));
 
+        // Acquire an image from the swapchain
         var image_index: u32 = undefined;
-        const result = vk.vkAcquireNextImageKHR(
+        const acquire_result = vk.vkAcquireNextImageKHR(
             self.device,
             self.swapchain,
             std.math.maxInt(u64),
@@ -1921,23 +1846,31 @@ const VulkanRenderer = struct {
             &image_index,
         );
 
-        if (result == vk.VK_ERROR_OUT_OF_DATE_KHR) {
-            self.framebuffer_resized = false;
+        if (acquire_result == vk.VK_ERROR_OUT_OF_DATE_KHR) {
             try self.recreateSwapChain();
             return;
-        } else if (result != vk.VK_SUCCESS and result != vk.VK_SUBOPTIMAL_KHR) {
+        } else if (acquire_result != vk.VK_SUCCESS and acquire_result != vk.VK_SUBOPTIMAL_KHR) {
             return error.FailedToAcquireSwapChainImage;
         }
 
-        // Reset fence only if we're submitting work
-        try vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]);
+        // Update uniform buffer
+        self.rotation += 0.01;
+        self.updateUniformBuffer();
 
-        try vk.vkResetCommandBuffer(self.command_buffers[self.current_frame], 0);
+        // Reset the fence for the current frame
+        try checkVulkanResult(vk.vkResetFences(
+            self.device,
+            1,
+            &self.in_flight_fences[self.current_frame],
+        ));
+
+        // Record the command buffer
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
 
+        // Submit the command buffer
         const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
-        const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
+        const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -1958,6 +1891,7 @@ const VulkanRenderer = struct {
             self.in_flight_fences[self.current_frame],
         ));
 
+        // Present the image
         const present_info = vk.VkPresentInfoKHR{
             .sType = vk.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = signal_semaphores.len,
@@ -1982,67 +1916,6 @@ const VulkanRenderer = struct {
         }
 
         self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-
-        // Begin performance monitoring
-        self.performance_monitor.beginFrame(self.command_buffers[self.current_frame]);
-
-        // Track feature usage
-        self.performance_monitor.trackFeatureUsage(self.command_buffers[self.current_frame], .geometry_shader);
-        // ... geometry shader operations ...
-        self.performance_monitor.endFeatureUsage(self.command_buffers[self.current_frame], .geometry_shader);
-
-        // ... other feature tracking ...
-
-        // End performance monitoring
-        self.performance_monitor.endFrame(self.command_buffers[self.current_frame]);
-
-        // Update frame counter and check thresholds
-        self.performance_monitor.updateFrame();
-
-        // Log performance metrics and alerts periodically
-        if (self.current_frame % 60 == 0) {
-            self.performance_monitor.logMetrics();
-            
-            // Log current preset
-            const preset = self.performance_monitor.getCurrentPreset();
-            self.logger.info("Current performance preset: {s}", .{@tagName(preset)});
-            
-            // Log active alerts
-            const alerts = self.performance_monitor.getActiveAlerts();
-            if (alerts.len > 0) {
-                self.logger.info("Active Performance Alerts:", .{});
-                for (alerts) |alert| {
-                    const thresholds = self.performance_monitor.getCurrentThresholds(
-                        std.meta.stringToEnum(Thresholds.MetricType, alert.metric_name).?,
-                    );
-                    switch (alert.alert_type) {
-                        .warning => self.logger.warn("  {s} (Value: {d:.2}, Threshold: {d:.2})", .{
-                            alert.message,
-                            alert.value,
-                            thresholds.warning,
-                        }),
-                        .critical => self.logger.err("  {s} (Value: {d:.2}, Threshold: {d:.2})", .{
-                            alert.message,
-                            alert.value,
-                            thresholds.critical,
-                        }),
-                    }
-                }
-            }
-
-            // Clear old alerts
-            self.performance_monitor.clearOldAlerts(300);
-        }
-
-        // Begin ImGui frame
-        if (self.imgui) |*imgui| {
-            imgui.beginFrame();
-
-            // Render UI
-            if (self.ui) |*ui| {
-                ui.render();
-            }
-        }
     }
 
     fn recordCommandBuffer(self: *VulkanRenderer, command_buffer: vk.VkCommandBuffer, image_index: u32) !void {
@@ -2131,80 +2004,18 @@ const VulkanRenderer = struct {
         );
     }
 
-    fn createDepthResources(self: *VulkanRenderer) !void {
-        const depth_format = try self.findDepthFormat();
+    fn findMemoryType(self: *VulkanRenderer, type_filter: u32, properties: vk.VkMemoryPropertyFlags) !u32 {
+        var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
+        vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &memory_properties);
 
-        const image_info = vk.VkImageCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .imageType = vk.VK_IMAGE_TYPE_2D,
-            .format = depth_format,
-            .extent = vk.VkExtent3D{
-                .width = self.swapchain_extent.width,
-                .height = self.swapchain_extent.height,
-                .depth = 1,
-            },
-            .mipLevels = 1,
-            .arrayLayers = 1,
-            .samples = vk.VK_SAMPLE_COUNT_1_BIT,
-            .tiling = vk.VK_IMAGE_TILING_OPTIMAL,
-            .usage = vk.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = null,
-            .initialLayout = vk.VK_IMAGE_LAYOUT_UNDEFINED,
-            .flags = 0,
-            .pNext = null,
-        };
-
-        if (vk.vkCreateImage(self.device, &image_info, null, &self.depth_image) != vk.VK_SUCCESS) {
-            return error.ImageCreationFailed;
+        for (0..memory_properties.memoryTypeCount) |i| {
+            if ((type_filter & (@as(u32, 1) << @intCast(i))) != 0 and
+                (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                return @intCast(i);
+            }
         }
 
-        var mem_requirements: vk.VkMemoryRequirements = undefined;
-        vk.vkGetImageMemoryRequirements(self.device, self.depth_image, &mem_requirements);
-
-        const alloc_info = vk.VkMemoryAllocateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = mem_requirements.size,
-            .memoryTypeIndex = try self.findMemoryType(
-                mem_requirements.memoryTypeBits,
-                vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            ),
-            .pNext = null,
-        };
-
-        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.depth_image_memory) != vk.VK_SUCCESS) {
-            return error.MemoryAllocationFailed;
-        }
-
-        if (vk.vkBindImageMemory(self.device, self.depth_image, self.depth_image_memory, 0) != vk.VK_SUCCESS) {
-            return error.ImageMemoryBindingFailed;
-        }
-
-        const view_info = vk.VkImageViewCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = self.depth_image,
-            .viewType = vk.VK_IMAGE_VIEW_TYPE_2D,
-            .format = depth_format,
-            .subresourceRange = vk.VkImageSubresourceRange{
-                .aspectMask = vk.VK_IMAGE_ASPECT_DEPTH_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-            .components = vk.VkComponentMapping{
-                .r = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
-                .g = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
-                .b = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
-                .a = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
-            },
-            .flags = 0,
-            .pNext = null,
-        };
-
-        if (vk.vkCreateImageView(self.device, &view_info, null, &self.depth_image_view) != vk.VK_SUCCESS) {
-            return error.ImageViewCreationFailed;
-        }
+        return error.MemoryTypeNotFound;
     }
 }; 

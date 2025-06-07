@@ -5,7 +5,11 @@ layout(location = 1) in vec3 inColor;
 
 layout(location = 0) out vec3 fragColor;
 
+layout(binding = 0) uniform UniformBufferObject {
+    mat4 rotation;
+} ubo;
+
 void main() {
-    gl_Position = vec4(inPosition, 1.0);
+    gl_Position = ubo.rotation * vec4(inPosition, 1.0);
     fragColor = inColor;
 } 
