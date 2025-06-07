@@ -83,6 +83,8 @@ pub const PerformanceDashboard = struct {
         unknown 
     },
 
+    show_settings_panel: bool = false,
+
     pub fn init(allocator: std.mem.Allocator) !*Self {
         var self = try allocator.create(Self);
         self.* = Self{
@@ -124,6 +126,7 @@ pub const PerformanceDashboard = struct {
             .preset_name_warning = null,
             .sanitized_name = null,
             .detected_language = .unknown,
+            .show_settings_panel = false,
         };
 
         // Create presets directory if it doesn't exist
@@ -312,7 +315,499 @@ pub const PerformanceDashboard = struct {
                 c.igSeparator();
                 self.renderPresetEditor();
             }
+
+            // Settings Panel
+            if (self.show_settings_panel) {
+                if (c.igBegin("Performance Settings", &self.show_settings_panel, c.ImGuiWindowFlags_None)) {
+                    // Profile Management Section
+                    if (c.igCollapsingHeader("Performance Profiles", c.ImGuiTreeNodeFlags_DefaultOpen)) {
+                        // Profile Selection
+                        if (c.igBeginCombo("##profile_select", self.current_preset.name.ptr)) {
+                            for (self.presets.items) |preset| {
+                                const is_selected = preset == self.current_preset;
+                                if (c.igSelectable(preset.name.ptr, is_selected, c.ImGuiSelectableFlags_None, .{ .x = 0, .y = 0 })) {
+                                    self.current_preset = preset;
+                                }
+                                if (is_selected) {
+                                    c.igSetItemDefaultFocus();
+                                }
+                            }
+                            c.igEndCombo();
+                        }
+
+                        // Profile Management Buttons
+                        c.igSameLine(0, 20);
+                        if (c.igButton("Create New", .{ .x = 100, .y = 0 })) {
+                            self.show_create_preset_dialog = true;
+                        }
+                        c.igSameLine(0, 10);
+                        if (c.igButton("Delete", .{ .x = 100, .y = 0 })) {
+                            // Delete current profile
+                            if (self.current_preset.id != 0) { // Don't delete default profile
+                                // TODO: Implement profile deletion
+                            }
+                        }
+                    }
+
+                    // Current Profile Settings
+                    if (c.igCollapsingHeader("Current Profile Settings", c.ImGuiTreeNodeFlags_DefaultOpen)) {
+                        // Helper functions for color coding
+                        fn setQualityColor(quality: enum { low, medium, high, ultra }) void {
+                            const color = switch (quality) {
+                                .low => .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 },     // Red
+                                .medium => .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 },  // Yellow
+                                .high => .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 },    // Green
+                                .ultra => .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 },   // Blue
+                            };
+                            c.igPushStyleColor(c.ImGuiCol_Text, color);
+                        }
+
+                        fn setMSAAColor(level: u32) void {
+                            const color = switch (level) {
+                                0...1 => .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 },    // Red
+                                2...4 => .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 },    // Yellow
+                                5...8 => .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 },    // Green
+                                else => .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 },     // Blue
+                            };
+                            c.igPushStyleColor(c.ImGuiCol_Text, color);
+                        }
+
+                        fn setAnisotropicColor(level: u32) void {
+                            const color = switch (level) {
+                                0...2 => .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 },    // Red
+                                4...8 => .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 },    // Yellow
+                                9...12 => .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 },   // Green
+                                else => .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 },     // Blue
+                            };
+                            c.igPushStyleColor(c.ImGuiCol_Text, color);
+                        }
+
+                        fn setViewDistanceColor(distance: f32) void {
+                            const color = if (distance < 300.0)
+                                .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }              // Red
+                            else if (distance < 500.0)
+                                .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }              // Yellow
+                            else if (distance < 1000.0)
+                                .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }              // Green
+                            else
+                                .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 };             // Blue
+                            c.igPushStyleColor(c.ImGuiCol_Text, color);
+                        }
+
+                        fn setFPSColor(fps: u32) void {
+                            const color = if (fps < 30)
+                                .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }              // Red
+                            else if (fps < 60)
+                                .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }              // Yellow
+                            else if (fps < 120)
+                                .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }              // Green
+                            else
+                                .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 };             // Blue
+                            c.igPushStyleColor(c.ImGuiCol_Text, color);
+                        }
+
+                        fn setCacheSizeColor(size_mb: f32) void {
+                            const color = if (size_mb < 256.0)
+                                .{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }              // Red
+                            else if (size_mb < 512.0)
+                                .{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }              // Yellow
+                            else if (size_mb < 1024.0)
+                                .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }              // Green
+                            else
+                                .{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 };             // Blue
+                            c.igPushStyleColor(c.ImGuiCol_Text, color);
+                        }
+
+                        fn setFeatureColor(enabled: bool) void {
+                            const color = if (enabled)
+                                .{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }              // Green
+                            else
+                                .{ .x = 0.4, .y = 0.4, .z = 0.4, .w = 1.0 };             // Gray
+                            c.igPushStyleColor(c.ImGuiCol_Text, color);
+                        }
+
+                        // Helper function for impact indicators
+                        fn renderImpactIndicators(cpu: u8, gpu: u8, memory: u8) void {
+                            const impact_color = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 };
+                            const high_impact_color = .{ .x = 1.0, .y = 0.4, .z = 0.4, .w = 1.0 };
+
+                            // CPU Impact
+                            c.igSameLine(0, 5);
+                            c.igTextColored(if (cpu > 2) high_impact_color else impact_color, "💻");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("CPU Impact: %d/5", cpu);
+                            }
+
+                            // GPU Impact
+                            c.igSameLine(0, 5);
+                            c.igTextColored(if (gpu > 2) high_impact_color else impact_color, "🎮");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("GPU Impact: %d/5", gpu);
+                            }
+
+                            // Memory Impact
+                            c.igSameLine(0, 5);
+                            c.igTextColored(if (memory > 2) high_impact_color else impact_color, "💾");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Memory Impact: %d/5", memory);
+                            }
+                        }
+
+                        // Render settings in a table format
+                        if (c.igBeginTable("##settings_table", 2, c.ImGuiTableFlags_Borders | c.ImGuiTableFlags_RowBg, .{ .x = 0, .y = 0 }, 0)) {
+                            // Table headers
+                            c.igTableNextRow(c.ImGuiTableRowFlags_Headers, 0);
+                            c.igTableNextColumn();
+                            c.igText("Setting");
+                            c.igTableNextColumn();
+                            c.igText("Value");
+
+                            // MSAA Level
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("MSAA Level");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Multi-Sample Anti-Aliasing level. Higher values provide smoother edges but impact performance.");
+                            }
+                            c.igTableNextColumn();
+                            setMSAAColor(self.current_preset.settings.msaa_level);
+                            c.igText("%d", self.current_preset.settings.msaa_level);
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(2, 4, 1);
+
+                            // Texture Quality
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Texture Quality");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Overall texture resolution and quality. Affects memory usage and visual fidelity.");
+                            }
+                            c.igTableNextColumn();
+                            setQualityColor(self.current_preset.settings.texture_quality);
+                            c.igText("%s", @tagName(self.current_preset.settings.texture_quality));
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(1, 3, 4);
+
+                            // Shadow Quality
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Shadow Quality");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Shadow map resolution and filtering quality. Higher settings provide more detailed shadows.");
+                            }
+                            c.igTableNextColumn();
+                            setQualityColor(self.current_preset.settings.shadow_quality);
+                            c.igText("%s", @tagName(self.current_preset.settings.shadow_quality));
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(1, 4, 2);
+
+                            // Anisotropic Filtering
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Anisotropic Filtering");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Texture filtering quality for angled surfaces. Higher values improve texture clarity at angles.");
+                            }
+                            c.igTableNextColumn();
+                            setAnisotropicColor(self.current_preset.settings.anisotropic_filtering);
+                            c.igText("%dx", self.current_preset.settings.anisotropic_filtering);
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(1, 3, 1);
+
+                            // View Distance
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("View Distance");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Maximum distance at which objects are rendered. Higher values increase draw distance but impact performance.");
+                            }
+                            c.igTableNextColumn();
+                            setViewDistanceColor(self.current_preset.settings.view_distance);
+                            c.igText("%.1f", self.current_preset.settings.view_distance);
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(3, 4, 3);
+
+                            // Max FPS
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Max FPS");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Maximum frames per second. Lower values can reduce power consumption and heat generation.");
+                            }
+                            c.igTableNextColumn();
+                            setFPSColor(self.current_preset.settings.max_fps);
+                            c.igText("%d", self.current_preset.settings.max_fps);
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(2, 3, 1);
+
+                            // V-Sync
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("V-Sync");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Vertical synchronization. Reduces screen tearing but may introduce input lag.");
+                            }
+                            c.igTableNextColumn();
+                            setFeatureColor(self.current_preset.settings.vsync);
+                            c.igText("%s", if (self.current_preset.settings.vsync) "Enabled" else "Disabled");
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(1, 1, 0);
+
+                            // Triple Buffering
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Triple Buffering");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Uses three buffers to reduce screen tearing. May increase latency but provides smoother frame delivery.");
+                            }
+                            c.igTableNextColumn();
+                            setFeatureColor(self.current_preset.settings.triple_buffering);
+                            c.igText("%s", if (self.current_preset.settings.triple_buffering) "Enabled" else "Disabled");
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(1, 1, 2);
+
+                            // Shader Quality
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Shader Quality");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Overall shader complexity and effects quality. Higher settings enable more advanced visual effects.");
+                            }
+                            c.igTableNextColumn();
+                            setQualityColor(self.current_preset.settings.shader_quality);
+                            c.igText("%s", @tagName(self.current_preset.settings.shader_quality));
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(2, 4, 1);
+
+                            // Compute Shader Quality
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Compute Shader Quality");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Quality of compute shader effects. Higher settings enable more advanced particle and simulation effects.");
+                            }
+                            c.igTableNextColumn();
+                            setQualityColor(self.current_preset.settings.compute_shader_quality);
+                            c.igText("%s", @tagName(self.current_preset.settings.compute_shader_quality));
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(3, 5, 2);
+
+                            // Texture Streaming
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Texture Streaming");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Streams textures as needed. Reduces memory usage but may cause texture pop-in.");
+                            }
+                            c.igTableNextColumn();
+                            setFeatureColor(self.current_preset.settings.texture_streaming);
+                            c.igText("%s", if (self.current_preset.settings.texture_streaming) "Enabled" else "Disabled");
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(2, 1, 3);
+
+                            // Texture Cache Size
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Texture Cache Size");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Maximum memory allocated for texture caching. Higher values reduce texture loading but increase memory usage.");
+                            }
+                            c.igTableNextColumn();
+                            setCacheSizeColor(@intToFloat(f32, self.current_preset.settings.texture_cache_size) / (1024 * 1024));
+                            c.igText("%.1f MB", @intToFloat(f32, self.current_preset.settings.texture_cache_size) / (1024 * 1024));
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(1, 1, 4);
+
+                            // Geometry LOD Levels
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Geometry LOD Levels");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Number of detail levels for geometry. Higher values provide smoother transitions between detail levels.");
+                            }
+                            c.igTableNextColumn();
+                            c.igText("%d", self.current_preset.settings.geometry_lod_levels);
+                            renderImpactIndicators(2, 2, 2);
+
+                            // Pipeline Cache Size
+                            c.igTableNextRow(0, 0);
+                            c.igTableNextColumn();
+                            c.igText("Pipeline Cache Size");
+                            if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                c.igSetTooltip("Maximum memory allocated for pipeline state caching. Reduces pipeline creation overhead.");
+                            }
+                            c.igTableNextColumn();
+                            setCacheSizeColor(@intToFloat(f32, self.current_preset.settings.pipeline_cache_size) / (1024 * 1024));
+                            c.igText("%.1f MB", @intToFloat(f32, self.current_preset.settings.pipeline_cache_size) / (1024 * 1024));
+                            c.igPopStyleColor(1);
+                            renderImpactIndicators(1, 1, 3);
+
+                            // Feature toggles with color coding
+                            const feature_settings = .{
+                                .{ "Command Buffer Reuse", self.current_preset.settings.command_buffer_reuse, 2, 1, 2 },
+                                .{ "Secondary Command Buffers", self.current_preset.settings.secondary_command_buffers, 3, 2, 1 },
+                                .{ "Async Compute", self.current_preset.settings.async_compute, 2, 4, 1 },
+                                .{ "Geometry Shaders", self.current_preset.settings.geometry_shaders, 1, 3, 1 },
+                                .{ "Tessellation", self.current_preset.settings.tessellation, 2, 5, 2 },
+                                .{ "Ray Tracing", self.current_preset.settings.ray_tracing, 3, 5, 3 },
+                            };
+
+                            for (feature_settings) |feature| {
+                                c.igTableNextRow(0, 0);
+                                c.igTableNextColumn();
+                                c.igText("%s", feature[0].ptr);
+                                if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                                    c.igSetTooltip("Feature toggle. Green indicates enabled, gray indicates disabled.");
+                                }
+                                c.igTableNextColumn();
+                                setFeatureColor(feature[1]);
+                                c.igText("%s", if (feature[1]) "Enabled" else "Disabled");
+                                c.igPopStyleColor(1);
+                                renderImpactIndicators(feature[2], feature[3], feature[4]);
+                            }
+
+                            c.igEndTable();
+                        }
+                    }
+
+                    c.igSpacing();
+                    c.igSeparator();
+                    c.igSpacing();
+
+                    // Buttons
+                    const button_size = .{ .x = 120, .y = 0 };
+                    
+                    // Disable Create button if there are validation errors
+                    if (self.preset_name_error != null) {
+                        c.igBeginDisabled(true);
+                    }
+                    
+                    if (c.igButton("Create", button_size)) {
+                        if (self.new_preset_name_len > 0 and self.preset_name_error == null) {
+                            // Create new preset
+                            const settings = if (self.new_preset_base) |base| base.settings else PerformancePreset.Settings{
+                                .msaa_level = 2,
+                                .texture_quality = .medium,
+                                .shadow_quality = .medium,
+                                .anisotropic_filtering = 4,
+                                .view_distance = 500.0,
+                                .max_fps = 60,
+                                .vsync = true,
+                                .triple_buffering = true,
+                                .shader_quality = .medium,
+                                .compute_shader_quality = .advanced,
+                                .texture_streaming = true,
+                                .texture_cache_size = 512 * 1024 * 1024,
+                                .geometry_lod_levels = 3,
+                                .pipeline_cache_size = 128 * 1024 * 1024,
+                                .command_buffer_reuse = true,
+                                .secondary_command_buffers = true,
+                                .async_compute = true,
+                                .geometry_shaders = true,
+                                .tessellation = false,
+                                .ray_tracing = false,
+                            };
+
+                            const new_preset = PerformancePreset.init(
+                                self.allocator,
+                                self.new_preset_name[0..self.new_preset_name_len],
+                                self.new_preset_description[0..self.new_preset_description_len],
+                                settings,
+                            ) catch |err| {
+                                self.logger.err("Failed to create new preset: {}", .{err});
+                                return;
+                            };
+
+                            // Add to presets list
+                            self.presets.append(new_preset) catch |err| {
+                                self.logger.err("Failed to add new preset: {}", .{err});
+                                new_preset.deinit(self.allocator);
+                                return;
+                            };
+
+                            // Set as current preset
+                            self.current_preset = new_preset;
+
+                            // Save to file
+                            const file_path = std.fmt.allocPrint(self.allocator, "{s}/{s}.json", .{ 
+                                self.custom_presets_dir, 
+                                self.new_preset_name[0..self.new_preset_name_len] 
+                            }) catch continue;
+                            defer self.allocator.free(file_path);
+
+                            new_preset.saveToFile(file_path) catch |err| {
+                                self.logger.err("Failed to save new preset: {}", .{err});
+                            };
+
+                            self.show_create_preset_dialog = false;
+                        }
+                    }
+
+                    if (self.preset_name_error != null) {
+                        c.igEndDisabled();
+                    }
+
+                    c.igSameLine(0, 20);
+                    if (c.igButton("Cancel", button_size)) {
+                        self.show_create_preset_dialog = false;
+                    }
+                }
+            }
+
+            // Performance Impact Legend
+            if (c.igCollapsingHeader("Performance Impact Guide", c.ImGuiTreeNodeFlags_None)) {
+                // Compact legend button
+                c.igSameLine(c.igGetWindowWidth() - 30, 0);
+                if (c.igButton("ℹ️", .{ .x = 25, .y = 25 })) {
+                    // Button is just for show, actual info is in tooltip
+                }
+                if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+                    c.igBeginTooltip();
+                    c.igPushTextWrapPos(c.igGetFontSize() * 35.0);
+                    
+                    // Quality Levels
+                    c.igText("Quality Levels:");
+                    c.igTextColored(.{ .x = 0.8, .y = 0.2, .z = 0.2, .w = 1.0 }, "● Low");
+                    c.igTextColored(.{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }, "● Medium");
+                    c.igTextColored(.{ .x = 0.2, .y = 0.8, .z = 0.2, .w = 1.0 }, "● High");
+                    c.igTextColored(.{ .x = 0.2, .y = 0.2, .z = 0.8, .w = 1.0 }, "● Ultra");
+                    c.igTextColored(.{ .x = 0.8, .y = 0.4, .z = 0.8, .w = 1.0 }, "● Advanced");
+                    c.igTextColored(.{ .x = 0.4, .y = 0.4, .z = 0.4, .w = 1.0 }, "● Disabled");
+                    
+                    c.igSpacing();
+                    c.igSeparator();
+                    c.igSpacing();
+                    
+                    // Performance Impact
+                    c.igText("Performance Impact:");
+                    c.igTextColored(.{ .x = 0.2, .y = 0.6, .z = 0.8, .w = 1.0 }, "💻 CPU");
+                    c.igTextColored(.{ .x = 0.8, .y = 0.4, .z = 0.2, .w = 1.0 }, "🎮 GPU");
+                    c.igTextColored(.{ .x = 0.6, .y = 0.4, .z = 0.8, .w = 1.0 }, "💾 Memory");
+                    c.igText("Impact levels: 1-5 (higher = more impact)");
+                    c.igTextColored(.{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 }, "● Normal impact");
+                    c.igTextColored(.{ .x = 1.0, .y = 0.4, .z = 0.4, .w = 1.0 }, "● High impact");
+                    
+                    c.igSpacing();
+                    c.igSeparator();
+                    c.igSpacing();
+                    
+                    // Tips
+                    c.igText("Tips:");
+                    c.igBulletText("Hover over settings for detailed information");
+                    c.igBulletText("Hover over impact icons for specific impact levels");
+                    c.igBulletText("Red indicators show high performance impact");
+                    
+                    c.igPopTextWrapPos();
+                    c.igEndTooltip();
+                }
+            }
         }
+
+        // Create Preset Dialog
+        if (self.show_create_preset_dialog) {
+            self.renderCreatePresetDialog();
+        }
+
         c.igEnd();
     }
 
