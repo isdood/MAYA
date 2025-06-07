@@ -943,7 +943,8 @@ pub const VulkanRenderer = struct {
         _ = width;
         _ = height;
         const ptr = glfw.glfwGetWindowUserPointer(window);
-        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
+        const aligned_ptr = @alignCast(@alignOf(Self), ptr);
+        const self = @ptrCast(*Self, aligned_ptr);
         self.framebuffer_resized = true;
     }
 
@@ -1257,7 +1258,7 @@ pub const VulkanRenderer = struct {
             }
 
             var present_support: vk.VkBool32 = undefined;
-            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(device, @intCast(u32, i), self.surface, &present_support);
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(device, @intCast(i), self.surface, &present_support);
             if (present_support != 0) {
                 present_queue_found = true;
             }
@@ -1302,7 +1303,8 @@ pub const VulkanRenderer = struct {
 
         var i: u32 = 0;
         while (i < queue_family_count) : (i += 1) {
-            if (queue_families[i].queueFlags & @intCast(u32, vk.VK_QUEUE_GRAPHICS_BIT) != 0) {
+            const graphics_bit = @intCast(u32, vk.VK_QUEUE_GRAPHICS_BIT);
+            if (queue_families[i].queueFlags & graphics_bit != 0) {
                 indices.graphics_family = i;
             }
 

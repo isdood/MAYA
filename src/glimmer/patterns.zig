@@ -317,14 +317,14 @@ pub fn init() !void {
     const default_patterns = [_]GlimmerPattern.Config{
         .{
             .pattern_type = .quantum_wave,
-            .base_color = colors.GlimmerColors.primary,
+            .base_color = colors.GlimmerColors.quantum_blue,
             .intensity = 0.5,
             .frequency = 1.0,
             .phase = 0.0,
         },
         .{
             .pattern_type = .neural_flow,
-            .base_color = colors.GlimmerColors.secondary,
+            .base_color = colors.GlimmerColors.neural_purple,
             .intensity = 0.7,
             .frequency = 1.5,
             .phase = 0.5,
@@ -370,7 +370,7 @@ pub fn processPatterns() !void {
 test "GlimmerPattern" {
     const config = GlimmerPattern.Config{
         .pattern_type = .quantum_wave,
-        .base_color = colors.GlimmerColors.primary,
+        .base_color = colors.GlimmerColors.quantum_blue,
         .intensity = 0.5,
         .frequency = 1.0,
         .phase = 0.0,
