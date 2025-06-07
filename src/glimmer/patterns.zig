@@ -111,7 +111,7 @@ pub const GlimmerPattern = struct {
                 self.transition = null;
             } else {
                 // Interpolate between current and target pattern
-                const interpolated = self.interpolatePatterns(self, transition.target_config, progress);
+                const interpolated = self.interpolatePatterns(&transition.target_config, progress);
                 self.* = interpolated;
                 return;
             }
