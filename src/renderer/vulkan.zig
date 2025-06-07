@@ -618,6 +618,9 @@ const VulkanRenderer = struct {
         try self.createImageViews();
         self.logger.info("Image views created", .{});
 
+        try self.createDepthResources();
+        self.logger.info("Depth resources created", .{});
+
         try self.createRenderPass();
         self.logger.info("Render pass created", .{});
 
@@ -701,7 +704,12 @@ const VulkanRenderer = struct {
         vk.vkDestroyBuffer(self.device, self.vertex_buffer, null);
         vk.vkFreeMemory(self.device, self.vertex_buffer_memory, null);
 
-        // Cleanup pipeline
+        // Cleanup depth resources
+        vk.vkDestroyImageView(self.device, self.depth_image_view, null);
+        vk.vkDestroyImage(self.device, self.depth_image, null);
+        vk.vkFreeMemory(self.device, self.depth_image_memory, null);
+
+        // Cleanup graphics pipeline
         vk.vkDestroyPipeline(self.device, self.pipeline, null);
         vk.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
 
@@ -1169,6 +1177,83 @@ const VulkanRenderer = struct {
         }
     }
 
+    fn createDepthResources(self: *VulkanRenderer) !void {
+        const depth_format = try self.findDepthFormat();
+
+        const image_info = vk.VkImageCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = vk.VK_IMAGE_TYPE_2D,
+            .format = depth_format,
+            .extent = vk.VkExtent3D{
+                .width = self.swapchain_extent.width,
+                .height = self.swapchain_extent.height,
+                .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = vk.VK_SAMPLE_COUNT_1_BIT,
+            .tiling = vk.VK_IMAGE_TILING_OPTIMAL,
+            .usage = vk.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+            .initialLayout = vk.VK_IMAGE_LAYOUT_UNDEFINED,
+            .flags = 0,
+            .pNext = null,
+        };
+
+        if (vk.vkCreateImage(self.device, &image_info, null, &self.depth_image) != vk.VK_SUCCESS) {
+            return error.ImageCreationFailed;
+        }
+
+        var mem_requirements: vk.VkMemoryRequirements = undefined;
+        vk.vkGetImageMemoryRequirements(self.device, self.depth_image, &mem_requirements);
+
+        const alloc_info = vk.VkMemoryAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = mem_requirements.size,
+            .memoryTypeIndex = try self.findMemoryType(
+                mem_requirements.memoryTypeBits,
+                vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            ),
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.depth_image_memory) != vk.VK_SUCCESS) {
+            return error.MemoryAllocationFailed;
+        }
+
+        if (vk.vkBindImageMemory(self.device, self.depth_image, self.depth_image_memory, 0) != vk.VK_SUCCESS) {
+            return error.ImageMemoryBindingFailed;
+        }
+
+        const view_info = vk.VkImageViewCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = self.depth_image,
+            .viewType = vk.VK_IMAGE_VIEW_TYPE_2D,
+            .format = depth_format,
+            .subresourceRange = vk.VkImageSubresourceRange{
+                .aspectMask = vk.VK_IMAGE_ASPECT_DEPTH_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .components = vk.VkComponentMapping{
+                .r = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                .g = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                .b = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                .a = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+            },
+            .flags = 0,
+            .pNext = null,
+        };
+
+        if (vk.vkCreateImageView(self.device, &view_info, null, &self.depth_image_view) != vk.VK_SUCCESS) {
+            return error.ImageViewCreationFailed;
+        }
+    }
+
     fn createRenderPass(self: *VulkanRenderer) !void {
         const color_attachment = vk.VkAttachmentDescription{
             .format = vk.VK_FORMAT_B8G8R8A8_UNORM,
@@ -1284,7 +1369,7 @@ const VulkanRenderer = struct {
         const binding_description = vk.VkVertexInputBindingDescription{
             .binding = 0,
             .stride = @sizeOf(struct {
-                pos: [2]f32,
+                pos: [3]f32,
                 color: [3]f32,
             }),
             .inputRate = vk.VK_VERTEX_INPUT_RATE_VERTEX,
@@ -1296,9 +1381,9 @@ const VulkanRenderer = struct {
             vk.VkVertexInputAttributeDescription{
                 .binding = 0,
                 .location = 0,
-                .format = vk.VK_FORMAT_R32G32_SFLOAT,
+                .format = vk.VK_FORMAT_R32G32B32_SFLOAT,
                 .offset = @offsetOf(struct {
-                    pos: [2]f32,
+                    pos: [3]f32,
                     color: [3]f32,
                 }, "pos"),
             },
@@ -1308,7 +1393,7 @@ const VulkanRenderer = struct {
                 .location = 1,
                 .format = vk.VK_FORMAT_R32G32B32_SFLOAT,
                 .offset = @offsetOf(struct {
-                    pos: [2]f32,
+                    pos: [3]f32,
                     color: [3]f32,
                 }, "color"),
             },
@@ -1519,12 +1604,23 @@ const VulkanRenderer = struct {
 
     fn createVertexBuffer(self: *VulkanRenderer) !void {
         const vertices = [_]struct {
-            pos: [2]f32,
+            pos: [3]f32,
             color: [3]f32,
         }{
-            .{ .pos = [2]f32{ 0.0, -0.5 }, .color = [3]f32{ 1.0, 0.0, 0.0 } },
-            .{ .pos = [2]f32{ 0.5, 0.5 }, .color = [3]f32{ 0.0, 1.0, 0.0 } },
-            .{ .pos = [2]f32{ -0.5, 0.5 }, .color = [3]f32{ 0.0, 0.0, 1.0 } },
+            // Front triangle (closest)
+            .{ .pos = [3]f32{ 0.0, -0.5, 0.0 }, .color = [3]f32{ 1.0, 0.0, 0.0 } },
+            .{ .pos = [3]f32{ 0.5, 0.5, 0.0 }, .color = [3]f32{ 0.0, 1.0, 0.0 } },
+            .{ .pos = [3]f32{ -0.5, 0.5, 0.0 }, .color = [3]f32{ 0.0, 0.0, 1.0 } },
+            
+            // Middle triangle
+            .{ .pos = [3]f32{ 0.0, -0.5, 0.5 }, .color = [3]f32{ 1.0, 1.0, 0.0 } },
+            .{ .pos = [3]f32{ 0.5, 0.5, 0.5 }, .color = [3]f32{ 0.0, 1.0, 1.0 } },
+            .{ .pos = [3]f32{ -0.5, 0.5, 0.5 }, .color = [3]f32{ 1.0, 0.0, 1.0 } },
+            
+            // Back triangle (furthest)
+            .{ .pos = [3]f32{ 0.0, -0.5, 1.0 }, .color = [3]f32{ 0.5, 0.5, 0.5 } },
+            .{ .pos = [3]f32{ 0.5, 0.5, 1.0 }, .color = [3]f32{ 0.5, 0.5, 0.5 } },
+            .{ .pos = [3]f32{ -0.5, 0.5, 1.0 }, .color = [3]f32{ 0.5, 0.5, 0.5 } },
         };
 
         const buffer_size = @sizeOf(@TypeOf(vertices));
@@ -1552,11 +1648,11 @@ const VulkanRenderer = struct {
         var mem_requirements: vk.VkMemoryRequirements = undefined;
         vk.vkGetBufferMemoryRequirements(self.device, staging_buffer, &mem_requirements);
 
-        // Find memory type
-        var memory_type_index: u32 = undefined;
+        // Find memory type for staging buffer
         var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
         vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &memory_properties);
 
+        var memory_type_index: u32 = undefined;
         for (0..memory_properties.memoryTypeCount) |i| {
             if ((mem_requirements.memoryTypeBits & (@as(u32, 1) << @intCast(i))) != 0 and
                 (memory_properties.memoryTypes[i].propertyFlags & vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0 and
@@ -1578,7 +1674,6 @@ const VulkanRenderer = struct {
             return error.StagingMemoryAllocationFailed;
         }
 
-        // Bind memory to buffer
         if (vk.vkBindBufferMemory(self.device, staging_buffer, staging_buffer_memory, 0) != vk.VK_SUCCESS) {
             return error.StagingMemoryBindingFailed;
         }
@@ -1589,7 +1684,7 @@ const VulkanRenderer = struct {
             return error.MemoryMappingFailed;
         }
 
-        @memcpy(@ptrCast(data), &vertices, buffer_size);
+        @memcpy(@ptrCast([*]u8, data), @ptrCast([*]const u8, &vertices), buffer_size);
         vk.vkUnmapMemory(self.device, staging_buffer_memory);
 
         // Create vertex buffer
@@ -1773,6 +1868,7 @@ const VulkanRenderer = struct {
 
         try self.createSwapChain();
         try self.createImageViews();
+        try self.createDepthResources();
         try self.createRenderPass();
         try self.createGraphicsPipeline();
         try self.createFramebuffers();
@@ -1784,6 +1880,11 @@ const VulkanRenderer = struct {
         for (self.framebuffers) |framebuffer| {
             vk.vkDestroyFramebuffer(self.device, framebuffer, null);
         }
+
+        // Clean up depth resources
+        vk.vkDestroyImageView(self.device, self.depth_image_view, null);
+        vk.vkDestroyImage(self.device, self.depth_image, null);
+        vk.vkFreeMemory(self.device, self.depth_image_memory, null);
 
         // Clean up graphics pipeline
         vk.vkDestroyPipeline(self.device, self.pipeline, null);
@@ -1954,9 +2055,17 @@ const VulkanRenderer = struct {
 
         try checkVulkanResult(vk.vkBeginCommandBuffer(command_buffer, &begin_info));
 
-        const clear_color = vk.VkClearValue{
-            .color = vk.VkClearColorValue{
-                .float32 = [_]f32{ 0.0, 0.0, 0.0, 1.0 },
+        const clear_values = [_]vk.VkClearValue{
+            vk.VkClearValue{
+                .color = vk.VkClearColorValue{
+                    .float32 = [_]f32{ 0.0, 0.0, 0.0, 1.0 },
+                },
+            },
+            vk.VkClearValue{
+                .depthStencil = vk.VkClearDepthStencilValue{
+                    .depth = 1.0,
+                    .stencil = 0,
+                },
             },
         };
 
@@ -1966,64 +2075,28 @@ const VulkanRenderer = struct {
             .framebuffer = self.framebuffers[image_index],
             .renderArea = vk.VkRect2D{
                 .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
-                .extent = vk.VkExtent2D{ .width = 800, .height = 600 }, // TODO: Get from window
+                .extent = self.swapchain_extent,
             },
-            .clearValueCount = 1,
-            .pClearValues = &clear_color,
+            .clearValueCount = clear_values.len,
+            .pClearValues = &clear_values,
             .pNext = null,
         };
 
         vk.vkCmdBeginRenderPass(command_buffer, &render_pass_info, vk.VK_SUBPASS_CONTENTS_INLINE);
 
-        // Bind the graphics pipeline
         vk.vkCmdBindPipeline(command_buffer, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, self.pipeline);
 
-        // Set dynamic viewport
-        const viewport = vk.VkViewport{
-            .x = 0.0,
-            .y = 0.0,
-            .width = @intToFloat(f32, self.swapchain_extent.width),
-            .height = @intToFloat(f32, self.swapchain_extent.height),
-            .minDepth = 0.0,
-            .maxDepth = 1.0,
-        };
-        vk.vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-
-        // Set dynamic scissor
-        const scissor = vk.VkRect2D{
-            .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
-            .extent = self.swapchain_extent,
-        };
-        vk.vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-
-        // Bind the vertex buffer
         const vertex_buffers = [_]vk.VkBuffer{self.vertex_buffer};
         const offsets = [_]vk.VkDeviceSize{0};
-        vk.vkCmdBindVertexBuffers(
-            command_buffer,
-            0, // first binding
-            1, // binding count
-            &vertex_buffers,
-            &offsets,
-        );
+        vk.vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertex_buffers, &offsets);
 
-        // Draw the triangle
-        vk.vkCmdDraw(
-            command_buffer,
-            3, // vertex count
-            1, // instance count
-            0, // first vertex
-            0, // first instance
-        );
-
-        // Render ImGui
-        if (self.imgui) |*imgui| {
-            imgui.endFrame(command_buffer);
-        }
+        vk.vkCmdDraw(command_buffer, 9, 1, 0, 0); // Draw all 9 vertices (3 triangles)
 
         vk.vkCmdEndRenderPass(command_buffer);
 
-        try checkVulkanResult(vk.vkEndCommandBuffer(command_buffer));
+        if (vk.vkEndCommandBuffer(command_buffer) != vk.VK_SUCCESS) {
+            return error.CommandBufferEndFailed;
+        }
     }
 
     fn findSupportedFormat(
