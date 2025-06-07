@@ -10,6 +10,7 @@ const Logger = std.log.Logger;
 
 pub const VulkanRenderer = struct {
     const Self = @This();
+    const MAX_FRAMES_IN_FLIGHT = 2;
 
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
@@ -1176,5 +1177,84 @@ pub const VulkanRenderer = struct {
         }
 
         return error.MemoryTypeNotFound;
+    }
+
+    fn checkVulkanResult(result: vk.VkResult) !void {
+        switch (result) {
+            vk.VK_SUCCESS => {},
+            vk.VK_NOT_READY => return error.NotReady,
+            vk.VK_TIMEOUT => return error.Timeout,
+            vk.VK_EVENT_SET => return error.EventSet,
+            vk.VK_EVENT_RESET => return error.EventReset,
+            vk.VK_INCOMPLETE => return error.Incomplete,
+            vk.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
+            vk.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
+            vk.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
+            vk.VK_ERROR_DEVICE_LOST => return error.DeviceLost,
+            vk.VK_ERROR_MEMORY_MAP_FAILED => return error.MemoryMapFailed,
+            vk.VK_ERROR_LAYER_NOT_PRESENT => return error.LayerNotPresent,
+            vk.VK_ERROR_EXTENSION_NOT_PRESENT => return error.ExtensionNotPresent,
+            vk.VK_ERROR_FEATURE_NOT_PRESENT => return error.FeatureNotPresent,
+            vk.VK_ERROR_INCOMPATIBLE_DRIVER => return error.IncompatibleDriver,
+            vk.VK_ERROR_TOO_MANY_OBJECTS => return error.TooManyObjects,
+            vk.VK_ERROR_FORMAT_NOT_SUPPORTED => return error.FormatNotSupported,
+            vk.VK_ERROR_FRAGMENTED_POOL => return error.FragmentedPool,
+            vk.VK_ERROR_UNKNOWN => return error.Unknown,
+            vk.VK_ERROR_OUT_OF_POOL_MEMORY => return error.OutOfPoolMemory,
+            vk.VK_ERROR_INVALID_EXTERNAL_HANDLE => return error.InvalidExternalHandle,
+            vk.VK_ERROR_FRAGMENTATION => return error.Fragmentation,
+            vk.VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS => return error.InvalidOpaqueCaptureAddress,
+            vk.VK_ERROR_SURFACE_LOST_KHR => return error.SurfaceLost,
+            vk.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR => return error.NativeWindowInUse,
+            vk.VK_SUBOPTIMAL_KHR => return error.Suboptimal,
+            vk.VK_ERROR_OUT_OF_DATE_KHR => return error.OutOfDate,
+            vk.VK_ERROR_INCOMPATIBLE_DISPLAY_KHR => return error.IncompatibleDisplay,
+            vk.VK_ERROR_VALIDATION_FAILED_EXT => return error.ValidationFailed,
+            vk.VK_ERROR_INVALID_SHADER_NV => return error.InvalidShader,
+            else => return error.Unknown,
+        }
+    }
+
+    fn isDeviceSuitable(self: *Self, device: vk.VkPhysicalDevice) !bool {
+        // Check device extension support
+        try checkDeviceExtensionSupport(device);
+
+        // Check swapchain support
+        var format_count: u32 = undefined;
+        _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, self.surface, &format_count, null);
+        if (format_count == 0) return false;
+
+        var present_mode_count: u32 = undefined;
+        _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, self.surface, &present_mode_count, null);
+        if (present_mode_count == 0) return false;
+
+        // Check queue families
+        var queue_family_count: u32 = undefined;
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, null);
+
+        var queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
+        defer std.heap.page_allocator.free(queue_families);
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.ptr);
+
+        var graphics_queue_found = false;
+        var present_queue_found = false;
+
+        var i: usize = 0;
+        for (queue_families) |queue_family| {
+            if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
+                graphics_queue_found = true;
+            }
+
+            var present_support: vk.VkBool32 = undefined;
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(device, @intCast(u32, i), self.surface, &present_support);
+            if (present_support != 0) {
+                present_queue_found = true;
+            }
+
+            if (graphics_queue_found and present_queue_found) break;
+            i += 1;
+        }
+
+        return graphics_queue_found and present_queue_found;
     }
 }; 

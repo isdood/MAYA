@@ -36,7 +36,7 @@ pub const ShaderModule = struct {
         defer file.close();
 
         const file_size = try file.getEndPos();
-        var buffer = try std.heap.page_allocator.alloc(u8, file_size);
+        const buffer = try std.heap.page_allocator.alloc(u8, file_size);
         defer std.heap.page_allocator.free(buffer);
 
         const bytes_read = try file.readAll(buffer);
