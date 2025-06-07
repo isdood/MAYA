@@ -73,21 +73,15 @@ pub const GlimmerPattern = struct {
     transition: ?PatternTransition,
 
     pub fn init(name: []const u8, pattern_type: PatternType) Self {
-        const config = GlimmerPattern.Config{
-            .pattern_type = .quantum_wave,
-            .base_color = colors.GlimmerColors.quantum_blue,
-            .intensity = 0.5,
-            .frequency = 1.0,
-        };
         return Self{
             .name = name,
             .pattern_type = pattern_type,
-            .base_color = config.base_color,
-            .intensity = config.intensity,
-            .frequency = config.frequency,
+            .base_color = colors.GlimmerColors.quantum_blue,
+            .intensity = 0.5,
+            .frequency = 1.0,
             .phase = 0.0,
             .state = .{
-                .current_color = config.base_color,
+                .current_color = colors.GlimmerColors.quantum_blue,
                 .amplitude = 0.0,
                 .last_update = 0.0,
                 .energy = 1.0,

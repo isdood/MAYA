@@ -17,6 +17,15 @@ pub const VulkanRenderer = struct {
         vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
     };
 
+    const QueueFamilyIndices = struct {
+        graphics_family: ?u32 = null,
+        present_family: ?u32 = null,
+
+        fn isComplete(self: QueueFamilyIndices) bool {
+            return self.graphics_family != null and self.present_family != null;
+        }
+    };
+
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
