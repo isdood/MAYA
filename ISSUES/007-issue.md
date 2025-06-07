@@ -32,9 +32,9 @@
 ### Immediate Priorities 🚀
 1. **UI Framework Integration**
    - [x] Implement ImGui integration
-   - [ ] Create performance monitoring dashboard
-   - [ ] Add runtime preset adjustment UI
-   - [ ] Design and implement settings panel
+   - [x] Create performance monitoring dashboard
+   - [x] Add runtime preset adjustment UI
+   - [x] Design and implement settings panel
 
 2. **Rendering Pipeline Enhancement**
    - [ ] Add depth buffer support
@@ -107,8 +107,8 @@
 2. Consider trade-offs between feature support and compatibility
 3. Plan for future scalability of the rendering system
 4. Ensure maintainability of the codebase
-5. Add performance impact indicators (e.g., CPU/GPU/Memory icons)
-6. Add a legend explaining the color coding
+
+
 
 ### Future Considerations
 1. Support for multiple rendering APIs
@@ -117,10 +117,14 @@
 4. Cross-platform compatibility
 
 ## Next Steps
-1. Begin UI framework integration
+1. ~~Begin UI framework integration~~ ✅
 2. Implement basic texture support
 3. Add depth buffer support
-4. Create performance monitoring dashboard
+4. ~~Create performance monitoring dashboard~~ ✅
+5. Implement command buffer recycling
+6. Add pipeline state caching
+7. Optimize memory allocation strategy
+8. Add support for asynchronous compute
 
 ## Resources
 - [Vulkan Specification](https://www.khronos.org/vulkan/)

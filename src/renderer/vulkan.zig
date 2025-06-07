@@ -71,6 +71,11 @@ const VulkanRenderer = struct {
     performance_monitor: PerformanceMonitor,
     imgui: ?*ImGuiRenderer,
     ui: ?*MainUI,
+    // Add depth buffer fields
+    depth_image: vk.VkImage,
+    depth_image_memory: vk.VkDeviceMemory,
+    depth_image_view: vk.VkImageView,
+    swapchain_extent: vk.VkExtent2D,
 
     const MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -584,6 +589,11 @@ const VulkanRenderer = struct {
             .performance_monitor = undefined,
             .imgui = null,
             .ui = null,
+            // Add depth buffer fields
+            .depth_image = undefined,
+            .depth_image_memory = undefined,
+            .depth_image_view = undefined,
+            .swapchain_extent = undefined,
         };
 
         self.logger.info("Initializing Vulkan renderer", .{});
@@ -1172,32 +1182,60 @@ const VulkanRenderer = struct {
             .flags = 0,
         };
 
+        const depth_attachment = vk.VkAttachmentDescription{
+            .format = try self.findDepthFormat(),
+            .samples = vk.VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = vk.VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = vk.VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .stencilLoadOp = vk.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = vk.VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = vk.VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = vk.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .flags = 0,
+        };
+
         const color_attachment_ref = vk.VkAttachmentReference{
             .attachment = 0,
             .layout = vk.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        };
+
+        const depth_attachment_ref = vk.VkAttachmentReference{
+            .attachment = 1,
+            .layout = vk.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         };
 
         const subpass = vk.VkSubpassDescription{
             .pipelineBindPoint = vk.VK_PIPELINE_BIND_POINT_GRAPHICS,
             .colorAttachmentCount = 1,
             .pColorAttachments = &color_attachment_ref,
+            .pDepthStencilAttachment = &depth_attachment_ref,
             .inputAttachmentCount = 0,
             .pInputAttachments = null,
             .pResolveAttachments = null,
-            .pDepthStencilAttachment = null,
             .preserveAttachmentCount = 0,
             .pPreserveAttachments = null,
             .flags = 0,
         };
 
+        const dependency = vk.VkSubpassDependency{
+            .srcSubpass = vk.VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
+            .srcStageMask = vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | vk.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            .dstStageMask = vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | vk.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            .srcAccessMask = 0,
+            .dstAccessMask = vk.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | vk.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dependencyFlags = 0,
+        };
+
+        const attachments = [_]vk.VkAttachmentDescription{ color_attachment, depth_attachment };
         const render_pass_info = vk.VkRenderPassCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-            .attachmentCount = 1,
-            .pAttachments = &color_attachment,
+            .attachmentCount = attachments.len,
+            .pAttachments = &attachments,
             .subpassCount = 1,
             .pSubpasses = &subpass,
-            .dependencyCount = 0,
-            .pDependencies = null,
+            .dependencyCount = 1,
+            .pDependencies = &dependency,
             .pNext = null,
             .flags = 0,
         };
@@ -1377,6 +1415,22 @@ const VulkanRenderer = struct {
             .flags = 0,
         };
 
+        // Add depth stencil state
+        const depth_stencil = vk.VkPipelineDepthStencilStateCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            .depthTestEnable = vk.VK_TRUE,
+            .depthWriteEnable = vk.VK_TRUE,
+            .depthCompareOp = vk.VK_COMPARE_OP_LESS,
+            .depthBoundsTestEnable = vk.VK_FALSE,
+            .minDepthBounds = 0.0,
+            .maxDepthBounds = 1.0,
+            .stencilTestEnable = vk.VK_FALSE,
+            .front = undefined,
+            .back = undefined,
+            .pNext = null,
+            .flags = 0,
+        };
+
         // Pipeline layout
         const pipeline_layout_info = vk.VkPipelineLayoutCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -1405,7 +1459,7 @@ const VulkanRenderer = struct {
             .pViewportState = &viewport_state,
             .pRasterizationState = &rasterizer,
             .pMultisampleState = &multisampling,
-            .pDepthStencilState = null,
+            .pDepthStencilState = &depth_stencil,
             .pColorBlendState = &color_blending,
             .pDynamicState = &dynamic_state,
             .layout = self.pipeline_layout,
@@ -1431,13 +1485,14 @@ const VulkanRenderer = struct {
         self.framebuffers = try std.heap.page_allocator.alloc(vk.VkFramebuffer, self.swapchain_image_views.len);
 
         for (self.swapchain_image_views, 0..) |image_view, i| {
+            const attachments = [_]vk.VkImageView{ image_view, self.depth_image_view };
             const framebuffer_info = vk.VkFramebufferCreateInfo{
                 .sType = vk.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = self.render_pass,
-                .attachmentCount = 1,
-                .pAttachments = &image_view,
-                .width = 800, // TODO: Get from window
-                .height = 600,
+                .attachmentCount = attachments.len,
+                .pAttachments = &attachments,
+                .width = self.swapchain_extent.width,
+                .height = self.swapchain_extent.height,
                 .layers = 1,
                 .pNext = null,
                 .flags = 0,
@@ -1969,5 +2024,114 @@ const VulkanRenderer = struct {
         vk.vkCmdEndRenderPass(command_buffer);
 
         try checkVulkanResult(vk.vkEndCommandBuffer(command_buffer));
+    }
+
+    fn findSupportedFormat(
+        self: *VulkanRenderer,
+        candidates: []const vk.VkFormat,
+        tiling: vk.VkImageTiling,
+        features: vk.VkFormatFeatureFlags,
+    ) !vk.VkFormat {
+        for (candidates) |format| {
+            var props: vk.VkFormatProperties = undefined;
+            vk.vkGetPhysicalDeviceFormatProperties(self.physical_device, format, &props);
+
+            if (tiling == vk.VK_IMAGE_TILING_LINEAR and (props.linearTilingFeatures & features) == features) {
+                return format;
+            } else if (tiling == vk.VK_IMAGE_TILING_OPTIMAL and (props.optimalTilingFeatures & features) == features) {
+                return format;
+            }
+        }
+
+        return error.FormatNotSupported;
+    }
+
+    fn findDepthFormat(self: *VulkanRenderer) !vk.VkFormat {
+        return try self.findSupportedFormat(
+            &[_]vk.VkFormat{
+                vk.VK_FORMAT_D32_SFLOAT,
+                vk.VK_FORMAT_D32_SFLOAT_S8_UINT,
+                vk.VK_FORMAT_D24_UNORM_S8_UINT,
+            },
+            vk.VK_IMAGE_TILING_OPTIMAL,
+            vk.VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        );
+    }
+
+    fn createDepthResources(self: *VulkanRenderer) !void {
+        const depth_format = try self.findDepthFormat();
+
+        const image_info = vk.VkImageCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = vk.VK_IMAGE_TYPE_2D,
+            .format = depth_format,
+            .extent = vk.VkExtent3D{
+                .width = self.swapchain_extent.width,
+                .height = self.swapchain_extent.height,
+                .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = vk.VK_SAMPLE_COUNT_1_BIT,
+            .tiling = vk.VK_IMAGE_TILING_OPTIMAL,
+            .usage = vk.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+            .initialLayout = vk.VK_IMAGE_LAYOUT_UNDEFINED,
+            .flags = 0,
+            .pNext = null,
+        };
+
+        if (vk.vkCreateImage(self.device, &image_info, null, &self.depth_image) != vk.VK_SUCCESS) {
+            return error.ImageCreationFailed;
+        }
+
+        var mem_requirements: vk.VkMemoryRequirements = undefined;
+        vk.vkGetImageMemoryRequirements(self.device, self.depth_image, &mem_requirements);
+
+        const alloc_info = vk.VkMemoryAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = mem_requirements.size,
+            .memoryTypeIndex = try self.findMemoryType(
+                mem_requirements.memoryTypeBits,
+                vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            ),
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.depth_image_memory) != vk.VK_SUCCESS) {
+            return error.MemoryAllocationFailed;
+        }
+
+        if (vk.vkBindImageMemory(self.device, self.depth_image, self.depth_image_memory, 0) != vk.VK_SUCCESS) {
+            return error.ImageMemoryBindingFailed;
+        }
+
+        const view_info = vk.VkImageViewCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = self.depth_image,
+            .viewType = vk.VK_IMAGE_VIEW_TYPE_2D,
+            .format = depth_format,
+            .subresourceRange = vk.VkImageSubresourceRange{
+                .aspectMask = vk.VK_IMAGE_ASPECT_DEPTH_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .components = vk.VkComponentMapping{
+                .r = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                .g = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                .b = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                .a = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+            },
+            .flags = 0,
+            .pNext = null,
+        };
+
+        if (vk.vkCreateImageView(self.device, &view_info, null, &self.depth_image_view) != vk.VK_SUCCESS) {
+            return error.ImageViewCreationFailed;
+        }
     }
 }; 
