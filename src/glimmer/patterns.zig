@@ -147,7 +147,7 @@ pub const GlimmerPattern = struct {
         switch (self.pattern_type) {
             .quantum_wave => {
                 const quantum_color = colors.GlimmerColors.quantum_blue.blend(
-                    colors.GlimmerColors.primary,
+                    colors.GlimmerColors.neural_purple,
                     self.state.energy,
                 );
                 self.state.current_color = self.base_color.blend(
@@ -156,8 +156,8 @@ pub const GlimmerPattern = struct {
                 );
             },
             .neural_flow => {
-                const neural_color = colors.GlimmerColors.neural.blend(
-                    colors.GlimmerColors.secondary,
+                const neural_color = colors.GlimmerColors.neural_purple.blend(
+                    colors.GlimmerColors.cosmic_gold,
                     self.state.energy,
                 );
                 self.state.current_color = self.base_color.blend(
@@ -166,8 +166,8 @@ pub const GlimmerPattern = struct {
                 );
             },
             .cosmic_sparkle => {
-                const cosmic_color = colors.GlimmerColors.cosmic.blend(
-                    colors.GlimmerColors.accent,
+                const cosmic_color = colors.GlimmerColors.cosmic_gold.blend(
+                    colors.GlimmerColors.quantum_blue,
                     self.state.energy,
                 );
                 self.state.current_color = self.base_color.blend(
@@ -176,8 +176,8 @@ pub const GlimmerPattern = struct {
                 );
             },
             .stellar_pulse => {
-                const stellar_color = colors.GlimmerColors.stellar.blend(
-                    colors.GlimmerColors.quantum,
+                const stellar_color = colors.GlimmerColors.neural_purple.blend(
+                    colors.GlimmerColors.quantum_blue,
                     self.state.energy,
                 );
                 self.state.current_color = self.base_color.blend(
