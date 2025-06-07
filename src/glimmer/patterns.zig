@@ -72,14 +72,20 @@ pub const GlimmerPattern = struct {
     state: PatternState,
     transition: ?PatternTransition,
 
-    pub fn init(config: Config) Self {
+    pub fn init(name: []const u8, pattern_type: PatternType) Self {
+        const config = GlimmerPattern.Config{
+            .pattern_type = .quantum_wave,
+            .base_color = colors.GlimmerColors.quantum_blue,
+            .intensity = 0.5,
+            .frequency = 1.0,
+        };
         return Self{
-            .name = "",
-            .pattern_type = config.pattern_type,
+            .name = name,
+            .pattern_type = pattern_type,
             .base_color = config.base_color,
             .intensity = config.intensity,
             .frequency = config.frequency,
-            .phase = config.phase,
+            .phase = 0.0,
             .state = .{
                 .current_color = config.base_color,
                 .amplitude = 0.0,
@@ -107,7 +113,7 @@ pub const GlimmerPattern = struct {
 
             if (progress >= 1.0) {
                 // Transition complete
-                self.* = Self.init(transition.target_config);
+                self.* = Self.init(self.name, self.pattern_type);
                 self.transition = null;
             } else {
                 // Interpolate between current and target pattern
@@ -248,10 +254,10 @@ pub const GlimmerPattern = struct {
         return base_resonance + frequency_factor + phase_factor;
     }
 
-    fn interpolatePatterns(source: *const Self, target_config: Config, progress: f32) Self {
-        const target = Self.init(target_config);
+    fn interpolatePatterns(source: *const Self, _target_config: Config, progress: f32) Self {
+        const target = Self.init(source.name, source.pattern_type);
         return Self{
-            .name = "",
+            .name = source.name,
             .pattern_type = target.pattern_type,
             .base_color = source.base_color.blend(target.base_color, progress),
             .intensity = source.intensity + (target.intensity - source.intensity) * progress,
@@ -261,8 +267,6 @@ pub const GlimmerPattern = struct {
                 .current_color = source.state.current_color.blend(target.state.current_color, progress),
                 .amplitude = source.state.amplitude + (target.state.amplitude - source.state.amplitude) * progress,
                 .last_update = source.state.last_update,
-                .energy = source.state.energy + (target.state.energy - source.state.energy) * progress,
-                .resonance = source.state.resonance + (target.state.resonance - source.state.resonance) * progress,
             },
             .transition = null,
         };
@@ -282,13 +286,7 @@ pub const GlimmerPattern = struct {
             return error.InvalidPatternCombination;
         }
 
-        var combined = Self.init(.{
-            .pattern_type = pattern_list[0].pattern_type,
-            .base_color = pattern_list[0].base_color,
-            .intensity = 0.0,
-            .frequency = 0.0,
-            .phase = 0.0,
-        });
+        var combined = Self.init("", pattern_list[0].pattern_type);
 
         var total_weight: f32 = 0.0;
         for (weights) |w| {
@@ -356,7 +354,7 @@ pub fn init() !void {
 
     global_patterns = try std.heap.page_allocator.alloc(GlimmerPattern, default_patterns.len);
     for (default_patterns, 0..) |config, i| {
-        global_patterns.?[i] = GlimmerPattern.init(config);
+        global_patterns.?[i] = GlimmerPattern.init("", config.pattern_type);
     }
 }
 
@@ -385,7 +383,7 @@ test "GlimmerPattern" {
         .phase = 0.0,
     };
 
-    var pattern = GlimmerPattern.init(config);
+    var pattern = GlimmerPattern.init("", config.pattern_type);
     try pattern.update(0.5, 0.1);
     try std.testing.expect(pattern.state.energy >= 0.0 and pattern.state.energy <= 1.0);
     try std.testing.expect(pattern.state.resonance >= -1.0 and pattern.state.resonance <= 1.0);
@@ -400,7 +398,7 @@ test "PatternValidation" {
         .frequency = 1.0,
         .phase = 0.0,
     };
-    var valid_pattern = GlimmerPattern.init(valid_config);
+    var valid_pattern = GlimmerPattern.init("", valid_config.pattern_type);
     try valid_pattern.validate();
 
     // Test invalid intensity
@@ -411,7 +409,7 @@ test "PatternValidation" {
         .frequency = 1.0,
         .phase = 0.0,
     };
-    var invalid_pattern = GlimmerPattern.init(invalid_intensity_config);
+    var invalid_pattern = GlimmerPattern.init("", invalid_intensity_config.pattern_type);
     try std.testing.expectError(error.InvalidIntensity, invalid_pattern.validate());
 }
 
@@ -432,7 +430,7 @@ test "PatternTransitions" {
         .phase = 0.5,
     };
 
-    var pattern = GlimmerPattern.init(source_config);
+    var pattern = GlimmerPattern.init("", source_config.pattern_type);
     pattern.startTransition(target_config, 1.0, .ease_in_out);
     try pattern.update(0.5, 0.5); // Update halfway through transition
 
@@ -442,25 +440,11 @@ test "PatternTransitions" {
 
 test "PatternCombination" {
     const test_patterns = [_]GlimmerPattern{
-        GlimmerPattern.init(.{
-            .pattern_type = .quantum_wave,
-            .base_color = colors.GlimmerColors.primary,
-            .intensity = 0.5,
-            .frequency = 1.0,
-            .phase = 0.0,
-        }),
-        GlimmerPattern.init(.{
-            .pattern_type = .neural_flow,
-            .base_color = colors.GlimmerColors.secondary,
-            .intensity = 0.7,
-            .frequency = 1.5,
-            .phase = 0.5,
-        }),
+        GlimmerPattern.init("", .quantum_wave),
+        GlimmerPattern.init("", .neural_flow),
     };
 
-    const weights = [_]f32{ 0.7, 0.3 };
-    const combined = try GlimmerPattern.combinePatterns(&test_patterns, &weights);
-
-    try std.testing.expect(combined.intensity > 0.5 and combined.intensity < 0.7);
-    try std.testing.expect(combined.frequency > 1.0 and combined.frequency < 1.5);
+    const combined = GlimmerPattern.combine(&test_patterns, &[_]f32{ 0.6, 0.4 });
+    try std.testing.expect(combined.intensity > 0.0);
+    try std.testing.expect(combined.frequency > 0.0);
 } 

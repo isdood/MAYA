@@ -12,6 +12,10 @@ pub const VulkanRenderer = struct {
     const REQUIRED_DEVICE_EXTENSIONS = [_][*:0]const u8{
         vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
+    const REQUIRED_INSTANCE_EXTENSIONS = [_][*:0]const u8{
+        vk.VK_KHR_SURFACE_EXTENSION_NAME,
+        vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+    };
 
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
@@ -929,7 +933,7 @@ pub const VulkanRenderer = struct {
     fn framebufferResizeCallback(window: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
         _ = width;
         _ = height;
-        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), glfw.glfwGetWindowUserPointer(window)));
+        const self = @as(*Self, @ptrCast(@alignCast(@alignOf(Self), glfw.glfwGetWindowUserPointer(window))));
         self.framebuffer_resized = true;
     }
 
