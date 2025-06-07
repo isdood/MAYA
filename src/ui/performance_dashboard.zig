@@ -519,6 +519,191 @@ pub const PerformanceDashboard = struct {
                 c.igEndCombo();
             }
 
+            // Settings Preview Panel
+            c.igSpacing();
+            c.igSeparator();
+            c.igSpacing();
+
+            c.igText("Settings Preview");
+            if (c.igBeginChild("##settings_preview", .{ .x = 400, .y = 300 }, c.ImGuiChildFlags_Border, c.ImGuiWindowFlags_None)) {
+                const settings = if (self.new_preset_base) |base| base.settings else PerformancePreset.Settings{
+                    .msaa_level = 2,
+                    .texture_quality = .medium,
+                    .shadow_quality = .medium,
+                    .anisotropic_filtering = 4,
+                    .view_distance = 500.0,
+                    .max_fps = 60,
+                    .vsync = true,
+                    .triple_buffering = true,
+                    .shader_quality = .medium,
+                    .compute_shader_quality = .advanced,
+                    .texture_streaming = true,
+                    .texture_cache_size = 512 * 1024 * 1024,
+                    .geometry_lod_levels = 3,
+                    .pipeline_cache_size = 128 * 1024 * 1024,
+                    .command_buffer_reuse = true,
+                    .secondary_command_buffers = true,
+                    .async_compute = true,
+                    .geometry_shaders = true,
+                    .tessellation = false,
+                    .ray_tracing = false,
+                };
+
+                // Render settings in a table format
+                if (c.igBeginTable("##settings_table", 2, c.ImGuiTableFlags_Borders | c.ImGuiTableFlags_RowBg, .{ .x = 0, .y = 0 }, 0)) {
+                    // Table headers
+                    c.igTableNextRow(c.ImGuiTableRowFlags_Headers, 0);
+                    c.igTableNextColumn();
+                    c.igText("Setting");
+                    c.igTableNextColumn();
+                    c.igText("Value");
+
+                    // MSAA Level
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("MSAA Level");
+                    c.igTableNextColumn();
+                    c.igText("%d", settings.msaa_level);
+
+                    // Texture Quality
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Texture Quality");
+                    c.igTableNextColumn();
+                    c.igText("%s", @tagName(settings.texture_quality));
+
+                    // Shadow Quality
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Shadow Quality");
+                    c.igTableNextColumn();
+                    c.igText("%s", @tagName(settings.shadow_quality));
+
+                    // Anisotropic Filtering
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Anisotropic Filtering");
+                    c.igTableNextColumn();
+                    c.igText("%dx", settings.anisotropic_filtering);
+
+                    // View Distance
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("View Distance");
+                    c.igTableNextColumn();
+                    c.igText("%.1f", settings.view_distance);
+
+                    // Max FPS
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Max FPS");
+                    c.igTableNextColumn();
+                    c.igText("%d", settings.max_fps);
+
+                    // V-Sync
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("V-Sync");
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.vsync) "Enabled" else "Disabled");
+
+                    // Triple Buffering
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Triple Buffering");
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.triple_buffering) "Enabled" else "Disabled");
+
+                    // Shader Quality
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Shader Quality");
+                    c.igTableNextColumn();
+                    c.igText("%s", @tagName(settings.shader_quality));
+
+                    // Compute Shader Quality
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Compute Shader Quality");
+                    c.igTableNextColumn();
+                    c.igText("%s", @tagName(settings.compute_shader_quality));
+
+                    // Texture Streaming
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Texture Streaming");
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.texture_streaming) "Enabled" else "Disabled");
+
+                    // Texture Cache Size
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Texture Cache Size");
+                    c.igTableNextColumn();
+                    c.igText("%.1f MB", @intToFloat(f32, settings.texture_cache_size) / (1024 * 1024));
+
+                    // Geometry LOD Levels
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Geometry LOD Levels");
+                    c.igTableNextColumn();
+                    c.igText("%d", settings.geometry_lod_levels);
+
+                    // Pipeline Cache Size
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Pipeline Cache Size");
+                    c.igTableNextColumn();
+                    c.igText("%.1f MB", @intToFloat(f32, settings.pipeline_cache_size) / (1024 * 1024));
+
+                    // Command Buffer Reuse
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Command Buffer Reuse");
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.command_buffer_reuse) "Enabled" else "Disabled");
+
+                    // Secondary Command Buffers
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Secondary Command Buffers");
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.secondary_command_buffers) "Enabled" else "Disabled");
+
+                    // Async Compute
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Async Compute");
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.async_compute) "Enabled" else "Disabled");
+
+                    // Geometry Shaders
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Geometry Shaders");
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.geometry_shaders) "Enabled" else "Disabled");
+
+                    // Tessellation
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Tessellation");
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.tessellation) "Enabled" else "Disabled");
+
+                    // Ray Tracing
+                    c.igTableNextRow(0, 0);
+                    c.igTableNextColumn();
+                    c.igText("Ray Tracing");
+                    c.igTableNextColumn();
+                    c.igTableNextColumn();
+                    c.igText("%s", if (settings.ray_tracing) "Enabled" else "Disabled");
+
+                    c.igEndTable();
+                }
+                c.igEndChild();
+            }
+
             c.igSpacing();
             c.igSeparator();
             c.igSpacing();
@@ -599,24 +784,6 @@ pub const PerformanceDashboard = struct {
             c.igSameLine(0, 20);
             if (c.igButton("Cancel", button_size)) {
                 self.show_create_preset_dialog = false;
-            }
-
-            // Update language detection display
-            if (self.detected_language != .unknown) {
-                const language_name = switch (self.detected_language) {
-                    .english => "English",
-                    .chinese_traditional => "Traditional Chinese",
-                    .chinese_simplified => "Simplified Chinese",
-                    .japanese => "Japanese",
-                    .korean => "Korean",
-                    .thai => "Thai",
-                    .vietnamese => "Vietnamese",
-                    .french => "French",
-                    .arabic => "Arabic",
-                    .russian => "Russian",
-                    .unknown => "Unknown",
-                };
-                c.igText("Detected language: %s", language_name.ptr);
             }
         }
         c.igEnd();
