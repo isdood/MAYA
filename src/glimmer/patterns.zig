@@ -389,7 +389,6 @@ test "GlimmerPattern" {
 }
 
 test "PatternValidation" {
-    // Test valid pattern
     const valid_config = GlimmerPattern.Config{
         .pattern_type = .quantum_wave,
         .base_color = colors.GlimmerColors.quantum_blue,
@@ -397,10 +396,10 @@ test "PatternValidation" {
         .frequency = 1.0,
         .phase = 0.0,
     };
+
     var valid_pattern = GlimmerPattern.init("", valid_config.pattern_type);
     try valid_pattern.validate();
 
-    // Test invalid intensity
     const invalid_intensity_config = GlimmerPattern.Config{
         .pattern_type = .quantum_wave,
         .base_color = colors.GlimmerColors.quantum_blue,
@@ -408,6 +407,7 @@ test "PatternValidation" {
         .frequency = 1.0,
         .phase = 0.0,
     };
+
     var invalid_pattern = GlimmerPattern.init("", invalid_intensity_config.pattern_type);
     try std.testing.expectError(error.InvalidIntensity, invalid_pattern.validate());
 }

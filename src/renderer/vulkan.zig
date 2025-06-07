@@ -934,8 +934,7 @@ pub const VulkanRenderer = struct {
         _ = width;
         _ = height;
         const ptr = glfw.glfwGetWindowUserPointer(window);
-        const aligned_ptr = @alignCast(@alignOf(Self), ptr);
-        const self = @ptrCast(*Self, aligned_ptr);
+        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
         self.framebuffer_resized = true;
     }
 
@@ -1281,5 +1280,32 @@ pub const VulkanRenderer = struct {
                 return error.DeviceExtensionNotSupported;
             }
         }
+    }
+
+    fn findQueueFamilies(device: vk.VkPhysicalDevice, self: *Self) !QueueFamilyIndices {
+        var indices = QueueFamilyIndices{};
+        var queue_family_count: u32 = undefined;
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, null);
+
+        const queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
+        defer std.heap.page_allocator.free(queue_families);
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.ptr);
+
+        var i: u32 = 0;
+        while (i < queue_family_count) : (i += 1) {
+            if (queue_families[i].queueFlags & @intCast(u32, vk.VK_QUEUE_GRAPHICS_BIT) != 0) {
+                indices.graphics_family = i;
+            }
+
+            var present_support: vk.VkBool32 = undefined;
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(device, i, self.surface, &present_support);
+            if (present_support != 0) {
+                indices.present_family = i;
+            }
+
+            if (indices.isComplete()) break;
+        }
+
+        return indices;
     }
 }; 
