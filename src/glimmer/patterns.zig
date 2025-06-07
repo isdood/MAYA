@@ -117,7 +117,7 @@ pub const GlimmerPattern = struct {
                 self.transition = null;
             } else {
                 // Interpolate between current and target pattern
-                const interpolated = self.interpolatePatterns(transition.target_config, progress);
+                const interpolated = self.interpolatePatterns(self, transition.target_config, progress);
                 self.* = interpolated;
                 return;
             }
@@ -254,8 +254,7 @@ pub const GlimmerPattern = struct {
         return base_resonance + frequency_factor + phase_factor;
     }
 
-    fn interpolatePatterns(source: *const Self, _target_config: Config, progress: f32) Self {
-        const target = Self.init(source.name, source.pattern_type);
+    fn interpolatePatterns(source: *const Self, target: *const Self, progress: f32) Self {
         return Self{
             .name = source.name,
             .pattern_type = target.pattern_type,

@@ -933,7 +933,8 @@ pub const VulkanRenderer = struct {
     fn framebufferResizeCallback(window: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
         _ = width;
         _ = height;
-        const self = @as(*Self, @ptrCast(@alignCast(@alignOf(Self), glfw.glfwGetWindowUserPointer(window))));
+        const ptr = glfw.glfwGetWindowUserPointer(window);
+        const self = @as(*Self, @ptrCast(@alignCast(@alignOf(Self), ptr)));
         self.framebuffer_resized = true;
     }
 
