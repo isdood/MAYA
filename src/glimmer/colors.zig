@@ -41,10 +41,10 @@ pub const GlimmerColors = struct {
         pub fn blend(a: Color, b: Color, factor: f32) Color {
             const inv_factor = 1.0 - factor;
             return Color{
-                .r = @intCast(@as(f32, @floatFromInt(a.r)) * factor + @as(f32, @floatFromInt(b.r)) * inv_factor),
-                .g = @intCast(@as(f32, @floatFromInt(a.g)) * factor + @as(f32, @floatFromInt(b.g)) * inv_factor),
-                .b = @intCast(@as(f32, @floatFromInt(a.b)) * factor + @as(f32, @floatFromInt(b.b)) * inv_factor),
-                .a = @intCast(@as(f32, @floatFromInt(a.a)) * factor + @as(f32, @floatFromInt(b.a)) * inv_factor),
+                .r = @intCast(@as(u8, @intFromFloat(@as(f32, @floatFromInt(a.r)) * factor + @as(f32, @floatFromInt(b.r)) * inv_factor))),
+                .g = @intCast(@as(u8, @intFromFloat(@as(f32, @floatFromInt(a.g)) * factor + @as(f32, @floatFromInt(b.g)) * inv_factor))),
+                .b = @intCast(@as(u8, @intFromFloat(@as(f32, @floatFromInt(a.b)) * factor + @as(f32, @floatFromInt(b.b)) * inv_factor))),
+                .a = @intCast(@as(u8, @intFromFloat(@as(f32, @floatFromInt(a.a)) * factor + @as(f32, @floatFromInt(b.a)) * inv_factor))),
             };
         }
     };

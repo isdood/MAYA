@@ -146,7 +146,7 @@ pub const GlimmerPattern = struct {
         // Update color based on pattern type and energy
         switch (self.pattern_type) {
             .quantum_wave => {
-                const quantum_color = colors.GlimmerColors.quantum.blend(
+                const quantum_color = colors.GlimmerColors.quantum_blue.blend(
                     colors.GlimmerColors.primary,
                     self.state.energy,
                 );
@@ -260,6 +260,8 @@ pub const GlimmerPattern = struct {
             .state = .{
                 .current_color = source.state.current_color.blend(target.state.current_color, progress),
                 .amplitude = source.state.amplitude + (target.state.amplitude - source.state.amplitude) * progress,
+                .energy = source.state.energy + (target.state.energy - source.state.energy) * progress,
+                .resonance = source.state.resonance + (target.state.resonance - source.state.resonance) * progress,
                 .last_update = source.state.last_update,
             },
             .transition = null,
