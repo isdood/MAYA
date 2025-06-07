@@ -16,7 +16,7 @@ pub const GlimmerPattern = struct {
     /// Pattern configuration
     pub const Config = struct {
         pattern_type: PatternType,
-        base_color: colors.Color,
+        base_color: colors.GlimmerColors.Color,
         intensity: f32,
         frequency: f32,
         phase: f32,
@@ -24,7 +24,7 @@ pub const GlimmerPattern = struct {
 
     /// Pattern state
     pub const PatternState = struct {
-        current_color: colors.Color,
+        current_color: colors.GlimmerColors.Color,
         amplitude: f32,
         last_update: f32,
         energy: f32,
@@ -65,7 +65,7 @@ pub const GlimmerPattern = struct {
 
     name: []const u8,
     pattern_type: PatternType,
-    base_color: colors.Color,
+    base_color: colors.GlimmerColors.Color,
     intensity: f32,
     frequency: f32,
     phase: f32,
@@ -379,7 +379,7 @@ pub fn processPatterns() !void {
 test "GlimmerPattern" {
     const config = GlimmerPattern.Config{
         .pattern_type = .quantum_wave,
-        .base_color = colors.GlimmerColor{ .r = 0xFF, .g = 0xFF, .b = 0xFF },
+        .base_color = colors.GlimmerColors.primary,
         .intensity = 0.5,
         .frequency = 1.0,
         .phase = 0.0,

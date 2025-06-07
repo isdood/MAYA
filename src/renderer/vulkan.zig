@@ -6,8 +6,6 @@ const glfw = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 
-const Logger = std.log.Logger;
-
 pub const VulkanRenderer = struct {
     const Self = @This();
     const MAX_FRAMES_IN_FLIGHT = 2;
@@ -36,7 +34,8 @@ pub const VulkanRenderer = struct {
     in_flight_fences: []vk.VkFence,
     current_frame: usize,
     allocator: std.mem.Allocator,
-    logger: Logger,
+    rotation: f32,
+    framebuffer_resized: bool,
 
     pub fn init(window: *glfw.GLFWwindow) !Self {
         var self = Self{
@@ -61,7 +60,8 @@ pub const VulkanRenderer = struct {
             .in_flight_fences = undefined,
             .current_frame = 0,
             .allocator = std.heap.page_allocator,
-            .logger = std.log.scoped(.vulkan),
+            .rotation = 0.0,
+            .framebuffer_resized = false,
         };
 
         try self.createInstance();
@@ -163,7 +163,7 @@ pub const VulkanRenderer = struct {
                 self.physical_device = device;
                 var device_properties: vk.VkPhysicalDeviceProperties = undefined;
                 vk.vkGetPhysicalDeviceProperties(device, &device_properties);
-                self.logger.info("Selected physical device: {s}", .{std.mem.span(&device_properties.deviceName)});
+                std.log.info("Selected physical device: {s}", .{std.mem.span(&device_properties.deviceName)});
                 return;
             }
         }
@@ -780,8 +780,8 @@ pub const VulkanRenderer = struct {
 
     fn updateUniformBuffer(self: *Self) void {
         const rotation_matrix = createRotationMatrix(self.rotation);
-        const dest = @ptrCast([*]u8, self.uniform_buffer_mapped)[0..@sizeOf([4][4]f32)];
-        const src = @ptrCast([*]const u8, &rotation_matrix)[0..@sizeOf([4][4]f32)];
+        const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
+        const src = @as([*]const u8, @ptrCast(&rotation_matrix))[0..@sizeOf([4][4]f32)];
         std.mem.copy(u8, dest, src);
     }
 
@@ -926,10 +926,10 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn resizeCallback(window: *glfw.GLFWwindow, width: i32, height: i32) void {
-        if (width == 0 or height == 0) return; // Minimized window
-
-        const self = @fieldParentPtr(VulkanRenderer, "window", window);
+    fn framebufferResizeCallback(window: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
+        _ = width;
+        _ = height;
+        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), glfw.glfwGetWindowUserPointer(window)));
         self.framebuffer_resized = true;
     }
 
