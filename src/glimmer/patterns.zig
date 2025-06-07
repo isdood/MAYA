@@ -1,5 +1,5 @@
 const std = @import("std");
-pub const colors = @import("colors");
+const colors = @import("colors");
 
 /// GLIMMER pattern system for neural-responsive visual patterns
 pub const GlimmerPattern = struct {
@@ -16,7 +16,7 @@ pub const GlimmerPattern = struct {
     /// Pattern configuration
     pub const Config = struct {
         pattern_type: PatternType,
-        base_color: colors.GlimmerColor,
+        base_color: colors.Color,
         intensity: f32,
         frequency: f32,
         phase: f32,
@@ -24,7 +24,7 @@ pub const GlimmerPattern = struct {
 
     /// Pattern state
     pub const PatternState = struct {
-        current_color: colors.GlimmerColor,
+        current_color: colors.Color,
         amplitude: f32,
         last_update: f32,
         energy: f32,
@@ -63,8 +63,9 @@ pub const GlimmerPattern = struct {
         NeuralResonanceMismatch,
     };
 
+    name: []const u8,
     pattern_type: PatternType,
-    base_color: colors.GlimmerColor,
+    base_color: colors.Color,
     intensity: f32,
     frequency: f32,
     phase: f32,
@@ -73,6 +74,7 @@ pub const GlimmerPattern = struct {
 
     pub fn init(config: Config) Self {
         return Self{
+            .name = "",
             .pattern_type = config.pattern_type,
             .base_color = config.base_color,
             .intensity = config.intensity,
@@ -249,6 +251,7 @@ pub const GlimmerPattern = struct {
     fn interpolatePatterns(source: *const Self, target_config: Config, progress: f32) Self {
         const target = Self.init(target_config);
         return Self{
+            .name = "",
             .pattern_type = target.pattern_type,
             .base_color = source.base_color.blend(target.base_color, progress),
             .intensity = source.intensity + (target.intensity - source.intensity) * progress,

@@ -149,7 +149,7 @@ pub const RecoveryState = struct {
         quantum_state: ?neural.QuantumState,
         neural_activity: ?f64,
         pattern: ?glimmer.GlimmerPattern,
-        system_status: Message.SystemStatus,
+        system_status: Self.Message.SystemStatus,
     };
 
     pub fn init(allocator: std.mem.Allocator) !Self {
@@ -169,10 +169,10 @@ pub const RecoveryState = struct {
         self.recovery_log.deinit();
     }
 
-    pub fn logRecoveryAttempt(self: *Self, error: ValidationError, action: []const u8, success: bool) !void {
+    pub fn logRecoveryAttempt(self: *Self, validation_error: ValidationError, action: []const u8, success: bool) !void {
         try self.recovery_log.append(.{
             .timestamp = std.time.milliTimestamp(),
-            .validation_error = error,
+            .validation_error = validation_error,
             .action = action,
             .success = success,
         });

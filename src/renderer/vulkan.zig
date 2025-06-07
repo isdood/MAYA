@@ -11,6 +11,9 @@ const Logger = std.log.Logger;
 pub const VulkanRenderer = struct {
     const Self = @This();
     const MAX_FRAMES_IN_FLIGHT = 2;
+    const REQUIRED_DEVICE_EXTENSIONS = [_][*:0]const u8{
+        vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    };
 
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
@@ -172,7 +175,7 @@ pub const VulkanRenderer = struct {
         var queue_family_count: u32 = undefined;
         vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, null);
 
-        var queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
+        const queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
         defer std.heap.page_allocator.free(queue_families);
         vk.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, queue_families.ptr);
 
@@ -182,13 +185,13 @@ pub const VulkanRenderer = struct {
         var i: usize = 0;
         for (queue_families) |queue_family| {
             if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
-                graphics_queue_family = @intCast(u32, i);
+                graphics_queue_family = @intCast(i);
             }
 
             var present_support: vk.VkBool32 = undefined;
-            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(self.physical_device, @intCast(u32, i), self.surface, &present_support);
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(self.physical_device, @intCast(i), self.surface, &present_support);
             if (present_support != 0) {
-                present_queue_family = @intCast(u32, i);
+                present_queue_family = @intCast(i);
             }
 
             if (graphics_queue_family != null and present_queue_family != null) break;
@@ -212,9 +215,9 @@ pub const VulkanRenderer = struct {
 
         const device_create_info = vk.VkDeviceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .queueCreateInfoCount = @intCast(u32, queue_create_infos.items.len),
+            .queueCreateInfoCount = @intCast(queue_create_infos.items.len),
             .pQueueCreateInfos = queue_create_infos.items.ptr,
-            .enabledExtensionCount = @intCast(u32, REQUIRED_DEVICE_EXTENSIONS.len),
+            .enabledExtensionCount = @intCast(REQUIRED_DEVICE_EXTENSIONS.len),
             .ppEnabledExtensionNames = &REQUIRED_DEVICE_EXTENSIONS,
             .enabledLayerCount = 0,
             .ppEnabledLayerNames = null,
@@ -777,7 +780,9 @@ pub const VulkanRenderer = struct {
 
     fn updateUniformBuffer(self: *Self) void {
         const rotation_matrix = createRotationMatrix(self.rotation);
-        std.mem.copy(u8, @ptrCast([*]u8, self.uniform_buffer_mapped)[0..@sizeOf([4][4]f32)], @ptrCast([*]const u8, &rotation_matrix)[0..@sizeOf([4][4]f32)]);
+        const dest = @ptrCast([*]u8, self.uniform_buffer_mapped)[0..@sizeOf([4][4]f32)];
+        const src = @ptrCast([*]const u8, &rotation_matrix)[0..@sizeOf([4][4]f32)];
+        std.mem.copy(u8, dest, src);
     }
 
     fn createRotationMatrix(angle: f32) [4][4]f32 {
@@ -1254,7 +1259,7 @@ pub const VulkanRenderer = struct {
         var extension_count: u32 = undefined;
         _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, null);
 
-        var available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
+        const available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
         defer std.heap.page_allocator.free(available_extensions);
         _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, available_extensions.ptr);
 
