@@ -149,7 +149,7 @@ pub const RecoveryState = struct {
         quantum_state: ?neural.QuantumState,
         neural_activity: ?f64,
         pattern: ?glimmer.GlimmerPattern,
-        system_status: Self.Message.SystemStatus,
+        system_status: StarweaveProtocol.Message.SystemStatus,
     };
 
     pub fn init(allocator: std.mem.Allocator) !Self {
