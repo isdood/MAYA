@@ -176,26 +176,29 @@ pub const VulkanRenderer = struct {
     fn pickPhysicalDevice(self: *Self) !void {
         var device_count: u32 = undefined;
         _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, null);
-
         if (device_count == 0) {
-            return error.NoVulkanDevicesFound;
+            return error.NoVulkanDevices;
         }
 
-        const devices = try self.allocator.alloc(vk.VkPhysicalDevice, device_count);
-        defer self.allocator.free(devices);
+        var devices = try std.heap.page_allocator.alloc(vk.VkPhysicalDevice, device_count);
+        defer std.heap.page_allocator.free(devices);
         _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, devices.ptr);
 
         for (devices) |device| {
+            var device_properties: vk.VkPhysicalDeviceProperties = undefined;
+            vk.vkGetPhysicalDeviceProperties(device, &device_properties);
+            std.log.info("Found physical device: {s}", .{std.mem.span(@as([*:0]const u8, @ptrCast(&device_properties.deviceName)))});
+
             if (try isDeviceSuitable(device, self.surface)) {
                 self.physical_device = device;
-                var device_properties: vk.VkPhysicalDeviceProperties = undefined;
-                vk.vkGetPhysicalDeviceProperties(device, &device_properties);
-                std.log.info("Selected physical device: {s}", .{std.mem.span(&device_properties.deviceName)});
-                return;
+                std.log.info("Selected physical device: {s}", .{std.mem.span(@as([*:0]const u8, @ptrCast(&device_properties.deviceName)))});
+                break;
             }
         }
 
-        return error.NoSuitableDeviceFound;
+        if (self.physical_device == null) {
+            return error.NoSuitableDevice;
+        }
     }
 
     fn createLogicalDevice(self: *Self) !void {
