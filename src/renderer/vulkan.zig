@@ -944,7 +944,7 @@ pub const VulkanRenderer = struct {
         _ = width;
         _ = height;
         const ptr = glfw.glfwGetWindowUserPointer(window);
-        const self = @ptrCast(*Self, ptr);
+        const self = @as(*Self, @ptrCast(@alignCast(@alignOf(Self), ptr)));
         self.framebuffer_resized = true;
     }
 
