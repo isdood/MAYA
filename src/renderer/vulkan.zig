@@ -709,7 +709,7 @@ pub const VulkanRenderer = struct {
             1,
             &pipeline_info,
             null,
-            &self.pipeline,
+            &self.graphics_pipeline,
         ));
     }
 
@@ -994,7 +994,7 @@ pub const VulkanRenderer = struct {
         vk.vkFreeMemory(self.device, self.depth_image_memory, null);
 
         // Clean up graphics pipeline
-        vk.vkDestroyPipeline(self.device, self.pipeline, null);
+        vk.vkDestroyPipeline(self.device, self.graphics_pipeline, null);
         vk.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
 
         // Clean up render pass
@@ -1141,7 +1141,7 @@ pub const VulkanRenderer = struct {
 
         vk.vkCmdBeginRenderPass(command_buffer, &render_pass_info, vk.VK_SUBPASS_CONTENTS_INLINE);
 
-        vk.vkCmdBindPipeline(command_buffer, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, self.pipeline);
+        vk.vkCmdBindPipeline(command_buffer, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, self.graphics_pipeline);
 
         const vertex_buffers = [_]vk.VkBuffer{self.vertex_buffer};
         const offsets = [_]vk.VkDeviceSize{0};
