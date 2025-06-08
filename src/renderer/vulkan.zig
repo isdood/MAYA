@@ -159,16 +159,18 @@ pub const VulkanRenderer = struct {
             .pNext = null,
         };
 
-        const extensions = [_][*:0]const u8{
-            vk.VK_KHR_SURFACE_EXTENSION_NAME,
-            vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
-        };
+        // Get required extensions from GLFW
+        var glfw_extension_count: u32 = 0;
+        const glfw_extensions = glfw.glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+        if (glfw_extensions == null) {
+            return error.GLFWExtensionsFailed;
+        }
 
         const create_info = vk.VkInstanceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &app_info,
-            .enabledExtensionCount = extensions.len,
-            .ppEnabledExtensionNames = &extensions,
+            .enabledExtensionCount = glfw_extension_count,
+            .ppEnabledExtensionNames = glfw_extensions,
             .enabledLayerCount = 0,
             .ppEnabledLayerNames = null,
             .pNext = null,
@@ -188,6 +190,7 @@ pub const VulkanRenderer = struct {
             &self.surface,
         );
         if (result != vk.VK_SUCCESS) {
+            std.log.err("Failed to create window surface: {d}", .{result});
             return error.SurfaceCreationFailed;
         }
     }
@@ -279,40 +282,111 @@ pub const VulkanRenderer = struct {
     }
 
     fn createSwapChain(self: *Self) !void {
-        // Basic swapchain creation - will be expanded
-        var surface_capabilities: vk.VkSurfaceCapabilitiesKHR = undefined;
-        _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(self.physical_device, self.surface, &surface_capabilities);
+        const swap_chain_support = try querySwapChainSupport(self.physical_device, self.surface);
+        const surface_format = try chooseSwapSurfaceFormat(swap_chain_support.formats);
+        const present_mode = try chooseSwapPresentMode(swap_chain_support.present_modes);
+        const extent = try chooseSwapExtent(swap_chain_support.capabilities, self.window);
+
+        var image_count = swap_chain_support.capabilities.minImageCount + 1;
+        if (swap_chain_support.capabilities.maxImageCount > 0 and image_count > swap_chain_support.capabilities.maxImageCount) {
+            image_count = swap_chain_support.capabilities.maxImageCount;
+        }
+
+        const indices = try findQueueFamilies(self.physical_device, self.surface);
+        if (indices.graphics_family == null or indices.present_family == null) {
+            return error.QueueFamilyNotFound;
+        }
+
+        const queue_family_indices = [_]u32{ indices.graphics_family.?, indices.present_family.? };
+        const image_sharing_mode = if (indices.graphics_family != indices.present_family)
+            @as(vk.VkSharingMode, vk.VK_SHARING_MODE_CONCURRENT)
+        else
+            @as(vk.VkSharingMode, vk.VK_SHARING_MODE_EXCLUSIVE);
 
         const swapchain_create_info = vk.VkSwapchainCreateInfoKHR{
             .sType = vk.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .surface = self.surface,
-            .minImageCount = surface_capabilities.minImageCount,
-            .imageFormat = vk.VK_FORMAT_B8G8R8A8_UNORM,
-            .imageColorSpace = vk.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-            .imageExtent = surface_capabilities.currentExtent,
+            .minImageCount = image_count,
+            .imageFormat = surface_format.format,
+            .imageColorSpace = surface_format.colorSpace,
+            .imageExtent = extent,
             .imageArrayLayers = 1,
             .imageUsage = vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            .imageSharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = null,
-            .preTransform = surface_capabilities.currentTransform,
+            .imageSharingMode = image_sharing_mode,
+            .queueFamilyIndexCount = if (image_sharing_mode == vk.VK_SHARING_MODE_CONCURRENT) 2 else 0,
+            .pQueueFamilyIndices = if (image_sharing_mode == vk.VK_SHARING_MODE_CONCURRENT) &queue_family_indices else null,
+            .preTransform = swap_chain_support.capabilities.currentTransform,
             .compositeAlpha = vk.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            .presentMode = vk.VK_PRESENT_MODE_FIFO_KHR,
+            .presentMode = present_mode,
             .clipped = vk.VK_TRUE,
             .oldSwapchain = null,
             .pNext = null,
             .flags = 0,
         };
 
-        if (vk.vkCreateSwapchainKHR(self.device, &swapchain_create_info, null, &self.swapchain) != vk.VK_SUCCESS) {
+        var swapchain: vk.VkSwapchainKHR = undefined;
+        const result = vk.vkCreateSwapchainKHR(self.device, &swapchain_create_info, null, &swapchain);
+        if (result != vk.VK_SUCCESS) {
+            std.log.err("Failed to create swapchain: {d}", .{result});
             return error.SwapchainCreationFailed;
         }
+        self.swapchain = swapchain;
 
         // Get swapchain images
-        var image_count: u32 = 0;
-        _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &image_count, null);
-        self.swapchain_images = try std.heap.page_allocator.alloc(vk.VkImage, image_count);
-        _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &image_count, self.swapchain_images.ptr);
+        var image_count_actual: u32 = 0;
+        _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &image_count_actual, null);
+        if (image_count_actual == 0) {
+            return error.NoSwapchainImages;
+        }
+
+        self.swapchain_images = try std.heap.page_allocator.alloc(vk.VkImage, image_count_actual);
+        _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &image_count_actual, self.swapchain_images.ptr);
+
+        self.swapchain_format = surface_format.format;
+        self.swapchain_extent = extent;
+    }
+
+    fn chooseSwapSurfaceFormat(available_formats: []vk.VkSurfaceFormatKHR) !vk.VkSurfaceFormatKHR {
+        for (available_formats) |format| {
+            if (format.format == vk.VK_FORMAT_B8G8R8A8_UNORM and
+                format.colorSpace == vk.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            {
+                return format;
+            }
+        }
+        return available_formats[0];
+    }
+
+    fn chooseSwapPresentMode(available_present_modes: []vk.VkPresentModeKHR) !vk.VkPresentModeKHR {
+        for (available_present_modes) |present_mode| {
+            if (present_mode == vk.VK_PRESENT_MODE_MAILBOX_KHR) {
+                return present_mode;
+            }
+        }
+        return vk.VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    fn chooseSwapExtent(capabilities: vk.VkSurfaceCapabilitiesKHR, window: *glfw.GLFWwindow) !vk.VkExtent2D {
+        if (capabilities.currentExtent.width != std.math.maxInt(u32)) {
+            return capabilities.currentExtent;
+        }
+
+        var width: i32 = undefined;
+        var height: i32 = undefined;
+        glfw.glfwGetFramebufferSize(window, &width, &height);
+
+        const extent = vk.VkExtent2D{
+            .width = @as(u32, @intCast(@max(
+                capabilities.minImageExtent.width,
+                @min(capabilities.maxImageExtent.width, @as(u32, @intCast(@max(0, width))))
+            ))),
+            .height = @as(u32, @intCast(@max(
+                capabilities.minImageExtent.height,
+                @min(capabilities.maxImageExtent.height, @as(u32, @intCast(@max(0, height))))
+            ))),
+        };
+
+        return extent;
     }
 
     fn createImageViews(self: *Self) !void {
