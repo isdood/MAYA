@@ -829,7 +829,7 @@ pub const VulkanRenderer = struct {
         const rotation_matrix = createRotationMatrix(self.rotation);
         const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
         const src = @as([*]const u8, @ptrCast(&rotation_matrix))[0..@sizeOf([4][4]f32)];
-        std.mem.copy(u8, dest, src);
+        @memcpy(dest, src);
     }
 
     fn createRotationMatrix(angle: f32) [4][4]f32 {
@@ -1410,7 +1410,7 @@ pub const VulkanRenderer = struct {
 
         const dest = @as([*]u8, @ptrCast(data))[0..buffer_size];
         const src = @as([*]const u8, @ptrCast(&vertices))[0..buffer_size];
-        std.mem.copy(u8, dest, src);
+        @memcpy(dest, src);
 
         vk.vkUnmapMemory(self.device, self.vertex_buffer_memory);
     }
