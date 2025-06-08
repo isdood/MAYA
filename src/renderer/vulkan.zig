@@ -1354,4 +1354,64 @@ pub const VulkanRenderer = struct {
 
         return details;
     }
+
+    fn createVertexBuffer(self: *Self) !void {
+        const vertices = [_]struct {
+            pos: [3]f32,
+            color: [3]f32,
+        }{
+            .{ .pos = [3]f32{ -0.5, -0.5, 0.0 }, .color = [3]f32{ 1.0, 0.0, 0.0 } },
+            .{ .pos = [3]f32{ 0.5, -0.5, 0.0 }, .color = [3]f32{ 0.0, 1.0, 0.0 } },
+            .{ .pos = [3]f32{ 0.0, 0.5, 0.0 }, .color = [3]f32{ 0.0, 0.0, 1.0 } },
+        };
+
+        const buffer_size = @sizeOf(@TypeOf(vertices));
+
+        const buffer_info = vk.VkBufferCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = buffer_size,
+            .usage = vk.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .pNext = null,
+            .flags = 0,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+        };
+
+        if (vk.vkCreateBuffer(self.device, &buffer_info, null, &self.vertex_buffer) != vk.VK_SUCCESS) {
+            return error.VertexBufferCreationFailed;
+        }
+
+        var mem_requirements: vk.VkMemoryRequirements = undefined;
+        vk.vkGetBufferMemoryRequirements(self.device, self.vertex_buffer, &mem_requirements);
+
+        const alloc_info = vk.VkMemoryAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = mem_requirements.size,
+            .memoryTypeIndex = try self.findMemoryType(
+                mem_requirements.memoryTypeBits,
+                vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            ),
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.vertex_buffer_memory) != vk.VK_SUCCESS) {
+            return error.VertexMemoryAllocationFailed;
+        }
+
+        if (vk.vkBindBufferMemory(self.device, self.vertex_buffer, self.vertex_buffer_memory, 0) != vk.VK_SUCCESS) {
+            return error.VertexMemoryBindingFailed;
+        }
+
+        var data: ?*anyopaque = undefined;
+        if (vk.vkMapMemory(self.device, self.vertex_buffer_memory, 0, buffer_size, 0, &data) != vk.VK_SUCCESS) {
+            return error.VertexMemoryMappingFailed;
+        }
+
+        const dest = @as([*]u8, @ptrCast(data))[0..buffer_size];
+        const src = @as([*]const u8, @ptrCast(&vertices))[0..buffer_size];
+        std.mem.copy(u8, dest, src);
+
+        vk.vkUnmapMemory(self.device, self.vertex_buffer_memory);
+    }
 }; 
