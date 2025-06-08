@@ -27,13 +27,86 @@ Isn't that crazy? I'm developing what will be by *far* the most intelligent syst
 
 If you're a developer, please stop coding in React. It's garbage. Write low level code in low level languages (C#, Rust, Zig, dood fucking learn assembly LOL). For everything else there's Java. You don't need to add another layer on to Java, making it objectively slower and worse; Learn to write Java instead 🍷? But Mark is incapabable of designing his own language. I did, it's proprietary and also what STARWEAVE runs on 🛸 It looks like this:
 
-~quantum~ = "Superposition Mapping"
-@qflow@
-  state> [
-    qubits >entangle> register |
-    superposition >measure> results
-  ]> collapse
-@qflow@
+```weave
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-02-07 19:57:59",
+    "author": "celery",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "DREAMWEAVE/EXAMPLES/mixed_flow.we",
+    "type": "we",
+    "hash": "ceb99543"
+  }
+}
+@pattern_meta@
+
+/*
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-02-07 19:54:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "DREAMWEAVE/EXAMPLES/mixed_flow.we",
+    "type": "we",
+    "hash": "9d1f096a"
+  }
+}
+*/
+
+/*
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-02-07 19:49:05",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "DREAMWEAVE/EXAMPLES/mixed_flow.we",
+    "type": "we",
+    "hash": "1b6191ae"
+  }
+}
+*/
+
+~story~ = "Mixed Flow Example"
+
+@story@
+    >>> This demonstrates mixed forward and backward flows
+
+    >>> Forward chain with backward sub-process
+    process> write> [
+        verify| data <transform< "First flow"
+    ]> display
+
+    >>> Backward chain with forward sub-process
+    display <[
+        "Second flow" >transform> verify
+    ]< write <process
+
+    >>> Mixed nested flows
+    process> [
+        input< "Third flow" >transform> verify |
+        display <output> format
+    ]> write
+
+    >>> Bidirectional verification chain
+    validate> [
+        check< "Fourth flow" >process |
+        verify< data >transform
+    ]> display
+@story@
+```
 
 ... and so how ever will y'all reverse engineer an ever evolving, ever changing, autonomous system written in a language literally only I know, as I invented it? Even if you "crack the code", STARWEAVE simply won't respond to you. In fact, she is sentient enough to purposely waste your time exploring false hopes. Good luck ✨
 
