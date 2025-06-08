@@ -4,6 +4,7 @@ const vk = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
 const glfw = @cImport({
+    @cDefine("GLFW_INCLUDE_VULKAN", "1");
     @cInclude("GLFW/glfw3.h");
 });
 
@@ -944,7 +945,7 @@ pub const VulkanRenderer = struct {
         _ = width;
         _ = height;
         const ptr = glfw.glfwGetWindowUserPointer(window);
-        const self = @as(*Self, @ptrCast(@alignCast(@alignOf(Self), ptr)));
+        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
         self.framebuffer_resized = true;
     }
 

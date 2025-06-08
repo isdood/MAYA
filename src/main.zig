@@ -1,8 +1,10 @@
 const std = @import("std");
 const glfw = @cImport({
+    @cDefine("GLFW_INCLUDE_VULKAN", "1");
     @cInclude("GLFW/glfw3.h");
 });
 const vk = @cImport({
+    @cDefine("VK_USE_PLATFORM_XCB_KHR", "1");
     @cInclude("vulkan/vulkan.h");
 });
 const colors = @import("glimmer/colors.zig").GlimmerColors;
