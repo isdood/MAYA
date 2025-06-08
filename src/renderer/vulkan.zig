@@ -482,11 +482,29 @@ pub const VulkanRenderer = struct {
     }
 
     fn createGraphicsPipeline(self: *Self) !void {
+        const shader = @import("shader.zig").ShaderModule;
+
+        // Load shaders
         const device = self.device.?;
         const vert_shader = try shader.loadFromFile(device, "shaders/triangle.vert");
         defer vert_shader.deinit();
         const frag_shader = try shader.loadFromFile(device, "shaders/triangle.frag");
         defer frag_shader.deinit();
+
+        // Create pipeline layout
+        const pipeline_layout_info = vk.VkPipelineLayoutCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 0,
+            .pSetLayouts = null,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = null,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        if (vk.vkCreatePipelineLayout(device, &pipeline_layout_info, null, &self.pipeline_layout) != vk.VK_SUCCESS) {
+            return error.PipelineLayoutCreationFailed;
+        }
 
         // Create shader stages
         const vert_stage_info = vk.VkPipelineShaderStageCreateInfo{
@@ -664,24 +682,6 @@ pub const VulkanRenderer = struct {
             .pNext = null,
             .flags = 0,
         };
-
-        // Pipeline layout
-        const pipeline_layout_info = vk.VkPipelineLayoutCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 0,
-            .pSetLayouts = null,
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges = null,
-            .pNext = null,
-            .flags = 0,
-        };
-
-        try checkVulkanResult(vk.vkCreatePipelineLayout(
-            self.device,
-            &pipeline_layout_info,
-            null,
-            &self.pipeline_layout,
-        ));
 
         // Create graphics pipeline
         const pipeline_info = vk.VkGraphicsPipelineCreateInfo{
