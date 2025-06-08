@@ -1284,15 +1284,15 @@ pub const VulkanRenderer = struct {
         var extension_count: u32 = undefined;
         _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, null);
 
-        var available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
+        const available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
         defer std.heap.page_allocator.free(available_extensions);
         _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, available_extensions.ptr);
 
         for (REQUIRED_DEVICE_EXTENSIONS) |required_extension| {
             var extension_found = false;
             for (available_extensions) |extension| {
-                const extension_name = @as([*:0]const u8, @ptrCast(&extension.extensionName));
-                if (std.mem.eql(u8, required_extension, std.mem.span(extension_name))) {
+                const extension_name = std.mem.span(@as([*:0]const u8, @ptrCast(&extension.extensionName)));
+                if (std.mem.eql(u8, required_extension, extension_name)) {
                     extension_found = true;
                     break;
                 }
