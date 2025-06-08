@@ -37,7 +37,7 @@ pub const VulkanRenderer = struct {
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
-    device: vk.VkDevice,
+    device: ?*vk.VkDevice_T,
     queue: vk.VkQueue,
     swapchain: vk.VkSwapchainKHR,
     swapchain_images: []vk.VkImage,
