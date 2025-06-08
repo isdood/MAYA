@@ -485,9 +485,9 @@ pub const VulkanRenderer = struct {
         const shader = @import("shader.zig").ShaderModule;
 
         // Load shaders
-        const vert_shader = try shader.loadFromFile(@as(vk.VkDevice, @ptrCast(self.device)), "shaders/triangle.vert");
+        const vert_shader = try shader.loadFromFile(@ptrCast(vk.VkDevice, self.device.?), "shaders/triangle.vert");
         defer vert_shader.deinit();
-        const frag_shader = try shader.loadFromFile(@as(vk.VkDevice, @ptrCast(self.device)), "shaders/triangle.frag");
+        const frag_shader = try shader.loadFromFile(@ptrCast(vk.VkDevice, self.device.?), "shaders/triangle.frag");
         defer frag_shader.deinit();
 
         // Create shader stages
