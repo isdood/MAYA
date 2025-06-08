@@ -180,7 +180,7 @@ pub const VulkanRenderer = struct {
             return error.NoVulkanDevices;
         }
 
-        var devices = try std.heap.page_allocator.alloc(vk.VkPhysicalDevice, device_count);
+        const devices = try std.heap.page_allocator.alloc(vk.VkPhysicalDevice, device_count);
         defer std.heap.page_allocator.free(devices);
         _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, devices.ptr);
 
@@ -485,9 +485,9 @@ pub const VulkanRenderer = struct {
         const shader = @import("shader.zig").ShaderModule;
 
         // Load shaders
-        const vert_shader = try shader.loadFromFile(self.device, "shaders/triangle.vert");
+        const vert_shader = try shader.loadFromFile(@ptrCast(vk.VkDevice, self.device), "shaders/triangle.vert");
         defer vert_shader.deinit();
-        const frag_shader = try shader.loadFromFile(self.device, "shaders/triangle.frag");
+        const frag_shader = try shader.loadFromFile(@ptrCast(vk.VkDevice, self.device), "shaders/triangle.frag");
         defer frag_shader.deinit();
 
         // Create shader stages
