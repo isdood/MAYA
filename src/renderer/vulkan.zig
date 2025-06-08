@@ -156,7 +156,13 @@ pub const VulkanRenderer = struct {
     }
 
     fn createSurface(self: *Self, window: *glfw.GLFWwindow) !void {
-        if (glfw.glfwCreateWindowSurface(self.instance, window, null, &self.surface) != vk.VK_SUCCESS) {
+        const result = glfw.glfwCreateWindowSurface(
+            @ptrCast(vk.VkInstance, self.instance),
+            window,
+            null,
+            &self.surface,
+        );
+        if (result != vk.VK_SUCCESS) {
             return error.SurfaceCreationFailed;
         }
     }
@@ -945,7 +951,7 @@ pub const VulkanRenderer = struct {
         _ = width;
         _ = height;
         const ptr = glfw.glfwGetWindowUserPointer(window);
-        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
+        const self = @ptrCast(*Self, ptr);
         self.framebuffer_resized = true;
     }
 
