@@ -157,7 +157,7 @@ pub const VulkanRenderer = struct {
 
     fn createSurface(self: *Self, window: *glfw.GLFWwindow) !void {
         const result = glfw.glfwCreateWindowSurface(
-            @ptrCast(*glfw.VkInstance, self.instance),
+            @ptrCast(self.instance),
             window,
             null,
             &self.surface,
@@ -1234,72 +1234,19 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn isDeviceSuitable(self: *Self, device: vk.VkPhysicalDevice) !bool {
-        // Check device extension support
-        try checkDeviceExtensionSupport(device);
-
-        // Check swapchain support
-        var format_count: u32 = undefined;
-        _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, self.surface, &format_count, null);
-        if (format_count == 0) return false;
-
-        var present_mode_count: u32 = undefined;
-        _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, self.surface, &present_mode_count, null);
-        if (present_mode_count == 0) return false;
-
-        // Check queue families
-        var queue_family_count: u32 = undefined;
-        vk.vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, null);
-
-        var queue_families = try std.heap.page_allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
-        defer std.heap.page_allocator.free(queue_families);
-        vk.vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.ptr);
-
-        var graphics_queue_found = false;
-        var present_queue_found = false;
-
-        var i: usize = 0;
-        for (queue_families) |queue_family| {
-            if (queue_family.queueFlags & vk.VK_QUEUE_GRAPHICS_BIT != 0) {
-                graphics_queue_found = true;
-            }
-
-            var present_support: vk.VkBool32 = undefined;
-            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(device, @intCast(i), self.surface, &present_support);
-            if (present_support != 0) {
-                present_queue_found = true;
-            }
-
-            if (graphics_queue_found and present_queue_found) break;
-            i += 1;
+    fn isDeviceSuitable(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !bool {
+        const indices = try findQueueFamilies(device, surface);
+        const extensions_supported = try checkDeviceExtensionSupport(device);
+        var swap_chain_adequate = false;
+        if (extensions_supported) {
+            const swap_chain_support = try querySwapChainSupport(device, surface);
+            swap_chain_adequate = swap_chain_support.formats.len > 0 and swap_chain_support.present_modes.len > 0;
         }
 
-        return graphics_queue_found and present_queue_found;
+        return indices.isComplete() and extensions_supported and swap_chain_adequate;
     }
 
-    fn checkDeviceExtensionSupport(device: vk.VkPhysicalDevice) !void {
-        var extension_count: u32 = undefined;
-        _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, null);
-
-        const available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
-        defer std.heap.page_allocator.free(available_extensions);
-        _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, available_extensions.ptr);
-
-        for (REQUIRED_DEVICE_EXTENSIONS) |required_extension| {
-            var extension_found = false;
-            for (available_extensions) |extension| {
-                if (std.mem.eql(u8, std.mem.span(required_extension), std.mem.span(&extension.extensionName))) {
-                    extension_found = true;
-                    break;
-                }
-            }
-            if (!extension_found) {
-                return error.DeviceExtensionNotSupported;
-            }
-        }
-    }
-
-    fn findQueueFamilies(device: vk.VkPhysicalDevice, self: *Self) !QueueFamilyIndices {
+    fn findQueueFamilies(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !QueueFamilyIndices {
         var indices = QueueFamilyIndices{};
         var queue_family_count: u32 = undefined;
         vk.vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, null);
@@ -1316,7 +1263,7 @@ pub const VulkanRenderer = struct {
             }
 
             var present_support: vk.VkBool32 = undefined;
-            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(device, i, self.surface, &present_support);
+            _ = vk.vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
             if (present_support != 0) {
                 indices.present_family = i;
             }
@@ -1325,5 +1272,54 @@ pub const VulkanRenderer = struct {
         }
 
         return indices;
+    }
+
+    fn checkDeviceExtensionSupport(device: vk.VkPhysicalDevice) !bool {
+        var extension_count: u32 = undefined;
+        _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, null);
+
+        const available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
+        defer std.heap.page_allocator.free(available_extensions);
+        _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, available_extensions.ptr);
+
+        for (REQUIRED_DEVICE_EXTENSIONS) |required_extension| {
+            var extension_found = false;
+            for (available_extensions) |extension| {
+                if (std.mem.eql(u8, std.mem.span(required_extension), std.mem.span(&extension.extensionName))) {
+                    extension_found = true;
+                    break;
+                }
+            }
+            if (!extension_found) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    fn querySwapChainSupport(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
+        var details = SwapChainSupportDetails{};
+
+        // Capabilities
+        vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+        // Formats
+        var format_count: u32 = undefined;
+        vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, null);
+        if (format_count != 0) {
+            details.formats = try std.heap.page_allocator.alloc(vk.VkSurfaceFormatKHR, format_count);
+            vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, details.formats.ptr);
+        }
+
+        // Present modes
+        var present_mode_count: u32 = undefined;
+        vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, null);
+        if (present_mode_count != 0) {
+            details.present_modes = try std.heap.page_allocator.alloc(vk.VkPresentModeKHR, present_mode_count);
+            vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, details.present_modes.ptr);
+        }
+
+        return details;
     }
 }; 
