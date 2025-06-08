@@ -121,7 +121,7 @@ pub const VulkanRenderer = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        vk.vkDeviceWaitIdle(self.device);
+        _ = vk.vkDeviceWaitIdle(self.device);
 
         for (self.in_flight_fences) |fence| {
             vk.vkDestroyFence(self.device, fence, null);
