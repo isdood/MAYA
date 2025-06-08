@@ -1291,7 +1291,7 @@ pub const VulkanRenderer = struct {
         for (REQUIRED_DEVICE_EXTENSIONS) |required_extension| {
             var extension_found = false;
             for (available_extensions) |extension| {
-                const extension_name = @ptrCast([*:0]const u8, &extension.extensionName);
+                const extension_name = @as([*:0]const u8, @ptrCast(&extension.extensionName));
                 if (std.mem.eql(u8, required_extension, std.mem.span(extension_name))) {
                     extension_found = true;
                     break;
