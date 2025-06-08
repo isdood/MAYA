@@ -58,6 +58,7 @@ pub const VulkanRenderer = struct {
     depth_image: vk.VkImage,
     depth_image_memory: vk.VkDeviceMemory,
     depth_image_view: vk.VkImageView,
+    window: *glfw.GLFWwindow,
 
     pub fn init(window: *glfw.GLFWwindow) !Self {
         var self = Self{
@@ -87,6 +88,7 @@ pub const VulkanRenderer = struct {
             .depth_image = undefined,
             .depth_image_memory = undefined,
             .depth_image_view = undefined,
+            .window = window,
         };
 
         try self.createInstance();
