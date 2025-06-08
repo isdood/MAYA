@@ -134,8 +134,8 @@ pub const VulkanRenderer = struct {
         };
 
         const extensions = [_][*:0]const u8{
-            vk.VK_KHR_surface,
-            vk.VK_KHR_xlib_surface,
+            vk.VK_KHR_SURFACE_EXTENSION_NAME,
+            vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
         };
 
         const create_info = vk.VkInstanceCreateInfo{
@@ -944,7 +944,7 @@ pub const VulkanRenderer = struct {
         _ = width;
         _ = height;
         const ptr = glfw.glfwGetWindowUserPointer(window);
-        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), ptr));
+        const self = @ptrCast(*Self, ptr);
         self.framebuffer_resized = true;
     }
 
