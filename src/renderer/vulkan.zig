@@ -28,6 +28,12 @@ pub const VulkanRenderer = struct {
         }
     };
 
+    const SwapChainSupportDetails = struct {
+        capabilities: vk.VkSurfaceCapabilitiesKHR,
+        formats: []vk.VkSurfaceFormatKHR,
+        present_modes: []vk.VkPresentModeKHR,
+    };
+
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
@@ -1278,14 +1284,15 @@ pub const VulkanRenderer = struct {
         var extension_count: u32 = undefined;
         _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, null);
 
-        const available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
+        var available_extensions = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
         defer std.heap.page_allocator.free(available_extensions);
         _ = vk.vkEnumerateDeviceExtensionProperties(device, null, &extension_count, available_extensions.ptr);
 
         for (REQUIRED_DEVICE_EXTENSIONS) |required_extension| {
             var extension_found = false;
             for (available_extensions) |extension| {
-                if (std.mem.eql(u8, std.mem.span(required_extension), std.mem.span(&extension.extensionName))) {
+                const extension_name = @ptrCast([*:0]const u8, &extension.extensionName);
+                if (std.mem.eql(u8, required_extension, std.mem.span(extension_name))) {
                     extension_found = true;
                     break;
                 }
@@ -1299,7 +1306,11 @@ pub const VulkanRenderer = struct {
     }
 
     fn querySwapChainSupport(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
-        var details = SwapChainSupportDetails{};
+        var details = SwapChainSupportDetails{
+            .capabilities = undefined,
+            .formats = undefined,
+            .present_modes = undefined,
+        };
 
         // Capabilities
         vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
