@@ -579,9 +579,9 @@ pub const VulkanRenderer = struct {
 
         // Load shaders
         const device = self.device;
-        var vert_shader = try shader.loadFromFile(device, "shaders/triangle.vert");
+        var vert_shader = try shader.loadFromFile(device, "shaders/spv/triangle.vert.spv");
         defer vert_shader.deinit();
-        var frag_shader = try shader.loadFromFile(device, "shaders/triangle.frag");
+        var frag_shader = try shader.loadFromFile(device, "shaders/spv/triangle.frag.spv");
         defer frag_shader.deinit();
 
         // Create pipeline layout
@@ -1242,7 +1242,7 @@ pub const VulkanRenderer = struct {
         const offsets = [_]vk.VkDeviceSize{0};
         vk.vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertex_buffers, &offsets);
 
-        vk.vkCmdDraw(command_buffer, 9, 1, 0, 0); // Draw all 9 vertices (3 triangles)
+        vk.vkCmdDraw(command_buffer, 3, 1, 0, 0); // Draw 3 vertices (1 triangle)
 
         vk.vkCmdEndRenderPass(command_buffer);
 
