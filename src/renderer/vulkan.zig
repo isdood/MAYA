@@ -59,6 +59,11 @@ pub const VulkanRenderer = struct {
     depth_image_memory: vk.VkDeviceMemory,
     depth_image_view: vk.VkImageView,
     window: *glfw.GLFWwindow,
+    uniform_buffer: vk.VkBuffer,
+    uniform_buffer_memory: vk.VkDeviceMemory,
+    uniform_buffer_mapped: ?*anyopaque,
+    vertex_buffer: vk.VkBuffer,
+    vertex_buffer_memory: vk.VkDeviceMemory,
 
     pub fn init(window: *glfw.GLFWwindow) !Self {
         var self = Self{
@@ -89,6 +94,11 @@ pub const VulkanRenderer = struct {
             .depth_image_memory = undefined,
             .depth_image_view = undefined,
             .window = window,
+            .uniform_buffer = undefined,
+            .uniform_buffer_memory = undefined,
+            .uniform_buffer_mapped = null,
+            .vertex_buffer = undefined,
+            .vertex_buffer_memory = undefined,
         };
 
         try self.createInstance();
@@ -104,6 +114,8 @@ pub const VulkanRenderer = struct {
         try self.createCommandPool();
         try self.createCommandBuffers();
         try self.createSyncObjects();
+        try self.createUniformBuffers();
+        try self.createVertexBuffer();
 
         return self;
     }
