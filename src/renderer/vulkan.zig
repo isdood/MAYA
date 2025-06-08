@@ -1,8 +1,6 @@
 const std = @import("std");
-const vk = @cImport({
-    @cDefine("VK_USE_PLATFORM_XCB_KHR", "1");
-    @cInclude("vulkan/vulkan.h");
-});
+const vk_types = @import("vulkan_types.zig");
+const vk = vk_types.vk;
 const glfw = @cImport({
     @cDefine("GLFW_INCLUDE_VULKAN", "1");
     @cInclude("GLFW/glfw3.h");
@@ -37,7 +35,7 @@ pub const VulkanRenderer = struct {
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
-    device: vk.VkDevice,
+    device: vk_types.VkDevice,
     queue: vk.VkQueue,
     swapchain: vk.VkSwapchainKHR,
     swapchain_images: []vk.VkImage,
@@ -485,7 +483,7 @@ pub const VulkanRenderer = struct {
         const shader = @import("shader.zig").ShaderModule;
 
         // Load shaders
-        const device = @as(vk.VkDevice, self.device);
+        const device = self.device;
         const vert_shader = try shader.loadFromFile(device, "shaders/triangle.vert");
         defer vert_shader.deinit();
         const frag_shader = try shader.loadFromFile(device, "shaders/triangle.frag");

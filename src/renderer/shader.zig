@@ -1,13 +1,12 @@
 const std = @import("std");
-const vk = @cImport({
-    @cInclude("vulkan/vulkan.h");
-});
+const vk_types = @import("vulkan_types.zig");
+const vk = vk_types.vk;
 
 pub const ShaderModule = struct {
-    device: vk.VkDevice,
+    device: vk_types.VkDevice,
     handle: vk.VkShaderModule,
 
-    pub fn init(device: vk.VkDevice, code: []const u8) !ShaderModule {
+    pub fn init(device: vk_types.VkDevice, code: []const u8) !ShaderModule {
         const create_info = vk.VkShaderModuleCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .codeSize = code.len,
@@ -31,7 +30,7 @@ pub const ShaderModule = struct {
         vk.vkDestroyShaderModule(self.device, self.handle, null);
     }
 
-    pub fn loadFromFile(device: vk.VkDevice, path: []const u8) !ShaderModule {
+    pub fn loadFromFile(device: vk_types.VkDevice, path: []const u8) !ShaderModule {
         const file = try std.fs.cwd().openFile(path, .{});
         defer file.close();
 
