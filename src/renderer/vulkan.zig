@@ -1314,22 +1314,22 @@ pub const VulkanRenderer = struct {
         };
 
         // Capabilities
-        vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+        _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
         // Formats
         var format_count: u32 = undefined;
-        vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, null);
+        _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, null);
         if (format_count != 0) {
             details.formats = try std.heap.page_allocator.alloc(vk.VkSurfaceFormatKHR, format_count);
-            vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, details.formats.ptr);
+            _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, details.formats.ptr);
         }
 
         // Present modes
         var present_mode_count: u32 = undefined;
-        vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, null);
+        _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, null);
         if (present_mode_count != 0) {
             details.present_modes = try std.heap.page_allocator.alloc(vk.VkPresentModeKHR, present_mode_count);
-            vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, details.present_modes.ptr);
+            _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, details.present_modes.ptr);
         }
 
         return details;
