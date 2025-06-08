@@ -117,6 +117,7 @@ pub const VulkanRenderer = struct {
         try self.createImageViews();
         try self.createDepthResources();
         try self.createRenderPass();
+        try self.createDescriptorSetLayout();
         try self.createGraphicsPipeline();
         try self.createFramebuffers();
         try self.createCommandPool();
@@ -124,7 +125,6 @@ pub const VulkanRenderer = struct {
         try self.createSyncObjects();
         try self.createUniformBuffers();
         try self.createVertexBuffer();
-        try self.createDescriptorSetLayout();
         try self.createDescriptorPool();
         try self.createDescriptorSet();
 
@@ -929,28 +929,25 @@ pub const VulkanRenderer = struct {
     }
 
     fn createDescriptorSetLayout(self: *Self) !void {
-        const descriptor_set_layout_info = vk.VkDescriptorSetLayoutCreateInfo{
+        const ubo_layout_binding = vk.VkDescriptorSetLayoutBinding{
+            .binding = 0,
+            .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = vk.VK_SHADER_STAGE_VERTEX_BIT,
+            .pImmutableSamplers = null,
+        };
+
+        const layout_info = vk.VkDescriptorSetLayoutCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .bindingCount = 1,
-            .pBindings = &[_]vk.VkDescriptorSetLayoutBinding{
-                vk.VkDescriptorSetLayoutBinding{
-                    .binding = 0,
-                    .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                    .descriptorCount = 1,
-                    .stageFlags = vk.VK_SHADER_STAGE_VERTEX_BIT,
-                    .pImmutableSamplers = null,
-                },
-            },
+            .pBindings = &ubo_layout_binding,
             .pNext = null,
             .flags = 0,
         };
 
-        try checkVulkanResult(vk.vkCreateDescriptorSetLayout(
-            self.device,
-            &descriptor_set_layout_info,
-            null,
-            &self.descriptor_set_layout,
-        ));
+        if (vk.vkCreateDescriptorSetLayout(self.device, &layout_info, null, &self.descriptor_set_layout) != vk.VK_SUCCESS) {
+            return error.DescriptorSetLayoutCreationFailed;
+        }
     }
 
     fn createDescriptorPool(self: *Self) !void {
