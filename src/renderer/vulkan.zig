@@ -55,6 +55,9 @@ pub const VulkanRenderer = struct {
     allocator: std.mem.Allocator,
     rotation: f32,
     framebuffer_resized: bool,
+    depth_image: vk.VkImage,
+    depth_image_memory: vk.VkDeviceMemory,
+    depth_image_view: vk.VkImageView,
 
     pub fn init(window: *glfw.GLFWwindow) !Self {
         var self = Self{
@@ -81,6 +84,9 @@ pub const VulkanRenderer = struct {
             .allocator = std.heap.page_allocator,
             .rotation = 0.0,
             .framebuffer_resized = false,
+            .depth_image = undefined,
+            .depth_image_memory = undefined,
+            .depth_image_view = undefined,
         };
 
         try self.createInstance();
@@ -89,6 +95,7 @@ pub const VulkanRenderer = struct {
         try self.createLogicalDevice();
         try self.createSwapChain();
         try self.createImageViews();
+        try self.createDepthResources();
         try self.createRenderPass();
         try self.createGraphicsPipeline();
         try self.createFramebuffers();
