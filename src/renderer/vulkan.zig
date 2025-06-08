@@ -1292,7 +1292,8 @@ pub const VulkanRenderer = struct {
             var extension_found = false;
             for (available_extensions) |extension| {
                 const extension_name = std.mem.span(@as([*:0]const u8, @ptrCast(&extension.extensionName)));
-                if (std.mem.eql(u8, required_extension, extension_name)) {
+                const required_name = std.mem.span(required_extension);
+                if (std.mem.eql(u8, required_name, extension_name)) {
                     extension_found = true;
                     break;
                 }
