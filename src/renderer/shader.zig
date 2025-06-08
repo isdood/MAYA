@@ -7,7 +7,7 @@ pub const ShaderModule = struct {
     device: vk.VkDevice,
     handle: vk.VkShaderModule,
 
-    pub fn init(device: ?*vk.VkDevice_T, code: []const u8) !ShaderModule {
+    pub fn init(device: vk.VkDevice, code: []const u8) !ShaderModule {
         const create_info = vk.VkShaderModuleCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .codeSize = code.len,
@@ -22,7 +22,7 @@ pub const ShaderModule = struct {
         }
 
         return ShaderModule{
-            .device = device.?,
+            .device = device,
             .handle = shader_module,
         };
     }
@@ -31,7 +31,7 @@ pub const ShaderModule = struct {
         vk.vkDestroyShaderModule(self.device, self.handle, null);
     }
 
-    pub fn loadFromFile(device: ?*vk.VkDevice_T, path: []const u8) !ShaderModule {
+    pub fn loadFromFile(device: vk.VkDevice, path: []const u8) !ShaderModule {
         const file = try std.fs.cwd().openFile(path, .{});
         defer file.close();
 
