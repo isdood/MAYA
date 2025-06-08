@@ -972,13 +972,13 @@ pub const VulkanRenderer = struct {
     fn recreateSwapChain(self: *Self) !void {
         var width: i32 = 0;
         var height: i32 = 0;
-        self.window.getFramebufferSize(&width, &height);
+        glfw.glfwGetFramebufferSize(self.window, &width, &height);
         while (width == 0 or height == 0) {
-            self.window.getFramebufferSize(&width, &height);
-            self.window.waitEvents();
+            glfw.glfwGetFramebufferSize(self.window, &width, &height);
+            glfw.glfwWaitEvents();
         }
 
-        try vk.vkDeviceWaitIdle(self.device);
+        try checkVulkanResult(vk.vkDeviceWaitIdle(self.device));
 
         self.cleanupSwapChain();
 
