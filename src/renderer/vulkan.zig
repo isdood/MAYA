@@ -157,7 +157,7 @@ pub const VulkanRenderer = struct {
 
     fn createSurface(self: *Self, window: *glfw.GLFWwindow) !void {
         const result = glfw.glfwCreateWindowSurface(
-            @as(*glfw.VkInstance, @alignCast(@alignOf(*glfw.VkInstance), @ptrCast(self.instance))),
+            @alignCast(@alignOf(*glfw.VkInstance), @ptrCast(*glfw.VkInstance, self.instance)),
             window,
             null,
             &self.surface,
