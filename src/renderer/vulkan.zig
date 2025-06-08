@@ -32,6 +32,8 @@ pub const VulkanRenderer = struct {
         present_modes: []vk.VkPresentModeKHR,
     };
 
+    const validation_layers = [_][*:0]const u8{"VK_LAYER_KHRONOS_validation"};
+
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
@@ -64,6 +66,9 @@ pub const VulkanRenderer = struct {
     uniform_buffer_mapped: ?*anyopaque,
     vertex_buffer: vk.VkBuffer,
     vertex_buffer_memory: vk.VkDeviceMemory,
+    descriptor_set_layout: vk.VkDescriptorSetLayout,
+    descriptor_pool: vk.VkDescriptorPool,
+    descriptor_set: vk.VkDescriptorSet,
 
     pub fn init(window: *glfw.GLFWwindow) !Self {
         var self = Self{
@@ -99,6 +104,9 @@ pub const VulkanRenderer = struct {
             .uniform_buffer_mapped = null,
             .vertex_buffer = undefined,
             .vertex_buffer_memory = undefined,
+            .descriptor_set_layout = undefined,
+            .descriptor_pool = undefined,
+            .descriptor_set = undefined,
         };
 
         try self.createInstance();
@@ -116,6 +124,9 @@ pub const VulkanRenderer = struct {
         try self.createSyncObjects();
         try self.createUniformBuffers();
         try self.createVertexBuffer();
+        try self.createDescriptorSetLayout();
+        try self.createDescriptorPool();
+        try self.createDescriptorSet();
 
         return self;
     }
@@ -171,8 +182,8 @@ pub const VulkanRenderer = struct {
             .pApplicationInfo = &app_info,
             .enabledExtensionCount = glfw_extension_count,
             .ppEnabledExtensionNames = glfw_extensions,
-            .enabledLayerCount = 0,
-            .ppEnabledLayerNames = null,
+            .enabledLayerCount = validation_layers.len,
+            .ppEnabledLayerNames = &validation_layers,
             .pNext = null,
             .flags = 0,
         };
@@ -587,8 +598,8 @@ pub const VulkanRenderer = struct {
         // Create pipeline layout
         const pipeline_layout_info = vk.VkPipelineLayoutCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 0,
-            .pSetLayouts = null,
+            .setLayoutCount = 1,
+            .pSetLayouts = &self.descriptor_set_layout,
             .pushConstantRangeCount = 0,
             .pPushConstantRanges = null,
             .pNext = null,
@@ -943,52 +954,40 @@ pub const VulkanRenderer = struct {
     }
 
     fn createDescriptorPool(self: *Self) !void {
-        const pool_sizes = [_]vk.VkDescriptorPoolSize{
-            vk.VkDescriptorPoolSize{
-                .type = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .descriptorCount = 1,
-            },
+        const pool_size = vk.VkDescriptorPoolSize{
+            .type = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
         };
-
         const pool_info = vk.VkDescriptorPoolCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .poolSizeCount = 1,
+            .pPoolSizes = &pool_size,
             .maxSets = 1,
-            .poolSizeCount = pool_sizes.len,
-            .pPoolSizes = pool_sizes.ptr,
             .pNext = null,
             .flags = 0,
         };
-
-        try checkVulkanResult(vk.vkCreateDescriptorPool(
-            self.device,
-            &pool_info,
-            null,
-            &self.descriptor_pool,
-        ));
+        if (vk.vkCreateDescriptorPool(self.device, &pool_info, null, &self.descriptor_pool) != vk.VK_SUCCESS) {
+            return error.DescriptorPoolCreationFailed;
+        }
     }
 
-    fn createDescriptorSets(self: *Self) !void {
-        const descriptor_set_alloc_info = vk.VkDescriptorSetAllocateInfo{
+    fn createDescriptorSet(self: *Self) !void {
+        const alloc_info = vk.VkDescriptorSetAllocateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = self.descriptor_pool,
             .descriptorSetCount = 1,
             .pSetLayouts = &self.descriptor_set_layout,
             .pNext = null,
         };
-
-        try checkVulkanResult(vk.vkAllocateDescriptorSets(
-            self.device,
-            &descriptor_set_alloc_info,
-            &self.descriptor_set,
-        ));
-
+        if (vk.vkAllocateDescriptorSets(self.device, &alloc_info, &self.descriptor_set) != vk.VK_SUCCESS) {
+            return error.DescriptorSetAllocationFailed;
+        }
         const buffer_info = vk.VkDescriptorBufferInfo{
             .buffer = self.uniform_buffer,
             .offset = 0,
             .range = @sizeOf([4][4]f32),
         };
-
-        const write_descriptor_set = vk.VkWriteDescriptorSet{
+        const descriptor_write = vk.VkWriteDescriptorSet{
             .sType = vk.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet = self.descriptor_set,
             .dstBinding = 0,
@@ -1000,8 +999,7 @@ pub const VulkanRenderer = struct {
             .pTexelBufferView = null,
             .pNext = null,
         };
-
-        vk.vkUpdateDescriptorSets(self.device, 1, &write_descriptor_set, 0, null);
+        vk.vkUpdateDescriptorSets(self.device, 1, &descriptor_write, 0, null);
     }
 
     fn createCommandBuffers(self: *Self) !void {
@@ -1241,6 +1239,33 @@ pub const VulkanRenderer = struct {
         const vertex_buffers = [_]vk.VkBuffer{self.vertex_buffer};
         const offsets = [_]vk.VkDeviceSize{0};
         vk.vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertex_buffers, &offsets);
+
+        vk.vkCmdBindDescriptorSets(
+            command_buffer,
+            vk.VK_PIPELINE_BIND_POINT_GRAPHICS,
+            self.pipeline_layout,
+            0, // firstSet
+            1, // descriptorSetCount
+            &self.descriptor_set,
+            0, // dynamicOffsetCount
+            null // pDynamicOffsets
+        );
+
+        const viewport = vk.VkViewport{
+            .x = 0.0,
+            .y = 0.0,
+            .width = @floatFromInt(self.swapchain_extent.width),
+            .height = @floatFromInt(self.swapchain_extent.height),
+            .minDepth = 0.0,
+            .maxDepth = 1.0,
+        };
+        vk.vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+
+        const scissor = vk.VkRect2D{
+            .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
+            .extent = self.swapchain_extent,
+        };
+        vk.vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
         vk.vkCmdDraw(command_buffer, 3, 1, 0, 0); // Draw 3 vertices (1 triangle)
 
