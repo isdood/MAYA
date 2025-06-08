@@ -486,9 +486,9 @@ pub const VulkanRenderer = struct {
 
         // Load shaders
         const device = self.device.?;
-        const vert_shader = try shader.loadFromFile(@ptrCast(vk.VkDevice, device), "shaders/triangle.vert");
+        const vert_shader = try shader.loadFromFile(@as(vk.VkDevice, device), "shaders/triangle.vert");
         defer vert_shader.deinit();
-        const frag_shader = try shader.loadFromFile(@ptrCast(vk.VkDevice, device), "shaders/triangle.frag");
+        const frag_shader = try shader.loadFromFile(@as(vk.VkDevice, device), "shaders/triangle.frag");
         defer frag_shader.deinit();
 
         // Create pipeline layout
