@@ -1537,4 +1537,59 @@ pub const VulkanRenderer = struct {
             return error.CommandPoolCreationFailed;
         }
     }
+
+    fn createUniformBuffers(self: *Self) !void {
+        const buffer_size = @sizeOf([4][4]f32);
+
+        const buffer_info = vk.VkBufferCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = buffer_size,
+            .usage = vk.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .pNext = null,
+            .flags = 0,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+        };
+
+        if (vk.vkCreateBuffer(self.device, &buffer_info, null, &self.uniform_buffer) != vk.VK_SUCCESS) {
+            return error.UniformBufferCreationFailed;
+        }
+
+        var mem_requirements: vk.VkMemoryRequirements = undefined;
+        vk.vkGetBufferMemoryRequirements(self.device, self.uniform_buffer, &mem_requirements);
+
+        const alloc_info = vk.VkMemoryAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = mem_requirements.size,
+            .memoryTypeIndex = try self.findMemoryType(
+                mem_requirements.memoryTypeBits,
+                vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            ),
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.uniform_buffer_memory) != vk.VK_SUCCESS) {
+            return error.UniformMemoryAllocationFailed;
+        }
+
+        if (vk.vkBindBufferMemory(self.device, self.uniform_buffer, self.uniform_buffer_memory, 0) != vk.VK_SUCCESS) {
+            return error.UniformMemoryBindingFailed;
+        }
+
+        if (vk.vkMapMemory(self.device, self.uniform_buffer_memory, 0, buffer_size, 0, &self.uniform_buffer_mapped) != vk.VK_SUCCESS) {
+            return error.UniformMemoryMappingFailed;
+        }
+
+        // Initialize the uniform buffer with identity matrix
+        const initial_matrix = [4][4]f32{
+            [4]f32{ 1.0, 0.0, 0.0, 0.0 },
+            [4]f32{ 0.0, 1.0, 0.0, 0.0 },
+            [4]f32{ 0.0, 0.0, 1.0, 0.0 },
+            [4]f32{ 0.0, 0.0, 0.0, 1.0 },
+        };
+        const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
+        const src = @as([*]const u8, @ptrCast(&initial_matrix))[0..@sizeOf([4][4]f32)];
+        @memcpy(dest, src);
+    }
 }; 
