@@ -1592,4 +1592,59 @@ pub const VulkanRenderer = struct {
         const src = @as([*]const u8, @ptrCast(&initial_matrix))[0..@sizeOf([4][4]f32)];
         @memcpy(dest, src);
     }
+
+    fn createDescriptorPool(self: *Self) !void {
+        const pool_size = vk.VkDescriptorPoolSize{
+            .type = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+        };
+
+        const pool_info = vk.VkDescriptorPoolCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .poolSizeCount = 1,
+            .pPoolSizes = &pool_size,
+            .maxSets = 1,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        if (vk.vkCreateDescriptorPool(self.device, &pool_info, null, &self.descriptor_pool) != vk.VK_SUCCESS) {
+            return error.DescriptorPoolCreationFailed;
+        }
+    }
+
+    fn createDescriptorSet(self: *Self) !void {
+        const alloc_info = vk.VkDescriptorSetAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = self.descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &self.descriptor_set_layout,
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateDescriptorSets(self.device, &alloc_info, &self.descriptor_set) != vk.VK_SUCCESS) {
+            return error.DescriptorSetAllocationFailed;
+        }
+
+        const buffer_info = vk.VkDescriptorBufferInfo{
+            .buffer = self.uniform_buffer,
+            .offset = 0,
+            .range = @sizeOf([4][4]f32),
+        };
+
+        const descriptor_write = vk.VkWriteDescriptorSet{
+            .sType = vk.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = self.descriptor_set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pImageInfo = null,
+            .pBufferInfo = &buffer_info,
+            .pTexelBufferView = null,
+            .pNext = null,
+        };
+
+        vk.vkUpdateDescriptorSets(self.device, 1, &descriptor_write, 0, null);
+    }
 }; 
