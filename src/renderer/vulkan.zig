@@ -53,6 +53,7 @@ pub const VulkanRenderer = struct {
     image_available_semaphores: []vk.VkSemaphore,
     render_finished_semaphores: []vk.VkSemaphore,
     in_flight_fences: []vk.VkFence,
+    images_in_flight: []vk.VkFence,
     current_frame: usize,
     allocator: std.mem.Allocator,
     rotation: f32,
@@ -91,6 +92,7 @@ pub const VulkanRenderer = struct {
             .image_available_semaphores = undefined,
             .render_finished_semaphores = undefined,
             .in_flight_fences = undefined,
+            .images_in_flight = undefined,
             .current_frame = 0,
             .allocator = std.heap.page_allocator,
             .rotation = 0.0,
@@ -134,6 +136,7 @@ pub const VulkanRenderer = struct {
     pub fn deinit(self: *Self) void {
         _ = vk.vkDeviceWaitIdle(self.device);
 
+        // Clean up sync objects
         for (self.in_flight_fences) |fence| {
             vk.vkDestroyFence(self.device, fence, null);
         }
@@ -143,17 +146,59 @@ pub const VulkanRenderer = struct {
         for (self.image_available_semaphores) |semaphore| {
             vk.vkDestroySemaphore(self.device, semaphore, null);
         }
+        std.heap.page_allocator.free(self.images_in_flight);
+        std.heap.page_allocator.free(self.image_available_semaphores);
+        std.heap.page_allocator.free(self.render_finished_semaphores);
+        std.heap.page_allocator.free(self.in_flight_fences);
+
+        // Clean up command buffers and pool
+        vk.vkFreeCommandBuffers(
+            self.device,
+            self.command_pool,
+            @intCast(self.command_buffers.len),
+            self.command_buffers.ptr,
+        );
         vk.vkDestroyCommandPool(self.device, self.command_pool, null);
+        std.heap.page_allocator.free(self.command_buffers);
+
+        // Clean up descriptor resources
+        vk.vkDestroyDescriptorSetLayout(self.device, self.descriptor_set_layout, null);
+        vk.vkDestroyDescriptorPool(self.device, self.descriptor_pool, null);
+
+        // Clean up uniform buffer
+        vk.vkDestroyBuffer(self.device, self.uniform_buffer, null);
+        vk.vkFreeMemory(self.device, self.uniform_buffer_memory, null);
+
+        // Clean up vertex buffer
+        vk.vkDestroyBuffer(self.device, self.vertex_buffer, null);
+        vk.vkFreeMemory(self.device, self.vertex_buffer_memory, null);
+
+        // Clean up framebuffers
         for (self.framebuffers) |framebuffer| {
             vk.vkDestroyFramebuffer(self.device, framebuffer, null);
         }
+        std.heap.page_allocator.free(self.framebuffers);
+
+        // Clean up graphics pipeline
         vk.vkDestroyPipeline(self.device, self.graphics_pipeline, null);
         vk.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
+
+        // Clean up render pass
         vk.vkDestroyRenderPass(self.device, self.render_pass, null);
+
+        // Clean up depth resources
+        vk.vkDestroyImageView(self.device, self.depth_image_view, null);
+        vk.vkDestroyImage(self.device, self.depth_image, null);
+        vk.vkFreeMemory(self.device, self.depth_image_memory, null);
+
+        // Clean up swapchain resources
         for (self.swapchain_image_views) |image_view| {
             vk.vkDestroyImageView(self.device, image_view, null);
         }
+        std.heap.page_allocator.free(self.swapchain_image_views);
         vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
+
+        // Clean up device and instance
         vk.vkDestroyDevice(self.device, null);
         vk.vkDestroySurfaceKHR(self.instance, self.surface, null);
         vk.vkDestroyInstance(self.instance, null);
@@ -1012,9 +1057,12 @@ pub const VulkanRenderer = struct {
     }
 
     fn createSyncObjects(self: *Self) !void {
+        // Create semaphores for frames in flight
         self.image_available_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, MAX_FRAMES_IN_FLIGHT);
         self.render_finished_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, MAX_FRAMES_IN_FLIGHT);
         self.in_flight_fences = try std.heap.page_allocator.alloc(vk.VkFence, MAX_FRAMES_IN_FLIGHT);
+        self.images_in_flight = try std.heap.page_allocator.alloc(vk.VkFence, self.swapchain_images.len);
+        @memset(self.images_in_flight, null);
 
         const semaphore_info = vk.VkSemaphoreCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -1028,11 +1076,18 @@ pub const VulkanRenderer = struct {
             .pNext = null,
         };
 
+        // Create semaphores for frames in flight
         for (0..MAX_FRAMES_IN_FLIGHT) |i| {
             if (vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.image_available_semaphores[i]) != vk.VK_SUCCESS or
-                vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.render_finished_semaphores[i]) != vk.VK_SUCCESS or
-                vk.vkCreateFence(self.device, &fence_info, null, &self.in_flight_fences[i]) != vk.VK_SUCCESS)
+                vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.render_finished_semaphores[i]) != vk.VK_SUCCESS)
             {
+                return error.SyncObjectCreationFailed;
+            }
+        }
+
+        // Create fences for frames in flight
+        for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+            if (vk.vkCreateFence(self.device, &fence_info, null, &self.in_flight_fences[i]) != vk.VK_SUCCESS) {
                 return error.SyncObjectCreationFailed;
             }
         }
@@ -1069,6 +1124,23 @@ pub const VulkanRenderer = struct {
         try self.createFramebuffers();
         try self.createVertexBuffer();
         try self.createCommandBuffers();
+
+        // Recreate sync objects for the new swapchain
+        for (self.in_flight_fences) |fence| {
+            vk.vkDestroyFence(self.device, fence, null);
+        }
+        for (self.render_finished_semaphores) |semaphore| {
+            vk.vkDestroySemaphore(self.device, semaphore, null);
+        }
+        for (self.image_available_semaphores) |semaphore| {
+            vk.vkDestroySemaphore(self.device, semaphore, null);
+        }
+        std.heap.page_allocator.free(self.images_in_flight);
+        std.heap.page_allocator.free(self.image_available_semaphores);
+        std.heap.page_allocator.free(self.render_finished_semaphores);
+        std.heap.page_allocator.free(self.in_flight_fences);
+
+        try self.createSyncObjects();
     }
 
     fn cleanupSwapChain(self: *Self) void {
@@ -1130,7 +1202,7 @@ pub const VulkanRenderer = struct {
             return error.FenceWaitFailed;
         }
 
-        // Acquire an image from the swapchain
+        // Acquire the next image from the swapchain
         var image_index: u32 = undefined;
         const acquire_result = vk.vkAcquireNextImageKHR(
             self.device,
@@ -1141,30 +1213,41 @@ pub const VulkanRenderer = struct {
             &image_index,
         );
 
-        if (acquire_result == vk.VK_ERROR_OUT_OF_DATE_KHR) {
+        // Handle swapchain recreation
+        if (acquire_result == vk.VK_ERROR_OUT_OF_DATE_KHR or acquire_result == vk.VK_SUBOPTIMAL_KHR) {
             try self.recreateSwapChain();
             return;
-        } else if (acquire_result != vk.VK_SUCCESS and acquire_result != vk.VK_SUBOPTIMAL_KHR) {
-            return error.FailedToAcquireSwapChainImage;
+        } else if (acquire_result != vk.VK_SUCCESS) {
+            return error.FailedToAcquireSwapchainImage;
         }
+
+        // Check if a previous frame is using this image
+        if (self.images_in_flight[image_index] != null) {
+            if (vk.vkWaitForFences(
+                self.device,
+                1,
+                &self.images_in_flight[image_index],
+                vk.VK_TRUE,
+                std.math.maxInt(u64),
+            ) != vk.VK_SUCCESS) {
+                return error.FenceWaitFailed;
+            }
+        }
+        // Mark the image as now being in use by this frame
+        self.images_in_flight[image_index] = self.in_flight_fences[self.current_frame];
 
         // Reset the fence for the current frame
         if (vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
             return error.FenceResetFailed;
         }
 
-        // Update uniform buffer
-        self.rotation += 0.01;
-        self.updateUniformBuffer();
-
         // Record the command buffer
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
 
         // Submit the command buffer
         const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
         const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-
+        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = wait_semaphores.len,
@@ -1183,10 +1266,10 @@ pub const VulkanRenderer = struct {
             &submit_info,
             self.in_flight_fences[self.current_frame],
         ) != vk.VK_SUCCESS) {
-            return error.QueueSubmitFailed;
+            return error.FailedToSubmitDrawCommandBuffer;
         }
 
-        // Present the image
+        // Present the frame
         const present_info = vk.VkPresentInfoKHR{
             .sType = vk.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = signal_semaphores.len,
@@ -1199,17 +1282,13 @@ pub const VulkanRenderer = struct {
         };
 
         const present_result = vk.vkQueuePresentKHR(self.queue, &present_info);
-
-        if (present_result == vk.VK_ERROR_OUT_OF_DATE_KHR or
-            present_result == vk.VK_SUBOPTIMAL_KHR or
-            self.framebuffer_resized)
-        {
-            self.framebuffer_resized = false;
+        if (present_result == vk.VK_ERROR_OUT_OF_DATE_KHR or present_result == vk.VK_SUBOPTIMAL_KHR) {
             try self.recreateSwapChain();
         } else if (present_result != vk.VK_SUCCESS) {
-            return error.FailedToPresentSwapChainImage;
+            return error.FailedToPresentSwapchainImage;
         }
 
+        // Advance to the next frame
         self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
