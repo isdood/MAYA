@@ -957,7 +957,7 @@ pub const VulkanRenderer = struct {
             self.device,
             self.swapchain,
             std.math.maxInt(u64),
-            self.image_available_semaphores[image_index],
+            self.image_available_semaphores[self.current_frame],
             null,
             &image_index,
         );
@@ -990,9 +990,9 @@ pub const VulkanRenderer = struct {
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
 
         // Submit the command buffer
-        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[image_index]};
+        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
         const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[image_index]};
+        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = wait_semaphores.len,
@@ -1518,5 +1518,23 @@ pub const VulkanRenderer = struct {
         const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
         const src = @as([*]const u8, @ptrCast(&rotation_matrix))[0..@sizeOf([4][4]f32)];
         @memcpy(dest, src);
+    }
+
+    fn createCommandPool(self: *Self) !void {
+        const indices = try findQueueFamilies(self.physical_device, self.surface);
+        if (indices.graphics_family == null) {
+            return error.GraphicsQueueFamilyNotFound;
+        }
+
+        const pool_info = vk.VkCommandPoolCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .queueFamilyIndex = indices.graphics_family.?,
+            .flags = vk.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .pNext = null,
+        };
+
+        if (vk.vkCreateCommandPool(self.device, &pool_info, null, &self.command_pool) != vk.VK_SUCCESS) {
+            return error.CommandPoolCreationFailed;
+        }
     }
 }; 
