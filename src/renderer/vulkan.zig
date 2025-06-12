@@ -1219,7 +1219,7 @@ pub const VulkanRenderer = struct {
             self.device,
             self.swapchain,
             std.math.maxInt(u64),
-            self.image_available_semaphores[image_index],
+            self.image_available_semaphores[self.current_frame],
             null,
             &image_index,
         );
@@ -1234,16 +1234,18 @@ pub const VulkanRenderer = struct {
 
         // Check if a previous frame is using this image
         if (self.images_in_flight[image_index] != null) {
+            const fence = self.images_in_flight[image_index];
             if (vk.vkWaitForFences(
                 self.device,
                 1,
-                &self.images_in_flight[image_index],
+                &fence,
                 vk.VK_TRUE,
                 std.math.maxInt(u64),
             ) != vk.VK_SUCCESS) {
                 return error.FenceWaitFailed;
             }
         }
+
         // Mark the image as now being in use by this frame
         self.images_in_flight[image_index] = self.in_flight_fences[self.current_frame];
 
@@ -1251,9 +1253,9 @@ pub const VulkanRenderer = struct {
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
 
         // Submit the command buffer
-        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[image_index]};
+        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
         const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[image_index]};
+        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = wait_semaphores.len,
