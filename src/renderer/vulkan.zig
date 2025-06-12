@@ -1057,9 +1057,9 @@ pub const VulkanRenderer = struct {
     }
 
     fn createSyncObjects(self: *Self) !void {
-        // Create semaphores for frames in flight
-        self.image_available_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, MAX_FRAMES_IN_FLIGHT);
-        self.render_finished_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, MAX_FRAMES_IN_FLIGHT);
+        // Create semaphores for each swapchain image
+        self.image_available_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
+        self.render_finished_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
         self.in_flight_fences = try std.heap.page_allocator.alloc(vk.VkFence, MAX_FRAMES_IN_FLIGHT);
         self.images_in_flight = try std.heap.page_allocator.alloc(vk.VkFence, self.swapchain_images.len);
         @memset(self.images_in_flight, null);
@@ -1076,8 +1076,8 @@ pub const VulkanRenderer = struct {
             .pNext = null,
         };
 
-        // Create semaphores for frames in flight
-        for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+        // Create semaphores for each swapchain image
+        for (0..self.swapchain_images.len) |i| {
             if (vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.image_available_semaphores[i]) != vk.VK_SUCCESS or
                 vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.render_finished_semaphores[i]) != vk.VK_SUCCESS)
             {
@@ -1208,7 +1208,7 @@ pub const VulkanRenderer = struct {
             self.device,
             self.swapchain,
             std.math.maxInt(u64),
-            self.image_available_semaphores[self.current_frame],
+            self.image_available_semaphores[image_index],
             null,
             &image_index,
         );
@@ -1245,9 +1245,9 @@ pub const VulkanRenderer = struct {
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
 
         // Submit the command buffer
-        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
+        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[image_index]};
         const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
+        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[image_index]};
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = wait_semaphores.len,
