@@ -1480,7 +1480,40 @@ pub const VulkanRenderer = struct {
         std.log.info("Vertex buffer creation complete", .{});
     }
 
-    fn updateUniformBuffer(self: *Self) void {
+    fn createRotationMatrix(angle: f32) [4][4]f32 {
+        const c = @cos(angle);
+        const s = @sin(angle);
+        return [4][4]f32{
+            [4]f32{ c, -s, 0.0, 0.0 },
+            [4]f32{ s, c, 0.0, 0.0 },
+            [4]f32{ 0.0, 0.0, 1.0, 0.0 },
+            [4]f32{ 0.0, 0.0, 0.0, 1.0 },
+        };
+    }
+
+    fn createDescriptorSetLayout(self: *Self) !void {
+        const ubo_layout_binding = vk.VkDescriptorSetLayoutBinding{
+            .binding = 0,
+            .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = vk.VK_SHADER_STAGE_VERTEX_BIT,
+            .pImmutableSamplers = null,
+        };
+
+        const layout_info = vk.VkDescriptorSetLayoutCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindings = &ubo_layout_binding,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        if (vk.vkCreateDescriptorSetLayout(self.device, &layout_info, null, &self.descriptor_set_layout) != vk.VK_SUCCESS) {
+            return error.DescriptorSetLayoutCreationFailed;
+        }
+    }
+
+    pub fn updateUniformBuffer(self: *Self) void {
         const rotation_matrix = createRotationMatrix(self.rotation);
         const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
         const src = @as([*]const u8, @ptrCast(&rotation_matrix))[0..@sizeOf([4][4]f32)];
