@@ -53,7 +53,7 @@ pub const VulkanRenderer = struct {
     image_available_semaphores: []vk.VkSemaphore,
     render_finished_semaphores: []vk.VkSemaphore,
     in_flight_fences: []vk.VkFence,
-    images_in_flight: []vk.VkFence,
+    images_in_flight: []?vk.VkFence,
     current_frame: usize,
     allocator: std.mem.Allocator,
     rotation: f32,
@@ -1057,38 +1057,40 @@ pub const VulkanRenderer = struct {
     }
 
     fn createSyncObjects(self: *Self) !void {
-        // Create semaphores for each swapchain image
+        // Allocate arrays for sync objects
         self.image_available_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
         self.render_finished_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
         self.in_flight_fences = try std.heap.page_allocator.alloc(vk.VkFence, MAX_FRAMES_IN_FLIGHT);
-        self.images_in_flight = try std.heap.page_allocator.alloc(vk.VkFence, self.swapchain_images.len);
+        self.images_in_flight = try std.heap.page_allocator.alloc(?vk.VkFence, self.swapchain_images.len);
         @memset(self.images_in_flight, null);
 
-        const semaphore_info = vk.VkSemaphoreCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = null,
-            .flags = 0,
-        };
+        // Create semaphores for each swapchain image
+        for (0..self.swapchain_images.len) |i| {
+            const semaphore_info = vk.VkSemaphoreCreateInfo{
+                .sType = vk.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .pNext = null,
+                .flags = 0,
+            };
 
+            if (vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.image_available_semaphores[i]) != vk.VK_SUCCESS) {
+                return error.SemaphoreCreationFailed;
+            }
+
+            if (vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.render_finished_semaphores[i]) != vk.VK_SUCCESS) {
+                return error.SemaphoreCreationFailed;
+            }
+        }
+
+        // Create fences for frames in flight
         const fence_info = vk.VkFenceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .flags = vk.VK_FENCE_CREATE_SIGNALED_BIT,
             .pNext = null,
         };
 
-        // Create semaphores for each swapchain image
-        for (0..self.swapchain_images.len) |i| {
-            if (vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.image_available_semaphores[i]) != vk.VK_SUCCESS or
-                vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.render_finished_semaphores[i]) != vk.VK_SUCCESS)
-            {
-                return error.SyncObjectCreationFailed;
-            }
-        }
-
-        // Create fences for frames in flight
         for (0..MAX_FRAMES_IN_FLIGHT) |i| {
             if (vk.vkCreateFence(self.device, &fence_info, null, &self.in_flight_fences[i]) != vk.VK_SUCCESS) {
-                return error.SyncObjectCreationFailed;
+                return error.FenceCreationFailed;
             }
         }
     }
@@ -1202,6 +1204,15 @@ pub const VulkanRenderer = struct {
             return error.FenceWaitFailed;
         }
 
+        // Reset the fence for the current frame
+        if (vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
+            return error.FenceResetFailed;
+        }
+
+        // Update rotation and uniform buffer
+        self.rotation += 0.01;
+        self.updateUniformBuffer();
+
         // Acquire the next image from the swapchain
         var image_index: u32 = undefined;
         const acquire_result = vk.vkAcquireNextImageKHR(
@@ -1235,11 +1246,6 @@ pub const VulkanRenderer = struct {
         }
         // Mark the image as now being in use by this frame
         self.images_in_flight[image_index] = self.in_flight_fences[self.current_frame];
-
-        // Reset the fence for the current frame
-        if (vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
-            return error.FenceResetFailed;
-        }
 
         // Record the command buffer
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
