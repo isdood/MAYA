@@ -876,320 +876,58 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createCommandPool(self: *Self) !void {
-        const indices = try findQueueFamilies(self.physical_device, self.surface);
-        if (indices.graphics_family == null) {
-            return error.GraphicsQueueFamilyNotFound;
-        }
-
-        const pool_info = vk.VkCommandPoolCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .queueFamilyIndex = indices.graphics_family.?,
-            .flags = vk.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .pNext = null,
-        };
-
-        if (vk.vkCreateCommandPool(self.device, &pool_info, null, &self.command_pool) != vk.VK_SUCCESS) {
-            return error.CommandPoolCreationFailed;
-        }
-    }
-
-    fn createUniformBuffers(self: *Self) !void {
-        const buffer_size = @sizeOf([4][4]f32);
-
-        const buffer_info = vk.VkBufferCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = buffer_size,
-            .usage = vk.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
-            .pNext = null,
-            .flags = 0,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = null,
-        };
-
-        if (vk.vkCreateBuffer(self.device, &buffer_info, null, &self.uniform_buffer) != vk.VK_SUCCESS) {
-            return error.UniformBufferCreationFailed;
-        }
-
-        var mem_requirements: vk.VkMemoryRequirements = undefined;
-        vk.vkGetBufferMemoryRequirements(self.device, self.uniform_buffer, &mem_requirements);
-
-        const alloc_info = vk.VkMemoryAllocateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = mem_requirements.size,
-            .memoryTypeIndex = try self.findMemoryType(
-                mem_requirements.memoryTypeBits,
-                vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            ),
-            .pNext = null,
-        };
-
-        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.uniform_buffer_memory) != vk.VK_SUCCESS) {
-            return error.UniformMemoryAllocationFailed;
-        }
-
-        if (vk.vkBindBufferMemory(self.device, self.uniform_buffer, self.uniform_buffer_memory, 0) != vk.VK_SUCCESS) {
-            return error.UniformMemoryBindingFailed;
-        }
-
-        if (vk.vkMapMemory(self.device, self.uniform_buffer_memory, 0, buffer_size, 0, &self.uniform_buffer_mapped) != vk.VK_SUCCESS) {
-            return error.UniformMemoryMappingFailed;
-        }
-
-        // Initialize the uniform buffer with identity matrix
-        const initial_matrix = [4][4]f32{
-            [4]f32{ 1.0, 0.0, 0.0, 0.0 },
-            [4]f32{ 0.0, 1.0, 0.0, 0.0 },
-            [4]f32{ 0.0, 0.0, 1.0, 0.0 },
-            [4]f32{ 0.0, 0.0, 0.0, 1.0 },
-        };
-        const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
-        const src = @as([*]const u8, @ptrCast(&initial_matrix))[0..@sizeOf([4][4]f32)];
-        @memcpy(dest, src);
-    }
-
-    fn createRotationMatrix(angle: f32) [4][4]f32 {
-        const c = @cos(angle);
-        const s = @sin(angle);
-        return [4][4]f32{
-            [4]f32{ c, -s, 0.0, 0.0 },
-            [4]f32{ s, c, 0.0, 0.0 },
-            [4]f32{ 0.0, 0.0, 1.0, 0.0 },
-            [4]f32{ 0.0, 0.0, 0.0, 1.0 },
-        };
-    }
-
-    fn createDescriptorSetLayout(self: *Self) !void {
-        const ubo_layout_binding = vk.VkDescriptorSetLayoutBinding{
-            .binding = 0,
-            .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = vk.VK_SHADER_STAGE_VERTEX_BIT,
-            .pImmutableSamplers = null,
-        };
-
-        const layout_info = vk.VkDescriptorSetLayoutCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .bindingCount = 1,
-            .pBindings = &ubo_layout_binding,
-            .pNext = null,
-            .flags = 0,
-        };
-
-        if (vk.vkCreateDescriptorSetLayout(self.device, &layout_info, null, &self.descriptor_set_layout) != vk.VK_SUCCESS) {
-            return error.DescriptorSetLayoutCreationFailed;
-        }
-    }
-
-    fn createDescriptorPool(self: *Self) !void {
-        const pool_size = vk.VkDescriptorPoolSize{
-            .type = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-        };
-        const pool_info = vk.VkDescriptorPoolCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-            .poolSizeCount = 1,
-            .pPoolSizes = &pool_size,
-            .maxSets = 1,
-            .pNext = null,
-            .flags = 0,
-        };
-        if (vk.vkCreateDescriptorPool(self.device, &pool_info, null, &self.descriptor_pool) != vk.VK_SUCCESS) {
-            return error.DescriptorPoolCreationFailed;
-        }
-    }
-
-    fn createDescriptorSet(self: *Self) !void {
-        const alloc_info = vk.VkDescriptorSetAllocateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = self.descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &self.descriptor_set_layout,
-            .pNext = null,
-        };
-
-        if (vk.vkAllocateDescriptorSets(self.device, &alloc_info, &self.descriptor_set) != vk.VK_SUCCESS) {
-            return error.DescriptorSetAllocationFailed;
-        }
-
-        const buffer_info = vk.VkDescriptorBufferInfo{
-            .buffer = self.uniform_buffer,
-            .offset = 0,
-            .range = @sizeOf([4][4]f32),
-        };
-
-        const descriptor_write = vk.VkWriteDescriptorSet{
-            .sType = vk.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = self.descriptor_set,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pImageInfo = null,
-            .pBufferInfo = &buffer_info,
-            .pTexelBufferView = null,
-            .pNext = null,
-        };
-
-        vk.vkUpdateDescriptorSets(self.device, 1, &descriptor_write, 0, null);
-    }
-
-    fn createCommandBuffers(self: *Self) !void {
-        self.command_buffers = try std.heap.page_allocator.alloc(vk.VkCommandBuffer, self.framebuffers.len);
-
-        const alloc_info = vk.VkCommandBufferAllocateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = self.command_pool,
-            .level = vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = @intCast(self.command_buffers.len),
-            .pNext = null,
-        };
-
-        if (vk.vkAllocateCommandBuffers(self.device, &alloc_info, self.command_buffers.ptr) != vk.VK_SUCCESS) {
-            return error.CommandBufferAllocationFailed;
-        }
-
-        // Record command buffers
-        for (self.command_buffers, 0..) |command_buffer, i| {
-            try self.recordCommandBuffer(command_buffer, @intCast(i));
-        }
-    }
-
-    fn createSyncObjects(self: *Self) !void {
-        // Allocate arrays for sync objects
-        self.image_available_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
-        self.render_finished_semaphores = try std.heap.page_allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
-        self.in_flight_fences = try std.heap.page_allocator.alloc(vk.VkFence, MAX_FRAMES_IN_FLIGHT);
-        self.images_in_flight = try std.heap.page_allocator.alloc(?vk.VkFence, self.swapchain_images.len);
+    pub fn createSyncObjects(self: *Self) !void {
+        // Create semaphores for each swapchain image
+        self.image_available_semaphores = try self.allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
+        self.render_finished_semaphores = try self.allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
+        self.in_flight_fences = try self.allocator.alloc(vk.VkFence, MAX_FRAMES_IN_FLIGHT);
+        self.images_in_flight = try self.allocator.alloc(?vk.VkFence, self.swapchain_images.len);
         @memset(self.images_in_flight, null);
+
+        const semaphore_info = vk.VkSemaphoreCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = null,
+            .flags = 0,
+        };
+
+        const fence_info = vk.VkFenceCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = null,
+            .flags = vk.VK_FENCE_CREATE_SIGNALED_BIT,
+        };
 
         // Create semaphores for each swapchain image
         for (0..self.swapchain_images.len) |i| {
-            const semaphore_info = vk.VkSemaphoreCreateInfo{
-                .sType = vk.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-                .pNext = null,
-                .flags = 0,
-            };
-
-            if (vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.image_available_semaphores[i]) != vk.VK_SUCCESS) {
-                return error.SemaphoreCreationFailed;
+            if (vk.vkCreateSemaphore(
+                self.device,
+                &semaphore_info,
+                null,
+                &self.image_available_semaphores[i],
+            ) != vk.VK_SUCCESS) {
+                return error.FailedToCreateSemaphore;
             }
 
-            if (vk.vkCreateSemaphore(self.device, &semaphore_info, null, &self.render_finished_semaphores[i]) != vk.VK_SUCCESS) {
-                return error.SemaphoreCreationFailed;
+            if (vk.vkCreateSemaphore(
+                self.device,
+                &semaphore_info,
+                null,
+                &self.render_finished_semaphores[i],
+            ) != vk.VK_SUCCESS) {
+                return error.FailedToCreateSemaphore;
             }
         }
 
         // Create fences for frames in flight
-        const fence_info = vk.VkFenceCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .flags = vk.VK_FENCE_CREATE_SIGNALED_BIT,
-            .pNext = null,
-        };
-
         for (0..MAX_FRAMES_IN_FLIGHT) |i| {
-            if (vk.vkCreateFence(self.device, &fence_info, null, &self.in_flight_fences[i]) != vk.VK_SUCCESS) {
-                return error.FenceCreationFailed;
+            if (vk.vkCreateFence(
+                self.device,
+                &fence_info,
+                null,
+                &self.in_flight_fences[i],
+            ) != vk.VK_SUCCESS) {
+                return error.FailedToCreateFence;
             }
         }
-    }
-
-    fn framebufferResizeCallback(window: *glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
-        _ = width;
-        _ = height;
-        const ptr = glfw.glfwGetWindowUserPointer(window);
-        const self = @as(*Self, @ptrCast(ptr));
-        self.framebuffer_resized = true;
-    }
-
-    fn recreateSwapChain(self: *Self) !void {
-        var width: i32 = 0;
-        var height: i32 = 0;
-        glfw.glfwGetFramebufferSize(self.window, &width, &height);
-        while (width == 0 or height == 0) {
-            glfw.glfwGetFramebufferSize(self.window, &width, &height);
-            glfw.glfwWaitEvents();
-        }
-
-        if (vk.vkDeviceWaitIdle(self.device) != vk.VK_SUCCESS) {
-            return error.DeviceWaitIdleFailed;
-        }
-
-        self.cleanupSwapChain();
-
-        try self.createSwapChain();
-        try self.createImageViews();
-        try self.createDepthResources();
-        try self.createRenderPass();
-        try self.createGraphicsPipeline();
-        try self.createFramebuffers();
-        try self.createVertexBuffer();
-        try self.createCommandBuffers();
-
-        // Recreate sync objects for the new swapchain
-        for (self.in_flight_fences) |fence| {
-            vk.vkDestroyFence(self.device, fence, null);
-        }
-        for (self.render_finished_semaphores) |semaphore| {
-            vk.vkDestroySemaphore(self.device, semaphore, null);
-        }
-        for (self.image_available_semaphores) |semaphore| {
-            vk.vkDestroySemaphore(self.device, semaphore, null);
-        }
-        std.heap.page_allocator.free(self.images_in_flight);
-        std.heap.page_allocator.free(self.image_available_semaphores);
-        std.heap.page_allocator.free(self.render_finished_semaphores);
-        std.heap.page_allocator.free(self.in_flight_fences);
-
-        try self.createSyncObjects();
-    }
-
-    fn cleanupSwapChain(self: *Self) void {
-        // Clean up command buffers
-        if (self.command_buffers.len > 0) {
-            vk.vkFreeCommandBuffers(
-                self.device,
-                self.command_pool,
-                @intCast(self.command_buffers.len),
-                self.command_buffers.ptr,
-            );
-            std.heap.page_allocator.free(self.command_buffers);
-            self.command_buffers = undefined;
-        }
-
-        // Clean up framebuffers
-        for (self.framebuffers) |framebuffer| {
-            vk.vkDestroyFramebuffer(self.device, framebuffer, null);
-        }
-        std.heap.page_allocator.free(self.framebuffers);
-        self.framebuffers = undefined;
-
-        // Clean up depth resources
-        vk.vkDestroyImageView(self.device, self.depth_image_view, null);
-        vk.vkDestroyImage(self.device, self.depth_image, null);
-        vk.vkFreeMemory(self.device, self.depth_image_memory, null);
-
-        // Clean up graphics pipeline
-        vk.vkDestroyPipeline(self.device, self.graphics_pipeline, null);
-        vk.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
-
-        // Clean up render pass
-        vk.vkDestroyRenderPass(self.device, self.render_pass, null);
-
-        // Clean up image views
-        for (self.swapchain_image_views) |image_view| {
-            vk.vkDestroyImageView(self.device, image_view, null);
-        }
-        std.heap.page_allocator.free(self.swapchain_image_views);
-        self.swapchain_image_views = undefined;
-
-        // Clean up swapchain
-        vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
-
-        // Clean up vertex buffer
-        vk.vkDestroyBuffer(self.device, self.vertex_buffer, null);
-        vk.vkFreeMemory(self.device, self.vertex_buffer_memory, null);
     }
 
     pub fn drawFrame(self: *Self) !void {
@@ -1219,7 +957,7 @@ pub const VulkanRenderer = struct {
             self.device,
             self.swapchain,
             std.math.maxInt(u64),
-            self.image_available_semaphores[self.current_frame],
+            self.image_available_semaphores[image_index],
             null,
             &image_index,
         );
@@ -1233,8 +971,7 @@ pub const VulkanRenderer = struct {
         }
 
         // Check if a previous frame is using this image
-        if (self.images_in_flight[image_index] != null) {
-            const fence = self.images_in_flight[image_index];
+        if (self.images_in_flight[image_index]) |fence| {
             if (vk.vkWaitForFences(
                 self.device,
                 1,
@@ -1253,9 +990,9 @@ pub const VulkanRenderer = struct {
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
 
         // Submit the command buffer
-        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
+        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[image_index]};
         const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
+        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[image_index]};
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = wait_semaphores.len,
