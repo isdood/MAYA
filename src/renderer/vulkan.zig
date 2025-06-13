@@ -1401,7 +1401,7 @@ pub const VulkanRenderer = struct {
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .commandPool = self.command_pool,
             .level = vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = @as(u32, @intCast(self.command_buffers.len)),
+            .commandBufferCount = 1,
             .pNext = null,
         };
 
