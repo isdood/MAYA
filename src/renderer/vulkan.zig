@@ -155,7 +155,7 @@ pub const VulkanRenderer = struct {
         vk.vkFreeCommandBuffers(
             self.device,
             self.command_pool,
-            @intCast(self.command_buffers.len),
+            @as(u32, @intCast(self.command_buffers.len)),
             self.command_buffers.ptr,
         );
         vk.vkDestroyCommandPool(self.device, self.command_pool, null);
@@ -1040,28 +1040,14 @@ pub const VulkanRenderer = struct {
     fn recordCommandBuffer(self: *Self, command_buffer: vk.VkCommandBuffer, image_index: u32) !void {
         const begin_info = vk.VkCommandBufferBeginInfo{
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            .flags = vk.VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
-            .pNext = null,
+            .flags = vk.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
             .pInheritanceInfo = null,
+            .pNext = null,
         };
 
         if (vk.vkBeginCommandBuffer(command_buffer, &begin_info) != vk.VK_SUCCESS) {
             return error.CommandBufferBeginFailed;
         }
-
-        const clear_values = [_]vk.VkClearValue{
-            vk.VkClearValue{
-                .color = vk.VkClearColorValue{
-                    .float32 = [_]f32{ 0.0, 0.0, 0.0, 1.0 },
-                },
-            },
-            vk.VkClearValue{
-                .depthStencil = vk.VkClearDepthStencilValue{
-                    .depth = 1.0,
-                    .stencil = 0,
-                },
-            },
-        };
 
         const render_pass_info = vk.VkRenderPassBeginInfo{
             .sType = vk.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -1071,49 +1057,48 @@ pub const VulkanRenderer = struct {
                 .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
                 .extent = self.swapchain_extent,
             },
-            .clearValueCount = clear_values.len,
-            .pClearValues = &clear_values,
+            .clearValueCount = 1,
+            .pClearValues = &[_]vk.VkClearValue{
+                vk.VkClearValue{
+                    .color = vk.VkClearColorValue{
+                        .float32 = [4]f32{ 0.0, 0.0, 0.0, 1.0 },
+                    },
+                },
+            },
             .pNext = null,
         };
 
         vk.vkCmdBeginRenderPass(command_buffer, &render_pass_info, vk.VK_SUBPASS_CONTENTS_INLINE);
-
         vk.vkCmdBindPipeline(command_buffer, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, self.graphics_pipeline);
 
-        const vertex_buffers = [_]vk.VkBuffer{self.vertex_buffer};
-        const offsets = [_]vk.VkDeviceSize{0};
-        vk.vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertex_buffers, &offsets);
-
-        // Bind descriptor set
-        vk.vkCmdBindDescriptorSets(
-            command_buffer,
-            vk.VK_PIPELINE_BIND_POINT_GRAPHICS,
-            self.pipeline_layout,
-            0, // firstSet
-            1, // descriptorSetCount
-            &self.descriptor_set,
-            0, // dynamicOffsetCount
-            null // pDynamicOffsets
-        );
-
-        // Set viewport
         const viewport = vk.VkViewport{
             .x = 0.0,
             .y = 0.0,
-            .width = @floatFromInt(self.swapchain_extent.width),
-            .height = @floatFromInt(self.swapchain_extent.height),
+            .width = @intToFloat(f32, self.swapchain_extent.width),
+            .height = @intToFloat(f32, self.swapchain_extent.height),
             .minDepth = 0.0,
             .maxDepth = 1.0,
         };
         vk.vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
-        // Set scissor
         const scissor = vk.VkRect2D{
             .offset = vk.VkOffset2D{ .x = 0, .y = 0 },
             .extent = self.swapchain_extent,
         };
         vk.vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
+        vk.vkCmdBindDescriptorSets(
+            command_buffer,
+            vk.VK_PIPELINE_BIND_POINT_GRAPHICS,
+            self.pipeline_layout,
+            0,
+            1,
+            &self.descriptor_set,
+            0,
+            null,
+        );
+
+        vk.vkCmdBindVertexBuffers(command_buffer, 0, 1, &self.vertex_buffer, &[_]vk.VkDeviceSize{0});
         vk.vkCmdDraw(command_buffer, 3, 1, 0, 0);
 
         vk.vkCmdEndRenderPass(command_buffer);
@@ -1416,7 +1401,7 @@ pub const VulkanRenderer = struct {
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .commandPool = self.command_pool,
             .level = vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
+            .commandBufferCount = @as(u32, @intCast(self.command_buffers.len)),
             .pNext = null,
         };
 
@@ -1646,5 +1631,21 @@ pub const VulkanRenderer = struct {
         };
 
         vk.vkUpdateDescriptorSets(self.device, 1, &descriptor_write, 0, null);
+    }
+
+    fn createCommandBuffers(self: *Self) !void {
+        self.command_buffers = try self.allocator.alloc(vk.VkCommandBuffer, MAX_FRAMES_IN_FLIGHT);
+
+        const alloc_info = vk.VkCommandBufferAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = self.command_pool,
+            .level = vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = @as(u32, @intCast(self.command_buffers.len)),
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateCommandBuffers(self.device, &alloc_info, self.command_buffers.ptr) != vk.VK_SUCCESS) {
+            return error.CommandBufferAllocationFailed;
+        }
     }
 }; 
