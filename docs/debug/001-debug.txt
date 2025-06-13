@@ -9,47 +9,8 @@ info: Creating command buffer for transfer...
 info: Submitting command buffer...
 info: Waiting for queue idle...
 info: Vertex buffer creation complete
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x18898e30
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x18898e30
-    [1] VkRenderPass 0x100000000010
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x188a07e0
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x188a07e0
-    [1] VkRenderPass 0x100000000010
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x18898e30
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x18898e30
-    [1] VkRenderPass 0x100000000010
-
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x250000000025) is being signaled by VkQueue 0x18783b10, but it may still be in use by VkSwapchainKHR 0x20000000002.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x250000000025) is being signaled by VkQueue 0x3488cd50, but it may still be in use by VkSwapchainKHR 0x20000000002.
 Here are the most recently acquired image indices: [0], 1, 2.
 (brackets mark the last use of VkSemaphore 0x250000000025 in a presentation operation)
 Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x250000000025 may still be in use and cannot be safely reused with image index 2.
@@ -59,23 +20,10 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x250000000025
-    [1] VkQueue 0x18783b10
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x188a07e0
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x188a07e0
-    [1] VkRenderPass 0x100000000010
+    [1] VkQueue 0x3488cd50
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x270000000027) is being signaled by VkQueue 0x18783b10, but it may still be in use by VkSwapchainKHR 0x20000000002.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x270000000027) is being signaled by VkQueue 0x3488cd50, but it may still be in use by VkSwapchainKHR 0x20000000002.
 Here are the most recently acquired image indices: 0, [1], 2, 3.
 (brackets mark the last use of VkSemaphore 0x270000000027 in a presentation operation)
 Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x270000000027 may still be in use and cannot be safely reused with image index 3.
@@ -85,23 +33,10 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x270000000027
-    [1] VkQueue 0x18783b10
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x18898e30
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x18898e30
-    [1] VkRenderPass 0x100000000010
+    [1] VkQueue 0x3488cd50
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x250000000025) is being signaled by VkQueue 0x18783b10, but it may still be in use by VkSwapchainKHR 0x20000000002.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x250000000025) is being signaled by VkQueue 0x3488cd50, but it may still be in use by VkSwapchainKHR 0x20000000002.
 Here are the most recently acquired image indices: 0, 1, [2], 3, 4.
 (brackets mark the last use of VkSemaphore 0x250000000025 in a presentation operation)
 Swapchain image 2 was presented but was not re-acquired, so VkSemaphore 0x250000000025 may still be in use and cannot be safely reused with image index 4.
@@ -111,23 +46,10 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x250000000025
-    [1] VkQueue 0x18783b10
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x188a07e0
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x188a07e0
-    [1] VkRenderPass 0x100000000010
+    [1] VkQueue 0x3488cd50
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x270000000027) is being signaled by VkQueue 0x18783b10, but it may still be in use by VkSwapchainKHR 0x20000000002.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x270000000027) is being signaled by VkQueue 0x3488cd50, but it may still be in use by VkSwapchainKHR 0x20000000002.
 Here are the most recently acquired image indices: 0, 1, 2, [3], 4, 0.
 (brackets mark the last use of VkSemaphore 0x270000000027 in a presentation operation)
 Swapchain image 3 was presented but was not re-acquired, so VkSemaphore 0x270000000027 may still be in use and cannot be safely reused with image index 0.
@@ -137,60 +59,6 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x270000000027
-    [1] VkQueue 0x18783b10
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x18898e30
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x18898e30
-    [1] VkRenderPass 0x100000000010
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x188a07e0
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x188a07e0
-    [1] VkRenderPass 0x100000000010
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x18898e30
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x18898e30
-    [1] VkRenderPass 0x100000000010
-
-Validation Error: [ VUID-VkClearDepthStencilValue-depth-00022 ] | MessageID = 0xf1132ba6
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkCmdBeginRenderPass(): pRenderPassBegin->pClearValues[1].depthStencil.depth is 3370280550400.000000 (not within the [0.0, 1.0] range) but VK_EXT_depth_range_unrestricted extension is not enabled.
-The Vulkan spec states: Unless the VK_EXT_depth_range_unrestricted extension is enabled depth must be between 0.0 and 1.0, inclusive (https://docs.vulkan.org/spec/latest/chapters/clears.html#VUID-VkClearDepthStencilValue-depth-00022)
-Objects: 1
-    [0] VkCommandBuffer 0x188a07e0
-
-Validation Error: [ VUID-VkRenderPassBeginInfo-clearValueCount-00902 ] | MessageID = 0x4de051e3
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkCmdBeginRenderPass(): pRenderPassBegin->clearValueCount is 1 but there must be at least 2 entries in pClearValues array to account for the highest index attachment in VkRenderPass 0x100000000010 that uses VK_ATTACHMENT_LOAD_OP_CLEAR is 2. Note that the pClearValues array is indexed by attachment number so even if some pClearValues entries between 0 and 1 correspond to attachments that aren't cleared they will be ignored.
-The Vulkan spec states: clearValueCount must be greater than the largest attachment index in renderPass specifying a loadOp (or stencilLoadOp, if the attachment has a depth/stencil format) of VK_ATTACHMENT_LOAD_OP_CLEAR (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkRenderPassBeginInfo-clearValueCount-00902)
-Objects: 2
-    [0] VkCommandBuffer 0x188a07e0
-    [1] VkRenderPass 0x100000000010
+    [1] VkQueue 0x3488cd50
 
 fish: Job 1, './zig-out/bin/maya' terminated by signal SIGTERM (Polite quit request)
