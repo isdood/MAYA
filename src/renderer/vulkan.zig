@@ -957,7 +957,7 @@ pub const VulkanRenderer = struct {
             self.device,
             self.swapchain,
             std.math.maxInt(u64),
-            self.image_available_semaphores[self.current_frame],
+            self.image_available_semaphores[image_index],
             null,
             &image_index,
         );
@@ -990,9 +990,9 @@ pub const VulkanRenderer = struct {
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
 
         // Submit the command buffer
-        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
+        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[image_index]};
         const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
+        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[image_index]};
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = wait_semaphores.len,
@@ -1074,8 +1074,8 @@ pub const VulkanRenderer = struct {
         const viewport = vk.VkViewport{
             .x = 0.0,
             .y = 0.0,
-            .width = @intToFloat(f32, self.swapchain_extent.width),
-            .height = @intToFloat(f32, self.swapchain_extent.height),
+            .width = @as(f32, @floatFromInt(self.swapchain_extent.width)),
+            .height = @as(f32, @floatFromInt(self.swapchain_extent.height)),
             .minDepth = 0.0,
             .maxDepth = 1.0,
         };
@@ -1647,5 +1647,35 @@ pub const VulkanRenderer = struct {
         if (vk.vkAllocateCommandBuffers(self.device, &alloc_info, self.command_buffers.ptr) != vk.VK_SUCCESS) {
             return error.CommandBufferAllocationFailed;
         }
+    }
+
+    fn recreateSwapChain(self: *Self) !void {
+        var width: i32 = undefined;
+        var height: i32 = undefined;
+        glfw.glfwGetFramebufferSize(self.window, &width, &height);
+        while (width == 0 or height == 0) {
+            glfw.glfwGetFramebufferSize(self.window, &width, &height);
+            glfw.glfwWaitEvents();
+        }
+
+        _ = vk.vkDeviceWaitIdle(self.device);
+
+        // Clean up old swapchain resources
+        for (self.framebuffers) |framebuffer| {
+            vk.vkDestroyFramebuffer(self.device, framebuffer, null);
+        }
+        std.heap.page_allocator.free(self.framebuffers);
+
+        for (self.swapchain_image_views) |image_view| {
+            vk.vkDestroyImageView(self.device, image_view, null);
+        }
+        std.heap.page_allocator.free(self.swapchain_image_views);
+
+        vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
+
+        // Recreate swapchain
+        try self.createSwapChain();
+        try self.createImageViews();
+        try self.createFramebuffers();
     }
 }; 
