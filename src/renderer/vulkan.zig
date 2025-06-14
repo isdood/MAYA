@@ -957,7 +957,7 @@ pub const VulkanRenderer = struct {
             self.device,
             self.swapchain,
             std.math.maxInt(u64),
-            self.image_available_semaphores[self.current_frame],
+            self.image_available_semaphores[image_index],
             null,
             &image_index,
         );
@@ -990,9 +990,9 @@ pub const VulkanRenderer = struct {
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
 
         // Submit the command buffer
-        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
+        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[image_index]};
         const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
+        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[image_index]};
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = wait_semaphores.len,
@@ -1031,6 +1031,17 @@ pub const VulkanRenderer = struct {
             try self.recreateSwapChain();
         } else if (present_result != vk.VK_SUCCESS) {
             return error.FailedToPresentSwapchainImage;
+        }
+
+        // Wait for the current frame to finish before advancing
+        if (vk.vkWaitForFences(
+            self.device,
+            1,
+            &self.in_flight_fences[self.current_frame],
+            vk.VK_TRUE,
+            std.math.maxInt(u64),
+        ) != vk.VK_SUCCESS) {
+            return error.FenceWaitFailed;
         }
 
         // Advance to the next frame
