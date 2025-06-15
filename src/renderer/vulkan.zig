@@ -342,15 +342,15 @@ pub const VulkanRenderer = struct {
 
         const surface_format = try self.chooseSwapSurfaceFormat(swapchain_support.formats);
         const present_mode = try self.chooseSwapPresentMode(swapchain_support.present_modes);
-        const extent = try self.chooseSwapExtent(swapchain_support.capabilities);
+        const requested_extent = try self.chooseSwapExtent(swapchain_support.capabilities);
 
         var image_count = swapchain_support.capabilities.minImageCount + 1;
         if (swapchain_support.capabilities.maxImageCount > 0 and image_count > swapchain_support.capabilities.maxImageCount) {
             image_count = swapchain_support.capabilities.maxImageCount;
         }
 
-        // Store the extent before creating the swapchain
-        self.swapchain_extent = extent;
+        // Use the requested extent for swapchain creation
+        self.swapchain_extent = requested_extent;
 
         const create_info = vk.VkSwapchainCreateInfoKHR{
             .sType = vk.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -384,6 +384,12 @@ pub const VulkanRenderer = struct {
         errdefer std.heap.page_allocator.free(self.swapchain_images);
 
         _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, self.swapchain_images.ptr);
+
+        // --- NEW: Query the actual surface capabilities after swapchain creation ---
+        var actual_capabilities: vk.VkSurfaceCapabilitiesKHR = undefined;
+        _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(self.physical_device, self.surface, &actual_capabilities);
+        self.swapchain_extent = actual_capabilities.currentExtent;
+        // -------------------------------------------------------------------------
 
         // Store the format for later use
         self.swapchain_image_format = surface_format.format;
