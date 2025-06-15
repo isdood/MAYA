@@ -114,7 +114,9 @@ fn windowCloseCallback(window: ?*glfw.GLFWwindow) callconv(.C) void {
     }
 }
 
-fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: i32, height: i32) callconv(.C) void {
+fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, _width: i32, _height: i32) callconv(.C) void {
+    _ = _width; // Silence unused parameter warning
+    _ = _height; // Silence unused parameter warning
     if (window) |w| {
         const user_ptr = glfw.glfwGetWindowUserPointer(w);
         if (user_ptr) |ptr| {
@@ -139,7 +141,7 @@ pub fn main() !void {
         .flags = 0,
         .restorer = null,
     };
-    try linux.sigaction(linux.SIGTERM, &act, null);
+    try linux.sigaction(15, &act, null); // 15 is SIGTERM
 
     // Initialize window
     var window = try Window.init(1280, 720, "MAYA");
