@@ -420,8 +420,8 @@ pub const VulkanRenderer = struct {
         var height: i32 = undefined;
         glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
 
-        // Add safety margin to prevent edge cases
-        const safety_margin: u32 = 100;
+        // Add larger safety margin for large dimensions
+        const safety_margin: u32 = 400;
         
         // Calculate maximum safe dimensions with aspect ratio preservation
         const max_safe_width = if (capabilities.maxImageExtent.width > safety_margin) 
@@ -453,9 +453,29 @@ pub const VulkanRenderer = struct {
             final_height = @intFromFloat(@as(f32, @floatFromInt(final_width)) / aspect_ratio);
         }
 
-        // Ensure dimensions are within limits
+        // Ensure dimensions are within limits and aligned
         final_width = @min(final_width, max_safe_width);
         final_height = @min(final_height, max_safe_height);
+
+        // Ensure dimensions are aligned to device requirements
+        if (capabilities.minImageExtent.width > 0) {
+            final_width = @divFloor(final_width, capabilities.minImageExtent.width) * capabilities.minImageExtent.width;
+        }
+        if (capabilities.minImageExtent.height > 0) {
+            final_height = @divFloor(final_height, capabilities.minImageExtent.height) * capabilities.minImageExtent.height;
+        }
+
+        // Final safety check - if dimensions are invalid, use current extent
+        if (final_width < capabilities.minImageExtent.width or final_width > capabilities.maxImageExtent.width or
+            final_height < capabilities.minImageExtent.height or final_height > capabilities.maxImageExtent.height) {
+            return capabilities.currentExtent;
+        }
+
+        // Additional check for extremely large dimensions
+        const max_reasonable_dimension: u32 = 8192; // 8K resolution
+        if (final_width > max_reasonable_dimension or final_height > max_reasonable_dimension) {
+            return capabilities.currentExtent;
+        }
 
         return vk.VkExtent2D{
             .width = final_width,
@@ -872,8 +892,8 @@ pub const VulkanRenderer = struct {
                 .renderPass = self.render_pass,
                 .attachmentCount = attachments.len,
                 .pAttachments = &attachments,
-                .width = image_info.extent.width,
-                .height = image_info.extent.height,
+                .width = self.swapchain_extent.width,
+                .height = self.swapchain_extent.height,
                 .layers = 1,
                 .flags = 0,
                 .pNext = null,
