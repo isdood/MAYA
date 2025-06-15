@@ -53,7 +53,7 @@ pub const VulkanRenderer = struct {
     swapchain: vk.VkSwapchainKHR,
     swapchain_images: []vk.VkImage,
     swapchain_image_views: []vk.VkImageView,
-    swapchain_format: vk.VkFormat,
+    swapchain_image_format: vk.VkFormat,
     swapchain_extent: vk.VkExtent2D,
     render_pass: vk.VkRenderPass,
     pipeline_layout: vk.VkPipelineLayout,
@@ -92,7 +92,7 @@ pub const VulkanRenderer = struct {
             .swapchain = undefined,
             .swapchain_images = undefined,
             .swapchain_image_views = undefined,
-            .swapchain_format = undefined,
+            .swapchain_image_format = undefined,
             .swapchain_extent = undefined,
             .render_pass = undefined,
             .pipeline_layout = undefined,
@@ -375,7 +375,7 @@ pub const VulkanRenderer = struct {
         }
 
         self.swapchain = swapchain;
-        self.swapchain_format = surface_format.format;
+        self.swapchain_image_format = surface_format.format;
         self.swapchain_extent = extent;
 
         var swapchain_image_count: u32 = undefined;
@@ -389,6 +389,40 @@ pub const VulkanRenderer = struct {
         if (vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, self.swapchain_images.ptr) != vk.VK_SUCCESS) {
             return error.FailedToGetSwapchainImages;
         }
+
+        // Get the actual image dimensions
+        var image_properties = vk.VkImageSubresourceRange{
+            .aspectMask = vk.VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        };
+
+        // Update the swapchain extent with the actual image dimensions
+        var image_info = vk.VkImageCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .flags = 0,
+            .imageType = vk.VK_IMAGE_TYPE_2D,
+            .format = surface_format.format,
+            .extent = .{
+                .width = extent.width,
+                .height = extent.height,
+                .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = vk.VK_SAMPLE_COUNT_1_BIT,
+            .tiling = vk.VK_IMAGE_TILING_OPTIMAL,
+            .usage = vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+            .initialLayout = vk.VK_IMAGE_LAYOUT_UNDEFINED,
+            .pNext = null,
+        };
+
+        self.swapchain_extent = image_info.extent;
     }
 
     fn chooseSwapSurfaceFormat(available_formats: []vk.VkSurfaceFormatKHR) !vk.VkSurfaceFormatKHR {
@@ -420,9 +454,21 @@ pub const VulkanRenderer = struct {
         var height: i32 = undefined;
         glfw.glfwGetFramebufferSize(self.window, &width, &height);
 
+        // Ensure dimensions are within device limits
+        const max_dimension = @min(capabilities.maxImageExtent.width, capabilities.maxImageExtent.height);
+        const min_dimension = @max(capabilities.minImageExtent.width, capabilities.minImageExtent.height);
+
+        // Clamp dimensions to device limits with a safety margin
+        const safety_margin: u32 = 100; // Add a safety margin to prevent edge cases
+        const max_safe_dimension = if (max_dimension > safety_margin) max_dimension - safety_margin else max_dimension;
+
+        // Clamp dimensions to device limits
+        const clamped_width = @min(@max(capabilities.minImageExtent.width, @as(u32, @intCast(width))), max_safe_dimension);
+        const clamped_height = @min(@max(capabilities.minImageExtent.height, @as(u32, @intCast(height))), max_safe_dimension);
+
         const extent = vk.VkExtent2D{
-            .width = @intCast(@max(capabilities.minImageExtent.width, @min(capabilities.maxImageExtent.width, @as(u32, @intCast(width))))),
-            .height = @intCast(@max(capabilities.minImageExtent.height, @min(capabilities.maxImageExtent.height, @as(u32, @intCast(height))))),
+            .width = clamped_width,
+            .height = clamped_height,
         };
 
         return extent;
@@ -437,7 +483,7 @@ pub const VulkanRenderer = struct {
                 .sType = vk.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = image,
                 .viewType = vk.VK_IMAGE_VIEW_TYPE_2D,
-                .format = self.swapchain_format,
+                .format = self.swapchain_image_format,
                 .components = .{
                     .r = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
                     .g = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -855,13 +901,27 @@ pub const VulkanRenderer = struct {
         for (self.swapchain_image_views, 0..) |image_view, i| {
             const attachments = [_]vk.VkImageView{image_view};
 
-            // Get the actual image dimensions from the swapchain image
-            var image_properties = vk.VkImageSubresourceRange{
-                .aspectMask = vk.VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
+            // Get the actual image dimensions
+            var image_info = vk.VkImageCreateInfo{
+                .sType = vk.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                .flags = 0,
+                .imageType = vk.VK_IMAGE_TYPE_2D,
+                .format = self.swapchain_image_format,
+                .extent = .{
+                    .width = self.swapchain_extent.width,
+                    .height = self.swapchain_extent.height,
+                    .depth = 1,
+                },
+                .mipLevels = 1,
+                .arrayLayers = 1,
+                .samples = vk.VK_SAMPLE_COUNT_1_BIT,
+                .tiling = vk.VK_IMAGE_TILING_OPTIMAL,
+                .usage = vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+                .queueFamilyIndexCount = 0,
+                .pQueueFamilyIndices = null,
+                .initialLayout = vk.VK_IMAGE_LAYOUT_UNDEFINED,
+                .pNext = null,
             };
 
             const framebuffer_info = vk.VkFramebufferCreateInfo{
@@ -869,8 +929,8 @@ pub const VulkanRenderer = struct {
                 .renderPass = self.render_pass,
                 .attachmentCount = attachments.len,
                 .pAttachments = &attachments,
-                .width = self.swapchain_extent.width,
-                .height = self.swapchain_extent.height,
+                .width = image_info.extent.width,
+                .height = image_info.extent.height,
                 .layers = 1,
                 .flags = 0,
                 .pNext = null,
@@ -1641,7 +1701,19 @@ pub const VulkanRenderer = struct {
             glfw.glfwWaitEvents();
         }
 
-        // Create new swapchain with the new dimensions
+        // Get device capabilities
+        const swapchain_support = try self.querySwapChainSupport(self.physical_device);
+        const max_dimension = @min(swapchain_support.capabilities.maxImageExtent.width, swapchain_support.capabilities.maxImageExtent.height);
+
+        // Add a safety margin to prevent edge cases
+        const safety_margin: u32 = 100;
+        const max_safe_dimension = if (max_dimension > safety_margin) max_dimension - safety_margin else max_dimension;
+
+        // Clamp dimensions to device limits
+        const clamped_width = @min(@max(swapchain_support.capabilities.minImageExtent.width, @as(u32, @intCast(width))), max_safe_dimension);
+        const clamped_height = @min(@max(swapchain_support.capabilities.minImageExtent.height, @as(u32, @intCast(height))), max_safe_dimension);
+
+        // Create new swapchain with the clamped dimensions
         try self.createSwapChain();
         try self.createImageViews();
         try self.createRenderPass();
@@ -1663,48 +1735,80 @@ pub const VulkanRenderer = struct {
 
     fn cleanupSwapChain(self: *Self) void {
         // Wait for device to finish operations
-        _ = self.device.deviceWaitIdle();
+        self.device.deviceWaitIdle() catch {};
 
         // Clean up framebuffers
-        for (self.framebuffers) |framebuffer| {
-            self.device.destroyFramebuffer(framebuffer, null);
+        if (self.framebuffers) |framebuffers| {
+            for (framebuffers) |framebuffer| {
+                vk.vkDestroyFramebuffer(self.device, framebuffer, null);
+            }
+            std.heap.page_allocator.free(framebuffers);
+            self.framebuffers = null;
         }
-        std.heap.page_allocator.free(self.framebuffers);
-        self.framebuffers = &.{};
 
         // Clean up command buffers
-        self.device.freeCommandBuffers(self.command_pool, self.command_buffers);
-        std.heap.page_allocator.free(self.command_buffers);
-        self.command_buffers = &.{};
+        if (self.command_buffers) |command_buffers| {
+            vk.vkFreeCommandBuffers(self.device, self.command_pool, @intCast(command_buffers.len), command_buffers.ptr);
+            std.heap.page_allocator.free(command_buffers);
+            self.command_buffers = null;
+        }
 
         // Clean up graphics pipeline
-        self.device.destroyPipeline(self.graphics_pipeline, null);
-        self.device.destroyPipelineLayout(self.pipeline_layout, null);
+        if (self.graphics_pipeline) |pipeline| {
+            vk.vkDestroyPipeline(self.device, pipeline, null);
+            self.graphics_pipeline = null;
+        }
+
+        // Clean up pipeline layout
+        if (self.pipeline_layout) |layout| {
+            vk.vkDestroyPipelineLayout(self.device, layout, null);
+            self.pipeline_layout = null;
+        }
 
         // Clean up render pass
-        self.device.destroyRenderPass(self.render_pass, null);
+        if (self.render_pass) |render_pass| {
+            vk.vkDestroyRenderPass(self.device, render_pass, null);
+            self.render_pass = null;
+        }
 
         // Clean up image views
-        for (self.swapchain_image_views) |image_view| {
-            self.device.destroyImageView(image_view, null);
+        if (self.swapchain_image_views) |image_views| {
+            for (image_views) |image_view| {
+                vk.vkDestroyImageView(self.device, image_view, null);
+            }
+            std.heap.page_allocator.free(image_views);
+            self.swapchain_image_views = null;
         }
-        std.heap.page_allocator.free(self.swapchain_image_views);
-        self.swapchain_image_views = &.{};
 
         // Clean up uniform buffers
-        for (self.uniform_buffers) |buffer| {
-            self.device.destroyBuffer(buffer, null);
+        if (self.uniform_buffers) |uniform_buffers| {
+            for (uniform_buffers) |buffer| {
+                vk.vkDestroyBuffer(self.device, buffer, null);
+            }
+            std.heap.page_allocator.free(uniform_buffers);
+            self.uniform_buffers = null;
         }
-        for (self.uniform_buffers_memory) |memory| {
-            self.device.freeMemory(memory, null);
+
+        // Clean up uniform buffer memory
+        if (self.uniform_buffers_memory) |uniform_buffers_memory| {
+            for (uniform_buffers_memory) |memory| {
+                vk.vkFreeMemory(self.device, memory, null);
+            }
+            std.heap.page_allocator.free(uniform_buffers_memory);
+            self.uniform_buffers_memory = null;
         }
-        std.heap.page_allocator.free(self.uniform_buffers);
-        std.heap.page_allocator.free(self.uniform_buffers_memory);
-        self.uniform_buffers = &.{};
-        self.uniform_buffers_memory = &.{};
 
         // Clean up descriptor pool
-        self.device.destroyDescriptorPool(self.descriptor_pool, null);
+        if (self.descriptor_pool) |pool| {
+            vk.vkDestroyDescriptorPool(self.device, pool, null);
+            self.descriptor_pool = null;
+        }
+
+        // Clean up descriptor set layout
+        if (self.descriptor_set_layout) |layout| {
+            vk.vkDestroyDescriptorSetLayout(self.device, layout, null);
+            self.descriptor_set_layout = null;
+        }
     }
 
     fn createDescriptorSetLayout(self: *Self) !void {
