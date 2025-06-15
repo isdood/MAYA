@@ -430,32 +430,33 @@ pub const VulkanRenderer = struct {
 
     fn createImageViews(self: *Self) !void {
         self.swapchain_image_views = try std.heap.page_allocator.alloc(vk.VkImageView, self.swapchain_images.len);
+        errdefer std.heap.page_allocator.free(self.swapchain_image_views);
 
         for (self.swapchain_images, 0..) |image, i| {
             const create_info = vk.VkImageViewCreateInfo{
                 .sType = vk.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = image,
                 .viewType = vk.VK_IMAGE_VIEW_TYPE_2D,
-                .format = vk.VK_FORMAT_B8G8R8A8_UNORM,
-                .components = vk.VkComponentMapping{
+                .format = self.swapchain_format,
+                .components = .{
                     .r = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
                     .g = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
                     .b = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
                     .a = vk.VK_COMPONENT_SWIZZLE_IDENTITY,
                 },
-                .subresourceRange = vk.VkImageSubresourceRange{
+                .subresourceRange = .{
                     .aspectMask = vk.VK_IMAGE_ASPECT_COLOR_BIT,
                     .baseMipLevel = 0,
                     .levelCount = 1,
                     .baseArrayLayer = 0,
                     .layerCount = 1,
                 },
-                .pNext = null,
                 .flags = 0,
+                .pNext = null,
             };
 
             if (vk.vkCreateImageView(self.device, &create_info, null, &self.swapchain_image_views[i]) != vk.VK_SUCCESS) {
-                return error.ImageViewCreationFailed;
+                return error.FailedToCreateImageView;
             }
         }
     }
@@ -854,6 +855,15 @@ pub const VulkanRenderer = struct {
         for (self.swapchain_image_views, 0..) |image_view, i| {
             const attachments = [_]vk.VkImageView{image_view};
 
+            // Get the actual image dimensions from the swapchain image
+            var image_properties = vk.VkImageSubresourceRange{
+                .aspectMask = vk.VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            };
+
             const framebuffer_info = vk.VkFramebufferCreateInfo{
                 .sType = vk.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = self.render_pass,
@@ -930,6 +940,12 @@ pub const VulkanRenderer = struct {
         // Wait for the previous frame to finish
         _ = try self.device.waitForFences(&[_]vk.VkFence{self.in_flight_fences[self.current_frame]}, vk.VK_TRUE, std.math.maxInt(u64));
 
+        // Check if we need to recreate the swapchain
+        if (self.framebuffer_resized) {
+            try self.recreateSwapChain();
+            return;
+        }
+
         var image_index: u32 = undefined;
         const result = self.device.acquireNextImageKHR(
             self.swapchain,
@@ -984,8 +1000,7 @@ pub const VulkanRenderer = struct {
 
         const present_result = self.device.queuePresentKHR(self.queue, &present_info);
 
-        if (present_result == vk.VK_ERROR_OUT_OF_DATE_KHR or present_result == vk.VK_SUBOPTIMAL_KHR or self.framebuffer_resized) {
-            self.framebuffer_resized = false;
+        if (present_result == vk.VK_ERROR_OUT_OF_DATE_KHR or present_result == vk.VK_SUBOPTIMAL_KHR) {
             try self.recreateSwapChain();
         } else if (present_result != vk.VK_SUCCESS) {
             return error.FailedToPresentSwapchainImage;
@@ -1616,6 +1631,15 @@ pub const VulkanRenderer = struct {
 
         // Clean up old swapchain resources
         self.cleanupSwapChain();
+
+        // Get new window dimensions
+        var width: i32 = undefined;
+        var height: i32 = undefined;
+        glfw.glfwGetFramebufferSize(self.window, &width, &height);
+        while (width == 0 or height == 0) {
+            glfw.glfwGetFramebufferSize(self.window, &width, &height);
+            glfw.glfwWaitEvents();
+        }
 
         // Create new swapchain with the new dimensions
         try self.createSwapChain();
