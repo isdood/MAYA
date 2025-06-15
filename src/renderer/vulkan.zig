@@ -384,6 +384,9 @@ pub const VulkanRenderer = struct {
         errdefer std.heap.page_allocator.free(self.swapchain_images);
 
         _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, self.swapchain_images.ptr);
+
+        // Store the format for later use
+        self.swapchain_image_format = surface_format.format;
     }
 
     fn chooseSwapSurfaceFormat(available_formats: []vk.VkSurfaceFormatKHR) !vk.VkSurfaceFormatKHR {
@@ -1567,18 +1570,9 @@ pub const VulkanRenderer = struct {
         glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
         
         // Wait for valid dimensions
-        var attempts: u32 = 0;
-        const max_attempts: u32 = 10;
-        while ((width == 0 or height == 0) and attempts < max_attempts) {
+        while (width == 0 or height == 0) {
             glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
             glfw.glfwWaitEvents();
-            attempts += 1;
-        }
-
-        // If we still don't have valid dimensions, use minimum size
-        if (width <= 0 or height <= 0) {
-            width = 800;
-            height = 600;
         }
 
         // Wait for any in-flight frames to complete
@@ -1600,7 +1594,7 @@ pub const VulkanRenderer = struct {
     }
 
     fn cleanupSwapChain(self: *Self) !void {
-        // Wait for device to finish operations
+        // Wait for the device to finish operations
         _ = vk.vkDeviceWaitIdle(self.device);
 
         // Free command buffers
@@ -1687,9 +1681,10 @@ pub const VulkanRenderer = struct {
     }
 
     fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: i32, height: i32) callconv(.C) void {
+        _ = window;
         _ = width;
         _ = height;
-        var app = @ptrCast(*Self, @alignCast(@alignOf(*Self), glfw.glfwGetWindowUserPointer(window)));
+        const app = @ptrCast(*Self, @alignCast(@alignOf(*Self), glfw.glfwGetWindowUserPointer(window).?));
         app.framebuffer_resized = true;
     }
 }; 
