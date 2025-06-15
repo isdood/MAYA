@@ -943,29 +943,11 @@ pub const VulkanRenderer = struct {
 
     pub fn drawFrame(self: *Self) !void {
         // Wait for the previous frame to finish
-        if (vk.vkWaitForFences(
-            self.device,
-            1,
-            &self.in_flight_fences[self.current_frame],
-            vk.VK_TRUE,
-            std.math.maxInt(u64),
-        ) != vk.VK_SUCCESS) {
-            return error.FenceWaitFailed;
-        }
+        try self.device.waitForFences(&.{self.in_flight_fences[self.current_frame]}, vk.TRUE, std.math.maxInt(u64));
 
-        // Reset the fence for the current frame
-        if (vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
-            return error.FenceResetFailed;
-        }
-
-        // Update rotation and uniform buffer
-        self.rotation += 0.01;
-        self.updateUniformBuffer();
-
-        // Acquire the next image from the swapchain
+        // Acquire the next image
         var image_index: u32 = undefined;
-        const acquire_result = vk.vkAcquireNextImageKHR(
-            self.device,
+        const result = self.device.acquireNextImageKHR(
             self.swapchain,
             std.math.maxInt(u64),
             self.image_available_semaphores[self.current_frame],
@@ -973,78 +955,38 @@ pub const VulkanRenderer = struct {
             &image_index,
         );
 
-        // Handle swapchain recreation
-        if (acquire_result == vk.VK_ERROR_OUT_OF_DATE_KHR or acquire_result == vk.VK_SUBOPTIMAL_KHR) {
+        if (result == .ERROR_OUT_OF_DATE_KHR) {
             try self.recreateSwapChain();
             return;
-        } else if (acquire_result != vk.VK_SUCCESS) {
-            return error.FailedToAcquireSwapchainImage;
+        } else if (result != .SUCCESS and result != .SUBOPTIMAL_KHR) {
+            return error.FailedToAcquireSwapChainImage;
         }
 
-        // Check if a previous frame is using this image
-        if (self.images_in_flight[image_index]) |fence| {
-            if (vk.vkWaitForFences(
-                self.device,
-                1,
-                &fence,
-                vk.VK_TRUE,
-                std.math.maxInt(u64),
-            ) != vk.VK_SUCCESS) {
-                return error.FenceWaitFailed;
-            }
-        }
+        // Reset the fence for the current frame
+        try self.device.resetFences(&.{self.in_flight_fences[self.current_frame]});
 
-        // Mark the image as now being in use by this frame
-        self.images_in_flight[image_index] = self.in_flight_fences[self.current_frame];
-
-        // Record the command buffer
+        // Record and submit command buffer
         try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
-
-        // Submit the command buffer
-        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
-        const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[image_index]};
-        const submit_info = vk.VkSubmitInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .waitSemaphoreCount = wait_semaphores.len,
-            .pWaitSemaphores = &wait_semaphores,
-            .pWaitDstStageMask = &wait_stages,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &self.command_buffers[self.current_frame],
-            .signalSemaphoreCount = signal_semaphores.len,
-            .pSignalSemaphores = &signal_semaphores,
-            .pNext = null,
-        };
-
-        if (vk.vkQueueSubmit(
-            self.queue,
-            1,
-            &submit_info,
-            self.in_flight_fences[self.current_frame],
-        ) != vk.VK_SUCCESS) {
-            return error.FailedToSubmitDrawCommandBuffer;
-        }
+        try self.submitCommandBuffer(self.command_buffers[self.current_frame]);
 
         // Present the frame
-        const present_info = vk.VkPresentInfoKHR{
-            .sType = vk.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .waitSemaphoreCount = signal_semaphores.len,
-            .pWaitSemaphores = &signal_semaphores,
+        const present_info = vk.PresentInfoKHR{
+            .sType = .PRESENT_INFO_KHR,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &self.render_finished_semaphores[self.current_frame],
             .swapchainCount = 1,
             .pSwapchains = &self.swapchain,
             .pImageIndices = &image_index,
             .pResults = null,
-            .pNext = null,
         };
 
-        const present_result = vk.vkQueuePresentKHR(self.queue, &present_info);
-        if (present_result == vk.VK_ERROR_OUT_OF_DATE_KHR or present_result == vk.VK_SUBOPTIMAL_KHR) {
+        const present_result = self.device.queuePresentKHR(self.queue, &present_info);
+        if (present_result == .ERROR_OUT_OF_DATE_KHR or present_result == .SUBOPTIMAL_KHR) {
             try self.recreateSwapChain();
-        } else if (present_result != vk.VK_SUCCESS) {
-            return error.FailedToPresentSwapchainImage;
+        } else if (present_result != .SUCCESS) {
+            return error.FailedToPresentSwapChainImage;
         }
 
-        // Advance to the next frame
         self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
@@ -1664,30 +1606,67 @@ pub const VulkanRenderer = struct {
         var width: i32 = undefined;
         var height: i32 = undefined;
         glfw.glfwGetFramebufferSize(self.window, &width, &height);
-        while (width == 0 or height == 0) {
-            glfw.glfwGetFramebufferSize(self.window, &width, &height);
-            glfw.glfwWaitEvents();
-        }
 
-        _ = vk.vkDeviceWaitIdle(self.device);
+        // Wait for any in-flight frames to complete
+        try self.device.deviceWaitIdle();
 
         // Clean up old swapchain resources
-        for (self.framebuffers) |framebuffer| {
-            vk.vkDestroyFramebuffer(self.device, framebuffer, null);
-        }
-        std.heap.page_allocator.free(self.framebuffers);
+        self.cleanupSwapChain();
 
-        for (self.swapchain_image_views) |image_view| {
-            vk.vkDestroyImageView(self.device, image_view, null);
-        }
-        std.heap.page_allocator.free(self.swapchain_image_views);
-
-        vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
-
-        // Recreate swapchain
+        // Create new swapchain
         try self.createSwapChain();
         try self.createImageViews();
+        try self.createRenderPass();
+        try self.createGraphicsPipeline();
         try self.createFramebuffers();
+        try self.createUniformBuffers();
+        try self.createDescriptorPool();
+        try self.createDescriptorSets();
+        try self.createCommandBuffers();
+    }
+
+    fn cleanupSwapChain(self: *Self) void {
+        // Wait for device to finish operations
+        _ = self.device.deviceWaitIdle();
+
+        // Clean up framebuffers
+        for (self.framebuffers) |framebuffer| {
+            self.device.destroyFramebuffer(framebuffer, null);
+        }
+        self.framebuffers = &.{};
+
+        // Clean up command buffers
+        self.device.freeCommandBuffers(self.command_pool, self.command_buffers);
+        self.command_buffers = &.{};
+
+        // Clean up graphics pipeline
+        self.device.destroyPipeline(self.graphics_pipeline, null);
+        self.device.destroyPipelineLayout(self.pipeline_layout, null);
+
+        // Clean up render pass
+        self.device.destroyRenderPass(self.render_pass, null);
+
+        // Clean up image views
+        for (self.swapchain_image_views) |image_view| {
+            self.device.destroyImageView(image_view, null);
+        }
+        self.swapchain_image_views = &.{};
+
+        // Clean up swapchain
+        self.device.destroySwapchainKHR(self.swapchain, null);
+
+        // Clean up uniform buffers
+        for (self.uniform_buffers) |buffer| {
+            self.device.destroyBuffer(buffer, null);
+        }
+        for (self.uniform_buffers_memory) |memory| {
+            self.device.freeMemory(memory, null);
+        }
+        self.uniform_buffers = &.{};
+        self.uniform_buffers_memory = &.{};
+
+        // Clean up descriptor pool
+        self.device.destroyDescriptorPool(self.descriptor_pool, null);
     }
 
     fn createDescriptorSetLayout(self: *Self) !void {
