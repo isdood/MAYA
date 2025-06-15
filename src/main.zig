@@ -56,8 +56,12 @@ const Window = struct {
         };
 
         // Set window callbacks
-        glfw.glfwSetWindowCloseCallback(handle, windowCloseCallback);
-        glfw.glfwSetFramebufferSizeCallback(handle, framebufferResizeCallback);
+        if (glfw.glfwSetWindowCloseCallback(handle, windowCloseCallback)) |prev_callback| {
+            _ = prev_callback; // Ignore previous callback
+        }
+        if (glfw.glfwSetFramebufferSizeCallback(handle, framebufferResizeCallback)) |prev_callback| {
+            _ = prev_callback; // Ignore previous callback
+        }
 
         // Initialize Vulkan renderer
         window.vulkan_renderer = try renderer.VulkanRenderer.init(handle);
@@ -127,7 +131,7 @@ fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, _width: i32, _height: i3
 }
 
 fn signalHandler(sig: c_int) callconv(.C) void {
-    _ = @as(c_int, sig); // Silence unused parameter warning
+    _ = sig; // Silence unused parameter warning
     if (g_window) |window| {
         window.should_close = true;
     }
@@ -141,7 +145,7 @@ pub fn main() !void {
         .flags = 0,
         .restorer = null,
     };
-    try linux.sigaction(15, &act, null); // 15 is SIGTERM
+    _ = linux.sigaction(15, &act, null); // 15 is SIGTERM
 
     // Initialize window
     var window = try Window.init(1280, 720, "MAYA");
