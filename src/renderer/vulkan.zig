@@ -338,28 +338,17 @@ pub const VulkanRenderer = struct {
     }
 
     fn createSwapChain(self: *Self) !void {
-        const swap_chain_support = try querySwapChainSupport(self.physical_device, self.surface);
-        const surface_format = try chooseSwapSurfaceFormat(swap_chain_support.formats);
-        const present_mode = try chooseSwapPresentMode(swap_chain_support.present_modes);
-        const extent = try chooseSwapExtent(swap_chain_support.capabilities, self.window);
+        const swapchain_support = try self.querySwapChainSupport(self.physical_device);
+        const surface_format = try self.chooseSwapSurfaceFormat(swapchain_support.formats);
+        const present_mode = try self.chooseSwapPresentMode(swapchain_support.present_modes);
+        const extent = try self.chooseSwapExtent(swapchain_support.capabilities);
 
-        var image_count = swap_chain_support.capabilities.minImageCount + 1;
-        if (swap_chain_support.capabilities.maxImageCount > 0 and image_count > swap_chain_support.capabilities.maxImageCount) {
-            image_count = swap_chain_support.capabilities.maxImageCount;
+        var image_count = swapchain_support.capabilities.minImageCount + 1;
+        if (swapchain_support.capabilities.maxImageCount > 0 and image_count > swapchain_support.capabilities.maxImageCount) {
+            image_count = swapchain_support.capabilities.maxImageCount;
         }
 
-        const indices = try findQueueFamilies(self.physical_device, self.surface);
-        if (indices.graphics_family == null or indices.present_family == null) {
-            return error.QueueFamilyNotFound;
-        }
-
-        const queue_family_indices = [_]u32{ indices.graphics_family.?, indices.present_family.? };
-        const image_sharing_mode = if (indices.graphics_family != indices.present_family)
-            @as(vk.VkSharingMode, vk.VK_SHARING_MODE_CONCURRENT)
-        else
-            @as(vk.VkSharingMode, vk.VK_SHARING_MODE_EXCLUSIVE);
-
-        const swapchain_create_info = vk.VkSwapchainCreateInfoKHR{
+        const create_info = vk.VkSwapchainCreateInfoKHR{
             .sType = vk.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .surface = self.surface,
             .minImageCount = image_count,
@@ -368,38 +357,38 @@ pub const VulkanRenderer = struct {
             .imageExtent = extent,
             .imageArrayLayers = 1,
             .imageUsage = vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            .imageSharingMode = image_sharing_mode,
-            .queueFamilyIndexCount = if (image_sharing_mode == vk.VK_SHARING_MODE_CONCURRENT) 2 else 0,
-            .pQueueFamilyIndices = if (image_sharing_mode == vk.VK_SHARING_MODE_CONCURRENT) &queue_family_indices else null,
-            .preTransform = swap_chain_support.capabilities.currentTransform,
+            .imageSharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+            .preTransform = swapchain_support.capabilities.currentTransform,
             .compositeAlpha = vk.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
             .presentMode = present_mode,
             .clipped = vk.VK_TRUE,
-            .oldSwapchain = null,
-            .pNext = null,
+            .oldSwapchain = self.swapchain,
             .flags = 0,
+            .pNext = null,
         };
 
         var swapchain: vk.VkSwapchainKHR = undefined;
-        const result = vk.vkCreateSwapchainKHR(self.device, &swapchain_create_info, null, &swapchain);
-        if (result != vk.VK_SUCCESS) {
-            std.log.err("Failed to create swapchain: {d}", .{result});
-            return error.SwapchainCreationFailed;
+        if (vk.vkCreateSwapchainKHR(self.device, &create_info, null, &swapchain) != vk.VK_SUCCESS) {
+            return error.FailedToCreateSwapchain;
         }
+
         self.swapchain = swapchain;
-
-        // Get swapchain images
-        var image_count_actual: u32 = 0;
-        _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &image_count_actual, null);
-        if (image_count_actual == 0) {
-            return error.NoSwapchainImages;
-        }
-
-        self.swapchain_images = try std.heap.page_allocator.alloc(vk.VkImage, image_count_actual);
-        _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &image_count_actual, self.swapchain_images.ptr);
-
         self.swapchain_format = surface_format.format;
         self.swapchain_extent = extent;
+
+        var swapchain_image_count: u32 = undefined;
+        if (vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, null) != vk.VK_SUCCESS) {
+            return error.FailedToGetSwapchainImages;
+        }
+
+        self.swapchain_images = try std.heap.page_allocator.alloc(vk.VkImage, swapchain_image_count);
+        errdefer std.heap.page_allocator.free(self.swapchain_images);
+
+        if (vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, self.swapchain_images.ptr) != vk.VK_SUCCESS) {
+            return error.FailedToGetSwapchainImages;
+        }
     }
 
     fn chooseSwapSurfaceFormat(available_formats: []vk.VkSurfaceFormatKHR) !vk.VkSurfaceFormatKHR {
@@ -422,24 +411,18 @@ pub const VulkanRenderer = struct {
         return vk.VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    fn chooseSwapExtent(capabilities: vk.VkSurfaceCapabilitiesKHR, window: *glfw.GLFWwindow) !vk.VkExtent2D {
+    fn chooseSwapExtent(self: *Self, capabilities: vk.VkSurfaceCapabilitiesKHR) !vk.VkExtent2D {
         if (capabilities.currentExtent.width != std.math.maxInt(u32)) {
             return capabilities.currentExtent;
         }
 
         var width: i32 = undefined;
         var height: i32 = undefined;
-        glfw.glfwGetFramebufferSize(window, &width, &height);
+        glfw.glfwGetFramebufferSize(self.window, &width, &height);
 
         const extent = vk.VkExtent2D{
-            .width = @as(u32, @intCast(@max(
-                capabilities.minImageExtent.width,
-                @min(capabilities.maxImageExtent.width, @as(u32, @intCast(@max(0, width))))
-            ))),
-            .height = @as(u32, @intCast(@max(
-                capabilities.minImageExtent.height,
-                @min(capabilities.maxImageExtent.height, @as(u32, @intCast(@max(0, height))))
-            ))),
+            .width = @intCast(@max(capabilities.minImageExtent.width, @min(capabilities.maxImageExtent.width, @as(u32, @intCast(width))))),
+            .height = @intCast(@max(capabilities.minImageExtent.height, @min(capabilities.maxImageExtent.height, @as(u32, @intCast(height))))),
         };
 
         return extent;
@@ -866,9 +849,11 @@ pub const VulkanRenderer = struct {
 
     fn createFramebuffers(self: *Self) !void {
         self.framebuffers = try std.heap.page_allocator.alloc(vk.VkFramebuffer, self.swapchain_image_views.len);
+        errdefer std.heap.page_allocator.free(self.framebuffers);
 
         for (self.swapchain_image_views, 0..) |image_view, i| {
-            const attachments = [_]vk.VkImageView{ image_view, self.depth_image_view };
+            const attachments = [_]vk.VkImageView{image_view};
+
             const framebuffer_info = vk.VkFramebufferCreateInfo{
                 .sType = vk.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = self.render_pass,
@@ -877,12 +862,12 @@ pub const VulkanRenderer = struct {
                 .width = self.swapchain_extent.width,
                 .height = self.swapchain_extent.height,
                 .layers = 1,
-                .pNext = null,
                 .flags = 0,
+                .pNext = null,
             };
 
             if (vk.vkCreateFramebuffer(self.device, &framebuffer_info, null, &self.framebuffers[i]) != vk.VK_SUCCESS) {
-                return error.FramebufferCreationFailed;
+                return error.FailedToCreateFramebuffer;
             }
         }
     }
@@ -943,9 +928,8 @@ pub const VulkanRenderer = struct {
 
     pub fn drawFrame(self: *Self) !void {
         // Wait for the previous frame to finish
-        try self.device.waitForFences(&.{self.in_flight_fences[self.current_frame]}, vk.TRUE, std.math.maxInt(u64));
+        _ = try self.device.waitForFences(&[_]vk.VkFence{self.in_flight_fences[self.current_frame]}, vk.VK_TRUE, std.math.maxInt(u64));
 
-        // Acquire the next image
         var image_index: u32 = undefined;
         const result = self.device.acquireNextImageKHR(
             self.swapchain,
@@ -955,36 +939,56 @@ pub const VulkanRenderer = struct {
             &image_index,
         );
 
-        if (result == .ERROR_OUT_OF_DATE_KHR) {
+        if (result == vk.VK_ERROR_OUT_OF_DATE_KHR) {
             try self.recreateSwapChain();
             return;
-        } else if (result != .SUCCESS and result != .SUBOPTIMAL_KHR) {
-            return error.FailedToAcquireSwapChainImage;
+        } else if (result != vk.VK_SUCCESS and result != vk.VK_SUBOPTIMAL_KHR) {
+            return error.FailedToAcquireSwapchainImage;
         }
 
-        // Reset the fence for the current frame
-        try self.device.resetFences(&.{self.in_flight_fences[self.current_frame]});
+        // Check if a previous frame is using this image
+        if (self.images_in_flight[image_index] != null) {
+            _ = try self.device.waitForFences(&[_]vk.VkFence{self.images_in_flight[image_index].?}, vk.VK_TRUE, std.math.maxInt(u64));
+        }
+        self.images_in_flight[image_index] = self.in_flight_fences[self.current_frame];
 
-        // Record and submit command buffer
-        try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
-        try self.submitCommandBuffer(self.command_buffers[self.current_frame]);
+        try self.updateUniformBuffer(self.current_frame);
 
-        // Present the frame
-        const present_info = vk.PresentInfoKHR{
-            .sType = .PRESENT_INFO_KHR,
+        const submit_info = vk.VkSubmitInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &self.image_available_semaphores[self.current_frame],
+            .pWaitDstStageMask = &[_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
+            .commandBufferCount = 1,
+            .pCommandBuffers = &self.command_buffers[image_index],
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &self.render_finished_semaphores[self.current_frame],
+            .pNext = null,
+        };
+
+        _ = try self.device.resetFences(&[_]vk.VkFence{self.in_flight_fences[self.current_frame]});
+        if (self.device.queueSubmit(self.queue, 1, &submit_info, self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
+            return error.FailedToSubmitDrawCommandBuffer;
+        }
+
+        const present_info = vk.VkPresentInfoKHR{
+            .sType = vk.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = 1,
             .pWaitSemaphores = &self.render_finished_semaphores[self.current_frame],
             .swapchainCount = 1,
             .pSwapchains = &self.swapchain,
             .pImageIndices = &image_index,
             .pResults = null,
+            .pNext = null,
         };
 
         const present_result = self.device.queuePresentKHR(self.queue, &present_info);
-        if (present_result == .ERROR_OUT_OF_DATE_KHR or present_result == .SUBOPTIMAL_KHR) {
+
+        if (present_result == vk.VK_ERROR_OUT_OF_DATE_KHR or present_result == vk.VK_SUBOPTIMAL_KHR or self.framebuffer_resized) {
+            self.framebuffer_resized = false;
             try self.recreateSwapChain();
-        } else if (present_result != .SUCCESS) {
-            return error.FailedToPresentSwapChainImage;
+        } else if (present_result != vk.VK_SUCCESS) {
+            return error.FailedToPresentSwapchainImage;
         }
 
         self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -1603,17 +1607,17 @@ pub const VulkanRenderer = struct {
     }
 
     pub fn recreateSwapChain(self: *Self) !void {
-        var width: i32 = undefined;
-        var height: i32 = undefined;
-        glfw.glfwGetFramebufferSize(self.window, &width, &height);
-
         // Wait for any in-flight frames to complete
         try self.device.deviceWaitIdle();
+
+        // Store old swapchain for cleanup
+        const old_swapchain = self.swapchain;
+        self.swapchain = null;
 
         // Clean up old swapchain resources
         self.cleanupSwapChain();
 
-        // Create new swapchain
+        // Create new swapchain with the new dimensions
         try self.createSwapChain();
         try self.createImageViews();
         try self.createRenderPass();
@@ -1623,6 +1627,14 @@ pub const VulkanRenderer = struct {
         try self.createDescriptorPool();
         try self.createDescriptorSets();
         try self.createCommandBuffers();
+
+        // Clean up old swapchain
+        if (old_swapchain != null) {
+            self.device.destroySwapchainKHR(old_swapchain, null);
+        }
+
+        // Reset the resize flag
+        self.framebuffer_resized = false;
     }
 
     fn cleanupSwapChain(self: *Self) void {
@@ -1633,10 +1645,12 @@ pub const VulkanRenderer = struct {
         for (self.framebuffers) |framebuffer| {
             self.device.destroyFramebuffer(framebuffer, null);
         }
+        std.heap.page_allocator.free(self.framebuffers);
         self.framebuffers = &.{};
 
         // Clean up command buffers
         self.device.freeCommandBuffers(self.command_pool, self.command_buffers);
+        std.heap.page_allocator.free(self.command_buffers);
         self.command_buffers = &.{};
 
         // Clean up graphics pipeline
@@ -1650,10 +1664,8 @@ pub const VulkanRenderer = struct {
         for (self.swapchain_image_views) |image_view| {
             self.device.destroyImageView(image_view, null);
         }
+        std.heap.page_allocator.free(self.swapchain_image_views);
         self.swapchain_image_views = &.{};
-
-        // Clean up swapchain
-        self.device.destroySwapchainKHR(self.swapchain, null);
 
         // Clean up uniform buffers
         for (self.uniform_buffers) |buffer| {
@@ -1662,6 +1674,8 @@ pub const VulkanRenderer = struct {
         for (self.uniform_buffers_memory) |memory| {
             self.device.freeMemory(memory, null);
         }
+        std.heap.page_allocator.free(self.uniform_buffers);
+        std.heap.page_allocator.free(self.uniform_buffers_memory);
         self.uniform_buffers = &.{};
         self.uniform_buffers_memory = &.{};
 
@@ -1689,5 +1703,13 @@ pub const VulkanRenderer = struct {
         if (vk.vkCreateDescriptorSetLayout(self.device, &layout_info, null, &self.descriptor_set_layout) != vk.VK_SUCCESS) {
             return error.DescriptorSetLayoutCreationFailed;
         }
+    }
+
+    fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: i32, height: i32) callconv(.C) void {
+        _ = window;
+        _ = width;
+        _ = height;
+        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), glfw.glfwGetWindowUserPointer(window).?));
+        self.framebuffer_resized = true;
     }
 }; 
