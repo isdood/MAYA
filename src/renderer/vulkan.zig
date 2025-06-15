@@ -339,17 +339,18 @@ pub const VulkanRenderer = struct {
 
     fn createSwapChain(self: *Self) !void {
         const swapchain_support = try self.querySwapChainSupport(self.physical_device);
+
         const surface_format = try self.chooseSwapSurfaceFormat(swapchain_support.formats);
         const present_mode = try self.chooseSwapPresentMode(swapchain_support.present_modes);
         const extent = try self.chooseSwapExtent(swapchain_support.capabilities);
-
-        // Store the extent before creating the swapchain
-        self.swapchain_extent = extent;
 
         var image_count = swapchain_support.capabilities.minImageCount + 1;
         if (swapchain_support.capabilities.maxImageCount > 0 and image_count > swapchain_support.capabilities.maxImageCount) {
             image_count = swapchain_support.capabilities.maxImageCount;
         }
+
+        // Store the extent before creating the swapchain
+        self.swapchain_extent = extent;
 
         const create_info = vk.VkSwapchainCreateInfoKHR{
             .sType = vk.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -367,30 +368,22 @@ pub const VulkanRenderer = struct {
             .compositeAlpha = vk.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
             .presentMode = present_mode,
             .clipped = vk.VK_TRUE,
-            .oldSwapchain = self.swapchain,
-            .flags = 0,
+            .oldSwapchain = null,
             .pNext = null,
+            .flags = 0,
         };
 
-        var swapchain: vk.VkSwapchainKHR = undefined;
-        if (vk.vkCreateSwapchainKHR(self.device, &create_info, null, &swapchain) != vk.VK_SUCCESS) {
+        if (vk.vkCreateSwapchainKHR(self.device, &create_info, null, &self.swapchain) != vk.VK_SUCCESS) {
             return error.FailedToCreateSwapchain;
         }
 
-        self.swapchain = swapchain;
-        self.swapchain_image_format = surface_format.format;
-
-        var swapchain_image_count: u32 = undefined;
-        if (vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, null) != vk.VK_SUCCESS) {
-            return error.FailedToGetSwapchainImages;
-        }
+        var swapchain_image_count: u32 = 0;
+        _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, null);
 
         self.swapchain_images = try std.heap.page_allocator.alloc(vk.VkImage, swapchain_image_count);
         errdefer std.heap.page_allocator.free(self.swapchain_images);
 
-        if (vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, self.swapchain_images.ptr) != vk.VK_SUCCESS) {
-            return error.FailedToGetSwapchainImages;
-        }
+        _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, self.swapchain_images.ptr);
     }
 
     fn chooseSwapSurfaceFormat(available_formats: []vk.VkSurfaceFormatKHR) !vk.VkSurfaceFormatKHR {
@@ -418,71 +411,20 @@ pub const VulkanRenderer = struct {
             return capabilities.currentExtent;
         }
 
-        var width: i32 = undefined;
-        var height: i32 = undefined;
+        var width: i32 = 0;
+        var height: i32 = 0;
         glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
 
-        // Add larger safety margin for large dimensions
-        const safety_margin: u32 = 400;
-        
-        // Calculate maximum safe dimensions with aspect ratio preservation
-        const max_safe_width = if (capabilities.maxImageExtent.width > safety_margin) 
-            capabilities.maxImageExtent.width - safety_margin 
-        else 
-            capabilities.maxImageExtent.width;
-        const max_safe_height = if (capabilities.maxImageExtent.height > safety_margin) 
-            capabilities.maxImageExtent.height - safety_margin 
-        else 
-            capabilities.maxImageExtent.height;
-
-        // Calculate aspect ratio
-        const aspect_ratio = @as(f32, @floatFromInt(width)) / @as(f32, @floatFromInt(height));
-
-        // Clamp dimensions while preserving aspect ratio
-        var final_width = @min(
-            @max(capabilities.minImageExtent.width, @as(u32, @intCast(width))),
-            max_safe_width
-        );
-        var final_height = @min(
-            @max(capabilities.minImageExtent.height, @as(u32, @intCast(height))),
-            max_safe_height
-        );
-
-        // Adjust dimensions to maintain aspect ratio
-        if (final_width > final_height * aspect_ratio) {
-            final_width = @intFromFloat(@as(f32, @floatFromInt(final_height)) * aspect_ratio);
-        } else {
-            final_height = @intFromFloat(@as(f32, @floatFromInt(final_width)) / aspect_ratio);
-        }
-
-        // Ensure dimensions are within limits and aligned
-        final_width = @min(final_width, max_safe_width);
-        final_height = @min(final_height, max_safe_height);
-
-        // Ensure dimensions are aligned to device requirements
-        if (capabilities.minImageExtent.width > 0) {
-            final_width = @divFloor(final_width, capabilities.minImageExtent.width) * capabilities.minImageExtent.width;
-        }
-        if (capabilities.minImageExtent.height > 0) {
-            final_height = @divFloor(final_height, capabilities.minImageExtent.height) * capabilities.minImageExtent.height;
-        }
-
-        // Final safety check - if dimensions are invalid, use current extent
-        if (final_width < capabilities.minImageExtent.width or final_width > capabilities.maxImageExtent.width or
-            final_height < capabilities.minImageExtent.height or final_height > capabilities.maxImageExtent.height) {
-            return capabilities.currentExtent;
-        }
-
-        // Additional check for extremely large dimensions
-        const max_reasonable_dimension: u32 = 8192; // 8K resolution
-        if (final_width > max_reasonable_dimension or final_height > max_reasonable_dimension) {
-            return capabilities.currentExtent;
-        }
-
-        return vk.VkExtent2D{
-            .width = final_width,
-            .height = final_height,
+        var extent = vk.VkExtent2D{
+            .width = @intCast(u32, width),
+            .height = @intCast(u32, height),
         };
+
+        // Clamp the extent to the capabilities
+        extent.width = std.math.max(capabilities.minImageExtent.width, std.math.min(capabilities.maxImageExtent.width, extent.width));
+        extent.height = std.math.max(capabilities.minImageExtent.height, std.math.min(capabilities.maxImageExtent.height, extent.height));
+
+        return extent;
     }
 
     fn createImageViews(self: *Self) !void {
@@ -1599,18 +1541,9 @@ pub const VulkanRenderer = struct {
         glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
         
         // Wait for valid dimensions
-        var attempts: u32 = 0;
-        const max_attempts: u32 = 10;
-        while ((width == 0 or height == 0) and attempts < max_attempts) {
+        while (width == 0 or height == 0) {
             glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
             glfw.glfwWaitEvents();
-            attempts += 1;
-        }
-
-        // If we still don't have valid dimensions, use minimum size
-        if (width <= 0 or height <= 0) {
-            width = 800;
-            height = 600;
         }
 
         // Wait for any in-flight frames to complete
@@ -1640,7 +1573,7 @@ pub const VulkanRenderer = struct {
             vk.vkFreeCommandBuffers(
                 self.device,
                 self.command_pool,
-                @intCast(buffers.len),
+                @intCast(u32, buffers.len),
                 buffers.ptr,
             );
             std.heap.page_allocator.free(buffers);
@@ -1719,6 +1652,8 @@ pub const VulkanRenderer = struct {
     }
 
     fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: i32, height: i32) callconv(.C) void {
+        _ = width;
+        _ = height;
         var app = @ptrCast(*Self, @alignCast(@alignOf(*Self), glfw.glfwGetWindowUserPointer(window)));
         app.framebuffer_resized = true;
     }
