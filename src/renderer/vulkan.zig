@@ -343,6 +343,9 @@ pub const VulkanRenderer = struct {
         const present_mode = try self.chooseSwapPresentMode(swapchain_support.present_modes);
         const extent = try self.chooseSwapExtent(swapchain_support.capabilities);
 
+        // Store the extent before creating the swapchain
+        self.swapchain_extent = extent;
+
         var image_count = swapchain_support.capabilities.minImageCount + 1;
         if (swapchain_support.capabilities.maxImageCount > 0 and image_count > swapchain_support.capabilities.maxImageCount) {
             image_count = swapchain_support.capabilities.maxImageCount;
@@ -354,7 +357,7 @@ pub const VulkanRenderer = struct {
             .minImageCount = image_count,
             .imageFormat = surface_format.format,
             .imageColorSpace = surface_format.colorSpace,
-            .imageExtent = extent,
+            .imageExtent = self.swapchain_extent,
             .imageArrayLayers = 1,
             .imageUsage = vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             .imageSharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
@@ -376,7 +379,6 @@ pub const VulkanRenderer = struct {
 
         self.swapchain = swapchain;
         self.swapchain_image_format = surface_format.format;
-        self.swapchain_extent = extent;
 
         var swapchain_image_count: u32 = undefined;
         if (vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, null) != vk.VK_SUCCESS) {
@@ -863,30 +865,7 @@ pub const VulkanRenderer = struct {
         for (self.swapchain_image_views, 0..) |image_view, i| {
             const attachments = [_]vk.VkImageView{image_view};
 
-            // Get the actual image dimensions from the swapchain image
-            var image_info = vk.VkImageCreateInfo{
-                .sType = vk.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-                .flags = 0,
-                .imageType = vk.VK_IMAGE_TYPE_2D,
-                .format = self.swapchain_image_format,
-                .extent = .{
-                    .width = self.swapchain_extent.width,
-                    .height = self.swapchain_extent.height,
-                    .depth = 1,
-                },
-                .mipLevels = 1,
-                .arrayLayers = 1,
-                .samples = vk.VK_SAMPLE_COUNT_1_BIT,
-                .tiling = vk.VK_IMAGE_TILING_OPTIMAL,
-                .usage = vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
-                .queueFamilyIndexCount = 0,
-                .pQueueFamilyIndices = null,
-                .initialLayout = vk.VK_IMAGE_LAYOUT_UNDEFINED,
-                .pNext = null,
-            };
-
-            // Ensure framebuffer dimensions match image dimensions exactly
+            // Create framebuffer with exact same dimensions as the swapchain image
             const framebuffer_info = vk.VkFramebufferCreateInfo{
                 .sType = vk.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = self.render_pass,
@@ -980,25 +959,28 @@ pub const VulkanRenderer = struct {
             return error.FailedToAcquireSwapchainImage;
         }
 
-        // Reset fence only if we're submitting work
-        _ = vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]);
+        // Check if a previous frame is using this image
+        if (self.images_in_flight[image_index] != null) {
+            _ = vk.vkWaitForFences(self.device, 1, &self.images_in_flight[image_index].?, vk.VK_TRUE, std.math.maxInt(u64));
+        }
+        // Mark the image as now being in use by this frame
+        self.images_in_flight[image_index] = self.in_flight_fences[self.current_frame];
 
-        try self.recordCommandBuffer(self.command_buffers[self.current_frame], image_index);
+        try self.updateUniformBuffer(self.current_frame);
 
-        const wait_semaphores = [_]vk.VkSemaphore{self.image_available_semaphores[self.current_frame]};
-        const wait_stages = [_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        const signal_semaphores = [_]vk.VkSemaphore{self.render_finished_semaphores[self.current_frame]};
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .waitSemaphoreCount = wait_semaphores.len,
-            .pWaitSemaphores = &wait_semaphores,
-            .pWaitDstStageMask = &wait_stages,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &self.image_available_semaphores[self.current_frame],
+            .pWaitDstStageMask = &[_]vk.VkPipelineStageFlags{vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
             .commandBufferCount = 1,
-            .pCommandBuffers = &self.command_buffers[self.current_frame],
-            .signalSemaphoreCount = signal_semaphores.len,
-            .pSignalSemaphores = &signal_semaphores,
+            .pCommandBuffers = &self.command_buffers[image_index],
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &self.render_finished_semaphores[self.current_frame],
             .pNext = null,
         };
+
+        _ = vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]);
 
         if (vk.vkQueueSubmit(self.queue, 1, &submit_info, self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
             return error.FailedToSubmitDrawCommandBuffer;
@@ -1006,8 +988,8 @@ pub const VulkanRenderer = struct {
 
         const present_info = vk.VkPresentInfoKHR{
             .sType = vk.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .waitSemaphoreCount = signal_semaphores.len,
-            .pWaitSemaphores = &signal_semaphores,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &self.render_finished_semaphores[self.current_frame],
             .swapchainCount = 1,
             .pSwapchains = &self.swapchain,
             .pImageIndices = &image_index,
@@ -1737,10 +1719,7 @@ pub const VulkanRenderer = struct {
     }
 
     fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: i32, height: i32) callconv(.C) void {
-        _ = window;
-        _ = width;
-        _ = height;
-        const self = @ptrCast(*Self, @alignCast(@alignOf(Self), glfw.glfwGetWindowUserPointer(window).?));
-        self.framebuffer_resized = true;
+        var app = @ptrCast(*Self, @alignCast(@alignOf(*Self), glfw.glfwGetWindowUserPointer(window)));
+        app.framebuffer_resized = true;
     }
 }; 
