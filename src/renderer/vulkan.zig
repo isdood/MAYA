@@ -415,14 +415,40 @@ pub const VulkanRenderer = struct {
         var height: i32 = 0;
         glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
 
+        // Define maximum reasonable dimensions (4K resolution)
+        const max_reasonable_width: u32 = 3840;
+        const max_reasonable_height: u32 = 2160;
+
+        // Calculate aspect ratio
+        const aspect_ratio = @as(f32, @floatFromInt(width)) / @as(f32, @floatFromInt(height));
+
+        // Calculate initial dimensions with aspect ratio preservation
         var extent = vk.VkExtent2D{
             .width = @intCast(u32, width),
             .height = @intCast(u32, height),
         };
 
-        // Clamp the extent to the capabilities
+        // Clamp to maximum reasonable dimensions while preserving aspect ratio
+        if (extent.width > max_reasonable_width) {
+            extent.width = max_reasonable_width;
+            extent.height = @intFromFloat(@as(f32, @floatFromInt(extent.width)) / aspect_ratio);
+        }
+        if (extent.height > max_reasonable_height) {
+            extent.height = max_reasonable_height;
+            extent.width = @intFromFloat(@as(f32, @floatFromInt(extent.height)) * aspect_ratio);
+        }
+
+        // Ensure dimensions are within device capabilities
         extent.width = std.math.max(capabilities.minImageExtent.width, std.math.min(capabilities.maxImageExtent.width, extent.width));
         extent.height = std.math.max(capabilities.minImageExtent.height, std.math.min(capabilities.maxImageExtent.height, extent.height));
+
+        // Ensure dimensions are aligned to device requirements
+        if (capabilities.minImageExtent.width > 0) {
+            extent.width = @divFloor(extent.width, capabilities.minImageExtent.width) * capabilities.minImageExtent.width;
+        }
+        if (capabilities.minImageExtent.height > 0) {
+            extent.height = @divFloor(extent.height, capabilities.minImageExtent.height) * capabilities.minImageExtent.height;
+        }
 
         return extent;
     }
@@ -1541,9 +1567,18 @@ pub const VulkanRenderer = struct {
         glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
         
         // Wait for valid dimensions
-        while (width == 0 or height == 0) {
+        var attempts: u32 = 0;
+        const max_attempts: u32 = 10;
+        while ((width == 0 or height == 0) and attempts < max_attempts) {
             glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
             glfw.glfwWaitEvents();
+            attempts += 1;
+        }
+
+        // If we still don't have valid dimensions, use minimum size
+        if (width <= 0 or height <= 0) {
+            width = 800;
+            height = 600;
         }
 
         // Wait for any in-flight frames to complete
