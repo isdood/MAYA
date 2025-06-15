@@ -168,7 +168,8 @@ pub fn main() !void {
         const elapsed = current_time - last_frame_time;
 
         if (elapsed < target_frame_time) {
-            std.time.sleep(target_frame_time - elapsed);
+            const sleep_time = @as(u64, @intCast(target_frame_time - elapsed));
+            std.time.sleep(sleep_time);
         }
 
         Window.pollEvents();

@@ -1660,7 +1660,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn recreateSwapChain(self: *Self) !void {
+    pub fn recreateSwapChain(self: *Self) !void {
         var width: i32 = undefined;
         var height: i32 = undefined;
         glfw.glfwGetFramebufferSize(self.window, &width, &height);
