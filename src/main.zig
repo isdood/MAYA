@@ -9,6 +9,10 @@ const vk = @cImport({
 });
 const colors = @import("glimmer/colors.zig").GlimmerColors;
 const renderer = @import("renderer/vulkan.zig");
+const os = std.os;
+const linux = os.linux;
+
+var g_window: ?*Window = null;
 
 const Window = struct {
     handle: ?*glfw.GLFWwindow,
@@ -17,6 +21,8 @@ const Window = struct {
     title: []const u8,
     color_scheme: colors.ColorScheme,
     vulkan_renderer: ?renderer.VulkanRenderer,
+    should_close: bool,
+    framebuffer_resized: bool,
 
     pub fn init(width: u32, height: u32, title: []const u8) !Window {
         if (glfw.glfwInit() == 0) {
@@ -45,7 +51,13 @@ const Window = struct {
             .title = title,
             .color_scheme = colors.ColorScheme.dark(),
             .vulkan_renderer = null,
+            .should_close = false,
+            .framebuffer_resized = false,
         };
+
+        // Set window callbacks
+        glfw.glfwSetWindowCloseCallback(handle, windowCloseCallback);
+        glfw.glfwSetFramebufferSizeCallback(handle, framebufferResizeCallback);
 
         // Initialize Vulkan renderer
         window.vulkan_renderer = try renderer.VulkanRenderer.init(handle);
@@ -64,7 +76,7 @@ const Window = struct {
     }
 
     pub fn shouldClose(self: *Window) bool {
-        return glfw.glfwWindowShouldClose(self.handle) != 0;
+        return self.should_close or glfw.glfwWindowShouldClose(self.handle) != 0;
     }
 
     pub fn pollEvents() void {
@@ -83,19 +95,82 @@ const Window = struct {
 
     pub fn drawFrame(self: *Window) !void {
         if (self.vulkan_renderer) |*vulkan_renderer| {
+            if (self.framebuffer_resized) {
+                try vulkan_renderer.recreateSwapChain();
+                self.framebuffer_resized = false;
+            }
             try vulkan_renderer.drawFrame();
         }
     }
 };
 
+fn windowCloseCallback(window: ?*glfw.GLFWwindow) callconv(.C) void {
+    if (window) |w| {
+        const user_ptr = glfw.glfwGetWindowUserPointer(w);
+        if (user_ptr) |ptr| {
+            const win = @as(*Window, @ptrCast(@alignCast(ptr)));
+            win.should_close = true;
+        }
+    }
+}
+
+fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: i32, height: i32) callconv(.C) void {
+    if (window) |w| {
+        const user_ptr = glfw.glfwGetWindowUserPointer(w);
+        if (user_ptr) |ptr| {
+            const win = @as(*Window, @ptrCast(@alignCast(ptr)));
+            win.framebuffer_resized = true;
+        }
+    }
+}
+
+fn signalHandler(sig: c_int) callconv(.C) void {
+    _ = @as(c_int, sig); // Silence unused parameter warning
+    if (g_window) |window| {
+        window.should_close = true;
+    }
+}
+
 pub fn main() !void {
+    // Set up signal handler
+    var act = linux.Sigaction{
+        .handler = .{ .handler = signalHandler },
+        .mask = linux.empty_sigset,
+        .flags = 0,
+        .restorer = null,
+    };
+    try linux.sigaction(linux.SIGTERM, &act, null);
+
     // Initialize window
     var window = try Window.init(1280, 720, "MAYA");
     defer window.deinit();
 
+    // Set global window pointer for signal handler
+    g_window = &window;
+
+    // Set window user pointer for callbacks
+    if (window.handle) |handle| {
+        glfw.glfwSetWindowUserPointer(handle, &window);
+    }
+
     // Main loop
+    const target_frame_time = 16 * std.time.ns_per_ms; // ~60 FPS
+    var last_frame_time = std.time.milliTimestamp();
+
     while (!window.shouldClose()) {
+        const current_time = std.time.milliTimestamp();
+        const elapsed = current_time - last_frame_time;
+
+        if (elapsed < target_frame_time) {
+            std.time.sleep(target_frame_time - elapsed);
+        }
+
         Window.pollEvents();
         try window.drawFrame();
+
+        last_frame_time = current_time;
     }
+
+    // Clear global window pointer
+    g_window = null;
 } 

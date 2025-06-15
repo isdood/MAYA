@@ -1049,6 +1049,7 @@ pub const VulkanRenderer = struct {
     }
 
     fn recordCommandBuffer(self: *Self, command_buffer: vk.VkCommandBuffer, image_index: u32) !void {
+        std.log.info("Recording command buffer...", .{});
         const begin_info = vk.VkCommandBufferBeginInfo{
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = vk.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
@@ -1059,6 +1060,7 @@ pub const VulkanRenderer = struct {
         if (vk.vkBeginCommandBuffer(command_buffer, &begin_info) != vk.VK_SUCCESS) {
             return error.CommandBufferBeginFailed;
         }
+        std.log.info("Command buffer begun", .{});
 
         const clear_values = [_]vk.VkClearValue{
             vk.VkClearValue{
@@ -1088,7 +1090,10 @@ pub const VulkanRenderer = struct {
         };
 
         vk.vkCmdBeginRenderPass(command_buffer, &render_pass_info, vk.VK_SUBPASS_CONTENTS_INLINE);
+        std.log.info("Render pass begun", .{});
+
         vk.vkCmdBindPipeline(command_buffer, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, self.graphics_pipeline);
+        std.log.info("Graphics pipeline bound", .{});
 
         const viewport = vk.VkViewport{
             .x = 0.0,
@@ -1116,15 +1121,21 @@ pub const VulkanRenderer = struct {
             0,
             null,
         );
+        std.log.info("Descriptor set bound", .{});
 
         vk.vkCmdBindVertexBuffers(command_buffer, 0, 1, &self.vertex_buffer, &[_]vk.VkDeviceSize{0});
+        std.log.info("Vertex buffer bound", .{});
+
         vk.vkCmdDraw(command_buffer, 3, 1, 0, 0);
+        std.log.info("Draw command recorded", .{});
 
         vk.vkCmdEndRenderPass(command_buffer);
+        std.log.info("Render pass ended", .{});
 
         if (vk.vkEndCommandBuffer(command_buffer) != vk.VK_SUCCESS) {
             return error.CommandBufferEndFailed;
         }
+        std.log.info("Command buffer recording complete", .{});
     }
 
     fn findSupportedFormat(
@@ -1510,6 +1521,7 @@ pub const VulkanRenderer = struct {
     }
 
     fn createUniformBuffers(self: *Self) !void {
+        std.log.info("Creating uniform buffer...", .{});
         const buffer_size = @sizeOf([4][4]f32);
 
         const buffer_info = vk.VkBufferCreateInfo{
@@ -1526,6 +1538,7 @@ pub const VulkanRenderer = struct {
         if (vk.vkCreateBuffer(self.device, &buffer_info, null, &self.uniform_buffer) != vk.VK_SUCCESS) {
             return error.UniformBufferCreationFailed;
         }
+        std.log.info("Uniform buffer created", .{});
 
         var mem_requirements: vk.VkMemoryRequirements = undefined;
         vk.vkGetBufferMemoryRequirements(self.device, self.uniform_buffer, &mem_requirements);
@@ -1541,16 +1554,24 @@ pub const VulkanRenderer = struct {
         };
 
         if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.uniform_buffer_memory) != vk.VK_SUCCESS) {
+            vk.vkDestroyBuffer(self.device, self.uniform_buffer, null);
             return error.UniformMemoryAllocationFailed;
         }
+        std.log.info("Uniform buffer memory allocated", .{});
 
         if (vk.vkBindBufferMemory(self.device, self.uniform_buffer, self.uniform_buffer_memory, 0) != vk.VK_SUCCESS) {
+            vk.vkDestroyBuffer(self.device, self.uniform_buffer, null);
+            vk.vkFreeMemory(self.device, self.uniform_buffer_memory, null);
             return error.UniformMemoryBindingFailed;
         }
+        std.log.info("Uniform buffer memory bound", .{});
 
         if (vk.vkMapMemory(self.device, self.uniform_buffer_memory, 0, buffer_size, 0, &self.uniform_buffer_mapped) != vk.VK_SUCCESS) {
+            vk.vkDestroyBuffer(self.device, self.uniform_buffer, null);
+            vk.vkFreeMemory(self.device, self.uniform_buffer_memory, null);
             return error.UniformMemoryMappingFailed;
         }
+        std.log.info("Uniform buffer memory mapped", .{});
 
         // Initialize the uniform buffer with identity matrix
         const initial_matrix = [4][4]f32{
@@ -1562,6 +1583,7 @@ pub const VulkanRenderer = struct {
         const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
         const src = @as([*]const u8, @ptrCast(&initial_matrix))[0..@sizeOf([4][4]f32)];
         @memcpy(dest, src);
+        std.log.info("Uniform buffer initialized with identity matrix", .{});
     }
 
     fn createDescriptorPool(self: *Self) !void {
@@ -1585,6 +1607,7 @@ pub const VulkanRenderer = struct {
     }
 
     fn createDescriptorSet(self: *Self) !void {
+        std.log.info("Creating descriptor set...", .{});
         const alloc_info = vk.VkDescriptorSetAllocateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = self.descriptor_pool,
@@ -1596,6 +1619,7 @@ pub const VulkanRenderer = struct {
         if (vk.vkAllocateDescriptorSets(self.device, &alloc_info, &self.descriptor_set) != vk.VK_SUCCESS) {
             return error.DescriptorSetAllocationFailed;
         }
+        std.log.info("Descriptor set allocated", .{});
 
         const buffer_info = vk.VkDescriptorBufferInfo{
             .buffer = self.uniform_buffer,
@@ -1617,6 +1641,7 @@ pub const VulkanRenderer = struct {
         };
 
         vk.vkUpdateDescriptorSets(self.device, 1, &descriptor_write, 0, null);
+        std.log.info("Descriptor set updated with uniform buffer", .{});
     }
 
     fn createCommandBuffers(self: *Self) !void {
