@@ -1758,4 +1758,71 @@ pub const VulkanRenderer = struct {
 
         return shader_module;
     }
+
+    fn createBuffer(
+        self: *Self,
+        size: vk.VkDeviceSize,
+        usage: vk.VkBufferUsageFlags,
+        properties: vk.VkMemoryPropertyFlags,
+        buffer: *vk.VkBuffer,
+        buffer_memory: *vk.VkDeviceMemory,
+    ) !void {
+        const buffer_info = vk.VkBufferCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = size,
+            .usage = usage,
+            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
+            .pNext = null,
+            .flags = 0,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = null,
+        };
+
+        if (vk.vkCreateBuffer(self.device, &buffer_info, null, buffer) != vk.VK_SUCCESS) {
+            return error.BufferCreationFailed;
+        }
+
+        var mem_requirements: vk.VkMemoryRequirements = undefined;
+        vk.vkGetBufferMemoryRequirements(self.device, buffer.*, &mem_requirements);
+
+        const alloc_info = vk.VkMemoryAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = mem_requirements.size,
+            .memoryTypeIndex = try self.findMemoryType(
+                mem_requirements.memoryTypeBits,
+                properties,
+            ),
+            .pNext = null,
+        };
+
+        if (vk.vkAllocateMemory(self.device, &alloc_info, null, buffer_memory) != vk.VK_SUCCESS) {
+            vk.vkDestroyBuffer(self.device, buffer.*, null);
+            return error.MemoryAllocationFailed;
+        }
+
+        if (vk.vkBindBufferMemory(self.device, buffer.*, buffer_memory.*, 0) != vk.VK_SUCCESS) {
+            vk.vkDestroyBuffer(self.device, buffer.*, null);
+            vk.vkFreeMemory(self.device, buffer_memory.*, null);
+            return error.MemoryBindingFailed;
+        }
+    }
+
+    fn findMemoryType(
+        self: *Self,
+        type_filter: u32,
+        properties: vk.VkMemoryPropertyFlags,
+    ) !u32 {
+        var mem_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
+        vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &mem_properties);
+
+        for (0..mem_properties.memoryTypeCount) |i| {
+            if ((type_filter & (@as(u32, 1) << @intCast(i))) != 0 and
+                (mem_properties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                return @intCast(i);
+            }
+        }
+
+        return error.NoSuitableMemoryType;
+    }
 }; 
