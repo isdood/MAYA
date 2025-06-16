@@ -385,11 +385,19 @@ pub const VulkanRenderer = struct {
 
         _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, self.swapchain_images.ptr);
 
-        // --- NEW: Query the actual surface capabilities after swapchain creation ---
+        // Query the actual surface capabilities after swapchain creation
         var actual_capabilities: vk.VkSurfaceCapabilitiesKHR = undefined;
         _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(self.physical_device, self.surface, &actual_capabilities);
-        self.swapchain_extent = actual_capabilities.currentExtent;
-        // -------------------------------------------------------------------------
+        
+        // Get the actual image dimensions from the first swapchain image
+        var image_info: vk.VkImageCreateInfo = undefined;
+        vk.vkGetImageCreateInfo(self.device, self.swapchain_images[0], &image_info);
+        
+        // Update swapchain extent to match the actual image dimensions
+        self.swapchain_extent = vk.VkExtent2D{
+            .width = image_info.extent.width,
+            .height = image_info.extent.height,
+        };
 
         // Store the format for later use
         self.swapchain_image_format = surface_format.format;
@@ -502,6 +510,7 @@ pub const VulkanRenderer = struct {
     fn createDepthResources(self: *Self) !void {
         const depth_format = try self.findDepthFormat();
 
+        // Create depth image with exact same dimensions as swapchain images
         const image_info = vk.VkImageCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = vk.VK_IMAGE_TYPE_2D,
