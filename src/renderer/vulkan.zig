@@ -1461,7 +1461,7 @@ pub const VulkanRenderer = struct {
 
     pub fn updateUniformBuffer(self: *Self, current_frame: usize) !void {
         const time = @as(f32, @floatCast(glfw.glfwGetTime()));
-        const model = createRotationMatrix(time * @as(f32, @floatFromInt(std.math.pi)) / 2.0);
+        const model = createRotationMatrix(time * @as(f32, std.math.pi) / 2.0);
         const view = createLookAtMatrix(
             [3]f32{ 2.0, 2.0, 2.0 },
             [3]f32{ 0.0, 0.0, 0.0 },
