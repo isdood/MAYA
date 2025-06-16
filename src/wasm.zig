@@ -32,7 +32,7 @@ var is_initialized = false;
 var allocator: std.mem.Allocator = undefined;
 var buffer_pool: [BUFFER_POOL_SIZE]Buffer = undefined;
 var current_buffer_index: usize = 0;
-var result_buffer: ?[]u8 = null;  // Dedicated buffer for results
+var result_memory: []u8 = undefined;  // Fixed memory for results
 
 // Error buffer
 var error_buffer: [1024]u8 = undefined;
@@ -89,16 +89,6 @@ fn resize_buffer(buffer: *Buffer, new_size: usize) !void {
     buffer.is_valid = true;
 }
 
-fn prepare_result_buffer(length: usize) !void {
-    // Free old result buffer if it exists
-    if (result_buffer) |buf| {
-        allocator.free(buf);
-    }
-    
-    // Allocate new result buffer
-    result_buffer = try allocator.alloc(u8, length);
-}
-
 export fn init() u32 {
     if (is_initialized) {
         return @intFromEnum(ErrorCode.Success);
@@ -128,6 +118,20 @@ export fn init() u32 {
         return @intFromEnum(ErrorCode.MemoryAllocationFailed);
     };
     
+    // Allocate fixed result memory
+    result_memory = allocator.alloc(u8, MAX_BUFFER_SIZE) catch {
+        // Clean up other buffers
+        for (&buffer_pool) |*buffer| {
+            if (buffer.data.len > 0) {
+                allocator.free(buffer.data);
+            }
+        }
+        if (pattern_buffer.len > 0) {
+            allocator.free(pattern_buffer);
+        }
+        return @intFromEnum(ErrorCode.MemoryAllocationFailed);
+    };
+    
     // Clear the pattern buffer
     @memset(pattern_buffer, 0);
     
@@ -143,6 +147,11 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
     if (input_len == 0) {
         set_error("[process] Empty input");
         return ErrorCode.InvalidInput;
+    }
+    
+    if (input_len > MAX_BUFFER_SIZE) {
+        set_error("[process] Input too large");
+        return ErrorCode.BufferTooSmall;
     }
     
     // Get next available buffer
@@ -185,16 +194,8 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             buffer.in_use = true;
             buffer.is_valid = true;
             
-            // Prepare result buffer
-            prepare_result_buffer(input_len) catch {
-                buffer.in_use = false;
-                buffer.is_valid = false;
-                set_error("[process] Result buffer allocation failed");
-                return ErrorCode.MemoryAllocationFailed;
-            };
-            
-            // Copy to result buffer
-            @memcpy(result_buffer.?, buffer.data[0..input_len]);
+            // Copy to result memory
+            @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
             
             return ErrorCode.Success;
         }
@@ -230,16 +231,8 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         buffer.in_use = true;
         buffer.is_valid = true;
         
-        // Prepare result buffer
-        prepare_result_buffer(transformed.?.len) catch {
-            buffer.in_use = false;
-            buffer.is_valid = false;
-            set_error("[process] Result buffer allocation failed");
-            return ErrorCode.MemoryAllocationFailed;
-        };
-        
-        // Copy to result buffer
-        @memcpy(result_buffer.?, transformed.?);
+        // Copy to result memory
+        @memcpy(result_memory[0..transformed.?.len], transformed.?);
         
         // Free transformed data
         allocator.free(transformed.?);
@@ -252,50 +245,42 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         buffer.in_use = true;
         buffer.is_valid = true;
         
-        // Prepare result buffer
-        prepare_result_buffer(input_len) catch {
-            buffer.in_use = false;
-            buffer.is_valid = false;
-            set_error("[process] Result buffer allocation failed");
-            return ErrorCode.MemoryAllocationFailed;
-        };
-        
-        // Copy to result buffer
-        @memcpy(result_buffer.?, buffer.data[0..input_len]);
+        // Copy to result memory
+        @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
         
         return ErrorCode.Success;
     }
 }
 
 export fn getResult() [*]const u8 {
-    if (!is_initialized or result_buffer == null) {
+    if (!is_initialized) {
         return &zero_bytes;
     }
-    return result_buffer.?.ptr;
+    return result_memory.ptr;
 }
 
 // Export the buffer size for JavaScript
 export fn getBufferSize() usize {
-    if (!is_initialized or result_buffer == null) {
+    if (!is_initialized) {
         return 0;
     }
-    return result_buffer.?.len;
+    return result_memory.len;
 }
 
 // Export the current length
 export fn getLength() usize {
-    if (!is_initialized or result_buffer == null) {
+    if (!is_initialized) {
         return 0;
     }
-    return result_buffer.?.len;
+    return result_memory.len;
 }
 
 // Export the buffer directly for debugging
 export fn getBuffer() [*]const u8 {
-    if (!is_initialized or result_buffer == null) {
+    if (!is_initialized) {
         return &zero_bytes;
     }
-    return result_buffer.?.ptr;
+    return result_memory.ptr;
 }
 
 // Release the current buffer
@@ -334,12 +319,6 @@ export fn getLastError() u32 {
 // Cleanup function to free memory
 export fn cleanup() void {
     if (is_initialized) {
-        // Free result buffer
-        if (result_buffer) |buf| {
-            allocator.free(buf);
-            result_buffer = null;
-        }
-        
         // Free all buffers in the pool
         for (&buffer_pool) |*buffer| {
             if (buffer.data.len > 0) {
@@ -352,6 +331,12 @@ export fn cleanup() void {
         if (pattern_buffer.len > 0) {
             allocator.free(pattern_buffer);
             pattern_buffer = undefined;
+        }
+        
+        // Free result memory
+        if (result_memory.len > 0) {
+            allocator.free(result_memory);
+            result_memory = undefined;
         }
         
         current_pattern = null;
