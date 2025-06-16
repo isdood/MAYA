@@ -270,27 +270,19 @@ pub const VulkanRenderer = struct {
         var device_count: u32 = undefined;
         _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, null);
         if (device_count == 0) {
-            return error.NoVulkanDevices;
+            return error.NoVulkanDevicesFound;
         }
-
         const devices = try std.heap.page_allocator.alloc(vk.VkPhysicalDevice, device_count);
         defer std.heap.page_allocator.free(devices);
         _ = vk.vkEnumeratePhysicalDevices(self.instance, &device_count, devices.ptr);
-
         for (devices) |device| {
-            var device_properties: vk.VkPhysicalDeviceProperties = undefined;
-            vk.vkGetPhysicalDeviceProperties(device, &device_properties);
-            std.log.info("Found physical device: {s}", .{std.mem.span(@as([*:0]const u8, @ptrCast(&device_properties.deviceName)))});
-
-            if (try isDeviceSuitable(device, self.surface)) {
+            if (isDeviceSuitable(device, self.surface)) {
                 self.physical_device = device;
-                std.log.info("Selected physical device: {s}", .{std.mem.span(@as([*:0]const u8, @ptrCast(&device_properties.deviceName)))});
                 break;
             }
         }
-
         if (self.physical_device == null) {
-            return error.NoSuitableDevice;
+            return error.NoSuitableVulkanDeviceFound;
         }
     }
 
@@ -344,7 +336,7 @@ pub const VulkanRenderer = struct {
     fn createSwapChain(self: *Self) !void {
         const swapchain_support = try self.querySwapChainSupport(self.physical_device);
 
-        const surface_format = try self.chooseSwapSurfaceFormat(swapchain_support.formats);
+        const surface_format = try chooseSwapSurfaceFormat(swapchain_support.formats);
         const present_mode = try self.chooseSwapPresentMode(swapchain_support.present_modes);
         const extent = try self.chooseSwapExtent(swapchain_support.capabilities);
 
@@ -1136,15 +1128,22 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn isDeviceSuitable(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !bool {
-        const indices = try findQueueFamilies(device, surface);
-        const extensions_supported = try checkDeviceExtensionSupport(device);
+    fn isDeviceSuitable(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) bool {
+        const indices = findQueueFamilies(device, surface);
+        const extensions_supported = checkDeviceExtensionSupport(device) catch return false;
         var swap_chain_adequate = false;
         if (extensions_supported) {
-            const swap_chain_support = try querySwapChainSupport(device, surface);
+            const swap_chain_support = querySwapChainSupport(device, surface) catch return false;
+            defer {
+                if (swap_chain_support.formats.len > 0) {
+                    std.heap.page_allocator.free(swap_chain_support.formats);
+                }
+                if (swap_chain_support.present_modes.len > 0) {
+                    std.heap.page_allocator.free(swap_chain_support.present_modes);
+                }
+            }
             swap_chain_adequate = swap_chain_support.formats.len > 0 and swap_chain_support.present_modes.len > 0;
         }
-
         return indices.isComplete() and extensions_supported and swap_chain_adequate;
     }
 
@@ -1706,9 +1705,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: i32, height: i32) callconv(.C) void {
-        _ = width;
-        _ = height;
+    fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
         const app = @ptrCast(*Self, glfw.glfwGetWindowUserPointer(window).?);
         app.framebuffer_resized = true;
     }

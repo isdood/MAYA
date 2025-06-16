@@ -109,6 +109,10 @@ pub fn build(b: *std.Build) void {
     const test_run_step = b.step("test-run", "Run the MAYA language processor test");
     test_run_step.dependOn(&test_run_cmd.step);
 
+    // Create maya-test step
+    const maya_test_step = b.step("maya-test", "Run the MAYA language processor test");
+    maya_test_step.dependOn(&test_run_cmd.step);
+
     // Create test step
     const unit_tests = b.addTest(.{
         .root_source_file = .{ .cwd_relative = "src/main.zig" },

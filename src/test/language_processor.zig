@@ -5,6 +5,7 @@ pub const LanguageProcessor = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     patterns: std.ArrayList(Pattern),
+    running: bool = true,
 
     pub const Pattern = struct {
         name: []const u8,
@@ -54,13 +55,21 @@ pub const LanguageProcessor = struct {
                 print("- {s}: {s}\n", .{ pattern.name, pattern.content });
             }
         } else if (std.mem.eql(u8, cmd, "help")) {
-            try self.printHelp();
+            self.printHelp();
         } else if (std.mem.eql(u8, cmd, "quit")) {
             self.running = false;
         } else {
             print("Unknown command: {s}\n", .{cmd});
             print("Type 'help' for available commands\n", .{});
         }
+    }
+
+    pub fn printHelp() void {
+        print("Available commands:\n", .{});
+        print("  add <name> <content> - Add a new pattern\n", .{});
+        print("  list - List all patterns\n", .{});
+        print("  help - Show this help message\n", .{});
+        print("  quit - Exit the program\n", .{});
     }
 
     pub fn runTests(self: *Self) !void {

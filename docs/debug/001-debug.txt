@@ -1,64 +1,152 @@
-libdecor-gtk-WARNING: Failed to initialize GTK
-Failed to load plugin 'libdecor-gtk.so': failed to init
-info: Found physical device: AMD Radeon RX 7900 XTX
-info: Selected physical device: AMD Radeon RX 7900 XTX
-info: Got graphics queue from family 0
-info: Creating vertex buffer...
-info: Buffer size: 72
-info: Creating command buffer for transfer...
-info: Submitting command buffer...
-info: Waiting for queue idle...
-info: Vertex buffer creation complete
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x250000000025) is being signaled by VkQueue 0x1df2b9f0, but it may still be in use by VkSwapchainKHR 0x20000000002.
-Here are the most recently acquired image indices: [0], 1, 2.
-(brackets mark the last use of VkSemaphore 0x250000000025 in a presentation operation)
-Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x250000000025 may still be in use and cannot be safely reused with image index 2.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-        a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-        b) Consider the VK_EXT_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0x250000000025
-    [1] VkQueue 0x1df2b9f0
+test-run
+└─ run maya-test
+   └─ zig build-exe maya-test Debug native 1 errors
+src/test/language_processor.zig:67:22: error: unused function parameter
+    pub fn printHelp(self: *Self) !void {
+                     ^~~~
+error: the following command failed with 1 compilation errors:
+/usr/bin/zig build-exe -ODebug -Mroot=src/test/main.zig --cache-dir /home/shimmer/MAYA/.zig-cache --global-cache-dir /home/shimmer/.cache/zig --name maya-test --zig-lib-dir /usr/lib/zig/ --listen=- 
+test-run
+└─ run maya-test
+   └─ install
+      └─ install maya
+         └─ zig build-exe maya Debug native 4 errors
+src/renderer/vulkan.zig:277:13: error: local variable is never mutated
+        var devices = try std.heap.page_allocator.alloc(vk.VkPhysicalDevice, device_count);
+            ^~~~~~~
+src/renderer/vulkan.zig:277:13: note: consider using 'const'
+src/renderer/vulkan.zig:1716:21: error: expected 1 argument, found 2
+        const app = @ptrCast(*Self, @alignCast(@alignOf(*Self), glfw.glfwGetWindowUserPointer(window).?));
+                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/renderer/vulkan.zig:343:40: error: no field or member function named 'chooseSwapSurfaceFormat' in 'renderer.vulkan.VulkanRenderer'
+        const surface_format = try self.chooseSwapSurfaceFormat(swapchain_support.formats);
+                                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+src/renderer/vulkan.zig:20:28: note: struct declared here
+pub const VulkanRenderer = struct {
+                           ^~~~~~
+src/renderer/vulkan.zig:398:5: note: 'chooseSwapSurfaceFormat' is not a member function
+    fn chooseSwapSurfaceFormat(available_formats: []vk.VkSurfaceFormatKHR) !vk.VkSurfaceFormatKHR {
+    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/renderer/vulkan.zig:343:40: note: method invocation only supports up to one level of implicit pointer dereferencing
+src/renderer/vulkan.zig:343:40: note: use '.*' to dereference pointer
+referenced by:
+    init: src/renderer/vulkan.zig:129:33
+    init: src/main.zig:67:66
+    5 reference(s) hidden; use '-freference-trace=7' to see all references
+src/renderer/vulkan.zig:1140:13: error: expected type 'bool', found '@typeInfo(@typeInfo(@TypeOf(renderer.vulkan.VulkanRenderer.checkDeviceExtensionSupport)).@"fn".return_type.?).error_union.error_set!bool'
+        if (extensions_supported) {
+            ^~~~~~~~~~~~~~~~~~~~
+src/renderer/vulkan.zig:1140:13: note: cannot convert error union to payload type
+src/renderer/vulkan.zig:1140:13: note: consider using 'try', 'catch', or 'if'
+error: the following command failed with 4 compilation errors:
+/usr/bin/zig build-exe -lglfw -lvulkan -lfreetype -I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/sysprof-6 -lharfbuzz -ODebug -I /usr/include -I /usr/include/freetype2 -I /usr/include/harfbuzz --dep glimmer --dep neural --dep starweave --dep glimmer-colors --dep VK_USE_PLATFORM_XLIB_KHR --dep GLFW_INCLUDE_VULKAN -Mroot=src/main.zig --dep colors -Mglimmer=src/glimmer/patterns.zig -Mneural=src/neural/bridge.zig --dep neural --dep glimmer -Mstarweave=src/starweave/protocol.zig -Mglimmer-colors=src/glimmer/colors.zig -MVK_USE_PLATFORM_XLIB_KHR=src/main.zig -MGLFW_INCLUDE_VULKAN=src/main.zig -Mcolors=src/glimmer/colors.zig -lc --cache-dir /home/shimmer/MAYA/.zig-cache --global-cache-dir /home/shimmer/.cache/zig --name maya --zig-lib-dir /usr/lib/zig/ --listen=- 
+Build Summary: 2/8 steps succeeded; 2 failed
+test-run transitive failure
+└─ run maya-test transitive failure
+   ├─ zig build-exe maya-test Debug native 1 errors
+   └─ install transitive failure
+      └─ install maya transitive failure
+         └─ zig build-exe maya Debug native 4 errors
+error: the following build command failed with exit code 1:
+/home/shimmer/MAYA/.zig-cache/o/811e3d0819ff7293aa54dbd8f87a3907/build /usr/bin/zig /usr/lib/zig /home/shimmer/MAYA /home/shimmer/MAYA/.zig-cache /home/shimmer/.cache/zig --seed 0x9bac5524 -Zd216892740df892f test-run
+ ~/MAYA[1] ►zig build -h                           0.248s (main|💩) 21:42
+Usage: /usr/bin/zig build [steps] [options]
 
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x270000000027) is being signaled by VkQueue 0x1df2b9f0, but it may still be in use by VkSwapchainKHR 0x20000000002.
-Here are the most recently acquired image indices: 0, [1], 2, 3.
-(brackets mark the last use of VkSemaphore 0x270000000027 in a presentation operation)
-Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x270000000027 may still be in use and cannot be safely reused with image index 3.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-        a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-        b) Consider the VK_EXT_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0x270000000027
-    [1] VkQueue 0x1df2b9f0
+Steps:
+  install (default)            Copy build artifacts to prefix path
+  uninstall                    Remove build artifacts from prefix path
+  run                          Run the MAYA GUI
+  test-run                     Run the MAYA language processor test
+  test                         Run unit tests
 
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x250000000025) is being signaled by VkQueue 0x1df2b9f0, but it may still be in use by VkSwapchainKHR 0x20000000002.
-Here are the most recently acquired image indices: 0, 1, [2], 3, 4.
-(brackets mark the last use of VkSemaphore 0x250000000025 in a presentation operation)
-Swapchain image 2 was presented but was not re-acquired, so VkSemaphore 0x250000000025 may still be in use and cannot be safely reused with image index 4.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-        a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-        b) Consider the VK_EXT_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0x250000000025
-    [1] VkQueue 0x1df2b9f0
+General Options:
+  -p, --prefix [path]          Where to install files (default: zig-out)
+  --prefix-lib-dir [path]      Where to install libraries
+  --prefix-exe-dir [path]      Where to install executables
+  --prefix-include-dir [path]  Where to install C header files
 
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x270000000027) is being signaled by VkQueue 0x1df2b9f0, but it may still be in use by VkSwapchainKHR 0x20000000002.
-Here are the most recently acquired image indices: 0, 1, 2, [3], 4, 0.
-(brackets mark the last use of VkSemaphore 0x270000000027 in a presentation operation)
-Swapchain image 3 was presented but was not re-acquired, so VkSemaphore 0x270000000027 may still be in use and cannot be safely reused with image index 0.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-        a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-        b) Consider the VK_EXT_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0x270000000027
-    [1] VkQueue 0x1df2b9f0
+  --release[=mode]             Request release mode, optionally specifying a
+                               preferred optimization mode: fast, safe, small
 
-fish: Job 1, './zig-out/bin/maya' terminated by signal SIGTERM (Polite quit request)
+  -fdarling,  -fno-darling     Integration with system-installed Darling to
+                               execute macOS programs on Linux hosts
+                               (default: no)
+  -fqemu,     -fno-qemu        Integration with system-installed QEMU to execute
+                               foreign-architecture programs on Linux hosts
+                               (default: no)
+  --glibc-runtimes [path]      Enhances QEMU integration by providing glibc built
+                               for multiple foreign architectures, allowing
+                               execution of non-native programs that link with glibc.
+  -frosetta,  -fno-rosetta     Rely on Rosetta to execute x86_64 programs on
+                               ARM64 macOS hosts. (default: no)
+  -fwasmtime, -fno-wasmtime    Integration with system-installed wasmtime to
+                               execute WASI binaries. (default: no)
+  -fwine,     -fno-wine        Integration with system-installed Wine to execute
+                               Windows programs on Linux hosts. (default: no)
+
+  -h, --help                   Print this help and exit
+  -l, --list-steps             Print available steps
+  --verbose                    Print commands before executing them
+  --color [auto|off|on]        Enable or disable colored error messages
+  --prominent-compile-errors   Buffer compile errors and display at end
+  --summary [mode]             Control the printing of the build summary
+    all                        Print the build summary in its entirety
+    new                        Omit cached steps
+    failures                   (Default) Only print failed steps
+    none                       Do not print the build summary
+  -j<N>                        Limit concurrent jobs (default is to use all CPU cores)
+  --maxrss <bytes>             Limit memory usage (default is to use available memory)
+  --skip-oom-steps             Instead of failing, skip steps that would exceed --maxrss
+  --fetch                      Exit after fetching dependency tree
+  --watch                      Continuously rebuild when source files are modified
+  --fuzz                       Continuously search for unit test failures
+  --debounce <ms>              Delay before rebuilding after changed file detected
+     -fincremental             Enable incremental compilation
+  -fno-incremental             Disable incremental compilation
+
+Project-Specific Options:
+  -Dtarget=[string]            The CPU architecture, OS, and ABI to build for
+  -Dcpu=[string]               Target CPU features to add or subtract
+  -Dofmt=[string]              Target object format
+  -Ddynamic-linker=[string]    Path to interpreter on the target system
+  -Doptimize=[enum]            Prioritize performance, safety, or binary size
+                                 Supported Values:
+                                   Debug
+                                   ReleaseSafe
+                                   ReleaseFast
+                                   ReleaseSmall
+
+System Integration Options:
+  --search-prefix [path]       Add a path to look for binaries, libraries, headers
+  --sysroot [path]             Set the system root directory (usually /)
+  --libc [file]                Provide a file which specifies libc paths
+
+  --system [pkgdir]            Disable package fetching; enable all integrations
+  -fsys=[name]                 Enable a system integration
+  -fno-sys=[name]              Disable a system integration
+
+  Available System Integrations:                Enabled:
+  (none)                                        -
+
+Advanced Options:
+  -freference-trace[=num]      How many lines of reference trace should be shown per compile error
+  -fno-reference-trace         Disable reference trace
+  -fallow-so-scripts           Allows .so files to be GNU ld scripts
+  -fno-allow-so-scripts        (default) .so files must be ELF files
+  --build-file [file]          Override path to build.zig
+  --cache-dir [path]           Override path to local Zig cache directory
+  --global-cache-dir [path]    Override path to global Zig cache directory
+  --zig-lib-dir [arg]          Override path to Zig lib directory
+  --build-runner [file]        Override path to build runner
+  --seed [integer]             For shuffling dependency traversal order (default: random)
+  --debug-log [scope]          Enable debugging the compiler
+  --debug-pkg-config           Fail if unknown pkg-config flags encountered
+  --debug-rt                   Debug compiler runtime libraries
+  --verbose-link               Enable compiler debug output for linking
+  --verbose-air                Enable compiler debug output for Zig AIR
+  --verbose-llvm-ir[=file]     Enable compiler debug output for LLVM IR
+  --verbose-llvm-bc=[file]     Enable compiler debug output for LLVM BC
+  --verbose-cimport            Enable compiler debug output for C imports
+  --verbose-cc                 Enable compiler debug output for C compilation
+  --verbose-llvm-cpu-features  Enable compiler debug output for LLVM CPU features
+ ~/MAYA►    
