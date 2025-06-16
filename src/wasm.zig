@@ -25,7 +25,6 @@ const Buffer = struct {
     length: usize,
     in_use: bool,
     is_valid: bool,
-    ref_count: u32,  // Track references to prevent premature freeing
 };
 
 // Global state
@@ -33,6 +32,7 @@ var is_initialized = false;
 var allocator: std.mem.Allocator = undefined;
 var buffer_pool: [BUFFER_POOL_SIZE]Buffer = undefined;
 var current_buffer_index: usize = 0;
+var result_buffer: ?[]u8 = null;  // Dedicated buffer for results
 
 // Error buffer
 var error_buffer: [1024]u8 = undefined;
@@ -66,7 +66,7 @@ fn get_next_buffer() ?*Buffer {
     var i: usize = 0;
     while (i < BUFFER_POOL_SIZE) : (i += 1) {
         const idx = (current_buffer_index + i) % BUFFER_POOL_SIZE;
-        if (!buffer_pool[idx].in_use or buffer_pool[idx].ref_count == 0) {
+        if (!buffer_pool[idx].in_use) {
             current_buffer_index = idx;
             return &buffer_pool[idx];
         }
@@ -89,19 +89,14 @@ fn resize_buffer(buffer: *Buffer, new_size: usize) !void {
     buffer.is_valid = true;
 }
 
-fn acquire_buffer(buffer: *Buffer) void {
-    buffer.ref_count += 1;
-}
-
-fn release_buffer(buffer: *Buffer) void {
-    if (buffer.ref_count > 0) {
-        buffer.ref_count -= 1;
+fn prepare_result_buffer(length: usize) !void {
+    // Free old result buffer if it exists
+    if (result_buffer) |buf| {
+        allocator.free(buf);
     }
-    if (buffer.ref_count == 0) {
-        buffer.in_use = false;
-        buffer.length = 0;
-        buffer.is_valid = true;
-    }
+    
+    // Allocate new result buffer
+    result_buffer = try allocator.alloc(u8, length);
 }
 
 export fn init() u32 {
@@ -120,7 +115,6 @@ export fn init() u32 {
         buffer.length = 0;
         buffer.in_use = false;
         buffer.is_valid = true;
-        buffer.ref_count = 0;
     }
     
     // Allocate pattern buffer
@@ -190,7 +184,18 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             buffer.length = input_len;
             buffer.in_use = true;
             buffer.is_valid = true;
-            acquire_buffer(buffer);
+            
+            // Prepare result buffer
+            prepare_result_buffer(input_len) catch {
+                buffer.in_use = false;
+                buffer.is_valid = false;
+                set_error("[process] Result buffer allocation failed");
+                return ErrorCode.MemoryAllocationFailed;
+            };
+            
+            // Copy to result buffer
+            @memcpy(result_buffer.?, buffer.data[0..input_len]);
+            
             return ErrorCode.Success;
         }
         
@@ -224,7 +229,17 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         buffer.length = transformed.?.len;
         buffer.in_use = true;
         buffer.is_valid = true;
-        acquire_buffer(buffer);
+        
+        // Prepare result buffer
+        prepare_result_buffer(transformed.?.len) catch {
+            buffer.in_use = false;
+            buffer.is_valid = false;
+            set_error("[process] Result buffer allocation failed");
+            return ErrorCode.MemoryAllocationFailed;
+        };
+        
+        // Copy to result buffer
+        @memcpy(result_buffer.?, transformed.?);
         
         // Free transformed data
         allocator.free(transformed.?);
@@ -236,65 +251,51 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         buffer.length = input_len;
         buffer.in_use = true;
         buffer.is_valid = true;
-        acquire_buffer(buffer);
+        
+        // Prepare result buffer
+        prepare_result_buffer(input_len) catch {
+            buffer.in_use = false;
+            buffer.is_valid = false;
+            set_error("[process] Result buffer allocation failed");
+            return ErrorCode.MemoryAllocationFailed;
+        };
+        
+        // Copy to result buffer
+        @memcpy(result_buffer.?, buffer.data[0..input_len]);
         
         return ErrorCode.Success;
     }
 }
 
 export fn getResult() [*]const u8 {
-    if (!is_initialized) {
+    if (!is_initialized or result_buffer == null) {
         return &zero_bytes;
     }
-    
-    const buffer = &buffer_pool[current_buffer_index];
-    if (!buffer.in_use or !buffer.is_valid) {
-        return &zero_bytes;
-    }
-    
-    return buffer.data.ptr;
+    return result_buffer.?.ptr;
 }
 
 // Export the buffer size for JavaScript
 export fn getBufferSize() usize {
-    if (!is_initialized) {
+    if (!is_initialized or result_buffer == null) {
         return 0;
     }
-    
-    const buffer = &buffer_pool[current_buffer_index];
-    if (!buffer.in_use or !buffer.is_valid) {
-        return 0;
-    }
-    
-    return buffer.data.len;
+    return result_buffer.?.len;
 }
 
 // Export the current length
 export fn getLength() usize {
-    if (!is_initialized) {
+    if (!is_initialized or result_buffer == null) {
         return 0;
     }
-    
-    const buffer = &buffer_pool[current_buffer_index];
-    if (!buffer.in_use or !buffer.is_valid) {
-        return 0;
-    }
-    
-    return buffer.length;
+    return result_buffer.?.len;
 }
 
 // Export the buffer directly for debugging
 export fn getBuffer() [*]const u8 {
-    if (!is_initialized) {
+    if (!is_initialized or result_buffer == null) {
         return &zero_bytes;
     }
-    
-    const buffer = &buffer_pool[current_buffer_index];
-    if (!buffer.in_use or !buffer.is_valid) {
-        return &zero_bytes;
-    }
-    
-    return buffer.data.ptr;
+    return result_buffer.?.ptr;
 }
 
 // Release the current buffer
@@ -304,7 +305,9 @@ export fn releaseBuffer() void {
     }
     
     const buffer = &buffer_pool[current_buffer_index];
-    release_buffer(buffer);
+    buffer.in_use = false;
+    buffer.length = 0;
+    buffer.is_valid = true;
 }
 
 // Export pattern information
@@ -331,6 +334,12 @@ export fn getLastError() u32 {
 // Cleanup function to free memory
 export fn cleanup() void {
     if (is_initialized) {
+        // Free result buffer
+        if (result_buffer) |buf| {
+            allocator.free(buf);
+            result_buffer = null;
+        }
+        
         // Free all buffers in the pool
         for (&buffer_pool) |*buffer| {
             if (buffer.data.len > 0) {
