@@ -34,27 +34,12 @@ var buffer_pool: [BUFFER_POOL_SIZE]Buffer = undefined;
 var current_buffer_index: usize = 0;
 var result_memory: []u8 = undefined;  // Fixed memory for results
 var result_length: usize = 0;  // Track actual data length
+var result_valid: bool = false;  // Track if result is valid
+var last_error: ErrorCode = ErrorCode.Success;  // Track last error
 
 // Error buffer
 var error_buffer: [1024]u8 = undefined;
 var error_buffer_len: usize = 0;
-
-fn set_error(msg: []const u8) void {
-    const to_copy = @min(msg.len, error_buffer.len);
-    @memcpy(error_buffer[0..to_copy], msg[0..to_copy]);
-    error_buffer_len = to_copy;
-    if (error_buffer_len < error_buffer.len) {
-        error_buffer[error_buffer_len] = 0;
-    }
-}
-
-export fn getLastErrorMessage() [*]const u8 {
-    return &error_buffer;
-}
-
-export fn getLastErrorMessageLen() usize {
-    return error_buffer_len;
-}
 
 // Create a static zero byte array for null returns
 const zero_bytes = [_]u8{0};
@@ -88,6 +73,21 @@ fn resize_buffer(buffer: *Buffer, new_size: usize) !void {
     }
     buffer.data = new_data;
     buffer.is_valid = true;
+}
+
+fn set_error(msg: []const u8) void {
+    const max_len = @min(msg.len, error_buffer.len - 1);
+    @memcpy(error_buffer[0..max_len], msg[0..max_len]);
+    error_buffer[max_len] = 0;
+    error_buffer_len = max_len;
+}
+
+export fn getLastErrorMessage() [*]const u8 {
+    return &error_buffer;
+}
+
+export fn getLastErrorMessageLen() usize {
+    return error_buffer_len;
 }
 
 export fn init() u32 {
@@ -137,27 +137,33 @@ export fn init() u32 {
     @memset(pattern_buffer, 0);
     
     is_initialized = true;
+    result_valid = false;
+    last_error = ErrorCode.Success;
     return @intFromEnum(ErrorCode.Success);
 }
 
 export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
     // Clear any previous error message
     error_buffer_len = 0;
+    last_error = ErrorCode.Success;
     
     // Validate input
     if (input_len == 0) {
         set_error("[process] Empty input");
+        last_error = ErrorCode.InvalidInput;
         return ErrorCode.InvalidInput;
     }
     
     if (input_len > MAX_BUFFER_SIZE) {
         set_error("[process] Input too large");
+        last_error = ErrorCode.BufferTooSmall;
         return ErrorCode.BufferTooSmall;
     }
     
     // Get next available buffer
     const buffer = get_next_buffer() orelse {
         set_error("[process] No available buffers");
+        last_error = ErrorCode.BufferTooSmall;
         return ErrorCode.BufferTooSmall;
     };
     
@@ -168,6 +174,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             buffer.in_use = false;
             buffer.is_valid = false;
             set_error("[process] Buffer resize failed");
+            last_error = ErrorCode.BufferTooSmall;
             return ErrorCode.BufferTooSmall;
         };
     }
@@ -185,6 +192,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             buffer.in_use = false;
             buffer.is_valid = false;
             set_error("[process] Pattern parse error");
+            last_error = ErrorCode.PatternError;
             return ErrorCode.PatternError;
         };
         
@@ -198,6 +206,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             // Copy to result memory and update length
             @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
             result_length = input_len;
+            result_valid = true;
             
             return ErrorCode.Success;
         }
@@ -207,6 +216,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             buffer.in_use = false;
             buffer.is_valid = false;
             set_error("[process] Pattern apply error");
+            last_error = ErrorCode.PatternError;
             return ErrorCode.PatternError;
         };
         
@@ -214,6 +224,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             buffer.in_use = false;
             buffer.is_valid = false;
             set_error("[process] Pattern transformation failed");
+            last_error = ErrorCode.PatternError;
             return ErrorCode.PatternError;
         }
         
@@ -223,6 +234,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
                 buffer.in_use = false;
                 buffer.is_valid = false;
                 set_error("[process] Buffer resize failed");
+                last_error = ErrorCode.BufferTooSmall;
                 return ErrorCode.BufferTooSmall;
             };
         }
@@ -236,6 +248,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         // Copy to result memory and update length
         @memcpy(result_memory[0..transformed.?.len], transformed.?);
         result_length = transformed.?.len;
+        result_valid = true;
         
         // Free transformed data
         allocator.free(transformed.?);
@@ -251,13 +264,14 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         // Copy to result memory and update length
         @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
         result_length = input_len;
+        result_valid = true;
         
         return ErrorCode.Success;
     }
 }
 
 export fn getResult() [*]const u8 {
-    if (!is_initialized) {
+    if (!is_initialized or !result_valid) {
         return &zero_bytes;
     }
     return result_memory.ptr;
@@ -273,7 +287,7 @@ export fn getBufferSize() usize {
 
 // Export the current length
 export fn getLength() usize {
-    if (!is_initialized) {
+    if (!is_initialized or !result_valid) {
         return 0;
     }
     return result_length;
@@ -281,10 +295,15 @@ export fn getLength() usize {
 
 // Export the buffer directly for debugging
 export fn getBuffer() [*]const u8 {
-    if (!is_initialized) {
+    if (!is_initialized or !result_valid) {
         return &zero_bytes;
     }
     return result_memory.ptr;
+}
+
+// Get the last error code
+export fn getLastError() u32 {
+    return @intFromEnum(last_error);
 }
 
 // Release the current buffer
@@ -297,6 +316,7 @@ export fn releaseBuffer() void {
     buffer.in_use = false;
     buffer.length = 0;
     buffer.is_valid = true;
+    result_valid = false;
 }
 
 // Export pattern information
@@ -312,12 +332,6 @@ export fn getPatternIntensity() f32 {
         return pattern.intensity;
     }
     return 0.0;
-}
-
-// Export the last error code
-var last_error: ErrorCode = .Success;
-export fn getLastError() u32 {
-    return @intFromEnum(last_error);
 }
 
 // Cleanup function to free memory
@@ -345,5 +359,7 @@ export fn cleanup() void {
         
         current_pattern = null;
         is_initialized = false;
+        result_valid = false;
+        last_error = ErrorCode.Success;
     }
 } 
