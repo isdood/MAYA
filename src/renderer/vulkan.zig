@@ -134,7 +134,7 @@ pub const VulkanRenderer = struct {
         };
 
         try self.createInstance();
-        try self.createSurface(window);
+        try self.createSurface();
         try self.pickPhysicalDevice();
         try self.createLogicalDevice();
         try self.createSwapChain();
@@ -152,9 +152,8 @@ pub const VulkanRenderer = struct {
         try self.createCommandBuffers();
         try self.createSyncObjects();
 
-        // Set up framebuffer resize callback
+        _ = glfw.glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
         glfw.glfwSetWindowUserPointer(window, @ptrCast(&self));
-        glfw.glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
         return self;
     }
@@ -264,10 +263,10 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createSurface(self: *Self, window: *glfw.GLFWwindow) !void {
+    fn createSurface(self: *Self) !void {
         const result = glfw.glfwCreateWindowSurface(
             @ptrCast(self.instance),
-            window,
+            self.window,
             null,
             &self.surface,
         );
@@ -1706,7 +1705,7 @@ pub const VulkanRenderer = struct {
     fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
         _ = width;
         _ = height;
-        const app = @as(*Self, @ptrCast(glfw.glfwGetWindowUserPointer(window).?));
+        const app = @as(*Self, @alignCast(@ptrCast(glfw.glfwGetWindowUserPointer(window).?)));
         app.framebuffer_resized = true;
     }
 
