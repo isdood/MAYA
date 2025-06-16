@@ -140,5 +140,5 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    wasm.install();
+    b.installArtifact(wasm);
 }
