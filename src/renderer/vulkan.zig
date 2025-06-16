@@ -646,7 +646,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createGraphicsPipeline(self: *Self) !void {
+    pub fn createGraphicsPipeline(self: *Self) !void {
         const vert_shader_code = try self.readFile("shaders/vert.spv");
         defer std.heap.page_allocator.free(vert_shader_code);
         const frag_shader_code = try self.readFile("shaders/frag.spv");
@@ -1715,7 +1715,7 @@ pub const VulkanRenderer = struct {
         defer file.close();
 
         const file_size = try file.getEndPos();
-        var buffer = try self.allocator.alloc(u8, file_size);
+        const buffer = try self.allocator.alloc(u8, file_size);
         errdefer self.allocator.free(buffer);
 
         const bytes_read = try file.readAll(buffer);
@@ -1724,5 +1724,22 @@ pub const VulkanRenderer = struct {
         }
 
         return buffer;
+    }
+
+    fn createShaderModule(self: *Self, code: []const u8) !vk.VkShaderModule {
+        var create_info = vk.VkShaderModuleCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .codeSize = code.len,
+            .pCode = @ptrCast(@alignCast(code.ptr)),
+            .pNext = null,
+            .flags = 0,
+        };
+
+        var shader_module: vk.VkShaderModule = undefined;
+        if (vk.vkCreateShaderModule(self.device, &create_info, null, &shader_module) != vk.VK_SUCCESS) {
+            return error.FailedToCreateShaderModule;
+        }
+
+        return shader_module;
     }
 }; 
