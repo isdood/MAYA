@@ -317,9 +317,9 @@ pub const VulkanRenderer = struct {
 
         const device_create_info = vk.VkDeviceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .queueCreateInfoCount = @intCast(queue_create_infos.items.len),
+            .queueCreateInfoCount = @as(u32, @intCast(queue_create_infos.items.len)),
             .pQueueCreateInfos = queue_create_infos.items.ptr,
-            .enabledExtensionCount = @intCast(REQUIRED_DEVICE_EXTENSIONS.len),
+            .enabledExtensionCount = @as(u32, @intCast(REQUIRED_DEVICE_EXTENSIONS.len)),
             .ppEnabledExtensionNames = &REQUIRED_DEVICE_EXTENSIONS,
             .enabledLayerCount = 0,
             .ppEnabledLayerNames = null,
@@ -437,8 +437,8 @@ pub const VulkanRenderer = struct {
 
         // Calculate initial dimensions with aspect ratio preservation
         var extent = vk.VkExtent2D{
-            .width = @intCast(u32, width),
-            .height = @intCast(u32, height),
+            .width = @as(u32, @intCast(width)),
+            .height = @as(u32, @intCast(height)),
         };
 
         // Clamp to maximum reasonable dimensions while preserving aspect ratio
@@ -1090,10 +1090,10 @@ pub const VulkanRenderer = struct {
         vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &memory_properties);
 
         for (0..memory_properties.memoryTypeCount) |i| {
-            if ((type_filter & (@as(u32, 1) << @intCast(i))) != 0 and
+            if ((type_filter & (@as(u32, 1) << @as(u32, @intCast(i)))) != 0 and
                 (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
             {
-                return @intCast(i);
+                return @as(u32, @intCast(i));
             }
         }
 
