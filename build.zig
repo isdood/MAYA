@@ -127,4 +127,14 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_unit_tests.step);
 
     b.installArtifact(test_exe);
+
+    // Add a new build step for WebAssembly
+    const wasm = b.addExecutable("maya", "src/main.zig");
+    wasm.setTarget(b.standardTargetOptions(.{
+        .default_target = .{
+            .cpu_arch = .wasm32,
+            .os_tag = .freestanding,
+        },
+    }));
+    wasm.install();
 }
