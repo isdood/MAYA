@@ -474,7 +474,7 @@ pub fn parsePattern(buffer: []const u8) !?GlimmerPattern {
     var pattern = GlimmerPattern.init("GLIMMER Pattern", .quantum_wave);
     
     // Parse metadata
-    var lines = std.mem.split(u8, metadata_section, "\n");
+    var lines = std.mem.splitSequence(u8, metadata_section, "\n");
     while (lines.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t");
         if (std.mem.startsWith(u8, trimmed, "GLIMMER Pattern:")) {
@@ -500,4 +500,28 @@ pub fn parsePattern(buffer: []const u8) !?GlimmerPattern {
     }
     
     return pattern;
+}
+
+/// Apply a GLIMMER pattern to a buffer and return the transformed result
+pub fn applyPattern(pattern: GlimmerPattern, buffer: []const u8, allocator: std.mem.Allocator) !?[]u8 {
+    // For demonstration, we'll transform the buffer by appending pattern info
+    // In a real implementation, this would apply visual or structural changes
+    if (buffer.len == 0) return null;
+
+    // Compose a header with pattern info
+    const header = std.fmt.allocPrint(allocator,
+        "[GLIMMER:{s}|Intensity:{d:.2}|Freq:{d:.2}]\n",
+        .{
+            @tagName(pattern.pattern_type),
+            pattern.intensity,
+            pattern.frequency
+        }
+    ) catch return null;
+
+    // Allocate space for the new buffer
+    var result = try allocator.alloc(u8, header.len + buffer.len);
+    std.mem.copy(u8, result[0..header.len], header);
+    std.mem.copy(u8, result[header.len..], buffer);
+    allocator.free(header);
+    return result;
 } 
