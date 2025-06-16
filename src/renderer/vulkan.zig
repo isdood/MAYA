@@ -340,6 +340,14 @@ pub const VulkanRenderer = struct {
 
     fn createSwapChain(self: *Self) !void {
         const swapchain_support = try self.querySwapChainSupport(self.physical_device, self.surface);
+        defer {
+            if (swapchain_support.formats.len > 0) {
+                std.heap.page_allocator.free(swapchain_support.formats);
+            }
+            if (swapchain_support.present_modes.len > 0) {
+                std.heap.page_allocator.free(swapchain_support.present_modes);
+            }
+        }
 
         const surface_format = try chooseSwapSurfaceFormat(swapchain_support.formats);
         const present_mode = try chooseSwapPresentMode(swapchain_support.present_modes);
@@ -1107,7 +1115,7 @@ pub const VulkanRenderer = struct {
     }
 
     fn isDeviceSuitable(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) bool {
-        const indices = findQueueFamilies(device, surface);
+        const indices = findQueueFamilies(device, surface) catch return false;
         const extensions_supported = checkDeviceExtensionSupport(device) catch return false;
         var swap_chain_adequate = false;
         if (extensions_supported) {
@@ -1179,7 +1187,7 @@ pub const VulkanRenderer = struct {
         return true;
     }
 
-    fn querySwapChainSupport(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
+    fn querySwapChainSupport(self: *Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
         var details = SwapChainSupportDetails{
             .capabilities = undefined,
             .formats = undefined,
