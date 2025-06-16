@@ -32,6 +32,14 @@ pub const LanguageProcessor = struct {
     }
 
     pub fn addPattern(self: *Self, name: []const u8, content: []const u8, metadata: ?[]const u8) !void {
+        // Validate input
+        if (name.len == 0) {
+            return error.InvalidPattern;
+        }
+        if (content.len == 0) {
+            return error.InvalidPattern;
+        }
+
         const pattern = Pattern{
             .name = try self.allocator.dupe(u8, name),
             .content = try self.allocator.dupe(u8, content),
