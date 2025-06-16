@@ -61,9 +61,11 @@
                 console.log('Input length:', inputBytes.length);
                 console.log('Buffer size:', instance.exports.getBufferSize());
                 
-                // Allocate memory for input in WASM
-                const inputPtr = instance.exports.memory.grow(Math.ceil(inputBytes.length / 65536));
+                // Get the memory view
                 const memory = new Uint8Array(instance.exports.memory.buffer);
+                
+                // Find a safe location in memory to write our input
+                const inputPtr = 0; // Start at the beginning of memory
                 
                 // Copy input to WASM memory
                 memory.set(inputBytes, inputPtr);
