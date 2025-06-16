@@ -101,10 +101,12 @@
         }
 
         async function init() {
+            let instance = null;
             try {
                 const response = await fetch('maya.wasm');
                 const bytes = await response.arrayBuffer();
-                const { instance } = await WebAssembly.instantiate(bytes, {});
+                const wasmModule = await WebAssembly.instantiate(bytes, {});
+                instance = wasmModule.instance;
                 
                 console.log('WASM module loaded');
                 console.log('Exported functions:', Object.keys(instance.exports));
@@ -161,9 +163,6 @@
                     `).join('')}
                 `;
                 
-                // Cleanup
-                instance.exports.cleanup();
-                
             } catch (error) {
                 const output = document.getElementById('output');
                 output.innerHTML = `
@@ -171,6 +170,16 @@
                     <pre>${error.stack}</pre>
                 `;
                 console.error('Error:', error);
+            } finally {
+                // Cleanup if instance exists and has cleanup function
+                if (instance && typeof instance.exports.cleanup === 'function') {
+                    try {
+                        instance.exports.cleanup();
+                        console.log('WASM memory cleaned up successfully');
+                    } catch (cleanupError) {
+                        console.warn('Cleanup failed:', cleanupError);
+                    }
+                }
             }
         }
         
