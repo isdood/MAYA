@@ -438,8 +438,8 @@ pub const VulkanRenderer = struct {
             .height = @intCast(height),
         };
 
-        extent.width = math.max(capabilities.minImageExtent.width, math.min(capabilities.maxImageExtent.width, extent.width));
-        extent.height = math.max(capabilities.minImageExtent.height, math.min(capabilities.maxImageExtent.height, extent.height));
+        extent.width = @max(capabilities.minImageExtent.width, @min(capabilities.maxImageExtent.width, extent.width));
+        extent.height = @max(capabilities.minImageExtent.height, @min(capabilities.maxImageExtent.height, extent.height));
 
         return extent;
     }
@@ -1119,7 +1119,7 @@ pub const VulkanRenderer = struct {
         const extensions_supported = checkDeviceExtensionSupport(device) catch return false;
         var swap_chain_adequate = false;
         if (extensions_supported) {
-            const swap_chain_support = querySwapChainSupport(device, surface) catch return false;
+            const swap_chain_support = querySwapChainSupport(null, device, surface) catch return false;
             defer {
                 if (swap_chain_support.formats.len > 0) {
                     std.heap.page_allocator.free(swap_chain_support.formats);
@@ -1187,7 +1187,7 @@ pub const VulkanRenderer = struct {
         return true;
     }
 
-    fn querySwapChainSupport(self: *Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
+    fn querySwapChainSupport(_self: ?*Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
         var details = SwapChainSupportDetails{
             .capabilities = undefined,
             .formats = undefined,
