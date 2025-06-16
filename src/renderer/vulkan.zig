@@ -1,21 +1,24 @@
 const std = @import("std");
-const vk = @import("vulkan");
-const glfw = @import("glfw");
+const vk_types = @import("vulkan_types.zig");
+const vk = vk_types.vk;
+const glfw = @cImport({
+    @cDefine("GLFW_INCLUDE_VULKAN", "1");
+    @cInclude("GLFW/glfw3.h");
+});
 const c = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
 const math = std.math;
-const vk_types = @import("vulkan_types.zig");
 const vk_types_vk = vk_types.vk;
 
 fn createRotationMatrix(angle: f32) [4][4]f32 {
-    const c = @cos(angle);
-    const s = @sin(angle);
+    const cos_val = @cos(angle);
+    const sin_val = @sin(angle);
     return [4][4]f32{
-        [4]f32{ c, -s, 0.0, 0.0 },
-        [4]f32{ s, c, 0.0, 0.0 },
-        [4]f32{ 0.0, 0.0, 1.0, 0.0 },
-        [4]f32{ 0.0, 0.0, 0.0, 1.0 },
+        [4]f32{ cos_val, -sin_val, 0, 0 },
+        [4]f32{ sin_val, cos_val, 0, 0 },
+        [4]f32{ 0, 0, 1, 0 },
+        [4]f32{ 0, 0, 0, 1 },
     };
 }
 
@@ -1108,7 +1111,7 @@ pub const VulkanRenderer = struct {
         const extensions_supported = checkDeviceExtensionSupport(device) catch return false;
         var swap_chain_adequate = false;
         if (extensions_supported) {
-            const swap_chain_support = querySwapChainSupport(null, device, surface) catch return false;
+            const swap_chain_support = querySwapChainSupport(device, surface) catch return false;
             defer {
                 if (swap_chain_support.formats.len > 0) {
                     std.heap.page_allocator.free(swap_chain_support.formats);
@@ -1176,7 +1179,7 @@ pub const VulkanRenderer = struct {
         return true;
     }
 
-    fn querySwapChainSupport(_self: ?*Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
+    fn querySwapChainSupport(device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
         var details = SwapChainSupportDetails{
             .capabilities = undefined,
             .formats = undefined,
