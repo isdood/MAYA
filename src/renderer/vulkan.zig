@@ -418,7 +418,7 @@ pub const VulkanRenderer = struct {
 
         var width: i32 = 0;
         var height: i32 = 0;
-        glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
+        glfw.glfwGetFramebufferSize(self.window, &width, &height);
 
         // Define maximum reasonable dimensions (4K resolution)
         const max_reasonable_width: u32 = 3840;
@@ -1133,7 +1133,7 @@ pub const VulkanRenderer = struct {
         const extensions_supported = checkDeviceExtensionSupport(device) catch return false;
         var swap_chain_adequate = false;
         if (extensions_supported) {
-            const swap_chain_support = querySwapChainSupport(device, surface) catch return false;
+            const swap_chain_support = self.querySwapChainSupport(device, surface) catch return false;
             defer {
                 if (swap_chain_support.formats.len > 0) {
                     std.heap.page_allocator.free(swap_chain_support.formats);
@@ -1201,7 +1201,7 @@ pub const VulkanRenderer = struct {
         return true;
     }
 
-    fn querySwapChainSupport(self: *Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
+    fn querySwapChainSupport(_self: *Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
         var details = SwapChainSupportDetails{
             .capabilities = undefined,
             .formats = undefined,
@@ -1577,11 +1577,11 @@ pub const VulkanRenderer = struct {
     pub fn recreateSwapChain(self: *Self) !void {
         var width: i32 = 0;
         var height: i32 = 0;
-        glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
+        glfw.glfwGetFramebufferSize(self.window, &width, &height);
         
         // Wait for valid dimensions
         while (width == 0 or height == 0) {
-            glfw.glfwGetFramebufferSize(self.window.handle, &width, &height);
+            glfw.glfwGetFramebufferSize(self.window, &width, &height);
             glfw.glfwWaitEvents();
         }
 
