@@ -1133,7 +1133,7 @@ pub const VulkanRenderer = struct {
         const extensions_supported = checkDeviceExtensionSupport(device) catch return false;
         var swap_chain_adequate = false;
         if (extensions_supported) {
-            const swap_chain_support = self.querySwapChainSupport(device, surface) catch return false;
+            const swap_chain_support = querySwapChainSupport(device, surface) catch return false;
             defer {
                 if (swap_chain_support.formats.len > 0) {
                     std.heap.page_allocator.free(swap_chain_support.formats);
