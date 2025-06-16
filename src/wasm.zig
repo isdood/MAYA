@@ -7,7 +7,7 @@ const colors = @import("colors");
 // Define initial and maximum buffer sizes
 const INITIAL_BUFFER_SIZE = 1024;
 const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB max
-const BUFFER_POOL_SIZE = 4; // Number of buffers in the pool
+const BUFFER_POOL_SIZE = 8; // Number of buffers in the pool
 
 // Error codes
 pub const ErrorCode = enum(u32) {
@@ -16,6 +16,7 @@ pub const ErrorCode = enum(u32) {
     InvalidInput = 2,
     MemoryAllocationFailed = 3,
     PatternError = 4,
+    BufferValidationError = 5,
 };
 
 // Buffer pool structure
@@ -23,6 +24,8 @@ const Buffer = struct {
     data: []u8,
     length: usize,
     in_use: bool,
+    is_valid: bool,
+    ref_count: u32,  // Track references to prevent premature freeing
 };
 
 // Global state
@@ -63,12 +66,42 @@ fn get_next_buffer() ?*Buffer {
     var i: usize = 0;
     while (i < BUFFER_POOL_SIZE) : (i += 1) {
         const idx = (current_buffer_index + i) % BUFFER_POOL_SIZE;
-        if (!buffer_pool[idx].in_use) {
+        if (!buffer_pool[idx].in_use or buffer_pool[idx].ref_count == 0) {
             current_buffer_index = idx;
             return &buffer_pool[idx];
         }
     }
     return null;
+}
+
+fn resize_buffer(buffer: *Buffer, new_size: usize) !void {
+    if (new_size > MAX_BUFFER_SIZE) {
+        return error.BufferTooLarge;
+    }
+    
+    const new_data = try allocator.alloc(u8, new_size);
+    if (buffer.data.len > 0) {
+        const copy_len = @min(buffer.length, new_size);
+        @memcpy(new_data[0..copy_len], buffer.data[0..copy_len]);
+        allocator.free(buffer.data);
+    }
+    buffer.data = new_data;
+    buffer.is_valid = true;
+}
+
+fn acquire_buffer(buffer: *Buffer) void {
+    buffer.ref_count += 1;
+}
+
+fn release_buffer(buffer: *Buffer) void {
+    if (buffer.ref_count > 0) {
+        buffer.ref_count -= 1;
+    }
+    if (buffer.ref_count == 0) {
+        buffer.in_use = false;
+        buffer.length = 0;
+        buffer.is_valid = true;
+    }
 }
 
 export fn init() u32 {
@@ -86,6 +119,8 @@ export fn init() u32 {
         };
         buffer.length = 0;
         buffer.in_use = false;
+        buffer.is_valid = true;
+        buffer.ref_count = 0;
     }
     
     // Allocate pattern buffer
@@ -125,18 +160,12 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
     // Ensure buffer is large enough
     if (buffer.data.len < input_len) {
         const new_size = @max(input_len, buffer.data.len * 2);
-        if (new_size > MAX_BUFFER_SIZE) {
-            set_error("[process] Input too large");
+        resize_buffer(buffer, new_size) catch {
+            buffer.in_use = false;
+            buffer.is_valid = false;
+            set_error("[process] Buffer resize failed");
             return ErrorCode.BufferTooSmall;
-        }
-        
-        const new_data = allocator.alloc(u8, new_size) catch {
-            set_error("[process] Memory allocation failed");
-            return ErrorCode.MemoryAllocationFailed;
         };
-        
-        allocator.free(buffer.data);
-        buffer.data = new_data;
     }
     
     // Create input slice
@@ -150,6 +179,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         // GLIMMER pattern support
         const pattern = glimmer.parsePattern(input_slice) catch {
             buffer.in_use = false;
+            buffer.is_valid = false;
             set_error("[process] Pattern parse error");
             return ErrorCode.PatternError;
         };
@@ -159,26 +189,42 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             @memcpy(buffer.data[0..input_len], input_slice);
             buffer.length = input_len;
             buffer.in_use = true;
+            buffer.is_valid = true;
+            acquire_buffer(buffer);
             return ErrorCode.Success;
         }
         
         // Apply pattern transformation
         const transformed = glimmer.applyPattern(pattern.?, input_slice, allocator) catch {
             buffer.in_use = false;
+            buffer.is_valid = false;
             set_error("[process] Pattern apply error");
             return ErrorCode.PatternError;
         };
         
         if (transformed == null) {
             buffer.in_use = false;
+            buffer.is_valid = false;
             set_error("[process] Pattern transformation failed");
             return ErrorCode.PatternError;
+        }
+        
+        // Ensure buffer is large enough for transformed data
+        if (buffer.data.len < transformed.?.len) {
+            resize_buffer(buffer, transformed.?.len) catch {
+                buffer.in_use = false;
+                buffer.is_valid = false;
+                set_error("[process] Buffer resize failed");
+                return ErrorCode.BufferTooSmall;
+            };
         }
         
         // Copy transformed data to buffer
         @memcpy(buffer.data[0..transformed.?.len], transformed.?);
         buffer.length = transformed.?.len;
         buffer.in_use = true;
+        buffer.is_valid = true;
+        acquire_buffer(buffer);
         
         // Free transformed data
         allocator.free(transformed.?);
@@ -189,6 +235,8 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         @memcpy(buffer.data[0..input_len], input_slice);
         buffer.length = input_len;
         buffer.in_use = true;
+        buffer.is_valid = true;
+        acquire_buffer(buffer);
         
         return ErrorCode.Success;
     }
@@ -200,7 +248,7 @@ export fn getResult() [*]const u8 {
     }
     
     const buffer = &buffer_pool[current_buffer_index];
-    if (!buffer.in_use) {
+    if (!buffer.in_use or !buffer.is_valid) {
         return &zero_bytes;
     }
     
@@ -214,7 +262,7 @@ export fn getBufferSize() usize {
     }
     
     const buffer = &buffer_pool[current_buffer_index];
-    if (!buffer.in_use) {
+    if (!buffer.in_use or !buffer.is_valid) {
         return 0;
     }
     
@@ -228,7 +276,7 @@ export fn getLength() usize {
     }
     
     const buffer = &buffer_pool[current_buffer_index];
-    if (!buffer.in_use) {
+    if (!buffer.in_use or !buffer.is_valid) {
         return 0;
     }
     
@@ -242,7 +290,7 @@ export fn getBuffer() [*]const u8 {
     }
     
     const buffer = &buffer_pool[current_buffer_index];
-    if (!buffer.in_use) {
+    if (!buffer.in_use or !buffer.is_valid) {
         return &zero_bytes;
     }
     
@@ -256,8 +304,7 @@ export fn releaseBuffer() void {
     }
     
     const buffer = &buffer_pool[current_buffer_index];
-    buffer.in_use = false;
-    buffer.length = 0;
+    release_buffer(buffer);
 }
 
 // Export pattern information
