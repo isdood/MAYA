@@ -101,15 +101,15 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
         // Apply pattern transformation
         if (glimmer.applyPattern(pattern.?, pattern_buffer, allocator)) |transformed| {
             // Copy transformed data back to main buffer
-            if (transformed.len > buffer.len) {
-                const new_buffer = allocator.alloc(u8, transformed.len) catch {
+            if (transformed.?.len > buffer.len) {
+                const new_buffer = allocator.alloc(u8, transformed.?.len) catch {
                     return @intFromEnum(ErrorCode.MemoryAllocationFailed);
                 };
                 allocator.free(buffer);
                 buffer = new_buffer;
             }
-            @memcpy(buffer[0..transformed.len], transformed);
-            buffer_len = transformed.len;
+            @memcpy(buffer[0..transformed.?.len], transformed.?);
+            buffer_len = transformed.?.len;
         } else |_| {
             return @intFromEnum(ErrorCode.PatternError);
         }
