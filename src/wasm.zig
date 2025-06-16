@@ -19,8 +19,13 @@ const ErrorCode = enum(u32) {
 var buffer: []u8 = undefined;
 var buffer_len: usize = 0;
 var allocator: std.mem.Allocator = undefined;
+var is_initialized: bool = false;
 
 export fn init() u32 {
+    if (is_initialized) {
+        return @intFromEnum(ErrorCode.Success);
+    }
+    
     // Initialize the allocator
     allocator = std.heap.page_allocator;
     
@@ -33,11 +38,16 @@ export fn init() u32 {
     // Clear the buffer
     @memset(buffer, 0);
     
+    is_initialized = true;
     return @intFromEnum(ErrorCode.Success);
 }
 
 export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
-    if (input_len == 0) {
+    if (!is_initialized) {
+        return @intFromEnum(ErrorCode.InvalidInput);
+    }
+    
+    if (input_len == 0 or input_ptr == null) {
         return @intFromEnum(ErrorCode.InvalidInput);
     }
     
@@ -47,42 +57,59 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
             return @intFromEnum(ErrorCode.BufferTooSmall);
         }
         
-        // Free old buffer and allocate new one
-        allocator.free(buffer);
-        buffer = allocator.alloc(u8, input_len) catch {
+        // Allocate new buffer
+        const new_buffer = allocator.alloc(u8, input_len) catch {
             return @intFromEnum(ErrorCode.MemoryAllocationFailed);
         };
+        
+        // Copy old data if any
+        if (buffer_len > 0) {
+            @memcpy(new_buffer[0..buffer_len], buffer[0..buffer_len]);
+        }
+        
+        // Free old buffer
+        allocator.free(buffer);
+        buffer = new_buffer;
     }
     
     // Clear the buffer first
     @memset(buffer, 0);
     
     // Copy input to our buffer
-    var i: usize = 0;
-    while (i < input_len) : (i += 1) {
-        buffer[i] = input_ptr[i];
-    }
+    @memcpy(buffer[0..input_len], input_ptr[0..input_len]);
     buffer_len = input_len;
     
     return @intFromEnum(ErrorCode.Success);
 }
 
 export fn getResult() [*]const u8 {
+    if (!is_initialized or buffer_len == 0) {
+        return null;
+    }
     return buffer.ptr;
 }
 
 // Export the buffer size for JavaScript
 export fn getBufferSize() usize {
+    if (!is_initialized) {
+        return 0;
+    }
     return buffer.len;
 }
 
 // Export the current length
 export fn getLength() usize {
+    if (!is_initialized) {
+        return 0;
+    }
     return buffer_len;
 }
 
 // Export the buffer directly for debugging
 export fn getBuffer() [*]const u8 {
+    if (!is_initialized) {
+        return null;
+    }
     return buffer.ptr;
 }
 
@@ -94,9 +121,10 @@ export fn getLastError() u32 {
 
 // Cleanup function to free memory
 export fn cleanup() void {
-    if (buffer.len > 0) {
+    if (is_initialized and buffer.len > 0) {
         allocator.free(buffer);
         buffer = undefined;
         buffer_len = 0;
+        is_initialized = false;
     }
 } 

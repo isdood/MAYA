@@ -57,55 +57,70 @@
         };
 
         async function runTest(instance, testInput) {
-            const encoder = new TextEncoder();
-            const inputBytes = encoder.encode(testInput);
-            
-            // Initialize
-            const initResult = instance.exports.init();
-            if (initResult !== 0) {
-                throw new Error(`Initialization failed: ${ErrorCode[initResult]}`);
-            }
-            
-            // Get memory view
-            const memory = new Uint8Array(instance.exports.memory.buffer);
-            
-            // Find a safe location in memory to write our input
-            const inputPtr = 0; // Start at the beginning of memory
-            
-            // Copy input to WASM memory
-            memory.set(inputBytes, inputPtr);
-            
-            // Process input
-            const processResult = instance.exports.process(inputPtr, inputBytes.length);
-            if (processResult !== 0) {
-                throw new Error(`Processing failed: ${ErrorCode[processResult]}`);
-            }
-            
-            // Get results
-            const length = instance.exports.getLength();
-            const bufferPtr = instance.exports.getBuffer();
-            
-            // Get the result
-            const result = new TextDecoder().decode(
-                memory.slice(bufferPtr, bufferPtr + length)
-            );
-            
-            // Debug information
-            const bufferContent = Array.from(memory.slice(bufferPtr, bufferPtr + 20))
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join(' ');
-            
-            return {
-                input: testInput,
-                result: result,
-                debug: {
-                    inputLength: inputBytes.length,
-                    bufferSize: instance.exports.getBufferSize(),
-                    currentLength: length,
-                    bufferPointer: bufferPtr,
-                    bufferContent: bufferContent
+            try {
+                const encoder = new TextEncoder();
+                const inputBytes = encoder.encode(testInput);
+                
+                // Initialize
+                const initResult = instance.exports.init();
+                if (initResult !== 0) {
+                    throw new Error(`Initialization failed: ${ErrorCode[initResult]}`);
                 }
-            };
+                
+                // Get memory view
+                const memory = new Uint8Array(instance.exports.memory.buffer);
+                
+                // Find a safe location in memory to write our input
+                const inputPtr = 0; // Start at the beginning of memory
+                
+                // Copy input to WASM memory
+                memory.set(inputBytes, inputPtr);
+                
+                // Process input
+                const processResult = instance.exports.process(inputPtr, inputBytes.length);
+                if (processResult !== 0) {
+                    throw new Error(`Processing failed: ${ErrorCode[processResult]}`);
+                }
+                
+                // Get results
+                const length = instance.exports.getLength();
+                if (length === 0) {
+                    throw new Error("No data returned from WASM module");
+                }
+                
+                const bufferPtr = instance.exports.getBuffer();
+                if (bufferPtr === null) {
+                    throw new Error("Buffer pointer is null");
+                }
+                
+                // Create a copy of the memory slice to prevent detachment issues
+                const resultBytes = new Uint8Array(memory.buffer.slice(bufferPtr, bufferPtr + length));
+                
+                // Get the result
+                const result = new TextDecoder().decode(resultBytes);
+                
+                // Debug information
+                const bufferContent = Array.from(resultBytes.slice(0, 20))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join(' ');
+                
+                return {
+                    result,
+                    debug: {
+                        inputLength: inputBytes.length,
+                        bufferSize: instance.exports.getBufferSize(),
+                        currentLength: length,
+                        bufferPointer: bufferPtr,
+                        bufferContent
+                    }
+                };
+            } catch (error) {
+                console.error("Test failed:", error);
+                throw error;
+            } finally {
+                // Cleanup
+                instance.exports.cleanup();
+            }
         }
 
         async function init() {
@@ -178,16 +193,6 @@
                     <pre>${error.stack}</pre>
                 `;
                 console.error('Error:', error);
-            } finally {
-                // Cleanup if instance exists and has cleanup function
-                if (instance && typeof instance.exports.cleanup === 'function') {
-                    try {
-                        instance.exports.cleanup();
-                        console.log('WASM memory cleaned up successfully');
-                    } catch (cleanupError) {
-                        console.warn('Cleanup failed:', cleanupError);
-                    }
-                }
             }
         }
         
