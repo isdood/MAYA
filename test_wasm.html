@@ -38,11 +38,7 @@
             try {
                 const response = await fetch('maya.wasm');
                 const bytes = await response.arrayBuffer();
-                const { instance } = await WebAssembly.instantiate(bytes, {
-                    env: {
-                        memory: new WebAssembly.Memory({ initial: 1 })
-                    }
-                });
+                const { instance } = await WebAssembly.instantiate(bytes, {});
                 
                 // Test the exported functions
                 instance.exports.init();
@@ -52,19 +48,13 @@
                 const encoder = new TextEncoder();
                 const inputBytes = encoder.encode(testInput);
                 
-                // Get the memory buffer
-                const memory = new Uint8Array(instance.exports.memory.buffer);
-                
-                // Copy input to memory
-                memory.set(inputBytes);
-                
                 // Process the input
-                instance.exports.process(0, inputBytes.length);
+                instance.exports.process(inputBytes, inputBytes.length);
                 
                 // Get result
                 const resultPtr = instance.exports.getResult();
                 const result = new TextDecoder().decode(
-                    memory.slice(resultPtr, resultPtr + inputBytes.length)
+                    new Uint8Array(instance.exports.memory.buffer, resultPtr, inputBytes.length)
                 );
                 
                 const output = document.getElementById('output');
