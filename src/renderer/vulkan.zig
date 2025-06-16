@@ -1540,7 +1540,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createUniformBuffers(self: *Self) !void {
+    pub fn createUniformBuffers(self: *Self) !void {
         const buffer_size = @sizeOf(UniformBufferObject);
 
         self.uniform_buffers = try self.allocator.alloc(vk.VkBuffer, MAX_FRAMES_IN_FLIGHT);
@@ -1562,41 +1562,11 @@ pub const VulkanRenderer = struct {
                 self.uniform_buffers_memory[i],
                 0,
                 buffer_size,
-            ),
-            .pNext = null,
-        };
-
-        if (vk.vkAllocateMemory(self.device, &alloc_info, null, &self.uniform_buffer_memory) != vk.VK_SUCCESS) {
-            vk.vkDestroyBuffer(self.device, self.uniform_buffer, null);
-            return error.UniformMemoryAllocationFailed;
+                0,
+                @ptrCast(&data),
+            );
+            self.uniform_buffers_mapped[i] = data;
         }
-        std.log.info("Uniform buffer memory allocated", .{});
-
-        if (vk.vkBindBufferMemory(self.device, self.uniform_buffer, self.uniform_buffer_memory, 0) != vk.VK_SUCCESS) {
-            vk.vkDestroyBuffer(self.device, self.uniform_buffer, null);
-            vk.vkFreeMemory(self.device, self.uniform_buffer_memory, null);
-            return error.UniformMemoryBindingFailed;
-        }
-        std.log.info("Uniform buffer memory bound", .{});
-
-        if (vk.vkMapMemory(self.device, self.uniform_buffer_memory, 0, buffer_size, 0, &self.uniform_buffer_mapped) != vk.VK_SUCCESS) {
-            vk.vkDestroyBuffer(self.device, self.uniform_buffer, null);
-            vk.vkFreeMemory(self.device, self.uniform_buffer_memory, null);
-            return error.UniformMemoryMappingFailed;
-        }
-        std.log.info("Uniform buffer memory mapped", .{});
-
-        // Initialize the uniform buffer with identity matrix
-        const initial_matrix = [4][4]f32{
-            [4]f32{ 1.0, 0.0, 0.0, 0.0 },
-            [4]f32{ 0.0, 1.0, 0.0, 0.0 },
-            [4]f32{ 0.0, 0.0, 1.0, 0.0 },
-            [4]f32{ 0.0, 0.0, 0.0, 1.0 },
-        };
-        const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
-        const src = @as([*]const u8, @ptrCast(&initial_matrix))[0..@sizeOf([4][4]f32)];
-        @memcpy(dest, src);
-        std.log.info("Uniform buffer initialized with identity matrix", .{});
     }
 
     fn createDescriptorPool(self: *Self) !void {
