@@ -93,12 +93,19 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the MAYA GUI");
     run_step.dependOn(&run_cmd.step);
 
+    // Add learning module
+    const learning_module = b.addModule("learning", .{
+        .root_source_file = b.path("src/learning/interaction_recorder.zig"),
+    });
+
     // Create test executable
-    const test_exe = b.addExecutable(.{
-        .name = "maya-test",
+    const test_exe = b.addTest(.{
         .root_source_file = .{ .cwd_relative = "src/test/main.zig" },
         .target = target,
         .optimize = optimize,
+        .modules = &.{
+            .{ .name = "learning", .module = learning_module },
+        },
     });
 
     // Create test run command
@@ -126,4 +133,6 @@ pub fn build(b: *std.Build) void {
     const run_unit_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
+
+    b.installArtifact(test_exe);
 }
