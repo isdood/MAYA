@@ -342,15 +342,12 @@ pub const VulkanRenderer = struct {
 
         const surface_format = try self.chooseSwapSurfaceFormat(swapchain_support.formats);
         const present_mode = try self.chooseSwapPresentMode(swapchain_support.present_modes);
-        const requested_extent = try self.chooseSwapExtent(swapchain_support.capabilities);
+        const extent = try self.chooseSwapExtent(swapchain_support.capabilities);
 
         var image_count = swapchain_support.capabilities.minImageCount + 1;
         if (swapchain_support.capabilities.maxImageCount > 0 and image_count > swapchain_support.capabilities.maxImageCount) {
             image_count = swapchain_support.capabilities.maxImageCount;
         }
-
-        // Use the requested extent for swapchain creation
-        self.swapchain_extent = requested_extent;
 
         const create_info = vk.VkSwapchainCreateInfoKHR{
             .sType = vk.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -358,7 +355,7 @@ pub const VulkanRenderer = struct {
             .minImageCount = image_count,
             .imageFormat = surface_format.format,
             .imageColorSpace = surface_format.colorSpace,
-            .imageExtent = self.swapchain_extent,
+            .imageExtent = extent,
             .imageArrayLayers = 1,
             .imageUsage = vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             .imageSharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
@@ -385,10 +382,6 @@ pub const VulkanRenderer = struct {
 
         _ = vk.vkGetSwapchainImagesKHR(self.device, self.swapchain, &swapchain_image_count, self.swapchain_images.ptr);
 
-        // Query the actual surface capabilities after swapchain creation
-        var actual_capabilities: vk.VkSurfaceCapabilitiesKHR = undefined;
-        _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(self.physical_device, self.surface, &actual_capabilities);
-        
         // Get the actual image dimensions from the first swapchain image
         var image_info: vk.VkImageCreateInfo = undefined;
         vk.vkGetImageCreateInfo(self.device, self.swapchain_images[0], &image_info);
@@ -399,7 +392,6 @@ pub const VulkanRenderer = struct {
             .height = image_info.extent.height,
         };
 
-        // Store the format for later use
         self.swapchain_image_format = surface_format.format;
     }
 
@@ -849,9 +841,8 @@ pub const VulkanRenderer = struct {
         errdefer std.heap.page_allocator.free(self.framebuffers);
 
         for (self.swapchain_image_views, 0..) |image_view, i| {
-            const attachments = [_]vk.VkImageView{image_view};
+            const attachments = [_]vk.VkImageView{ image_view, self.depth_image_view };
 
-            // Create framebuffer with exact same dimensions as the swapchain image
             const framebuffer_info = vk.VkFramebufferCreateInfo{
                 .sType = vk.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = self.render_pass,
