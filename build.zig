@@ -151,9 +151,16 @@ pub fn build(b: *std.Build) void {
     wasm.rdynamic = true;
     wasm.entry = .disabled;
 
+    // Install WASM file to the correct location
+    const wasm_install = b.addInstallFile(
+        wasm.getEmittedBin(),
+        "lib/maya.wasm"
+    );
+
     b.installArtifact(wasm);
 
     // Create WASM build step
     const wasm_step = b.step("wasm", "Build WebAssembly version");
     wasm_step.dependOn(&wasm.step);
+    wasm_step.dependOn(&wasm_install.step);
 }
