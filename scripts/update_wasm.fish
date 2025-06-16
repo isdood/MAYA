@@ -28,4 +28,4 @@ else
     exit 1
 end
 
-echo "Update complete." 
+echo "Update complete."
