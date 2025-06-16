@@ -66,8 +66,17 @@
                 throw new Error(`Initialization failed: ${ErrorCode[initResult]}`);
             }
             
+            // Get memory view
+            const memory = new Uint8Array(instance.exports.memory.buffer);
+            
+            // Find a safe location in memory to write our input
+            const inputPtr = 0; // Start at the beginning of memory
+            
+            // Copy input to WASM memory
+            memory.set(inputBytes, inputPtr);
+            
             // Process input
-            const processResult = instance.exports.process(inputBytes, inputBytes.length);
+            const processResult = instance.exports.process(inputPtr, inputBytes.length);
             if (processResult !== 0) {
                 throw new Error(`Processing failed: ${ErrorCode[processResult]}`);
             }
@@ -75,7 +84,6 @@
             // Get results
             const length = instance.exports.getLength();
             const bufferPtr = instance.exports.getBuffer();
-            const memory = new Uint8Array(instance.exports.memory.buffer);
             
             // Get the result
             const result = new TextDecoder().decode(

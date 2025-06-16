@@ -20,7 +20,7 @@ var buffer: []u8 = undefined;
 var buffer_len: usize = 0;
 var allocator: std.mem.Allocator = undefined;
 
-export fn init() ErrorCode {
+export fn init() u32 {
     // Initialize the allocator
     allocator = std.heap.page_allocator;
     
@@ -36,8 +36,8 @@ export fn init() ErrorCode {
     return @intFromEnum(ErrorCode.Success);
 }
 
-export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
-    if (input_ptr == null or input_len == 0) {
+export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
+    if (input_len == 0) {
         return @intFromEnum(ErrorCode.InvalidInput);
     }
     
@@ -99,7 +99,4 @@ export fn cleanup() void {
         buffer = undefined;
         buffer_len = 0;
     }
-}
-
-// Export memory for JavaScript to access
-export var memory: [*]u8 = undefined; 
+} 
