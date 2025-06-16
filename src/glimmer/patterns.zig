@@ -489,7 +489,7 @@ pub fn parsePattern(input: []const u8) !?GlimmerPattern {
     append_debug_message(meta_section);
     append_debug_message("\n");
     // Parse metadata
-    var pattern = GlimmerPattern.init("", .quantum_wave);
+    const pattern = GlimmerPattern.init("", .quantum_wave);
     append_debug_message("[DEBUG] parsePattern: Pattern created with type: ");
     append_debug_message(@tagName(pattern.pattern_type));
     append_debug_message("\n");
