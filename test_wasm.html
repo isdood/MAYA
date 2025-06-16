@@ -28,6 +28,11 @@
         .error {
             color: #dc3545;
         }
+        .debug {
+            color: #6c757d;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -40,6 +45,10 @@
                 const bytes = await response.arrayBuffer();
                 const { instance } = await WebAssembly.instantiate(bytes, {});
                 
+                // Debug information
+                console.log('WASM module loaded');
+                console.log('Exported functions:', Object.keys(instance.exports));
+                
                 // Test the exported functions
                 instance.exports.init();
                 
@@ -48,20 +57,51 @@
                 const encoder = new TextEncoder();
                 const inputBytes = encoder.encode(testInput);
                 
+                console.log('Input bytes:', inputBytes);
+                console.log('Input length:', inputBytes.length);
+                console.log('Buffer size:', instance.exports.getBufferSize());
+                
                 // Process the input
                 instance.exports.process(inputBytes, inputBytes.length);
                 
-                // Get result
-                const resultPtr = instance.exports.getResult();
+                // Get the current length
+                const length = instance.exports.getLength();
+                console.log('Current length:', length);
+                
+                // Get the buffer pointer
+                const bufferPtr = instance.exports.getBuffer();
+                console.log('Buffer pointer:', bufferPtr);
+                
+                // Create a view of the memory
+                const memory = new Uint8Array(instance.exports.memory.buffer);
+                
+                // Get the result
                 const result = new TextDecoder().decode(
-                    new Uint8Array(instance.exports.memory.buffer, resultPtr, inputBytes.length)
+                    memory.slice(bufferPtr, bufferPtr + length)
                 );
+                
+                console.log('Decoded result:', result);
+                
+                // Debug: Show the first 20 bytes of the buffer
+                const bufferContent = Array.from(memory.slice(bufferPtr, bufferPtr + 20))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join(' ');
                 
                 const output = document.getElementById('output');
                 output.innerHTML = `
                     <p class="success">✅ WASM module loaded successfully</p>
                     <p>Test input: "${testInput}"</p>
                     <p>Result: "${result}"</p>
+                    <div class="debug">
+                        <p>Debug Info:</p>
+                        <ul>
+                            <li>Input length: ${inputBytes.length}</li>
+                            <li>Buffer size: ${instance.exports.getBufferSize()}</li>
+                            <li>Current length: ${length}</li>
+                            <li>Buffer pointer: ${bufferPtr}</li>
+                            <li>Buffer content (hex): ${bufferContent}</li>
+                        </ul>
+                    </div>
                 `;
             } catch (error) {
                 const output = document.getElementById('output');
@@ -69,6 +109,7 @@
                     <p class="error">❌ Error: ${error.message}</p>
                     <pre>${error.stack}</pre>
                 `;
+                console.error('Error:', error);
             }
         }
         
