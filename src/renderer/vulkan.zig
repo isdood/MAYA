@@ -1709,4 +1709,20 @@ pub const VulkanRenderer = struct {
         const app = @as(*Self, @ptrCast(glfw.glfwGetWindowUserPointer(window).?));
         app.framebuffer_resized = true;
     }
+
+    fn readFile(self: *Self, path: []const u8) ![]u8 {
+        const file = try std.fs.cwd().openFile(path, .{});
+        defer file.close();
+
+        const file_size = try file.getEndPos();
+        var buffer = try self.allocator.alloc(u8, file_size);
+        errdefer self.allocator.free(buffer);
+
+        const bytes_read = try file.readAll(buffer);
+        if (bytes_read != file_size) {
+            return error.IncompleteRead;
+        }
+
+        return buffer;
+    }
 }; 
