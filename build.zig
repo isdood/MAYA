@@ -94,10 +94,17 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
 
     // Create test executable
+    const learning_module = b.addModule("learning", .{
+        .root_source_file = b.path("src/learning/interaction_recorder.zig"),
+    });
+
     const test_exe = b.addTest(.{
         .root_source_file = .{ .cwd_relative = "src/test/main.zig" },
         .target = target,
         .optimize = optimize,
+        .modules = &.{
+            .{ .name = "learning", .module = learning_module },
+        },
     });
 
     // Add learning module as an anonymous module for tests
