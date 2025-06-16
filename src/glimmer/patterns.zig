@@ -446,16 +446,42 @@ test "PatternCombination" {
     try std.testing.expect(combined.frequency > 0.0);
 }
 
+// Debug buffer
+var debug_buffer: [1024]u8 = undefined;
+var debug_buffer_len: usize = 0;
+
+fn append_debug_message(msg: []const u8) void {
+    const available = debug_buffer.len - debug_buffer_len;
+    const to_copy = @min(msg.len, available);
+    @memcpy(debug_buffer[debug_buffer_len..debug_buffer_len + to_copy], msg[0..to_copy]);
+    debug_buffer_len += to_copy;
+    if (debug_buffer_len < debug_buffer.len) {
+        debug_buffer[debug_buffer_len] = 0;
+    }
+}
+
+export fn getDebugMessage() [*]const u8 {
+    return &debug_buffer;
+}
+
+export fn getDebugMessageLen() usize {
+    return debug_buffer_len;
+}
+
 /// Parse a GLIMMER pattern from a string buffer
 pub fn parsePattern(input: []const u8) !?GlimmerPattern {
-    std.debug.print("[DEBUG] parsePattern: Input: {s}\n", .{input});
+    append_debug_message("[DEBUG] parsePattern: Input: ");
+    append_debug_message(input);
+    append_debug_message("\n");
     // Find metadata markers
     const meta_start = std.mem.indexOf(u8, input, "@pattern_meta@") orelse return null;
     const meta_end = std.mem.indexOf(u8, input[meta_start + 14..], "@pattern_meta@") orelse return null;
     const meta_section = input[meta_start + 14..meta_start + 14 + meta_end];
-    std.debug.print("[DEBUG] parsePattern: Meta section: {s}\n", .{meta_section});
+    append_debug_message("[DEBUG] parsePattern: Meta section: ");
+    append_debug_message(meta_section);
+    append_debug_message("\n");
     // Parse metadata
-    var pattern = GlimmerPattern.init("GLIMMER Pattern", .quantum_wave);
+    var pattern = GlimmerPattern.init("", .quantum_wave);
     
     // Parse metadata
     var lines = std.mem.splitSequence(u8, meta_section, "\n");
@@ -483,6 +509,9 @@ pub fn parsePattern(input: []const u8) !?GlimmerPattern {
         }
     }
     
+    append_debug_message("[DEBUG] parsePattern: Pattern created with type: ");
+    append_debug_message(@tagName(pattern.pattern_type));
+    append_debug_message("\n");
     return pattern;
 }
 

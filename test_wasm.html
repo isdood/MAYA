@@ -70,15 +70,7 @@
                 // Initialize
                 const initResult = instance.exports.init();
                 if (initResult !== 0) {
-                    // Get WASM error message
-                    const errPtr = instance.exports.getLastErrorMessage();
-                    const errLen = instance.exports.getLastErrorMessageLen();
-                    let errMsg = '';
-                    if (errPtr && errLen > 0) {
-                        const memory = new Uint8Array(instance.exports.memory.buffer);
-                        errMsg = new TextDecoder().decode(memory.subarray(errPtr, errPtr + errLen));
-                    }
-                    throw new Error(`Initialization failed: ${ErrorCode[initResult]}${errMsg ? ' - ' + errMsg : ''}`);
+                    throw new Error(`Initialization failed: ${ErrorCode[initResult]}`);
                 }
                 
                 // Get memory view
@@ -93,14 +85,7 @@
                 // Process input
                 const processResult = instance.exports.process(inputPtr, inputBytes.length);
                 if (processResult !== 0) {
-                    // Get WASM error message
-                    const errPtr = instance.exports.getLastErrorMessage();
-                    const errLen = instance.exports.getLastErrorMessageLen();
-                    let errMsg = '';
-                    if (errPtr && errLen > 0) {
-                        errMsg = new TextDecoder().decode(memory.subarray(errPtr, errPtr + errLen));
-                    }
-                    throw new Error(`Processing failed: ${ErrorCode[processResult]}${errMsg ? ' - ' + errMsg : ''}`);
+                    throw new Error(`Processing failed: ${ErrorCode[processResult]}`);
                 }
                 
                 // Get results
@@ -122,6 +107,14 @@
                     .map(b => b.toString(16).padStart(2, '0'))
                     .join(' ');
                 
+                // Get debug message
+                const debugPtr = instance.exports.getDebugMessage();
+                const debugLen = instance.exports.getDebugMessageLen();
+                let debugMsg = '';
+                if (debugPtr && debugLen > 0) {
+                    debugMsg = new TextDecoder().decode(memory.subarray(debugPtr, debugPtr + debugLen));
+                }
+                
                 return {
                     result,
                     debug: {
@@ -129,7 +122,8 @@
                         bufferSize: instance.exports.getBufferSize(),
                         currentLength: length,
                         bufferPointer: bufferPtr,
-                        bufferContent
+                        bufferContent,
+                        debugMessage: debugMsg
                     }
                 };
             } catch (error) {
@@ -238,6 +232,7 @@ GLIMMER Pattern:
                         output.innerHTML += `Current length: ${result.debug.currentLength}<br>`;
                         output.innerHTML += `Buffer pointer: ${result.debug.bufferPointer}<br>`;
                         output.innerHTML += `Buffer content (hex): ${result.debug.bufferContent}<br>`;
+                        output.innerHTML += `Debug message: ${result.debug.debugMessage}<br>`;
                         
                         // Add GLIMMER pattern info if available
                         const patternType = instance.exports.getPatternType();
