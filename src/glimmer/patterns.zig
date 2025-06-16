@@ -447,34 +447,18 @@ test "PatternCombination" {
 }
 
 /// Parse a GLIMMER pattern from a string buffer
-pub fn parsePattern(buffer: []const u8) !?GlimmerPattern {
-    // Check for pattern metadata markers
-    const meta_start = "@pattern_meta@";
-    const meta_end = "@pattern_meta@";
-    
-    var start_idx: usize = 0;
-    var end_idx: usize = 0;
-    
-    // Find metadata section
-    if (std.mem.indexOf(u8, buffer, meta_start)) |idx| {
-        start_idx = idx + meta_start.len;
-        if (std.mem.indexOfPos(u8, buffer, start_idx, meta_end)) |end| {
-            end_idx = end;
-        } else {
-            return null;
-        }
-    } else {
-        return null;
-    }
-    
-    // Extract metadata section
-    const metadata_section = buffer[start_idx..end_idx];
-    
-    // Create a new pattern
+pub fn parsePattern(input: []const u8) !?GlimmerPattern {
+    std.debug.print("[DEBUG] parsePattern: Input: {s}\n", .{input});
+    // Find metadata markers
+    const meta_start = std.mem.indexOf(u8, input, "@pattern_meta@") orelse return null;
+    const meta_end = std.mem.indexOf(u8, input[meta_start + 14..], "@pattern_meta@") orelse return null;
+    const meta_section = input[meta_start + 14..meta_start + 14 + meta_end];
+    std.debug.print("[DEBUG] parsePattern: Meta section: {s}\n", .{meta_section});
+    // Parse metadata
     var pattern = GlimmerPattern.init("GLIMMER Pattern", .quantum_wave);
     
     // Parse metadata
-    var lines = std.mem.splitSequence(u8, metadata_section, "\n");
+    var lines = std.mem.splitSequence(u8, meta_section, "\n");
     while (lines.next()) |line| {
         const trimmed = std.mem.trim(u8, line, " \t");
         if (std.mem.startsWith(u8, trimmed, "GLIMMER Pattern:")) {
