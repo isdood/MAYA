@@ -101,7 +101,7 @@ pub fn build(b: *std.Build) void {
     });
 
     // Add learning module as an anonymous module for tests
-    b.addAnonymousModule("learning", .{
+    test_exe.addAnonymousModule("learning", .{
         .source_file = b.path("src/learning/interaction_recorder.zig"),
     });
 
