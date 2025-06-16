@@ -103,7 +103,7 @@ pub const VulkanRenderer = struct {
 
     const validation_layers = [_][*:0]const u8{"VK_LAYER_KHRONOS_validation"};
 
-    window: *glfw.Window,
+    window: *glfw.GLFWwindow,
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
@@ -153,7 +153,7 @@ pub const VulkanRenderer = struct {
     color_image_memory: vk.VkDeviceMemory,
     color_image_view: vk.VkImageView,
 
-    pub fn init(window: *glfw.Window) !Self {
+    pub fn init(window: *glfw.GLFWwindow) !Self {
         var self = Self{
             .window = window,
             .instance = undefined,
