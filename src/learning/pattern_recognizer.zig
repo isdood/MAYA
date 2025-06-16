@@ -43,9 +43,29 @@ pub const PatternRecognizer = struct {
     /// Detect patterns in the recorded interactions.
     /// Returns a list of detected patterns.
     pub fn detectPatterns(self: *PatternRecognizer) ![]Pattern {
-        // TODO: Implement pattern detection logic.
-        // For now, return an empty list.
-        return &[_]Pattern{};
+        var patterns = std.ArrayList(Pattern).init(self.allocator);
+        defer patterns.deinit();
+
+        if (self.interactions.len < 2) {
+            return &[_]Pattern{};
+        }
+
+        var i: usize = 0;
+        while (i < self.interactions.len - 1) : (i += 1) {
+            const current = self.interactions[i];
+            const next = self.interactions[i + 1];
+
+            if (current.action.type == next.action.type) {
+                const pattern = Pattern{
+                    .id = try std.fmt.allocPrint(self.allocator, "pattern_{d}", .{i}),
+                    .description = try std.fmt.allocPrint(self.allocator, "Consecutive {s} actions", .{@tagName(current.action.type)}),
+                    .interactions = self.interactions[i..i+2],
+                };
+                try patterns.append(pattern);
+            }
+        }
+
+        return patterns.toOwnedSlice();
     }
 
     /// Find all matches of a given pattern in the interaction log.
@@ -55,4 +75,4 @@ pub const PatternRecognizer = struct {
         // For now, return an empty list.
         return &[_]PatternMatch{};
     }
-}; 
+};
