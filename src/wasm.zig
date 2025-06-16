@@ -77,85 +77,79 @@ export fn init() u32 {
     return @intFromEnum(ErrorCode.Success);
 }
 
-export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
-    if (!is_initialized) {
-        set_error_message("[process] Not initialized");
-        return @intFromEnum(ErrorCode.InvalidInput);
-    }
+export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
+    // Clear any previous error message
+    error_buffer_len = 0;
     
+    // Validate input
     if (input_len == 0) {
-        set_error_message("[process] Input length is 0");
-        return @intFromEnum(ErrorCode.InvalidInput);
+        set_error("[process] Empty input");
+        return ErrorCode.InvalidInput;
     }
     
-    // Check if we need to resize the buffer
-    if (input_len > buffer.len) {
-        if (input_len > MAX_BUFFER_SIZE) {
-            set_error_message("[process] Input length exceeds MAX_BUFFER_SIZE");
-            return @intFromEnum(ErrorCode.BufferTooSmall);
-        }
-        
-        // Allocate new buffer
-        const new_buffer = allocator.alloc(u8, input_len) catch {
-            set_error_message("[process] Failed to allocate new buffer for input");
-            return @intFromEnum(ErrorCode.MemoryAllocationFailed);
+    // Create input slice
+    const input_slice = input_ptr[0..input_len];
+    
+    // Check if this is a GLIMMER pattern
+    const is_glimmer_pattern = std.mem.indexOf(u8, input_slice, "@pattern_meta@") != null;
+    
+    // Process based on type
+    if (is_glimmer_pattern) {
+        // GLIMMER pattern support
+        const pattern = glimmer.parsePattern(input_slice) catch |err| {
+            set_error("[process] Pattern parse error");
+            return ErrorCode.PatternError;
         };
         
-        // Copy old data if any
-        if (buffer_len > 0) {
-            @memcpy(new_buffer[0..buffer_len], buffer[0..buffer_len]);
+        if (pattern == null) {
+            // Not a valid pattern, but we'll handle it gracefully
+            const result = try allocator.alloc(u8, input_len);
+            @memcpy(result, input_slice);
+            if (current_buffer) |buf| {
+                allocator.free(buf);
+            }
+            current_buffer = result;
+            current_length = input_len;
+            return ErrorCode.Success;
         }
-        
-        // Free old buffer
-        allocator.free(buffer);
-        buffer = new_buffer;
-    }
-    
-    // Clear the buffer first
-    @memset(buffer, 0);
-    
-    // Copy input to our buffer
-    @memcpy(buffer[0..input_len], input_ptr[0..input_len]);
-    buffer_len = input_len;
-    
-    // Try to process as a GLIMMER pattern
-    if (glimmer.parsePattern(buffer[0..buffer_len])) |pattern| {
-        current_pattern = pattern;
         
         // Apply pattern transformation
-        if (pattern) |p| {
-            if (glimmer.applyPattern(p, pattern_buffer, allocator)) |transformed| {
-                if (transformed) |t| {
-                    // Copy transformed data back to main buffer
-                    if (t.len > buffer.len) {
-                        const new_buffer = allocator.alloc(u8, t.len) catch {
-                            set_error_message("[process] Failed to allocate new buffer for transformed data");
-                            return @intFromEnum(ErrorCode.MemoryAllocationFailed);
-                        };
-                        allocator.free(buffer);
-                        buffer = new_buffer;
-                    }
-                    @memcpy(buffer[0..t.len], t);
-                    buffer_len = t.len;
-                } else {
-                    set_error_message("[process] Pattern transformation returned null");
-                    return @intFromEnum(ErrorCode.PatternError);
-                }
-            } else |_| {
-                set_error_message("[process] Pattern transformation failed");
-                return @intFromEnum(ErrorCode.PatternError);
-            }
-        } else {
-            set_error_message("[process] Pattern is null");
-            return @intFromEnum(ErrorCode.PatternError);
+        const transformed = glimmer.applyPattern(pattern.?, input_slice, allocator) catch |err| {
+            set_error("[process] Pattern apply error");
+            return ErrorCode.PatternError;
+        };
+        
+        if (transformed == null) {
+            set_error("[process] Pattern transformation failed");
+            return ErrorCode.PatternError;
         }
-    } else |_| {
-        // Not a GLIMMER pattern, process as normal text
-        current_pattern = null;
+        
+        // Free old buffer if it exists
+        if (current_buffer) |buf| {
+            allocator.free(buf);
+        }
+        
+        // Update current buffer
+        current_buffer = transformed;
+        current_length = transformed.?.len;
+        
+        return ErrorCode.Success;
+    } else {
+        // Non-pattern input - just copy it
+        const result = try allocator.alloc(u8, input_len);
+        @memcpy(result, input_slice);
+        
+        // Free old buffer if it exists
+        if (current_buffer) |buf| {
+            allocator.free(buf);
+        }
+        
+        // Update current buffer
+        current_buffer = result;
+        current_length = input_len;
+        
+        return ErrorCode.Success;
     }
-    
-    set_error_message(""); // Clear error message on success
-    return @intFromEnum(ErrorCode.Success);
 }
 
 export fn getResult() [*]const u8 {
