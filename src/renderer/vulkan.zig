@@ -338,7 +338,7 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createSwapChain(self: *Self) !void {
+    pub fn createSwapChain(self: *Self) !void {
         const swapchain_support = try querySwapChainSupport(self.physical_device, self.surface);
         defer {
             if (swapchain_support.formats.len > 0) {
@@ -351,7 +351,7 @@ pub const VulkanRenderer = struct {
 
         const surface_format = try chooseSwapSurfaceFormat(swapchain_support.formats);
         const present_mode = try chooseSwapPresentMode(swapchain_support.present_modes);
-        const extent = chooseSwapExtent(swapchain_support.capabilities);
+        const extent = self.chooseSwapExtent(swapchain_support.capabilities);
 
         var image_count = swapchain_support.capabilities.minImageCount + 1;
         if (swapchain_support.capabilities.maxImageCount > 0 and image_count > swapchain_support.capabilities.maxImageCount) {
