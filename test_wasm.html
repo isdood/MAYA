@@ -142,6 +142,57 @@
             {
                 name: "Test Case 4",
                 input: "Test with long string: " + "x".repeat(2000)
+            },
+            {
+                name: "Test Case 5 - GLIMMER Pattern",
+                input: `@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-02-07 19:57:59",
+    "author": "celery",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "DREAMWEAVE/EXAMPLES/mixed_flow.we",
+    "type": "we",
+    "hash": "ceb99543"
+  }
+}
+@pattern_meta@
+
+~story~ = "Mixed Flow Example"
+
+@story@
+    >>> This demonstrates mixed forward and backward flows
+
+    >>> Forward chain with backward sub-process
+    process> write> [
+        verify| data <transform< "First flow"
+    ]> display
+
+    >>> Backward chain with forward sub-process
+    display <[
+        "Second flow" >transform> verify
+    ]< write <process
+
+    >>> Mixed nested flows
+    process> [
+        input< "Third flow" >transform> verify |
+        display <output> format
+    ]> write
+
+    >>> Bidirectional verification chain
+    validate> [
+        check< "Fourth flow" >process |
+        verify< data >transform
+    ]> display
+@story@`
+            },
+            {
+                name: "Test Case 6 - Invalid GLIMMER Pattern",
+                input: "@pattern_meta@\nInvalid Pattern\n@pattern_meta@"
             }
         ];
 
@@ -160,17 +211,26 @@
                 
                 for (const testCase of testCases) {
                     output.innerHTML += `<h3>${testCase.name}</h3>`;
-                    output.innerHTML += `Input: "${testCase.input}"<br><br>`;
+                    output.innerHTML += `Input: "${testCase.input.substring(0, 100)}${testCase.input.length > 100 ? '...' : ''}"<br><br>`;
                     
                     try {
                         const result = await runTest(instance, testCase.input);
-                        output.innerHTML += `Result: "${result.result}"<br><br>`;
+                        output.innerHTML += `Result: "${result.result.substring(0, 100)}${result.result.length > 100 ? '...' : ''}"<br><br>`;
                         output.innerHTML += 'Debug Info:<br><br>';
                         output.innerHTML += `Input length: ${result.debug.inputLength}<br>`;
                         output.innerHTML += `Buffer size: ${result.debug.bufferSize}<br>`;
                         output.innerHTML += `Current length: ${result.debug.currentLength}<br>`;
                         output.innerHTML += `Buffer pointer: ${result.debug.bufferPointer}<br>`;
                         output.innerHTML += `Buffer content (hex): ${result.debug.bufferContent}<br>`;
+                        
+                        // Add GLIMMER pattern info if available
+                        const patternType = instance.exports.getPatternType();
+                        const patternIntensity = instance.exports.getPatternIntensity();
+                        if (patternType !== 0) {
+                            output.innerHTML += '<br>GLIMMER Pattern Info:<br>';
+                            output.innerHTML += `Pattern Type: ${patternType}<br>`;
+                            output.innerHTML += `Pattern Intensity: ${patternIntensity.toFixed(2)}<br>`;
+                        }
                     } catch (error) {
                         output.innerHTML += `<div style="color: red;">✗ ${error.message}</div>`;
                     }

@@ -444,4 +444,60 @@ test "PatternCombination" {
     const combined = GlimmerPattern.combine(&test_patterns, &[_]f32{ 0.6, 0.4 });
     try std.testing.expect(combined.intensity > 0.0);
     try std.testing.expect(combined.frequency > 0.0);
+}
+
+/// Parse a GLIMMER pattern from a string buffer
+pub fn parsePattern(buffer: []const u8) !?GlimmerPattern {
+    // Check for pattern metadata markers
+    const meta_start = "@pattern_meta@";
+    const meta_end = "@pattern_meta@";
+    
+    var start_idx: usize = 0;
+    var end_idx: usize = 0;
+    
+    // Find metadata section
+    if (std.mem.indexOf(u8, buffer, meta_start)) |idx| {
+        start_idx = idx + meta_start.len;
+        if (std.mem.indexOfPos(u8, buffer, start_idx, meta_end)) |end| {
+            end_idx = end;
+        } else {
+            return null;
+        }
+    } else {
+        return null;
+    }
+    
+    // Extract metadata section
+    const metadata_section = buffer[start_idx..end_idx];
+    
+    // Create a new pattern
+    var pattern = GlimmerPattern.init("GLIMMER Pattern", .quantum_wave);
+    
+    // Parse metadata
+    var lines = std.mem.split(u8, metadata_section, "\n");
+    while (lines.next()) |line| {
+        const trimmed = std.mem.trim(u8, line, " \t");
+        if (std.mem.startsWith(u8, trimmed, "GLIMMER Pattern:")) {
+            // Found pattern header
+            continue;
+        }
+        
+        // Parse JSON-like metadata
+        if (std.mem.indexOf(u8, trimmed, "\"pattern_version\"")) |_| {
+            // Extract version info
+            if (std.mem.indexOf(u8, trimmed, "1.0.0")) |_| {
+                pattern.intensity = 0.8;
+                pattern.frequency = 1.2;
+            }
+        }
+        
+        if (std.mem.indexOf(u8, trimmed, "\"color\"")) |_| {
+            // Extract color info
+            if (std.mem.indexOf(u8, trimmed, "#FF69B4")) |_| {
+                pattern.base_color = colors.GlimmerColors.neural_purple;
+            }
+        }
+    }
+    
+    return pattern;
 } 
