@@ -1810,23 +1810,4 @@ pub const VulkanRenderer = struct {
             return error.MemoryBindingFailed;
         }
     }
-
-    fn findMemoryType(
-        self: *Self,
-        type_filter: u32,
-        properties: vk.VkMemoryPropertyFlags,
-    ) !u32 {
-        var mem_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
-        vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &mem_properties);
-
-        for (0..mem_properties.memoryTypeCount) |i| {
-            if ((type_filter & (@as(u32, 1) << @intCast(i))) != 0 and
-                (mem_properties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
-                return @intCast(i);
-            }
-        }
-
-        return error.NoSuitableMemoryType;
-    }
 }; 
