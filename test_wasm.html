@@ -58,6 +58,11 @@
 
         async function runTest(instance, testInput) {
             try {
+                // Validate input
+                if (typeof testInput !== 'string') {
+                    throw new Error('Input must be a string');
+                }
+
                 const encoder = new TextEncoder();
                 const inputBytes = encoder.encode(testInput);
                 
@@ -89,9 +94,6 @@
                 }
                 
                 const bufferPtr = instance.exports.getBuffer();
-                if (bufferPtr === null) {
-                    throw new Error("Buffer pointer is null");
-                }
                 
                 // Create a copy of the memory slice to prevent detachment issues
                 const resultBytes = new Uint8Array(memory.buffer.slice(bufferPtr, bufferPtr + length));
@@ -123,80 +125,64 @@
             }
         }
 
-        async function init() {
-            let instance = null;
+        // Test cases
+        const testCases = [
+            {
+                name: "Test Case 1",
+                input: "Hello, MAYA!"
+            },
+            {
+                name: "Test Case 2",
+                input: "Test with empty string"
+            },
+            {
+                name: "Test Case 3",
+                input: "Test with special chars: 你好, MAYA! 👋"
+            },
+            {
+                name: "Test Case 4",
+                input: "Test with long string: " + "x".repeat(2000)
+            }
+        ];
+
+        // Run tests
+        async function runTests() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<h1>MAYA WASM Test ✨</h1>';
+            
             try {
                 const response = await fetch('maya.wasm');
-                const bytes = await response.arrayBuffer();
-                const wasmModule = await WebAssembly.instantiate(bytes, {});
-                instance = wasmModule.instance;
+                const wasmBytes = await response.arrayBuffer();
+                const wasmModule = await WebAssembly.instantiate(wasmBytes, {});
+                const instance = wasmModule.instance;
                 
-                console.log('WASM module loaded');
-                console.log('Exported functions:', Object.keys(instance.exports));
+                output.innerHTML += '<div style="color: green;">✓ WASM module loaded successfully</div><br>';
                 
-                // Test cases
-                const testCases = [
-                    "Hello, MAYA!",
-                    "A".repeat(2048), // Test buffer resizing
-                    "Test with special chars: 你好, MAYA! 👋",
-                    "" // Test empty input
-                ];
-                
-                const results = [];
-                for (const testInput of testCases) {
+                for (const testCase of testCases) {
+                    output.innerHTML += `<h3>${testCase.name}</h3>`;
+                    output.innerHTML += `Input: "${testCase.input}"<br><br>`;
+                    
                     try {
-                        const result = await runTest(instance, testInput);
-                        results.push({
-                            ...result,
-                            status: 'success'
-                        });
+                        const result = await runTest(instance, testCase.input);
+                        output.innerHTML += `Result: "${result.result}"<br><br>`;
+                        output.innerHTML += 'Debug Info:<br><br>';
+                        output.innerHTML += `Input length: ${result.debug.inputLength}<br>`;
+                        output.innerHTML += `Buffer size: ${result.debug.bufferSize}<br>`;
+                        output.innerHTML += `Current length: ${result.debug.currentLength}<br>`;
+                        output.innerHTML += `Buffer pointer: ${result.debug.bufferPointer}<br>`;
+                        output.innerHTML += `Buffer content (hex): ${result.debug.bufferContent}<br>`;
                     } catch (error) {
-                        results.push({
-                            input: testInput,
-                            error: error.message,
-                            status: 'error'
-                        });
+                        output.innerHTML += `<div style="color: red;">✗ ${error.message}</div>`;
                     }
+                    output.innerHTML += '<br>';
                 }
-                
-                // Display results
-                const output = document.getElementById('output');
-                output.innerHTML = `
-                    <p class="success">✅ WASM module loaded successfully</p>
-                    ${results.map((result, index) => `
-                        <div class="test-case">
-                            <h3>Test Case ${index + 1}</h3>
-                            ${result.status === 'success' ? `
-                                <p>Input: "${result.input}"</p>
-                                <p>Result: "${result.result}"</p>
-                                <div class="debug">
-                                    <p>Debug Info:</p>
-                                    <ul>
-                                        <li>Input length: ${result.debug.inputLength}</li>
-                                        <li>Buffer size: ${result.debug.bufferSize}</li>
-                                        <li>Current length: ${result.debug.currentLength}</li>
-                                        <li>Buffer pointer: ${result.debug.bufferPointer}</li>
-                                        <li>Buffer content (hex): ${result.debug.bufferContent}</li>
-                                    </ul>
-                                </div>
-                            ` : `
-                                <p class="error">❌ Error: ${result.error}</p>
-                            `}
-                        </div>
-                    `).join('')}
-                `;
-                
             } catch (error) {
-                const output = document.getElementById('output');
-                output.innerHTML = `
-                    <p class="error">❌ Error: ${error.message}</p>
-                    <pre>${error.stack}</pre>
-                `;
-                console.error('Error:', error);
+                output.innerHTML += `<div style="color: red;">✗ Error: ${error.message}</div>`;
             }
         }
-        
-        init();
+
+        // Run tests when page loads
+        window.onload = runTests;
     </script>
 </body>
 </html> 

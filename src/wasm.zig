@@ -47,7 +47,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
         return @intFromEnum(ErrorCode.InvalidInput);
     }
     
-    if (input_len == 0 or input_ptr == null) {
+    if (input_len == 0) {
         return @intFromEnum(ErrorCode.InvalidInput);
     }
     
@@ -84,7 +84,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
 
 export fn getResult() [*]const u8 {
     if (!is_initialized or buffer_len == 0) {
-        return null;
+        return @ptrCast([*]const u8, &[_]u8{0});
     }
     return buffer.ptr;
 }
@@ -108,7 +108,7 @@ export fn getLength() usize {
 // Export the buffer directly for debugging
 export fn getBuffer() [*]const u8 {
     if (!is_initialized) {
-        return null;
+        return @ptrCast([*]const u8, &[_]u8{0});
     }
     return buffer.ptr;
 }
