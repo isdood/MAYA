@@ -129,7 +129,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(test_exe);
 
     // Add a new build step for WebAssembly
-    const wasm_target = std.zig.CrossTarget{
+    const wasm_target = std.Target.Query{
         .cpu_arch = .wasm32,
         .os_tag = .freestanding,
     };
@@ -137,7 +137,7 @@ pub fn build(b: *std.Build) void {
     const wasm = b.addExecutable(.{
         .name = "maya",
         .root_source_file = .{ .cwd_relative = "src/main.zig" },
-        .target = wasm_target,
+        .target = b.resolveTargetQuery(wasm_target),
         .optimize = optimize,
     });
 
