@@ -33,6 +33,7 @@ var allocator: std.mem.Allocator = undefined;
 var buffer_pool: [BUFFER_POOL_SIZE]Buffer = undefined;
 var current_buffer_index: usize = 0;
 var result_memory: []u8 = undefined;  // Fixed memory for results
+var result_length: usize = 0;  // Track actual data length
 
 // Error buffer
 var error_buffer: [1024]u8 = undefined;
@@ -194,8 +195,9 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             buffer.in_use = true;
             buffer.is_valid = true;
             
-            // Copy to result memory
+            // Copy to result memory and update length
             @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
+            result_length = input_len;
             
             return ErrorCode.Success;
         }
@@ -231,8 +233,9 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         buffer.in_use = true;
         buffer.is_valid = true;
         
-        // Copy to result memory
+        // Copy to result memory and update length
         @memcpy(result_memory[0..transformed.?.len], transformed.?);
+        result_length = transformed.?.len;
         
         // Free transformed data
         allocator.free(transformed.?);
@@ -245,8 +248,9 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         buffer.in_use = true;
         buffer.is_valid = true;
         
-        // Copy to result memory
+        // Copy to result memory and update length
         @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
+        result_length = input_len;
         
         return ErrorCode.Success;
     }
@@ -272,7 +276,7 @@ export fn getLength() usize {
     if (!is_initialized) {
         return 0;
     }
-    return result_memory.len;
+    return result_length;
 }
 
 // Export the buffer directly for debugging
