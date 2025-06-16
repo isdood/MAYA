@@ -28,10 +28,19 @@
         .error {
             color: #dc3545;
         }
+        .warning {
+            color: #ffc107;
+        }
         .debug {
             color: #6c757d;
             font-family: monospace;
             font-size: 0.9em;
+        }
+        .test-case {
+            margin: 1rem 0;
+            padding: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -39,76 +48,122 @@
     <h1>MAYA WASM Test ✨</h1>
     <div id="output">Initializing...</div>
     <script>
+        // Error code mapping
+        const ErrorCode = {
+            0: "Success",
+            1: "BufferTooSmall",
+            2: "InvalidInput",
+            3: "MemoryAllocationFailed"
+        };
+
+        async function runTest(instance, testInput) {
+            const encoder = new TextEncoder();
+            const inputBytes = encoder.encode(testInput);
+            
+            // Initialize
+            const initResult = instance.exports.init();
+            if (initResult !== 0) {
+                throw new Error(`Initialization failed: ${ErrorCode[initResult]}`);
+            }
+            
+            // Process input
+            const processResult = instance.exports.process(inputBytes, inputBytes.length);
+            if (processResult !== 0) {
+                throw new Error(`Processing failed: ${ErrorCode[processResult]}`);
+            }
+            
+            // Get results
+            const length = instance.exports.getLength();
+            const bufferPtr = instance.exports.getBuffer();
+            const memory = new Uint8Array(instance.exports.memory.buffer);
+            
+            // Get the result
+            const result = new TextDecoder().decode(
+                memory.slice(bufferPtr, bufferPtr + length)
+            );
+            
+            // Debug information
+            const bufferContent = Array.from(memory.slice(bufferPtr, bufferPtr + 20))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join(' ');
+            
+            return {
+                input: testInput,
+                result: result,
+                debug: {
+                    inputLength: inputBytes.length,
+                    bufferSize: instance.exports.getBufferSize(),
+                    currentLength: length,
+                    bufferPointer: bufferPtr,
+                    bufferContent: bufferContent
+                }
+            };
+        }
+
         async function init() {
             try {
                 const response = await fetch('maya.wasm');
                 const bytes = await response.arrayBuffer();
                 const { instance } = await WebAssembly.instantiate(bytes, {});
                 
-                // Debug information
                 console.log('WASM module loaded');
                 console.log('Exported functions:', Object.keys(instance.exports));
                 
-                // Test the exported functions
-                instance.exports.init();
+                // Test cases
+                const testCases = [
+                    "Hello, MAYA!",
+                    "A".repeat(2048), // Test buffer resizing
+                    "Test with special chars: 你好, MAYA! 👋",
+                    "" // Test empty input
+                ];
                 
-                // Test process function
-                const testInput = "Hello, MAYA!";
-                const encoder = new TextEncoder();
-                const inputBytes = encoder.encode(testInput);
+                const results = [];
+                for (const testInput of testCases) {
+                    try {
+                        const result = await runTest(instance, testInput);
+                        results.push({
+                            ...result,
+                            status: 'success'
+                        });
+                    } catch (error) {
+                        results.push({
+                            input: testInput,
+                            error: error.message,
+                            status: 'error'
+                        });
+                    }
+                }
                 
-                console.log('Input bytes:', inputBytes);
-                console.log('Input length:', inputBytes.length);
-                console.log('Buffer size:', instance.exports.getBufferSize());
-                
-                // Get the memory view
-                const memory = new Uint8Array(instance.exports.memory.buffer);
-                
-                // Find a safe location in memory to write our input
-                const inputPtr = 0; // Start at the beginning of memory
-                
-                // Copy input to WASM memory
-                memory.set(inputBytes, inputPtr);
-                
-                // Process the input
-                instance.exports.process(inputPtr, inputBytes.length);
-                
-                // Get the current length
-                const length = instance.exports.getLength();
-                console.log('Current length:', length);
-                
-                // Get the buffer pointer
-                const bufferPtr = instance.exports.getBuffer();
-                console.log('Buffer pointer:', bufferPtr);
-                
-                // Get the result
-                const result = new TextDecoder().decode(
-                    memory.slice(bufferPtr, bufferPtr + length)
-                );
-                
-                console.log('Decoded result:', result);
-                
-                // Debug: Show the first 20 bytes of the buffer
-                const bufferContent = Array.from(memory.slice(bufferPtr, bufferPtr + 20))
-                    .map(b => b.toString(16).padStart(2, '0'))
-                    .join(' ');
-                
+                // Display results
                 const output = document.getElementById('output');
                 output.innerHTML = `
                     <p class="success">✅ WASM module loaded successfully</p>
-                    <p>Test input: "${testInput}"</p>
-                    <p>Result: "${result}"</p>
-                    <div class="debug">
-                        <p>Debug Info:</p>
-                        <ul>
-                            <li>Input length: ${inputBytes.length}</li>
-                            <li>Buffer size: ${instance.exports.getBufferSize()}</li>
-                            <li>Current length: ${length}</li>
-                            <li>Buffer pointer: ${bufferPtr}</li>
-                            <li>Buffer content (hex): ${bufferContent}</li>
-                        </ul>
-                    </div>
+                    ${results.map((result, index) => `
+                        <div class="test-case">
+                            <h3>Test Case ${index + 1}</h3>
+                            ${result.status === 'success' ? `
+                                <p>Input: "${result.input}"</p>
+                                <p>Result: "${result.result}"</p>
+                                <div class="debug">
+                                    <p>Debug Info:</p>
+                                    <ul>
+                                        <li>Input length: ${result.debug.inputLength}</li>
+                                        <li>Buffer size: ${result.debug.bufferSize}</li>
+                                        <li>Current length: ${result.debug.currentLength}</li>
+                                        <li>Buffer pointer: ${result.debug.bufferPointer}</li>
+                                        <li>Buffer content (hex): ${result.debug.bufferContent}</li>
+                                    </ul>
+                                </div>
+                            ` : `
+                                <p class="error">❌ Error: ${result.error}</p>
+                            `}
+                        </div>
+                    `).join('')}
                 `;
+                
+                // Cleanup
+                instance.exports.cleanup();
+                
             } catch (error) {
                 const output = document.getElementById('output');
                 output.innerHTML = `
