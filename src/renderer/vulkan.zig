@@ -141,6 +141,10 @@ pub const VulkanRenderer = struct {
         try self.createCommandBuffers();
         try self.createSyncObjects();
 
+        // Set up framebuffer resize callback
+        glfw.glfwSetWindowUserPointer(window, @ptrCast(*anyopaque, &self));
+        glfw.glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
         return self;
     }
 
@@ -929,10 +933,11 @@ pub const VulkanRenderer = struct {
             &image_index,
         );
 
-        if (result == vk.VK_ERROR_OUT_OF_DATE_KHR) {
+        if (result == vk.VK_ERROR_OUT_OF_DATE_KHR or result == vk.VK_SUBOPTIMAL_KHR or self.framebuffer_resized) {
+            self.framebuffer_resized = false;
             try self.recreateSwapChain();
             return;
-        } else if (result != vk.VK_SUCCESS and result != vk.VK_SUBOPTIMAL_KHR) {
+        } else if (result != vk.VK_SUCCESS) {
             return error.FailedToAcquireSwapchainImage;
         }
 
@@ -1702,7 +1707,6 @@ pub const VulkanRenderer = struct {
     }
 
     fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: i32, height: i32) callconv(.C) void {
-        _ = window;
         _ = width;
         _ = height;
         const app = @ptrCast(*Self, @alignCast(@alignOf(*Self), glfw.glfwGetWindowUserPointer(window).?));
