@@ -93,6 +93,22 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the MAYA GUI");
     run_step.dependOn(&run_cmd.step);
 
+    // Create test executable
+    const test_exe = b.addExecutable(.{
+        .name = "maya-test",
+        .root_source_file = .{ .cwd_relative = "src/test/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // Create test run command
+    const test_run_cmd = b.addRunArtifact(test_exe);
+    test_run_cmd.step.dependOn(b.getInstallStep());
+
+    // Create test run step
+    const test_run_step = b.step("test-run", "Run the MAYA language processor test");
+    test_run_step.dependOn(&test_run_cmd.step);
+
     // Create test step
     const unit_tests = b.addTest(.{
         .root_source_file = .{ .cwd_relative = "src/main.zig" },

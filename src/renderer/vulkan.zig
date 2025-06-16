@@ -142,7 +142,7 @@ pub const VulkanRenderer = struct {
         try self.createSyncObjects();
 
         // Set up framebuffer resize callback
-        glfw.glfwSetWindowUserPointer(window, @ptrCast(*anyopaque, &self));
+        glfw.glfwSetWindowUserPointer(window, @ptrCast(&self));
         glfw.glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
         return self;
@@ -392,8 +392,8 @@ pub const VulkanRenderer = struct {
         
         // Update swapchain extent to match the actual image dimensions
         self.swapchain_extent = vk.VkExtent2D{
-            .width = image_info.extent.width,
-            .height = image_info.extent.height,
+            .width = @as(u32, @intCast(image_info.extent.width)),
+            .height = @as(u32, @intCast(image_info.extent.height)),
         };
 
         self.swapchain_image_format = surface_format.format;
@@ -1614,7 +1614,7 @@ pub const VulkanRenderer = struct {
             vk.vkFreeCommandBuffers(
                 self.device,
                 self.command_pool,
-                @intCast(u32, buffers.len),
+                @as(u32, @intCast(buffers.len)),
                 buffers.ptr,
             );
             std.heap.page_allocator.free(buffers);
