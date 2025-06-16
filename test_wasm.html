@@ -61,8 +61,15 @@
                 console.log('Input length:', inputBytes.length);
                 console.log('Buffer size:', instance.exports.getBufferSize());
                 
+                // Allocate memory for input in WASM
+                const inputPtr = instance.exports.memory.grow(Math.ceil(inputBytes.length / 65536));
+                const memory = new Uint8Array(instance.exports.memory.buffer);
+                
+                // Copy input to WASM memory
+                memory.set(inputBytes, inputPtr);
+                
                 // Process the input
-                instance.exports.process(inputBytes, inputBytes.length);
+                instance.exports.process(inputPtr, inputBytes.length);
                 
                 // Get the current length
                 const length = instance.exports.getLength();
@@ -71,9 +78,6 @@
                 // Get the buffer pointer
                 const bufferPtr = instance.exports.getBuffer();
                 console.log('Buffer pointer:', bufferPtr);
-                
-                // Create a view of the memory
-                const memory = new Uint8Array(instance.exports.memory.buffer);
                 
                 // Get the result
                 const result = new TextDecoder().decode(
