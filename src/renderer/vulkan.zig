@@ -572,7 +572,7 @@ pub const VulkanRenderer = struct {
         };
 
         if (vk.vkCreateImageView(self.device, &view_info, null, &self.depth_image_view) != vk.VK_SUCCESS) {
-            return error.ImageViewCreationFailed;
+            return error.FailedToCreateImageView;
         }
     }
 
@@ -1590,6 +1590,7 @@ pub const VulkanRenderer = struct {
         // Create new swapchain with the new dimensions
         try self.createSwapChain();
         try self.createImageViews();
+        try self.createDepthResources();
         try self.createRenderPass();
         try self.createGraphicsPipeline();
         try self.createFramebuffers();
@@ -1642,7 +1643,21 @@ pub const VulkanRenderer = struct {
             self.render_pass = null;
         }
 
-        // Destroy image views
+        // Clean up depth resources
+        if (self.depth_image_view) |view| {
+            vk.vkDestroyImageView(self.device, view, null);
+            self.depth_image_view = null;
+        }
+        if (self.depth_image) |image| {
+            vk.vkDestroyImage(self.device, image, null);
+            self.depth_image = null;
+        }
+        if (self.depth_image_memory) |memory| {
+            vk.vkFreeMemory(self.device, memory, null);
+            self.depth_image_memory = null;
+        }
+
+        // Clean up image views
         if (self.swapchain_image_views) |views| {
             for (views) |view| {
                 vk.vkDestroyImageView(self.device, view, null);
@@ -1651,7 +1666,7 @@ pub const VulkanRenderer = struct {
             self.swapchain_image_views = null;
         }
 
-        // Destroy swapchain
+        // Clean up swapchain
         if (self.swapchain) |swapchain| {
             vk.vkDestroySwapchainKHR(self.device, swapchain, null);
             self.swapchain = null;
