@@ -129,12 +129,10 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(test_exe);
 
     // Add a new build step for WebAssembly
-    const wasm_target = b.standardTargetOptions(.{
-        .default_target = .{
-            .cpu_arch = .wasm32,
-            .os_tag = .freestanding,
-        },
-    });
+    const wasm_target = std.zig.CrossTarget{
+        .cpu_arch = .wasm32,
+        .os_tag = .freestanding,
+    };
 
     const wasm = b.addExecutable(.{
         .name = "maya",
