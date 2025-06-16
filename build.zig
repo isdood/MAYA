@@ -136,7 +136,7 @@ pub fn build(b: *std.Build) void {
 
     const wasm = b.addExecutable(.{
         .name = "maya",
-        .root_source_file = .{ .cwd_relative = "src/main.zig" },
+        .root_source_file = .{ .cwd_relative = "src/wasm.zig" },
         .target = b.resolveTargetQuery(wasm_target),
         .optimize = optimize,
     });
@@ -146,6 +146,10 @@ pub fn build(b: *std.Build) void {
     wasm.root_module.addImport("neural", neural_module);
     wasm.root_module.addImport("starweave", starweave_module);
     wasm.root_module.addImport("glimmer-colors", glimmer_colors_module);
+
+    // Set WASM-specific options
+    wasm.rdynamic = true;
+    wasm.entry = .disabled;
 
     b.installArtifact(wasm);
 
