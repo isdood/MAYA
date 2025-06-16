@@ -55,7 +55,7 @@ pub const LanguageProcessor = struct {
                 print("- {s}: {s}\n", .{ pattern.name, pattern.content });
             }
         } else if (std.mem.eql(u8, cmd, "help")) {
-            self.printHelp();
+            LanguageProcessor.printHelp();
         } else if (std.mem.eql(u8, cmd, "quit")) {
             self.running = false;
         } else {

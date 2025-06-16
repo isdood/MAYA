@@ -334,10 +334,10 @@ pub const VulkanRenderer = struct {
     }
 
     fn createSwapChain(self: *Self) !void {
-        const swapchain_support = try self.querySwapChainSupport(self.physical_device);
+        const swapchain_support = try self.querySwapChainSupport(self.physical_device, self.surface);
 
         const surface_format = try chooseSwapSurfaceFormat(swapchain_support.formats);
-        const present_mode = try self.chooseSwapPresentMode(swapchain_support.present_modes);
+        const present_mode = try chooseSwapPresentMode(swapchain_support.present_modes);
         const extent = try self.chooseSwapExtent(swapchain_support.capabilities);
 
         var image_count = swapchain_support.capabilities.minImageCount + 1;
@@ -1201,7 +1201,7 @@ pub const VulkanRenderer = struct {
         return true;
     }
 
-    fn querySwapChainSupport(self: *Self, device: vk.VkPhysicalDevice) !SwapChainSupportDetails {
+    fn querySwapChainSupport(self: *Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
         var details = SwapChainSupportDetails{
             .capabilities = undefined,
             .formats = undefined,
@@ -1209,22 +1209,22 @@ pub const VulkanRenderer = struct {
         };
 
         // Capabilities
-        _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, self.surface, &details.capabilities);
+        _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
         // Formats
         var format_count: u32 = undefined;
-        _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, self.surface, &format_count, null);
+        _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, null);
         if (format_count != 0) {
             details.formats = try std.heap.page_allocator.alloc(vk.VkSurfaceFormatKHR, format_count);
-            _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, self.surface, &format_count, details.formats.ptr);
+            _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, details.formats.ptr);
         }
 
         // Present modes
         var present_mode_count: u32 = undefined;
-        _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, self.surface, &present_mode_count, null);
+        _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, null);
         if (present_mode_count != 0) {
             details.present_modes = try std.heap.page_allocator.alloc(vk.VkPresentModeKHR, present_mode_count);
-            _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, self.surface, &present_mode_count, details.present_modes.ptr);
+            _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, details.present_modes.ptr);
         }
 
         return details;
@@ -1705,8 +1705,8 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
-        const app = @ptrCast(*Self, glfw.glfwGetWindowUserPointer(window).?);
+    fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, _width: c_int, _height: c_int) callconv(.C) void {
+        const app = @as(*Self, @ptrCast(glfw.glfwGetWindowUserPointer(window).?));
         app.framebuffer_resized = true;
     }
 }; 
