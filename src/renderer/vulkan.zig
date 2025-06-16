@@ -11,6 +11,12 @@ const c = @cImport({
 const math = std.math;
 const vk_types_vk = vk_types.vk;
 
+const UniformBufferObject = struct {
+    model: [4][4]f32,
+    view: [4][4]f32,
+    proj: [4][4]f32,
+};
+
 fn createRotationMatrix(angle: f32) [4][4]f32 {
     const cos_val = @cos(angle);
     const sin_val = @sin(angle);
@@ -73,11 +79,11 @@ pub const VulkanRenderer = struct {
     const Self = @This();
     const MAX_FRAMES_IN_FLIGHT = 2;
     const REQUIRED_DEVICE_EXTENSIONS = [_][*:0]const u8{
-        vk_types_vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
     const REQUIRED_INSTANCE_EXTENSIONS = [_][*:0]const u8{
-        vk_types_vk.VK_KHR_SURFACE_EXTENSION_NAME,
-        vk_types_vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+        vk.VK_KHR_SURFACE_EXTENSION_NAME,
+        vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
     };
 
     const QueueFamilyIndices = struct {
@@ -1453,13 +1459,13 @@ pub const VulkanRenderer = struct {
         std.log.info("Vertex buffer creation complete", .{});
     }
 
-    pub fn updateUniformBuffer(self: *Self, current_frame: usize) void {
-        const time = @as(f32, @floatFromInt(glfw.glfwGetTime()));
+    pub fn updateUniformBuffer(self: *Self, current_frame: usize) !void {
+        const time = @as(f32, @floatCast(glfw.glfwGetTime()));
         const model = createRotationMatrix(time * @as(f32, @floatFromInt(std.math.pi)) / 2.0);
         const view = createLookAtMatrix(
-            .{ 0.0, 0.0, -2.0 },
-            .{ 0.0, 0.0, 0.0 },
-            .{ 0.0, 1.0, 0.0 },
+            [3]f32{ 2.0, 2.0, 2.0 },
+            [3]f32{ 0.0, 0.0, 0.0 },
+            [3]f32{ 0.0, 0.0, 1.0 },
         );
         const proj = createPerspectiveMatrix(
             @as(f32, @floatFromInt(self.swapchain_extent.width)) / @as(f32, @floatFromInt(self.swapchain_extent.height)),
@@ -1473,10 +1479,8 @@ pub const VulkanRenderer = struct {
             .proj = proj,
         };
 
-        var data: [*]u8 = undefined;
-        _ = vk.vkMapMemory(self.device, self.uniform_buffer_memory, 0, @sizeOf(UniformBufferObject), 0, @ptrCast(&data));
+        const data = @ptrCast([*]u8, self.uniform_buffers_mapped[current_frame]);
         @memcpy(data[0..@sizeOf(UniformBufferObject)], std.mem.asBytes(&ubo));
-        vk.vkUnmapMemory(self.device, self.uniform_buffer_memory);
     }
 
     fn createCommandPool(self: *Self) !void {
