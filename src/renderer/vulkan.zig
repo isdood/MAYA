@@ -1,10 +1,12 @@
 const std = @import("std");
-const vk_types = @import("vulkan_types.zig");
-const vk = vk_types.vk;
-const glfw = @cImport({
-    @cDefine("GLFW_INCLUDE_VULKAN", "1");
-    @cInclude("GLFW/glfw3.h");
+const vk = @import("vulkan");
+const glfw = @import("glfw");
+const c = @cImport({
+    @cInclude("vulkan/vulkan.h");
 });
+const math = std.math;
+const vk_types = @import("vulkan_types.zig");
+const vk_types_vk = vk_types.vk;
 
 fn createRotationMatrix(angle: f32) [4][4]f32 {
     const c = @cos(angle);
@@ -21,11 +23,11 @@ pub const VulkanRenderer = struct {
     const Self = @This();
     const MAX_FRAMES_IN_FLIGHT = 2;
     const REQUIRED_DEVICE_EXTENSIONS = [_][*:0]const u8{
-        vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        vk_types_vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
     const REQUIRED_INSTANCE_EXTENSIONS = [_][*:0]const u8{
-        vk.VK_KHR_SURFACE_EXTENSION_NAME,
-        vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+        vk_types_vk.VK_KHR_SURFACE_EXTENSION_NAME,
+        vk_types_vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
     };
 
     const QueueFamilyIndices = struct {
@@ -416,44 +418,17 @@ pub const VulkanRenderer = struct {
             return capabilities.currentExtent;
         }
 
-        var width: i32 = 0;
-        var height: i32 = 0;
+        var width: c_int = undefined;
+        var height: c_int = undefined;
         glfw.glfwGetFramebufferSize(self.window, &width, &height);
 
-        // Define maximum reasonable dimensions (4K resolution)
-        const max_reasonable_width: u32 = 3840;
-        const max_reasonable_height: u32 = 2160;
-
-        // Calculate aspect ratio
-        const aspect_ratio = @as(f32, @floatFromInt(width)) / @as(f32, @floatFromInt(height));
-
-        // Calculate initial dimensions with aspect ratio preservation
         var extent = vk.VkExtent2D{
-            .width = @as(u32, @intCast(width)),
-            .height = @as(u32, @intCast(height)),
+            .width = @intCast(width),
+            .height = @intCast(height),
         };
 
-        // Clamp to maximum reasonable dimensions while preserving aspect ratio
-        if (extent.width > max_reasonable_width) {
-            extent.width = max_reasonable_width;
-            extent.height = @intFromFloat(@as(f32, @floatFromInt(extent.width)) / aspect_ratio);
-        }
-        if (extent.height > max_reasonable_height) {
-            extent.height = max_reasonable_height;
-            extent.width = @intFromFloat(@as(f32, @floatFromInt(extent.height)) * aspect_ratio);
-        }
-
-        // Ensure dimensions are within device capabilities
-        extent.width = std.math.max(capabilities.minImageExtent.width, std.math.min(capabilities.maxImageExtent.width, extent.width));
-        extent.height = std.math.max(capabilities.minImageExtent.height, std.math.min(capabilities.maxImageExtent.height, extent.height));
-
-        // Ensure dimensions are aligned to device requirements
-        if (capabilities.minImageExtent.width > 0) {
-            extent.width = @divFloor(extent.width, capabilities.minImageExtent.width) * capabilities.minImageExtent.width;
-        }
-        if (capabilities.minImageExtent.height > 0) {
-            extent.height = @divFloor(extent.height, capabilities.minImageExtent.height) * capabilities.minImageExtent.height;
-        }
+        extent.width = math.max(capabilities.minImageExtent.width, math.min(capabilities.maxImageExtent.width, extent.width));
+        extent.height = math.max(capabilities.minImageExtent.height, math.min(capabilities.maxImageExtent.height, extent.height));
 
         return extent;
     }
@@ -1133,7 +1108,7 @@ pub const VulkanRenderer = struct {
         const extensions_supported = checkDeviceExtensionSupport(device) catch return false;
         var swap_chain_adequate = false;
         if (extensions_supported) {
-            const swap_chain_support = querySwapChainSupport(device, surface) catch return false;
+            const swap_chain_support = querySwapChainSupport(null, device, surface) catch return false;
             defer {
                 if (swap_chain_support.formats.len > 0) {
                     std.heap.page_allocator.free(swap_chain_support.formats);
@@ -1201,7 +1176,7 @@ pub const VulkanRenderer = struct {
         return true;
     }
 
-    fn querySwapChainSupport(_self: *Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
+    fn querySwapChainSupport(_self: ?*Self, device: vk.VkPhysicalDevice, surface: vk.VkSurfaceKHR) !SwapChainSupportDetails {
         var details = SwapChainSupportDetails{
             .capabilities = undefined,
             .formats = undefined,
@@ -1575,8 +1550,8 @@ pub const VulkanRenderer = struct {
     }
 
     pub fn recreateSwapChain(self: *Self) !void {
-        var width: i32 = 0;
-        var height: i32 = 0;
+        var width: c_int = 0;
+        var height: c_int = 0;
         glfw.glfwGetFramebufferSize(self.window, &width, &height);
         
         // Wait for valid dimensions
@@ -1705,7 +1680,9 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, _width: c_int, _height: c_int) callconv(.C) void {
+    fn framebufferResizeCallback(window: ?*glfw.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
+        _ = width;
+        _ = height;
         const app = @as(*Self, @ptrCast(glfw.glfwGetWindowUserPointer(window).?));
         app.framebuffer_resized = true;
     }
