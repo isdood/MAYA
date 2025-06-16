@@ -1,7 +1,7 @@
 const std = @import("std");
 const print = std.debug.print;
 const testing = std.testing;
-const InteractionRecorder = @import("learning").InteractionRecorder;
+const InteractionRecorder = @import("../learning/interaction_recorder.zig").InteractionRecorder;
 
 pub fn runInteractionRecorderTests() !void {
     print("\nMAYA Interaction Recorder Tests\n", .{});
