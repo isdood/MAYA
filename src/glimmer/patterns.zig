@@ -474,41 +474,22 @@ pub fn parsePattern(input: []const u8) !?GlimmerPattern {
     append_debug_message(input);
     append_debug_message("\n");
     // Find metadata markers
-    const meta_start = std.mem.indexOf(u8, input, "@pattern_meta@") orelse return null;
-    const meta_end = std.mem.indexOf(u8, input[meta_start + 14..], "@pattern_meta@") orelse return null;
-    const meta_section = input[meta_start + 14..meta_start + 14 + meta_end];
+    const meta_start = std.mem.indexOf(u8, input, "@pattern_meta@");
+    if (meta_start == null) {
+        append_debug_message("[DEBUG] parsePattern: No @pattern_meta@ start marker found\n");
+        return null;
+    }
+    const meta_end = std.mem.indexOf(u8, input[meta_start.? + 14..], "@pattern_meta@");
+    if (meta_end == null) {
+        append_debug_message("[DEBUG] parsePattern: No @pattern_meta@ end marker found\n");
+        return null;
+    }
+    const meta_section = input[meta_start.? + 14..meta_start.? + 14 + meta_end.?];
     append_debug_message("[DEBUG] parsePattern: Meta section: ");
     append_debug_message(meta_section);
     append_debug_message("\n");
     // Parse metadata
     var pattern = GlimmerPattern.init("", .quantum_wave);
-    
-    // Parse metadata
-    var lines = std.mem.splitSequence(u8, meta_section, "\n");
-    while (lines.next()) |line| {
-        const trimmed = std.mem.trim(u8, line, " \t");
-        if (std.mem.startsWith(u8, trimmed, "GLIMMER Pattern:")) {
-            // Found pattern header
-            continue;
-        }
-        
-        // Parse JSON-like metadata
-        if (std.mem.indexOf(u8, trimmed, "\"pattern_version\"")) |_| {
-            // Extract version info
-            if (std.mem.indexOf(u8, trimmed, "1.0.0")) |_| {
-                pattern.intensity = 0.8;
-                pattern.frequency = 1.2;
-            }
-        }
-        
-        if (std.mem.indexOf(u8, trimmed, "\"color\"")) |_| {
-            // Extract color info
-            if (std.mem.indexOf(u8, trimmed, "#FF69B4")) |_| {
-                pattern.base_color = colors.GlimmerColors.neural_purple;
-            }
-        }
-    }
-    
     append_debug_message("[DEBUG] parsePattern: Pattern created with type: ");
     append_debug_message(@tagName(pattern.pattern_type));
     append_debug_message("\n");
