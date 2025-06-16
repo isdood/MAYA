@@ -16,6 +16,26 @@ const ErrorCode = enum(u32) {
     PatternError = 4,
 };
 
+// Error messages
+var last_error_message: [256]u8 = undefined;
+var last_error_message_len: usize = 0;
+
+fn set_error_message(msg: []const u8) void {
+    last_error_message_len = @min(msg.len, last_error_message.len);
+    @memcpy(last_error_message[0..last_error_message_len], msg[0..last_error_message_len]);
+    if (last_error_message_len < last_error_message.len) {
+        last_error_message[last_error_message_len] = 0;
+    }
+}
+
+export fn getLastErrorMessage() [*]const u8 {
+    return &last_error_message;
+}
+
+export fn getLastErrorMessageLen() usize {
+    return last_error_message_len;
+}
+
 // Create a dynamic buffer for our data
 var buffer: []u8 = undefined;
 var buffer_len: usize = 0;
@@ -59,25 +79,25 @@ export fn init() u32 {
 
 export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
     if (!is_initialized) {
-        std.debug.print("[DEBUG] process: Not initialized\n", .{});
+        set_error_message("[process] Not initialized");
         return @intFromEnum(ErrorCode.InvalidInput);
     }
     
     if (input_len == 0) {
-        std.debug.print("[DEBUG] process: Input length is 0\n", .{});
+        set_error_message("[process] Input length is 0");
         return @intFromEnum(ErrorCode.InvalidInput);
     }
     
     // Check if we need to resize the buffer
     if (input_len > buffer.len) {
         if (input_len > MAX_BUFFER_SIZE) {
-            std.debug.print("[DEBUG] process: Input length exceeds MAX_BUFFER_SIZE\n", .{});
+            set_error_message("[process] Input length exceeds MAX_BUFFER_SIZE");
             return @intFromEnum(ErrorCode.BufferTooSmall);
         }
         
         // Allocate new buffer
         const new_buffer = allocator.alloc(u8, input_len) catch {
-            std.debug.print("[DEBUG] process: Failed to allocate new buffer for input\n", .{});
+            set_error_message("[process] Failed to allocate new buffer for input");
             return @intFromEnum(ErrorCode.MemoryAllocationFailed);
         };
         
@@ -103,20 +123,30 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
         current_pattern = pattern;
         
         // Apply pattern transformation
-        if (glimmer.applyPattern(pattern.?, pattern_buffer, allocator)) |transformed| {
-            // Copy transformed data back to main buffer
-            if (transformed.?.len > buffer.len) {
-                const new_buffer = allocator.alloc(u8, transformed.?.len) catch {
-                    std.debug.print("[DEBUG] process: Failed to allocate new buffer for transformed data\n", .{});
-                    return @intFromEnum(ErrorCode.MemoryAllocationFailed);
-                };
-                allocator.free(buffer);
-                buffer = new_buffer;
+        if (pattern) |p| {
+            if (glimmer.applyPattern(p, pattern_buffer, allocator)) |transformed| {
+                if (transformed) |t| {
+                    // Copy transformed data back to main buffer
+                    if (t.len > buffer.len) {
+                        const new_buffer = allocator.alloc(u8, t.len) catch {
+                            set_error_message("[process] Failed to allocate new buffer for transformed data");
+                            return @intFromEnum(ErrorCode.MemoryAllocationFailed);
+                        };
+                        allocator.free(buffer);
+                        buffer = new_buffer;
+                    }
+                    @memcpy(buffer[0..t.len], t);
+                    buffer_len = t.len;
+                } else {
+                    set_error_message("[process] Pattern transformation returned null");
+                    return @intFromEnum(ErrorCode.PatternError);
+                }
+            } else |_| {
+                set_error_message("[process] Pattern transformation failed");
+                return @intFromEnum(ErrorCode.PatternError);
             }
-            @memcpy(buffer[0..transformed.?.len], transformed.?);
-            buffer_len = transformed.?.len;
-        } else |_| {
-            std.debug.print("[DEBUG] process: Pattern transformation failed\n", .{});
+        } else {
+            set_error_message("[process] Pattern is null");
             return @intFromEnum(ErrorCode.PatternError);
         }
     } else |_| {
@@ -124,6 +154,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
         current_pattern = null;
     }
     
+    set_error_message(""); // Clear error message on success
     return @intFromEnum(ErrorCode.Success);
 }
 

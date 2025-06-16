@@ -69,7 +69,15 @@
                 // Initialize
                 const initResult = instance.exports.init();
                 if (initResult !== 0) {
-                    throw new Error(`Initialization failed: ${ErrorCode[initResult]}`);
+                    // Get WASM error message
+                    const errPtr = instance.exports.getLastErrorMessage();
+                    const errLen = instance.exports.getLastErrorMessageLen();
+                    let errMsg = '';
+                    if (errPtr && errLen > 0) {
+                        const memory = new Uint8Array(instance.exports.memory.buffer);
+                        errMsg = new TextDecoder().decode(memory.subarray(errPtr, errPtr + errLen));
+                    }
+                    throw new Error(`Initialization failed: ${ErrorCode[initResult]}${errMsg ? ' - ' + errMsg : ''}`);
                 }
                 
                 // Get memory view
@@ -84,7 +92,14 @@
                 // Process input
                 const processResult = instance.exports.process(inputPtr, inputBytes.length);
                 if (processResult !== 0) {
-                    throw new Error(`Processing failed: ${ErrorCode[processResult]}`);
+                    // Get WASM error message
+                    const errPtr = instance.exports.getLastErrorMessage();
+                    const errLen = instance.exports.getLastErrorMessageLen();
+                    let errMsg = '';
+                    if (errPtr && errLen > 0) {
+                        errMsg = new TextDecoder().decode(memory.subarray(errPtr, errPtr + errLen));
+                    }
+                    throw new Error(`Processing failed: ${ErrorCode[processResult]}${errMsg ? ' - ' + errMsg : ''}`);
                 }
                 
                 // Get results
