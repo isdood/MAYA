@@ -59,21 +59,25 @@ export fn init() u32 {
 
 export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
     if (!is_initialized) {
+        std.debug.print("[DEBUG] process: Not initialized\n", .{});
         return @intFromEnum(ErrorCode.InvalidInput);
     }
     
     if (input_len == 0) {
+        std.debug.print("[DEBUG] process: Input length is 0\n", .{});
         return @intFromEnum(ErrorCode.InvalidInput);
     }
     
     // Check if we need to resize the buffer
     if (input_len > buffer.len) {
         if (input_len > MAX_BUFFER_SIZE) {
+            std.debug.print("[DEBUG] process: Input length exceeds MAX_BUFFER_SIZE\n", .{});
             return @intFromEnum(ErrorCode.BufferTooSmall);
         }
         
         // Allocate new buffer
         const new_buffer = allocator.alloc(u8, input_len) catch {
+            std.debug.print("[DEBUG] process: Failed to allocate new buffer for input\n", .{});
             return @intFromEnum(ErrorCode.MemoryAllocationFailed);
         };
         
@@ -103,6 +107,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
             // Copy transformed data back to main buffer
             if (transformed.?.len > buffer.len) {
                 const new_buffer = allocator.alloc(u8, transformed.?.len) catch {
+                    std.debug.print("[DEBUG] process: Failed to allocate new buffer for transformed data\n", .{});
                     return @intFromEnum(ErrorCode.MemoryAllocationFailed);
                 };
                 allocator.free(buffer);
@@ -111,6 +116,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
             @memcpy(buffer[0..transformed.?.len], transformed.?);
             buffer_len = transformed.?.len;
         } else |_| {
+            std.debug.print("[DEBUG] process: Pattern transformation failed\n", .{});
             return @intFromEnum(ErrorCode.PatternError);
         }
     } else |_| {
