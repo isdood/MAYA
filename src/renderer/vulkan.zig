@@ -14,12 +14,59 @@ const vk_types_vk = vk_types.vk;
 fn createRotationMatrix(angle: f32) [4][4]f32 {
     const cos_val = @cos(angle);
     const sin_val = @sin(angle);
+
     return [4][4]f32{
-        [4]f32{ cos_val, -sin_val, 0, 0 },
-        [4]f32{ sin_val, cos_val, 0, 0 },
-        [4]f32{ 0, 0, 1, 0 },
-        [4]f32{ 0, 0, 0, 1 },
+        [4]f32{ cos_val, -sin_val, 0.0, 0.0 },
+        [4]f32{ sin_val, cos_val, 0.0, 0.0 },
+        [4]f32{ 0.0, 0.0, 1.0, 0.0 },
+        [4]f32{ 0.0, 0.0, 0.0, 1.0 },
     };
+}
+
+fn createLookAtMatrix(eye: [3]f32, center: [3]f32, up: [3]f32) [4][4]f32 {
+    const f = normalize(subtract(center, eye));
+    const s = normalize(cross(f, up));
+    const u = cross(s, f);
+
+    return [4][4]f32{
+        [4]f32{ s[0], u[0], -f[0], 0.0 },
+        [4]f32{ s[1], u[1], -f[1], 0.0 },
+        [4]f32{ s[2], u[2], -f[2], 0.0 },
+        [4]f32{ -dot(s, eye), -dot(u, eye), dot(f, eye), 1.0 },
+    };
+}
+
+fn createPerspectiveMatrix(aspect: f32, near: f32, far: f32) [4][4]f32 {
+    const f = 1.0 / @tan(std.math.pi / 4.0);
+    const nf = 1.0 / (near - far);
+
+    return [4][4]f32{
+        [4]f32{ f / aspect, 0.0, 0.0, 0.0 },
+        [4]f32{ 0.0, f, 0.0, 0.0 },
+        [4]f32{ 0.0, 0.0, (far + near) * nf, -1.0 },
+        [4]f32{ 0.0, 0.0, 2.0 * far * near * nf, 0.0 },
+    };
+}
+
+fn normalize(v: [3]f32) [3]f32 {
+    const length = @sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    return [3]f32{ v[0] / length, v[1] / length, v[2] / length };
+}
+
+fn subtract(a: [3]f32, b: [3]f32) [3]f32 {
+    return [3]f32{ a[0] - b[0], a[1] - b[1], a[2] - b[2] };
+}
+
+fn cross(a: [3]f32, b: [3]f32) [3]f32 {
+    return [3]f32{
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    };
+}
+
+fn dot(a: [3]f32, b: [3]f32) f32 {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
 pub const VulkanRenderer = struct {
@@ -1406,11 +1453,30 @@ pub const VulkanRenderer = struct {
         std.log.info("Vertex buffer creation complete", .{});
     }
 
-    pub fn updateUniformBuffer(self: *Self) void {
-        const rotation_matrix = createRotationMatrix(self.rotation);
-        const dest = @as([*]u8, @ptrCast(self.uniform_buffer_mapped))[0..@sizeOf([4][4]f32)];
-        const src = @as([*]const u8, @ptrCast(&rotation_matrix))[0..@sizeOf([4][4]f32)];
-        @memcpy(dest, src);
+    pub fn updateUniformBuffer(self: *Self, current_frame: usize) void {
+        const time = @as(f32, @floatFromInt(glfw.glfwGetTime()));
+        const model = createRotationMatrix(time * @as(f32, @floatFromInt(std.math.pi)) / 2.0);
+        const view = createLookAtMatrix(
+            .{ 0.0, 0.0, -2.0 },
+            .{ 0.0, 0.0, 0.0 },
+            .{ 0.0, 1.0, 0.0 },
+        );
+        const proj = createPerspectiveMatrix(
+            @as(f32, @floatFromInt(self.swapchain_extent.width)) / @as(f32, @floatFromInt(self.swapchain_extent.height)),
+            0.1,
+            10.0,
+        );
+
+        const ubo = UniformBufferObject{
+            .model = model,
+            .view = view,
+            .proj = proj,
+        };
+
+        var data: [*]u8 = undefined;
+        _ = vk.vkMapMemory(self.device, self.uniform_buffer_memory, 0, @sizeOf(UniformBufferObject), 0, @ptrCast(&data));
+        @memcpy(data[0..@sizeOf(UniformBufferObject)], std.mem.asBytes(&ubo));
+        vk.vkUnmapMemory(self.device, self.uniform_buffer_memory);
     }
 
     fn createCommandPool(self: *Self) !void {
@@ -1572,111 +1638,56 @@ pub const VulkanRenderer = struct {
     }
 
     pub fn recreateSwapChain(self: *Self) !void {
-        var width: c_int = 0;
-        var height: c_int = 0;
+        var width: c_int = undefined;
+        var height: c_int = undefined;
         glfw.glfwGetFramebufferSize(self.window, &width, &height);
-        
-        // Wait for valid dimensions
         while (width == 0 or height == 0) {
             glfw.glfwGetFramebufferSize(self.window, &width, &height);
             glfw.glfwWaitEvents();
         }
 
-        // Wait for any in-flight frames to complete
         _ = vk.vkDeviceWaitIdle(self.device);
 
-        // Clean up old resources
-        try self.cleanupSwapChain();
+        self.cleanupSwapChain();
 
-        // Create new swapchain with the new dimensions
         try self.createSwapChain();
         try self.createImageViews();
-        try self.createDepthResources();
         try self.createRenderPass();
         try self.createGraphicsPipeline();
         try self.createFramebuffers();
         try self.createCommandBuffers();
-
-        // Reset the framebuffer resize flag
-        self.framebuffer_resized = false;
     }
 
-    fn cleanupSwapChain(self: *Self) !void {
-        // Wait for the device to finish operations
-        _ = vk.vkDeviceWaitIdle(self.device);
-
-        // Free command buffers
-        if (self.command_buffers) |buffers| {
-            vk.vkFreeCommandBuffers(
-                self.device,
-                self.command_pool,
-                @as(u32, @intCast(buffers.len)),
-                buffers.ptr,
-            );
-            std.heap.page_allocator.free(buffers);
-            self.command_buffers = null;
+    fn cleanupSwapChain(self: *Self) void {
+        if (self.command_buffers.len > 0) {
+            vk.vkFreeCommandBuffers(self.device, self.command_pool, @intCast(self.command_buffers.len), self.command_buffers.ptr);
+            self.allocator.free(self.command_buffers);
         }
 
-        // Destroy framebuffers
-        if (self.framebuffers) |framebuffers| {
-            for (framebuffers) |framebuffer| {
-                vk.vkDestroyFramebuffer(self.device, framebuffer, null);
-            }
-            std.heap.page_allocator.free(framebuffers);
-            self.framebuffers = null;
+        for (self.framebuffers) |framebuffer| {
+            vk.vkDestroyFramebuffer(self.device, framebuffer, null);
+        }
+        self.allocator.free(self.framebuffers);
+
+        if (self.graphics_pipeline != null) {
+            vk.vkDestroyPipeline(self.device, self.graphics_pipeline, null);
         }
 
-        // Destroy pipeline
-        if (self.graphics_pipeline) |pipeline| {
-            vk.vkDestroyPipeline(self.device, pipeline, null);
-            self.graphics_pipeline = null;
+        if (self.pipeline_layout != null) {
+            vk.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
         }
 
-        // Destroy pipeline layout
-        if (self.pipeline_layout) |layout| {
-            vk.vkDestroyPipelineLayout(self.device, layout, null);
-            self.pipeline_layout = null;
+        if (self.render_pass != null) {
+            vk.vkDestroyRenderPass(self.device, self.render_pass, null);
         }
 
-        // Destroy render pass
-        if (self.render_pass) |pass| {
-            vk.vkDestroyRenderPass(self.device, pass, null);
-            self.render_pass = null;
+        for (self.swapchain_image_views) |image_view| {
+            vk.vkDestroyImageView(self.device, image_view, null);
         }
+        self.allocator.free(self.swapchain_image_views);
 
-        // Clean up depth resources
-        if (self.depth_image_view) |view| {
-            vk.vkDestroyImageView(self.device, view, null);
-            self.depth_image_view = null;
-        }
-        if (self.depth_image) |image| {
-            vk.vkDestroyImage(self.device, image, null);
-            self.depth_image = null;
-        }
-        if (self.depth_image_memory) |memory| {
-            vk.vkFreeMemory(self.device, memory, null);
-            self.depth_image_memory = null;
-        }
-
-        // Clean up image views
-        if (self.swapchain_image_views) |views| {
-            for (views) |view| {
-                vk.vkDestroyImageView(self.device, view, null);
-            }
-            std.heap.page_allocator.free(views);
-            self.swapchain_image_views = null;
-        }
-
-        // Clean up swapchain
-        if (self.swapchain) |swapchain| {
-            vk.vkDestroySwapchainKHR(self.device, swapchain, null);
-            self.swapchain = null;
-        }
-
-        // Free swapchain images
-        if (self.swapchain_images) |images| {
-            std.heap.page_allocator.free(images);
-            self.swapchain_images = null;
+        if (self.swapchain != null) {
+            vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
         }
     }
 
