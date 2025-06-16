@@ -520,8 +520,8 @@ pub fn applyPattern(pattern: GlimmerPattern, buffer: []const u8, allocator: std.
 
     // Allocate space for the new buffer
     var result = try allocator.alloc(u8, header.len + buffer.len);
-    std.mem.copy(u8, result[0..header.len], header);
-    std.mem.copy(u8, result[header.len..], buffer);
+    std.mem.copyForwards(u8, result[0..header.len], header);
+    std.mem.copyForwards(u8, result[header.len..], buffer);
     allocator.free(header);
     return result;
 } 

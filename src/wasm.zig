@@ -99,7 +99,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) u32 {
         current_pattern = pattern;
         
         // Apply pattern transformation
-        if (glimmer.applyPattern(pattern.?, &pattern_buffer, allocator)) |transformed| {
+        if (glimmer.applyPattern(pattern.?, pattern_buffer, allocator)) |transformed| {
             // Copy transformed data back to main buffer
             if (transformed.len > buffer.len) {
                 const new_buffer = allocator.alloc(u8, transformed.len) catch {
