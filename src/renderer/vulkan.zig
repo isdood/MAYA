@@ -1479,7 +1479,7 @@ pub const VulkanRenderer = struct {
             .proj = proj,
         };
 
-        const data = @ptrCast([*]u8, self.uniform_buffers_mapped[current_frame]);
+        const data = @as([*]u8, @ptrCast(self.uniform_buffers_mapped[current_frame]));
         @memcpy(data[0..@sizeOf(UniformBufferObject)], std.mem.asBytes(&ubo));
     }
 
