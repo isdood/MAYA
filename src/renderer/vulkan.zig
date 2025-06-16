@@ -79,11 +79,11 @@ pub const VulkanRenderer = struct {
     const Self = @This();
     const MAX_FRAMES_IN_FLIGHT = 2;
     const REQUIRED_DEVICE_EXTENSIONS = [_][*:0]const u8{
-        vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        vk_types_vk.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
     const REQUIRED_INSTANCE_EXTENSIONS = [_][*:0]const u8{
-        vk.VK_KHR_SURFACE_EXTENSION_NAME,
-        vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+        vk_types_vk.VK_KHR_SURFACE_EXTENSION_NAME,
+        vk_types_vk.VK_KHR_XCB_SURFACE_EXTENSION_NAME,
     };
 
     const QueueFamilyIndices = struct {
@@ -103,7 +103,7 @@ pub const VulkanRenderer = struct {
 
     const validation_layers = [_][*:0]const u8{"VK_LAYER_KHRONOS_validation"};
 
-    window: *glfw.GLFWwindow,
+    window: *glfw.Window,
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
@@ -134,16 +134,26 @@ pub const VulkanRenderer = struct {
     depth_image: vk.VkImage,
     depth_image_memory: vk.VkDeviceMemory,
     depth_image_view: vk.VkImageView,
-    uniform_buffer: vk.VkBuffer,
-    uniform_buffer_memory: vk.VkDeviceMemory,
-    uniform_buffer_mapped: ?*anyopaque,
+    uniform_buffers: []vk.VkBuffer,
+    uniform_buffers_memory: []vk.VkDeviceMemory,
+    uniform_buffers_mapped: [][*]u8,
     vertex_buffer: vk.VkBuffer,
     vertex_buffer_memory: vk.VkDeviceMemory,
     descriptor_set_layout: vk.VkDescriptorSetLayout,
     descriptor_pool: vk.VkDescriptorPool,
-    descriptor_set: vk.VkDescriptorSet,
+    descriptor_sets: []vk.VkDescriptorSet,
+    index_buffer: vk.VkBuffer,
+    index_buffer_memory: vk.VkDeviceMemory,
+    texture_image: vk.VkImage,
+    texture_image_memory: vk.VkDeviceMemory,
+    texture_image_view: vk.VkImageView,
+    texture_sampler: vk.VkSampler,
+    msaa_samples: vk.VkSampleCountFlagBits,
+    color_image: vk.VkImage,
+    color_image_memory: vk.VkDeviceMemory,
+    color_image_view: vk.VkImageView,
 
-    pub fn init(window: *glfw.GLFWwindow) !Self {
+    pub fn init(window: *glfw.Window) !Self {
         var self = Self{
             .window = window,
             .instance = undefined,
@@ -176,14 +186,24 @@ pub const VulkanRenderer = struct {
             .depth_image = undefined,
             .depth_image_memory = undefined,
             .depth_image_view = undefined,
-            .uniform_buffer = undefined,
-            .uniform_buffer_memory = undefined,
-            .uniform_buffer_mapped = null,
+            .uniform_buffers = undefined,
+            .uniform_buffers_memory = undefined,
+            .uniform_buffers_mapped = undefined,
             .vertex_buffer = undefined,
             .vertex_buffer_memory = undefined,
             .descriptor_set_layout = undefined,
             .descriptor_pool = undefined,
-            .descriptor_set = undefined,
+            .descriptor_sets = undefined,
+            .index_buffer = undefined,
+            .index_buffer_memory = undefined,
+            .texture_image = undefined,
+            .texture_image_memory = undefined,
+            .texture_image_view = undefined,
+            .texture_sampler = undefined,
+            .msaa_samples = vk.VK_SAMPLE_COUNT_1_BIT,
+            .color_image = undefined,
+            .color_image_memory = undefined,
+            .color_image_view = undefined,
         };
 
         try self.createInstance();
@@ -201,7 +221,7 @@ pub const VulkanRenderer = struct {
         try self.createVertexBuffer();
         try self.createUniformBuffers();
         try self.createDescriptorPool();
-        try self.createDescriptorSet();
+        try self.createDescriptorSets();
         try self.createCommandBuffers();
         try self.createSyncObjects();
 
@@ -244,12 +264,21 @@ pub const VulkanRenderer = struct {
         vk.vkDestroyDescriptorPool(self.device, self.descriptor_pool, null);
 
         // Clean up uniform buffer
-        vk.vkDestroyBuffer(self.device, self.uniform_buffer, null);
-        vk.vkFreeMemory(self.device, self.uniform_buffer_memory, null);
+        for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+            vk.vkDestroyBuffer(self.device, self.uniform_buffers[i], null);
+            vk.vkFreeMemory(self.device, self.uniform_buffers_memory[i], null);
+        }
+        std.heap.page_allocator.free(self.uniform_buffers);
+        std.heap.page_allocator.free(self.uniform_buffers_memory);
+        std.heap.page_allocator.free(self.uniform_buffers_mapped);
 
         // Clean up vertex buffer
         vk.vkDestroyBuffer(self.device, self.vertex_buffer, null);
         vk.vkFreeMemory(self.device, self.vertex_buffer_memory, null);
+
+        // Clean up index buffer
+        vk.vkDestroyBuffer(self.device, self.index_buffer, null);
+        vk.vkFreeMemory(self.device, self.index_buffer_memory, null);
 
         // Clean up framebuffers
         for (self.framebuffers) |framebuffer| {
@@ -275,6 +304,16 @@ pub const VulkanRenderer = struct {
         }
         std.heap.page_allocator.free(self.swapchain_image_views);
         vk.vkDestroySwapchainKHR(self.device, self.swapchain, null);
+
+        // Clean up texture resources
+        vk.vkDestroyImageView(self.device, self.texture_image_view, null);
+        vk.vkDestroyImage(self.device, self.texture_image, null);
+        vk.vkFreeMemory(self.device, self.texture_image_memory, null);
+
+        // Clean up MSAA color buffer
+        vk.vkDestroyImageView(self.device, self.color_image_view, null);
+        vk.vkDestroyImage(self.device, self.color_image, null);
+        vk.vkFreeMemory(self.device, self.color_image_memory, null);
 
         // Clean up device and instance
         vk.vkDestroyDevice(self.device, null);
@@ -1502,34 +1541,27 @@ pub const VulkanRenderer = struct {
     }
 
     fn createUniformBuffers(self: *Self) !void {
-        std.log.info("Creating uniform buffer...", .{});
-        const buffer_size = @sizeOf([4][4]f32);
+        const buffer_size = @sizeOf(UniformBufferObject);
 
-        const buffer_info = vk.VkBufferCreateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = buffer_size,
-            .usage = vk.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            .sharingMode = vk.VK_SHARING_MODE_EXCLUSIVE,
-            .pNext = null,
-            .flags = 0,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = null,
-        };
+        self.uniform_buffers = try self.allocator.alloc(vk.VkBuffer, MAX_FRAMES_IN_FLIGHT);
+        self.uniform_buffers_memory = try self.allocator.alloc(vk.VkDeviceMemory, MAX_FRAMES_IN_FLIGHT);
+        self.uniform_buffers_mapped = try self.allocator.alloc([*]u8, MAX_FRAMES_IN_FLIGHT);
 
-        if (vk.vkCreateBuffer(self.device, &buffer_info, null, &self.uniform_buffer) != vk.VK_SUCCESS) {
-            return error.UniformBufferCreationFailed;
-        }
-        std.log.info("Uniform buffer created", .{});
-
-        var mem_requirements: vk.VkMemoryRequirements = undefined;
-        vk.vkGetBufferMemoryRequirements(self.device, self.uniform_buffer, &mem_requirements);
-
-        const alloc_info = vk.VkMemoryAllocateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = mem_requirements.size,
-            .memoryTypeIndex = try self.findMemoryType(
-                mem_requirements.memoryTypeBits,
+        for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+            try self.createBuffer(
+                buffer_size,
+                vk.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                 vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                &self.uniform_buffers[i],
+                &self.uniform_buffers_memory[i],
+            );
+
+            var data: [*]u8 = undefined;
+            _ = vk.vkMapMemory(
+                self.device,
+                self.uniform_buffers_memory[i],
+                0,
+                buffer_size,
             ),
             .pNext = null,
         };
