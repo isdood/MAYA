@@ -1075,18 +1075,18 @@ pub const VulkanRenderer = struct {
     }
 
     fn findMemoryType(self: *Self, type_filter: u32, properties: vk.VkMemoryPropertyFlags) !u32 {
-        var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
-        vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &memory_properties);
+        var mem_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
+        vk.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &mem_properties);
 
-        for (0..memory_properties.memoryTypeCount) |i| {
-            if ((type_filter & (@as(u32, 1) << @as(u32, @intCast(i)))) != 0 and
-                (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+        for (0..mem_properties.memoryTypeCount) |i| {
+            if ((type_filter & (@as(u32, 1) << @as(u5, @intCast(i)))) != 0 and
+                (mem_properties.memoryTypes[i].propertyFlags & properties) == properties)
             {
-                return @as(u32, @intCast(i));
+                return @intCast(i);
             }
         }
 
-        return error.MemoryTypeNotFound;
+        return error.NoSuitableMemoryType;
     }
 
     fn checkVulkanResult(result: vk.VkResult) !void {
@@ -1132,20 +1132,21 @@ pub const VulkanRenderer = struct {
             .present_modes = undefined,
         };
 
-        // Capabilities
-        _ = vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+        if (vk.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities) != vk.VK_SUCCESS) {
+            return error.FailedToGetSurfaceCapabilities;
+        }
 
-        // Formats
         var format_count: u32 = undefined;
         _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, null);
+
         if (format_count != 0) {
             details.formats = try std.heap.page_allocator.alloc(vk.VkSurfaceFormatKHR, format_count);
             _ = vk.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, details.formats.ptr);
         }
 
-        // Present modes
         var present_mode_count: u32 = undefined;
         _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, null);
+
         if (present_mode_count != 0) {
             details.present_modes = try std.heap.page_allocator.alloc(vk.VkPresentModeKHR, present_mode_count);
             _ = vk.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, details.present_modes.ptr);
