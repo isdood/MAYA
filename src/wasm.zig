@@ -21,5 +21,8 @@ export fn process(input: [*]const u8, len: usize) void {
 
 export fn getResult() [*]const u8 {
     // Return the processed input
+    if (input_length == 0) {
+        return "";
+    }
     return input_buffer[0..input_length].ptr;
 } 
