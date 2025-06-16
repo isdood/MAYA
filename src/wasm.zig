@@ -18,8 +18,14 @@ export fn init() void {
 
 export fn process(input_ptr: [*]const u8, input_len: usize) void {
     if (input_len <= BUFFER_SIZE) {
+        // Clear the buffer first
+        @memset(&buffer, 0);
+        
         // Copy input to our buffer
-        @memcpy(buffer[0..input_len], input_ptr[0..input_len]);
+        var i: usize = 0;
+        while (i < input_len) : (i += 1) {
+            buffer[i] = input_ptr[i];
+        }
         buffer_len = input_len;
     }
 }
