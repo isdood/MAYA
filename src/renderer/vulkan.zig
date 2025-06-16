@@ -50,16 +50,18 @@ pub const VulkanRenderer = struct {
 
     const validation_layers = [_][*:0]const u8{"VK_LAYER_KHRONOS_validation"};
 
+    window: *glfw.GLFWwindow,
     instance: vk.VkInstance,
     surface: vk.VkSurfaceKHR,
     physical_device: vk.VkPhysicalDevice,
-    device: vk_types.VkDevice,
-    queue: vk.VkQueue,
+    device: vk.VkDevice,
+    graphics_queue: vk.VkQueue,
+    present_queue: vk.VkQueue,
     swapchain: vk.VkSwapchainKHR,
     swapchain_images: []vk.VkImage,
-    swapchain_image_views: []vk.VkImageView,
     swapchain_image_format: vk.VkFormat,
     swapchain_extent: vk.VkExtent2D,
+    swapchain_image_views: []vk.VkImageView,
     render_pass: vk.VkRenderPass,
     pipeline_layout: vk.VkPipelineLayout,
     graphics_pipeline: vk.VkPipeline,
@@ -69,15 +71,16 @@ pub const VulkanRenderer = struct {
     image_available_semaphores: []vk.VkSemaphore,
     render_finished_semaphores: []vk.VkSemaphore,
     in_flight_fences: []vk.VkFence,
-    images_in_flight: []?vk.VkFence,
+    images_in_flight: []vk.VkFence,
     current_frame: usize,
+    framebuffer_resized: bool,
+    graphics_queue_family: u32,
+    present_queue_family: u32,
     allocator: std.mem.Allocator,
     rotation: f32,
-    framebuffer_resized: bool,
     depth_image: vk.VkImage,
     depth_image_memory: vk.VkDeviceMemory,
     depth_image_view: vk.VkImageView,
-    window: *glfw.GLFWwindow,
     uniform_buffer: vk.VkBuffer,
     uniform_buffer_memory: vk.VkDeviceMemory,
     uniform_buffer_mapped: ?*anyopaque,
@@ -89,16 +92,18 @@ pub const VulkanRenderer = struct {
 
     pub fn init(window: *glfw.GLFWwindow) !Self {
         var self = Self{
+            .window = window,
             .instance = undefined,
             .surface = undefined,
             .physical_device = undefined,
             .device = undefined,
-            .queue = undefined,
+            .graphics_queue = undefined,
+            .present_queue = undefined,
             .swapchain = undefined,
             .swapchain_images = undefined,
-            .swapchain_image_views = undefined,
             .swapchain_image_format = undefined,
             .swapchain_extent = undefined,
+            .swapchain_image_views = undefined,
             .render_pass = undefined,
             .pipeline_layout = undefined,
             .graphics_pipeline = undefined,
@@ -110,13 +115,14 @@ pub const VulkanRenderer = struct {
             .in_flight_fences = undefined,
             .images_in_flight = undefined,
             .current_frame = 0,
+            .framebuffer_resized = false,
+            .graphics_queue_family = undefined,
+            .present_queue_family = undefined,
             .allocator = std.heap.page_allocator,
             .rotation = 0.0,
-            .framebuffer_resized = false,
             .depth_image = undefined,
             .depth_image_memory = undefined,
             .depth_image_view = undefined,
-            .window = window,
             .uniform_buffer = undefined,
             .uniform_buffer_memory = undefined,
             .uniform_buffer_mapped = null,
@@ -331,10 +337,20 @@ pub const VulkanRenderer = struct {
 
         // Get the graphics queue
         if (indices.graphics_family) |family| {
-            vk.vkGetDeviceQueue(self.device, family, 0, &self.queue);
+            vk.vkGetDeviceQueue(self.device, family, 0, &self.graphics_queue);
+            self.graphics_queue_family = family;
             std.log.info("Got graphics queue from family {d}", .{family});
         } else {
             return error.GraphicsQueueNotFound;
+        }
+
+        // Get the present queue
+        if (indices.present_family) |family| {
+            vk.vkGetDeviceQueue(self.device, family, 0, &self.present_queue);
+            self.present_queue_family = family;
+            std.log.info("Got present queue from family {d}", .{family});
+        } else {
+            return error.PresentQueueNotFound;
         }
     }
 
@@ -843,7 +859,7 @@ pub const VulkanRenderer = struct {
         self.image_available_semaphores = try self.allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
         self.render_finished_semaphores = try self.allocator.alloc(vk.VkSemaphore, self.swapchain_images.len);
         self.in_flight_fences = try self.allocator.alloc(vk.VkFence, MAX_FRAMES_IN_FLIGHT);
-        self.images_in_flight = try self.allocator.alloc(?vk.VkFence, self.swapchain_images.len);
+        self.images_in_flight = try self.allocator.alloc(vk.VkFence, self.swapchain_images.len);
         @memset(self.images_in_flight, null);
 
         const semaphore_info = vk.VkSemaphoreCreateInfo{
@@ -937,7 +953,7 @@ pub const VulkanRenderer = struct {
 
         _ = vk.vkResetFences(self.device, 1, &self.in_flight_fences[self.current_frame]);
 
-        if (vk.vkQueueSubmit(self.queue, 1, &submit_info, self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
+        if (vk.vkQueueSubmit(self.graphics_queue, 1, &submit_info, self.in_flight_fences[self.current_frame]) != vk.VK_SUCCESS) {
             return error.FailedToSubmitDrawCommandBuffer;
         }
 
@@ -952,7 +968,7 @@ pub const VulkanRenderer = struct {
             .pNext = null,
         };
 
-        const present_result = vk.vkQueuePresentKHR(self.queue, &present_info);
+        const present_result = vk.vkQueuePresentKHR(self.present_queue, &present_info);
 
         if (present_result == vk.VK_ERROR_OUT_OF_DATE_KHR or present_result == vk.VK_SUBOPTIMAL_KHR or self.framebuffer_resized) {
             self.framebuffer_resized = false;
@@ -1374,14 +1390,14 @@ pub const VulkanRenderer = struct {
             .pSignalSemaphores = null,
         };
 
-        if (vk.vkQueueSubmit(self.queue, 1, &submit_info, null) != vk.VK_SUCCESS) {
+        if (vk.vkQueueSubmit(self.graphics_queue, 1, &submit_info, null) != vk.VK_SUCCESS) {
             vk.vkFreeCommandBuffers(self.device, self.command_pool, 1, &command_buffer);
             return error.QueueSubmitFailed;
         }
 
         std.log.info("Waiting for queue idle...", .{});
 
-        if (vk.vkQueueWaitIdle(self.queue) != vk.VK_SUCCESS) {
+        if (vk.vkQueueWaitIdle(self.graphics_queue) != vk.VK_SUCCESS) {
             vk.vkFreeCommandBuffers(self.device, self.command_pool, 1, &command_buffer);
             return error.QueueWaitIdleFailed;
         }
