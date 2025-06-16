@@ -1593,42 +1593,52 @@ pub const VulkanRenderer = struct {
         }
     }
 
-    fn createDescriptorSet(self: *Self) !void {
-        std.log.info("Creating descriptor set...", .{});
+    pub fn createDescriptorSets(self: *Self) !void {
+        const layouts = try self.allocator.alloc(vk.VkDescriptorSetLayout, MAX_FRAMES_IN_FLIGHT);
+        defer self.allocator.free(layouts);
+        for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+            layouts[i] = self.descriptor_set_layout;
+        }
+
         const alloc_info = vk.VkDescriptorSetAllocateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = self.descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &self.descriptor_set_layout,
+            .descriptorSetCount = MAX_FRAMES_IN_FLIGHT,
+            .pSetLayouts = layouts.ptr,
             .pNext = null,
         };
 
-        if (vk.vkAllocateDescriptorSets(self.device, &alloc_info, &self.descriptor_set) != vk.VK_SUCCESS) {
+        self.descriptor_sets = try self.allocator.alloc(vk.VkDescriptorSet, MAX_FRAMES_IN_FLIGHT);
+        if (vk.vkAllocateDescriptorSets(self.device, &alloc_info, self.descriptor_sets.ptr) != vk.VK_SUCCESS) {
             return error.DescriptorSetAllocationFailed;
         }
-        std.log.info("Descriptor set allocated", .{});
 
-        const buffer_info = vk.VkDescriptorBufferInfo{
-            .buffer = self.uniform_buffer,
-            .offset = 0,
-            .range = @sizeOf([4][4]f32),
-        };
+        for (0..MAX_FRAMES_IN_FLIGHT) |i| {
+            const buffer_info = vk.VkDescriptorBufferInfo{
+                .buffer = self.uniform_buffers[i],
+                .offset = 0,
+                .range = @sizeOf(UniformBufferObject),
+            };
 
-        const descriptor_write = vk.VkWriteDescriptorSet{
-            .sType = vk.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = self.descriptor_set,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pImageInfo = null,
-            .pBufferInfo = &buffer_info,
-            .pTexelBufferView = null,
-            .pNext = null,
-        };
+            const descriptor_write = vk.VkWriteDescriptorSet{
+                .sType = vk.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = self.descriptor_sets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .pBufferInfo = &buffer_info,
+                .pImageInfo = null,
+                .pTexelBufferView = null,
+                .pNext = null,
+            };
 
-        vk.vkUpdateDescriptorSets(self.device, 1, &descriptor_write, 0, null);
-        std.log.info("Descriptor set updated with uniform buffer", .{});
+            vk.vkUpdateDescriptorSets(self.device, 1, &descriptor_write, 0, null);
+        }
+    }
+
+    pub fn cleanupDescriptorSets(self: *Self) void {
+        self.allocator.free(self.descriptor_sets);
     }
 
     fn createCommandBuffers(self: *Self) !void {
