@@ -93,19 +93,16 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the MAYA GUI");
     run_step.dependOn(&run_cmd.step);
 
-    // Add learning module
-    const learning_module = b.addModule("learning", .{
-        .root_source_file = b.path("src/learning/interaction_recorder.zig"),
-    });
-
     // Create test executable
     const test_exe = b.addTest(.{
         .root_source_file = .{ .cwd_relative = "src/test/main.zig" },
         .target = target,
         .optimize = optimize,
-        .modules = &.{
-            .{ .name = "learning", .module = learning_module },
-        },
+    });
+
+    // Add learning module as an anonymous module for tests
+    b.addAnonymousModule("learning", .{
+        .source_file = b.path("src/learning/interaction_recorder.zig"),
     });
 
     // Create test run command
