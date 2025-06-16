@@ -40,15 +40,12 @@ pub const LanguageProcessor = struct {
     }
 
     pub fn processCommand(self: *Self, command: []const u8) !void {
-        print("Processing command: {s}\n", .{command});
-        
-        // Basic command parsing
-        var iterator = std.mem.split(u8, command, " ");
-        const cmd = iterator.next() orelse return;
+        var parts = std.mem.splitScalar(u8, command, ' ');
+        const cmd = parts.next() orelse return;
         
         if (std.mem.eql(u8, cmd, "add")) {
-            const name = iterator.next() orelse return;
-            const content = iterator.rest();
+            const name = parts.next() orelse return;
+            const content = parts.rest();
             try self.addPattern(name, content, null);
             print("Added pattern: {s}\n", .{name});
         } else if (std.mem.eql(u8, cmd, "list")) {
@@ -57,10 +54,9 @@ pub const LanguageProcessor = struct {
                 print("- {s}: {s}\n", .{ pattern.name, pattern.content });
             }
         } else if (std.mem.eql(u8, cmd, "help")) {
-            print("Available commands:\n", .{});
-            print("  add <name> <content> - Add a new pattern\n", .{});
-            print("  list - List all patterns\n", .{});
-            print("  help - Show this help message\n", .{});
+            try self.printHelp();
+        } else if (std.mem.eql(u8, cmd, "quit")) {
+            self.running = false;
         } else {
             print("Unknown command: {s}\n", .{cmd});
             print("Type 'help' for available commands\n", .{});

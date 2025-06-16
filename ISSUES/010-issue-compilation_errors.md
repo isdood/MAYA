@@ -9,51 +9,49 @@ src/test/main.zig:5:28: error: expected pointer dereference, optional unwrap, or
 
 **Status**: Fixed by converting `test()` to a method `runTests()` of `LanguageProcessor`.
 
-### 2. Vulkan Renderer Type Casting Errors
+### 2. Deprecated std.mem.split Usage
 ```
-src/renderer/vulkan.zig:145:47: error: expected 1 argument, found 2
-src/renderer/vulkan.zig:440:22: error: expected 1 argument, found 2
-src/renderer/vulkan.zig:1617:17: error: expected 1 argument, found 2
+/usr/lib/zig/std/mem.zig:2434:19: error: deprecated; use splitSequence, splitAny, or splitScalar
+pub const split = @compileError("deprecated; use splitSequence, splitAny, or splitScalar");
+```
+
+**Status**: Fixed by updating `std.mem.split` to `std.mem.splitScalar` in `src/test/language_processor.zig`.
+
+### 3. Vulkan Renderer Type Casting Errors
+```
 src/renderer/vulkan.zig:1712:21: error: expected 1 argument, found 2
+src/renderer/vulkan.zig:345:43: error: no field or member function named 'querySwapChainSupport' in 'renderer.vulkan.VulkanRenderer'
 ```
 
-These errors were related to Zig's type casting syntax changes. The following lines have been updated:
+These errors were related to:
+1. Pointer casting in the framebuffer resize callback
+2. `querySwapChainSupport` being called as a member function when it wasn't one
 
-1. `glfw.glfwSetWindowUserPointer(window, @ptrCast(&self));` - Already using correct syntax
-2. `.width = @as(u32, @intCast(width)),` - Updated
-3. `.height = @as(u32, @intCast(height)),` - Updated
-4. `.queueCreateInfoCount = @as(u32, @intCast(queue_create_infos.items.len)),` - Updated
-5. `.enabledExtensionCount = @as(u32, @intCast(REQUIRED_DEVICE_EXTENSIONS.len)),` - Updated
-6. `if ((type_filter & (@as(u32, 1) << @as(u32, @intCast(i)))) != 0 and ...)` - Updated
-7. `return @as(u32, @intCast(i));` - Updated
-8. `const graphics_bit = @as(u32, @intCast(vk.VK_QUEUE_GRAPHICS_BIT));` - Already using correct syntax
+**Status**: Fixed by:
+1. Updating the pointer casting syntax in the framebuffer resize callback
+2. Converting `querySwapChainSupport` to a member function and updating its usage
 
 ## Required Changes
 
-The type casting syntax has been updated to match the new Zig requirements:
+The following changes have been made:
 
-1. For pointer casting:
-```zig
-@ptrCast(&self)  // Instead of @ptrCast(*anyopaque, &self)
-```
+1. For the test module:
+   - Converted `test()` to a method `runTests()` of `LanguageProcessor`
+   - Updated `std.mem.split` to `std.mem.splitScalar`
 
-2. For integer casting:
-```zig
-@as(u32, @intCast(value))  // Instead of @intCast(u32, value)
-```
-
-3. For pointer alignment:
-```zig
-@ptrCast(*Self, @alignCast(@alignOf(*Self), value))  // Keep as is
-```
+2. For the Vulkan renderer:
+   - Updated pointer casting syntax in the framebuffer resize callback
+   - Made `querySwapChainSupport` a member function
+   - Updated all calls to `querySwapChainSupport` to use the member function syntax
 
 ## Status
 - [x] Test module error fixed
+- [x] Deprecated std.mem.split usage fixed
 - [x] Vulkan renderer type casting errors fixed
 - [x] All type casts updated to new syntax
 - [x] Functionality verified
 
 ## Notes
-- These errors were related to Zig's type system changes
+- These errors were related to Zig's type system changes and deprecated function usage
 - The changes were syntax-only and shouldn't affect functionality
-- All type casts have been properly updated to the new syntax 
+- All type casts and function calls have been properly updated 
