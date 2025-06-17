@@ -26,8 +26,8 @@ pub struct QueryResult {
 /// Builder for constructing graph queries
 pub struct QueryBuilder<'a, S>
 where
-    S: Storage + WriteBatchExt,
-    S::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
+    <S as Storage>::Batch: WriteBatch + 'static,
     for<'b> &'b S: 'b,
 {
     graph: &'a KnowledgeGraph<S>,
@@ -58,16 +58,15 @@ where
     }
 
     /// Filter nodes by label
-    pub fn with_label(mut self, label: &'a str) -> Self {
-        let label = label.to_string();
-        self.node_filters.push(Box::new(move |node: &Node| node.label == label));
+    pub fn with_node_type(mut self, node_type: &'a str) -> Self {
+        let node_type = node_type.to_string();
+        self.node_filters.push(Box::new(move |node: &Node| node.label == node_type));
         self
     }
 
-    /// Filter nodes by label
-    pub fn with_label(mut self, label: &'static str) -> Self {
-        self.node_filters.push(Box::new(move |node: &Node| node.label == label));
-        self
+    /// Filter nodes by label (alias for with_node_type)
+    pub fn with_label(self, label: &'a str) -> Self {
+        self.with_node_type(label)
     }
 
     /// Filter nodes by property
@@ -133,10 +132,9 @@ where
 
 impl<S> QueryExt<S> for KnowledgeGraph<S>
 where
-    S: Storage<Batch = <S as WriteBatchExt>::Batch> + WriteBatchExt,
+    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
     <S as Storage>::Batch: WriteBatch + 'static,
-    <S as WriteBatchExt>::Batch: WriteBatch + 'static,
-    for<'b> &'b S: 'b,
+    for<'a> &'a S: 'a,
 {
     fn query(&self) -> QueryBuilder<S> {
         QueryBuilder::new(self)
@@ -166,7 +164,7 @@ mod tests {
         
         // Test filtering by node type
         let result = QueryBuilder::new(&graph)
-            .with_node_type("type1")
+            .with_label("type1")
             .execute()?;
             
         assert_eq!(result.nodes.len(), 2);
@@ -174,7 +172,7 @@ mod tests {
         
         // Test with limit and offset
         let result = QueryBuilder::new(&graph)
-            .with_node_type("type1")
+            .with_label("type1")
             .limit(1)
             .offset(1)
             .execute()?;

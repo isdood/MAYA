@@ -1,0 +1,12 @@
+UnsafeCell<sled::pagecache::segment::SegmentAccountant>
+lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, sled::pagecache::segment::SegmentAccountant>
+sled::pagecache::iobuf::IoBufs
+sled::arc::ArcInner<sled::pagecache::iobuf::IoBufs>
+*mut sled::arc::ArcInner<sled::pagecache::iobuf::IoBufs>
+sled::arc::Arc<sled::pagecache::iobuf::IoBufs>
+sled::arc::ArcInner<PageCache>
+*mut sled::arc::ArcInner<PageCache>
+sled::arc::Arc<PageCache>
+alloc::sync::ArcInner<Db>
+PhantomData<alloc::sync::ArcInner<Db>>
+{closure@src/storage/sled_store.rs:260:47: 260:63}

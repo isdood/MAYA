@@ -73,18 +73,8 @@ pub trait WriteBatchExt: Send + 'static {
     }
 }
 
-// Implement WriteBatchExt for any type that implements Storage and has a Batch type that implements WriteBatch
-impl<S> WriteBatchExt for S
-where
-    S: Storage + ?Sized,
-    S::Batch: WriteBatch + 'static,
-{
-    type Batch = S::Batch;
-    
-    fn batch(&self) -> Self::Batch {
-        Storage::batch(self)
-    }
-}
+// Note: Specific implementations of WriteBatchExt are provided by each storage backend
+// to avoid conflicts with the blanket implementation
 
 /// Serialize a value to JSON bytes
 pub(crate) fn serialize<T: Serialize>(value: &T) -> Result<Vec<u8>> {

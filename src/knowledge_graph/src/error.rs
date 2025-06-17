@@ -1,6 +1,5 @@
 //! Error types for the knowledge graph
 
-use std::fmt;
 use std::error::Error as StdError;
 use std::fmt;
 use serde_json::Error as JsonError;

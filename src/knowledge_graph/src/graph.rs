@@ -19,8 +19,8 @@ pub struct KnowledgeGraph<S: Storage> {
 
 impl<S> KnowledgeGraph<S> 
 where
-    S: Storage + WriteBatchExt,
-    S::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
+    <S as Storage>::Batch: WriteBatch + 'static,
     for<'a> &'a S: 'a,
 {
     /// Create or open a knowledge graph at the given path
@@ -69,7 +69,7 @@ where
         let mut nodes = Vec::new();
         
         for result in self.storage.iter_prefix(prefix) {
-            let (_, value) = result?;
+            let value = result.1; // Extract the owned Vec<u8>
             match serde_json::from_slice::<Node>(&value) {
                 Ok(node) => nodes.push(node),
                 Err(e) => return Err(KnowledgeGraphError::SerializationError(e)),
@@ -164,7 +164,8 @@ where
 pub struct Transaction<'a, S> 
 where
     S: Storage + WriteBatchExt,
-    S::Batch: WriteBatch + 'static,
+    <S as Storage>::Batch: WriteBatch + 'static,
+    <S as WriteBatchExt>::Batch: WriteBatch + 'static,
 {
     storage: &'a S,
     batch: Option<Box<dyn WriteBatch>>,
@@ -172,8 +173,8 @@ where
 
 impl<'a, S> Transaction<'a, S> 
 where
-    S: Storage + WriteBatchExt,
-    S::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
+    <S as Storage>::Batch: WriteBatch + 'static,
 {
     fn new(storage: &'a S) -> Self {
         let batch = <S as Storage>::batch(storage);
@@ -224,4 +225,3 @@ fn edge_key(id: Uuid) -> Vec<u8> {
 
 // Re-export serialization functions
 use crate::storage::{serialize, deserialize};
-use crate::storage::WriteBatch;

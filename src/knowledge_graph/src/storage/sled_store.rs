@@ -15,73 +15,6 @@ pub struct SledStore {
     db: Arc<Db>,
 }
 
-impl Storage for SledStore {
-    type Batch = SledWriteBatch;
-    
-    fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let db = sled::open(path)?;
-        info!("Opened Sled database");
-        Ok(Self {
-            db: Arc::new(db),
-        })
-    }
-    
-    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
-        match self.db.get(key)? {
-            Some(bytes) => {
-                let value = deserialize(&bytes)?;
-                Ok(Some(value))
-            }
-            None => Ok(None),
-        }
-    }
-    
-    fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
-        let bytes = serialize(value)?;
-        self.db.insert(key, bytes)?;
-        self.db.flush()?;
-        Ok(())
-    }
-    
-    fn delete(&self, key: &[u8]) -> Result<()> {
-        self.db.remove(key)?;
-        self.db.flush()?;
-        Ok(())
-    }
-    
-    fn exists(&self, key: &[u8]) -> Result<bool> {
-        Ok(self.db.contains_key(key)?)
-    }
-    
-    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
-        let iter = self.db.range(prefix..);
-        let prefix_vec = prefix.to_vec();
-        
-        let filtered = iter.filter_map(move |item| {
-            match item {
-                Ok((key, value)) if key.starts_with(&prefix_vec) => {
-                    Some((key.to_vec(), value.to_vec()))
-                }
-                _ => None,
-            }
-        });
-        
-        Box::new(filtered)
-    }
-    
-    fn batch(&self) -> Self::Batch {
-        SledWriteBatch::new(Arc::clone(&self.db))
-    }
-}
-
-impl WriteBatchExt for SledStore {
-    type Batch = SledWriteBatch;
-    
-    fn batch(&self) -> Self::Batch {
-        Storage::batch(self)
-    }
-}
-
 impl SledStore {
     /// Open or create a new Sled database at the given path
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -91,7 +24,7 @@ impl SledStore {
             db: Arc::new(db),
         })
     }
-    
+
     /// Get a reference to the underlying Sled database
     pub fn inner(&self) -> &Db {
         &self.db
@@ -99,6 +32,8 @@ impl SledStore {
 }
 
 impl Storage for SledStore {
+    type Batch = SledWriteBatch;
+
     fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
         SledStore::open(path)
     }
@@ -133,7 +68,7 @@ impl Storage for SledStore {
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         let iter = self.db.range(prefix..);
         let prefix_vec = prefix.to_vec();
-        
+
         let filtered = iter.filter_map(move |item| {
             match item {
                 Ok((key, value)) if key.starts_with(&prefix_vec) => {
@@ -142,12 +77,20 @@ impl Storage for SledStore {
                 _ => None,
             }
         });
-        
+
         Box::new(filtered)
     }
 
-    fn batch(&self) -> Box<dyn WriteBatch> {
-        Box::new(SledWriteBatch::new(Arc::clone(&self.db)))
+    fn batch(&self) -> Self::Batch {
+        SledWriteBatch::new(Arc::clone(&self.db))
+    }
+}
+
+impl WriteBatchExt for SledStore {
+    type Batch = SledWriteBatch;
+
+    fn batch(&self) -> Self::Batch {
+        SledWriteBatch::new(Arc::clone(&self.db))
     }
 }
 
@@ -179,6 +122,7 @@ impl WriteBatch for SledWriteBatch {
         let ops = self.ops;
         let db = self.db.clone();
         
+        // Execute the transaction
         let result = db.transaction(|tx| {
             for op in ops {
                 match op {
@@ -193,10 +137,15 @@ impl WriteBatch for SledWriteBatch {
             Ok(())
         });
         
-        result.map_err(|e| crate::error::KnowledgeGraphError::TransactionError(format!("{:?}", e)))?;
-        
-        db.flush()?;
-        Ok(())
+        // Convert the transaction error to our error type
+        match result {
+            Ok(_) => {
+                // Ensure all changes are persisted to disk
+                db.flush()?;
+                Ok(())
+            }
+            Err(e) => Err(crate::error::KnowledgeGraphError::TransactionError(format!("{:?}", e)))
+        }
     }
 }
 
@@ -221,14 +170,19 @@ mod tests {
         let dir = tempdir()?;
         let store = SledStore::open(dir.path())?;
         
-        // Test basic put and get
+        // Test put and get
         let key = b"test_key";
-        let value = json!({ "name": "test", "value": 42 });
+        let value = b"test_value";
         
-        store.put(key, &value)?;
-        let retrieved: serde_json::Value = store.get(key)?.expect("Value not found");
+        store.put(key, &value.to_vec())?;
+        let retrieved: Option<Vec<u8>> = store.get(key)?;
         
-        assert_eq!(retrieved, value);
+        assert_eq!(retrieved, Some(value.to_vec()));
+        
+        // Test non-existent key
+        let non_existent: Option<Vec<u8>> = store.get(b"non_existent")?;
+        assert_eq!(non_existent, None);
+        
         Ok(())
     }
 
@@ -239,7 +193,8 @@ mod tests {
         
         // Add a value
         let key = b"test_key";
-        store.put(key, &"test_value")?;
+        let value = b"test_value";
+        store.put(key, &value.to_vec())?;
         
         // Verify it exists
         assert!(store.exists(key)?);
@@ -259,30 +214,25 @@ mod tests {
         let dir = tempdir()?;
         let store = SledStore::open(dir.path())?;
         
-        // Add some test data
-        let data = [
-            (b"prefix:1", "value1"),
-            (b"prefix:2", "value2"),
-            (b"other:1", "value3"),
-        ];
-        
-        for (key, value) in &data {
-            store.put(key, value)?;
-        }
+        // Insert some test data
+        store.put(b"prefix:1", &b"value1".to_vec())?;
+        store.put(b"prefix:2", &b"value2".to_vec())?;
+        store.put(b"other:1", &b"other1".to_vec())?;
         
         // Test prefix iteration
-        let prefix = b"prefix:";
-        let mut results: Vec<_> = store.iter_prefix(prefix)
-            .map(|(k, v)| (k, String::from_utf8_lossy(&v).into_owned()))
-            .collect();
+        let mut results: Vec<_> = store.iter_prefix(b"prefix:").collect();
+        results.sort();
         
-        // Sort for consistent ordering
-        results.sort_by_key(|(k, _)| k.clone());
+        let expected = vec![
+            (b"prefix:1".to_vec(), b"value1".to_vec()),
+            (b"prefix:2".to_vec(), b"value2".to_vec()),
+        ];
         
-        // Verify results
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0], (b"prefix:1".to_vec(), "\"value1\"".to_string()));
-        assert_eq!(results[1], (b"prefix:2".to_vec(), "\"value2\"".to_string()));
+        assert_eq!(results, expected);
+        
+        // Test empty prefix
+        let results: Vec<_> = store.iter_prefix(b"nonexistent").collect();
+        assert!(results.is_empty());
         
         Ok(())
     }
@@ -294,32 +244,31 @@ mod tests {
 
         // Test successful transaction
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put_serialized(b"key1", &"value1")?;
-        batch.put_serialized(b"key2", &"value2")?;
+        batch.put_serialized(b"key1", &b"value1".to_vec())?;
+        batch.put_serialized(b"key2", &b"value2".to_vec())?;
         Box::new(batch).commit()?;
 
-        assert_eq!(store.get::<String>(b"key1")?, Some("value1".to_string()));
-        assert_eq!(store.get::<String>(b"key2")?, Some("value2".to_string()));
+        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(b"value1".to_vec()));
+        assert_eq!(store.get::<Vec<u8>>(b"key2")?, Some(b"value2".to_vec()));
 
         // Test delete in transaction
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put_serialized(b"key1", &"value1")?;
+        batch.put_serialized(b"key1", &b"value1".to_vec())?;
         batch.delete(b"key1")?;
         Box::new(batch).commit()?;
 
-        assert_eq!(store.get::<String>(b"key1")?, None);
+        assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
 
-        // Test failed transaction (duplicate key)
-        let result = std::panic::catch_unwind(|| {
-            let mut batch = <SledStore as Storage>::batch(&store);
-            batch.put_serialized(b"key1", &"value1")?;
-            batch.put_serialized(b"key2", &"value2")?;
-            Box::new(batch).commit()
-        });
-
+        // Test transaction with error (duplicate key in the same batch)
+        let mut batch = <SledStore as Storage>::batch(&store);
+        batch.put_serialized(b"key1", &b"value1".to_vec())?;
+        batch.put_serialized(b"key1", &b"value2".to_vec())?; // Duplicate key
+        let result = Box::new(batch).commit();
         assert!(result.is_err());
-        assert_eq!(store.get::<String>(b"key1")?, None);
-        assert_eq!(store.get::<String>(b"key2")?, None);
+
+        // Verify no partial updates
+        assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
+        
         Ok(())
     }
 }
