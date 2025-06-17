@@ -2,10 +2,13 @@
 
 use maya_knowledge_graph::{
     prelude::*,
-    storage::WriteBatchExt,
+    storage::{Storage, WriteBatchExt},
+    query::QueryExt,
+    KnowledgeGraph, Node, Edge
 };
 use serde_json::json;
 use tempfile::tempdir;
+use uuid::Uuid;
 
 #[test]
 fn test_end_to_end_workflow() -> Result<()> {

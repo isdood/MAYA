@@ -1,12 +1,12 @@
 //! Tests for the storage module
 
-use super::test_utils::*;
 use maya_knowledge_graph::{
-    prelude::*,
-    storage::{SledStore, WriteBatchExt},
+    storage::{SledStore, Storage, WriteBatchExt},
+    error::Result,
 };
 use serde_json::json;
 use tempfile::tempdir;
+use std::path::Path;
 
 #[test]
 fn test_put_and_get() -> Result<()> {
@@ -98,7 +98,7 @@ fn test_transaction() -> Result<()> {
     batch.delete(b"key1")?;
     
     // Commit the batch
-    batch.commit()?;
+    Box::new(batch).commit()?;
     
     // Verify the results
     let val1: Option<String> = store.get(b"key1")?;
