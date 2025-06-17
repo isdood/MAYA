@@ -27,12 +27,12 @@ pub fn MessageQueue(comptime T: type) type {
 
         pub const Queue = MessageQueue(T);
 
-        pub fn init(allocator: Allocator, capacity: usize) !*Queue {
+        pub fn init(allocator: Allocator, initial_capacity: usize) !*Queue {
             const self = try allocator.create(Queue);
             self.* = .{
                 .allocator = allocator,
-                .buffer = try allocator.alloc(T, capacity),
-                .capacity = capacity,
+                .buffer = try allocator.alloc(T, initial_capacity),
+                ._capacity = initial_capacity,
             };
             return self;
         }
@@ -94,12 +94,12 @@ pub fn MessageQueue(comptime T: type) type {
             };
         }
 
-        pub fn timedDequeue(self: *Queue, timeout_ns: u64) (MessageQueueError || error{Timeout})!T {
+        pub fn timedDequeue(self: *Queue, timeout_ns_param: u64) (MessageQueueError || error{Timeout})!T {
             self.mutex.lock();
             defer self.mutex.unlock();
 
             const start_time = std.time.nanoTimestamp();
-            var remaining_time = @intCast(i128, timeout_ns);
+            var remaining_time = @as(i128, @intCast(timeout_ns_param));
 
             while (true) {
                 const current_count = self.count.load(.SeqCst);
@@ -122,12 +122,13 @@ pub fn MessageQueue(comptime T: type) type {
 
                 // Wait for an item to become available
                 const wait_start = std.time.nanoTimestamp();
-                self.not_empty.timedWait(&self.mutex, @intCast(u64, remaining_time)) catch |err| {
+                const wait_timeout_ns = @as(u64, @intCast(remaining_time));
+                self.not_empty.timedWait(&self.mutex, wait_timeout_ns) catch |err| {
                     if (err == error.TimedOut) return error.Timeout;
                     return err;
                 };
                 
-                const elapsed = @intCast(u64, std.time.nanoTimestamp() - wait_start);
+                const elapsed = @as(u64, @intCast(std.time.nanoTimestamp() - wait_start));
                 remaining_time -= @intCast(i128, elapsed);
             }
         }

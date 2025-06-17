@@ -60,14 +60,15 @@ pub const TlsStream = struct {
     }
 };
 
+/// Initialize a new TLS client stream
 pub fn initTlsClient(
-    allocator: Allocator,
-    socket: net.Stream,
+    _: Allocator, // Allocator is not currently used but kept for future use
+    socket: std.net.Stream,
     hostname: []const u8,
     config: TlsConfig,
 ) !TlsStream {
     // Initialize TLS configuration
-    var tls_config: std.crypto.tls.Config = .{
+    const tls_config: std.crypto.tls.Config = .{
         .min_version = @as(u16, switch (config.min_version) {
             .tls12 => 0x0303, // TLS 1.2
             .tls13 => 0x0304, // TLS 1.3
@@ -82,35 +83,24 @@ pub fn initTlsClient(
     };
     
     // Load CA certificate if provided
-    if (config.ca_cert_path) |ca_path| {
-        const ca_data = try fs.cwd().readFileAlloc(allocator, ca_path, std.math.maxInt(usize));
-        defer allocator.free(ca_data);
-        
+    if (config.ca_cert_path) |_| {
         // TODO: Parse and add CA certificates to tls_config
-        _ = ca_data;
+        // For now, we'll just skip this since we're not actually using the data
     }
     
     // Load client certificate and key if provided
     if (config.client_cert_path != null and config.client_key_path != null) {
-        const cert_data = try fs.cwd().readFileAlloc(allocator, config.client_cert_path.?, std.math.maxInt(usize));
-        defer allocator.free(cert_data);
-        
-        const key_data = try fs.cwd().readFileAlloc(allocator, config.client_key_path.?, std.math.maxInt(usize));
-        defer allocator.free(key_data);
-        
         // TODO: Parse and set client certificate and key in tls_config
-        _ = cert_data;
-        _ = key_data;
+        // For now, we'll just skip this since we're not actually using the data
     }
     
     // Set up cipher suites if specified
-    if (config.cipher_suites) |suites| {
+    if (config.cipher_suites) |_| {
         // TODO: Configure allowed cipher suites
-        _ = suites;
     }
     
     // Initialize TLS client
-    var tls_client = try std.crypto.tls.Client.init(socket, hostname, tls_config);
+    const tls_client = try std.crypto.tls.Client.init(socket, hostname, tls_config);
     
     return TlsStream{
         .stream = tls_client,
@@ -121,9 +111,7 @@ pub fn initTlsClient(
 test "TLS client initialization" {
     // This is a basic test that just verifies the code compiles
     // Real TLS tests would require a test server
-    _ = allocator;
-    
-    const config = TlsConfig{
+    const config = TlsConfig{ // allocator is not used in this test
         .verify_certificate = false, // For testing only
         .verify_hostname = false,    // For testing only
     };

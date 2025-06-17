@@ -28,11 +28,13 @@ pub const RetryConfig = struct {
 };
 
 /// Result of a retry operation
-pub const RetryResult(T) = struct {
-    value: T,
-    attempts: u32,
-    total_delay_ns: u64,
-};
+pub fn RetryResult(comptime T: type) type {
+    return struct {
+        value: T,
+        attempts: u32,
+        total_delay_ns: u64,
+    };
+}
 
 /// Retry a function until it succeeds or the maximum attempts are reached
 pub fn withRetry(
@@ -132,12 +134,12 @@ test "retry with success on first attempt" {
     
     const result = try withRetry(
         @TypeOf(struct {
-            fn f(_: *u32) u32 { return 42; }
+            fn f(_: *u32) anyerror!u32 { return 42; }
         }.f),
         .{},
         &counter,
         struct {
-            fn f(ctx: *u32) error!u32 {
+            fn f(ctx: *u32) anyerror!u32 {
                 _ = ctx;
                 return 42;
             }
@@ -159,7 +161,7 @@ test "retry with eventual success" {
         .{ .max_attempts = 3, .initial_delay_ns = 1, .max_delay_ns = 10 },
         &counter,
         struct {
-            fn f(ctx: *u32) error!u32 {
+            fn f(ctx: *u32) anyerror!u32 {
                 ctx.* += 1;
                 if (ctx.* < 3) return error.TempFailure;
                 return 42;

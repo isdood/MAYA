@@ -177,7 +177,7 @@ pub const Histogram = struct {
     }
     
     pub fn getSum(self: *const Histogram) f64 {
-        return @bitCast(f64, self.sum.load(.Unordered, .{}));
+        return @as(f64, @bitCast(self.sum.load(.Unordered)));
     }
     
     pub fn getCount(self: *const Histogram) u64 {
@@ -255,7 +255,7 @@ pub const Registry = struct {
         
         if (self.metrics.get(name)) |metric| {
             if (metric.metric_type == .counter) {
-                return @fieldParentPtr(Counter, metric, "base");
+                return @fieldParentPtr(Counter, metric);
             }
         }
         return null;
@@ -267,7 +267,7 @@ pub const Registry = struct {
         
         if (self.metrics.get(name)) |metric| {
             if (metric.metric_type == .gauge) {
-                return @fieldParentPtr(Gauge, metric, "base");
+                return @fieldParentPtr(Gauge, metric);
             }
         }
         return null;
@@ -279,7 +279,7 @@ pub const Registry = struct {
         
         if (self.metrics.get(name)) |metric| {
             if (metric.metric_type == .histogram) {
-                return @fieldParentPtr(Histogram, metric, "base");
+                return @fieldParentPtr(Histogram, metric);
             }
         }
         return null;
