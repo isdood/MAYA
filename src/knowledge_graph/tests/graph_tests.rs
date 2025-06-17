@@ -3,12 +3,11 @@
 use maya_knowledge_graph::{
     KnowledgeGraph, Node, Edge, Property, PropertyValue,
     storage::{SledStore, Storage, WriteBatchExt},
-    error::Result,
+    error::{Result, KnowledgeGraphError},
     query::QueryExt,
 };
 use tempfile::tempdir;
 use uuid::Uuid;
-use serde_json::Error as JsonError;
 
 // Helper function to create a test node
 fn create_test_node(label: &str, name: &str, age: i32) -> Node {
@@ -170,7 +169,9 @@ fn test_transaction() -> Result<()> {
     let result = graph.transaction(|tx| {
         let bad_node = create_test_node("Should not exist", "Bad Node", 0);
         tx.add_node(&bad_node)?;
-        Err(JsonError::custom("Test error"))
+        // Use a serialization error for testing
+        let json_err = serde_json::Error::custom("Test error");
+        Err(KnowledgeGraphError::SerializationError(json_err))
     });
     
     assert!(result.is_err());

@@ -46,20 +46,25 @@ pub fn create_test_graph() -> (TestGraph, Vec<Node>, Vec<Edge>) {
     let node2 = create_test_node("Person");
     let node3 = create_test_node("Location");
     
+    // Clone nodes before moving them into the graph
+    let node1_clone = node1.clone();
+    let node2_clone = node2.clone();
+    let node3_clone = node3.clone();
+    
     // Add nodes to graph
     graph.add_node(node1).expect("Failed to add node1");
     graph.add_node(node2).expect("Failed to add node2");
     graph.add_node(node3).expect("Failed to add node3");
     
     // Create some test edges
-    let edge1 = create_test_edge("KNOWS", node1.id, node2.id);
-    let edge2 = create_test_edge("VISITED", node1.id, node3.id);
+    let edge1 = create_test_edge("KNOWS", node1_clone.id, node2_clone.id);
+    let edge2 = create_test_edge("VISITED", node1_clone.id, node3_clone.id);
     
     // Add edges to graph
     graph.add_edge(&edge1).expect("Failed to add edge1");
     graph.add_edge(&edge2).expect("Failed to add edge2");
     
-    (graph, vec![node1, node2, node3], vec![edge1, edge2])
+    (graph, vec![node1_clone, node2_clone, node3_clone], vec![edge1, edge2])
 }
 
 /// Assert that two nodes are equal, ignoring timestamps
