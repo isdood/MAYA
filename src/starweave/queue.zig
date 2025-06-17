@@ -23,7 +23,7 @@ pub fn MessageQueue(comptime T: type) type {
         not_empty: Condition = .{},
         not_full: Condition = .{},
         closed: Atomic(bool) = Atomic(bool).init(false),
-        capacity: usize,
+        _capacity: usize,
 
         pub const Queue = MessageQueue(T);
 
@@ -167,7 +167,7 @@ pub fn MessageQueue(comptime T: type) type {
         }
 
         pub fn capacity(self: *const Queue) usize {
-            return self.capacity;
+            return self._capacity;
         }
     };
 }

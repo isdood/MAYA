@@ -24,7 +24,7 @@ pub const RetryConfig = struct {
     timeout_ns: u64 = 0,
     
     /// Function to determine if an error is retryable
-    is_retryable: ?*const fn(error) bool = null,
+    is_retryable: ?*const fn(anyerror) bool = null,
 };
 
 /// Result of a retry operation

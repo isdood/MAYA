@@ -87,7 +87,7 @@ pub fn initTlsClient(
         defer allocator.free(ca_data);
         
         // TODO: Parse and add CA certificates to tls_config
-        _ = ca_data; // Avoid unused variable warning
+        _ = ca_data;
     }
     
     // Load client certificate and key if provided
@@ -121,7 +121,7 @@ pub fn initTlsClient(
 test "TLS client initialization" {
     // This is a basic test that just verifies the code compiles
     // Real TLS tests would require a test server
-    const allocator = std.testing.allocator;
+    _ = allocator;
     
     const config = TlsConfig{
         .verify_certificate = false, // For testing only

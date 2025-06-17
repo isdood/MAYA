@@ -97,7 +97,7 @@ pub const MockServer = struct {
         ) !void {
             const error_msg = Message{
                 .msg_type = .error_report,
-                .timestamp = @intToFloat(f64, std.time.milliTimestamp()),
+                .timestamp = @as(f64, @floatFromInt(std.time.milliTimestamp())),
                 .data = .{
                     .error_report = .{
                         .error_code = @enumToInt(code),
@@ -127,7 +127,7 @@ pub const MockServer = struct {
         const address = try net.Address.parseIp(config.host, config.port);
         
         // Initialize the server
-        var server = net.StreamServer.init(.{
+        const server = net.StreamServer.init(.{
             .reuse_address = true,
             .kernel_backlog = config.max_connections,
         });
@@ -228,7 +228,7 @@ pub const MockServer = struct {
             }
             
             // Read message data
-            var message_data = std.heap.page_allocator.alloc(u8, message_len) catch {
+            const message_data = std.heap.page_allocator.alloc(u8, message_len) catch {
                 std.log.err("Out of memory", .{});
                 break;
             };
@@ -305,8 +305,8 @@ pub const MockServer = struct {
             .pong => {
                 // Ignore pong messages
             },
-            .error => {
-                std.log.warn("Received error from client: {s}", .{message.error.message});
+            .error_report => |err| {
+                std.log.warn("Received error from client: {s}", .{err.error_message});
             },
             else => {
                 // Echo back the message for testing
@@ -356,7 +356,7 @@ test "mock server basic functionality" {
     _ = try client.readAll(&len_buf);
     const msg_len = std.mem.readIntBig(u32, &len_buf);
     
-    var msg_buf = try allocator.alloc(u8, msg_len);
+    const msg_buf = try allocator.alloc(u8, msg_len);
     defer allocator.free(msg_buf);
     _ = try client.readAll(msg_buf);
     

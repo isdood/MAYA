@@ -71,6 +71,7 @@ pub const DecompressionStream = union(CompressionAlgorithm) {
         reader: std.io.Reader(void, error{Error}, readNoOp),
         
         fn readNoOp(context: void, buffer: []u8) error{Error}!usize {
+            _ = buffer; // Mark as used
             _ = context;
             return 0; // EOF
         }
@@ -116,17 +117,17 @@ pub fn initCompressor(
         },
         .deflate => CompressionStream{
             .deflate = try deflate.compress(allocator, dest, .{
-                .level = @enumToInt(level),
+                .level = @intFromEnum(level),
             }),
         },
         .gzip => CompressionStream{
             .gzip = try gzip.compress(allocator, dest, .{
-                .level = @enumToInt(level),
+                .level = @intFromEnum(level),
             }),
         },
         .zstd => CompressionStream{
             .zstd = try zstd.compressStream(allocator, dest, .{
-                .level = @enumToInt(level),
+                .level = @intFromEnum(level),
             }),
         },
     };

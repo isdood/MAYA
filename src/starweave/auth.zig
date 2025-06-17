@@ -165,7 +165,7 @@ pub const AuthManager = struct {
                 if (oauth.refresh_token) |rt| self.allocator.free(rt);
                 if (oauth.scope) |s| self.allocator.free(s);
             },
-            .hmac_sha256 => |*hmac| {
+            .hmac_sha256 => |*hmac_ctx| {
                 self.allocator.free(hmac.key_id);
                 self.allocator.free(hmac.secret_key);
                 self.allocator.free(hmac.key_id_header);
@@ -268,7 +268,7 @@ pub const AuthManager = struct {
                 defer self.allocator.free(header);
                 try headers.append("Authorization", header);
             },
-            .hmac_sha256 => |hmac| {
+            .hmac_sha256 => |hmac_ctx| {
                 const header = try self.getAuthHeader();
                 defer self.allocator.free(header);
                 
@@ -300,6 +300,7 @@ pub const AuthManager = struct {
     
     /// Check if the current token is expired
     fn isTokenExpired(self: *const AuthManager, expiry: i64) bool {
+        _ = self; // Unused parameter
         if (expiry == 0) return false;
         return time.timestamp() >= expiry;
     }
