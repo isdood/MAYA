@@ -24,16 +24,16 @@ fn test_sled_store() -> Result<()> {
     
     // Test batch operations
     let mut batch = <SledStore as WriteBatchExt>::batch(&store);
-    batch.put_serialized(b"key2", b"value2")?;
-    batch.put_serialized(b"key3", b"value3")?;
+    batch.put_serialized(b"batch1", b"value1")?;
+    batch.put_serialized(b"batch2", b"value2")?;
     <SledStore as WriteBatchExt>::commit(Box::new(batch))?;
     
-    assert_eq!(store.get(b"key2")?, Some(b"value2".to_vec()));
-    assert_eq!(store.get(b"key3")?, Some(b"value3".to_vec()));
+    assert_eq!(store.get(b"batch1")?, Some(b"value1".to_vec()));
+    assert_eq!(store.get(b"batch2")?, Some(b"value2".to_vec()));
     
     // Test get for each key
-    let val2 = store.get(b"key2")?;
-    let val3 = store.get(b"key3")?;
+    let val1 = store.get::<Vec<u8>>(b"batch1")?;
+    let val2 = store.get::<Vec<u8>>(b"batch2")?;
     
     assert_eq!(val2, Some(b"value2".to_vec()));
     assert_eq!(val3, Some(b"value3".to_vec()));
@@ -84,12 +84,12 @@ fn test_iter_prefix() -> Result<()> {
     let mut prefixed = Vec::new();
     
     // Get values one by one since we can't iterate directly
-    if let Some(value1) = store.get(b"prefix:1")? {
+    if let Some(value1) = store.get::<Vec<u8>>(b"prefix:1")? {
         let value_str: String = serde_json::from_slice(&value1)?;
         prefixed.push(("prefix:1".to_string(), value_str));
     }
     
-    if let Some(value2) = store.get(b"prefix:2")? {
+    if let Some(value2) = store.get::<Vec<u8>>(b"prefix:2")? {
         let value_str: String = serde_json::from_slice(&value2)?;
         prefixed.push(("prefix:2".to_string(), value_str));
     }
