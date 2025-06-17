@@ -1,0 +1,373 @@
+[2025-06-17 16:53:15] === Starting MAYA Safe Load Tests ===
+[2025-06-17 16:53:15] Max memory usage: 85%
+[2025-06-17 16:53:15] Test duration: 60 seconds per test
+[2025-06-17 16:53:15] Log file: tests/results/load_tests_20250617_165315.log
+[2025-06-17 16:53:15] Installing test dependencies...
+[2025-06-17 16:53:15] Starting load tests...
+[2025-06-17 16:53:15] Starting test: CPU Load 25%
+[2025-06-17 16:53:15] Command: python -c while True: [i*i for i in range(1000000)]
+Memory: 29% used (43802MB free)
+Memory: 29% used (43701MB free)
+Memory: 29% used (43763MB free)
+Memory: 29% used (43754MB free)
+Memory: 29% used (43752MB free)
+Memory: 29% used (43756MB free)
+Memory: 29% used (43742MB free)
+Memory: 29% used (43753MB free)
+Memory: 29% used (43743MB free)
+Memory: 29% used (43741MB free)
+Memory: 29% used (43755MB free)
+Memory: 29% used (43767MB free)
+Memory: 29% used (43746MB free)
+Memory: 29% used (43776MB free)
+Memory: 29% used (43770MB free)
+Memory: 29% used (43778MB free)
+Memory: 29% used (43688MB free)
+Memory: 29% used (43682MB free)
+Memory: 29% used (43670MB free)
+Memory: 29% used (43691MB free)
+Memory: 29% used (43718MB free)
+Memory: 29% used (43756MB free)
+Memory: 29% used (43699MB free)
+Memory: 29% used (43691MB free)
+Memory: 29% used (43701MB free)
+Memory: 29% used (43712MB free)
+Memory: 29% used (43687MB free)
+Memory: 29% used (43719MB free)
+Memory: 29% used (43756MB free)
+Memory: 29% used (43753MB free)
+Memory: 29% used (43776MB free)
+Memory: 29% used (43773MB free)
+[2025-06-17 16:54:17] Test duration (60s) exceeded, terminating...
+[2025-06-17 16:54:17] Starting test: CPU Load 50%
+[2025-06-17 16:54:17] Command: python -c while True: [i*i for i in range(1000000)]
+Memory: 29% used (43787MB free)
+Memory: 29% used (43695MB free)
+Memory: 29% used (43704MB free)
+Memory: 29% used (43722MB free)
+Memory: 29% used (43728MB free)
+Memory: 29% used (43722MB free)
+Memory: 29% used (43737MB free)
+Memory: 29% used (43756MB free)
+Memory: 29% used (43745MB free)
+Memory: 29% used (43759MB free)
+Memory: 29% used (43772MB free)
+Memory: 29% used (43783MB free)
+Memory: 29% used (43746MB free)
+Memory: 29% used (43743MB free)
+Memory: 29% used (43699MB free)
+Memory: 29% used (43722MB free)
+Memory: 29% used (43745MB free)
+Memory: 29% used (43735MB free)
+Memory: 29% used (43745MB free)
+Memory: 29% used (43737MB free)
+Memory: 29% used (43735MB free)
+Memory: 29% used (43733MB free)
+Memory: 29% used (43734MB free)
+Memory: 29% used (43732MB free)
+Memory: 29% used (43750MB free)
+Memory: 29% used (43758MB free)
+Memory: 29% used (43792MB free)
+Memory: 29% used (43781MB free)
+Memory: 29% used (43745MB free)
+Memory: 29% used (43763MB free)
+Memory: 29% used (43769MB free)
+[2025-06-17 16:55:18] Test duration (60s) exceeded, terminating...
+[2025-06-17 16:55:18] Starting test: CPU Load 75%
+[2025-06-17 16:55:18] Command: python -c while True: [i*i for i in range(1000000)]
+Memory: 29% used (43779MB free)
+Memory: 29% used (43750MB free)
+Memory: 29% used (43771MB free)
+Memory: 29% used (43807MB free)
+Memory: 29% used (43802MB free)
+Memory: 29% used (43801MB free)
+Memory: 29% used (43782MB free)
+Memory: 29% used (43790MB free)
+Memory: 29% used (43788MB free)
+Memory: 29% used (43823MB free)
+Memory: 29% used (43818MB free)
+Memory: 29% used (43844MB free)
+Memory: 29% used (43850MB free)
+Memory: 29% used (43805MB free)
+Memory: 29% used (43804MB free)
+Memory: 29% used (43814MB free)
+Memory: 29% used (43795MB free)
+Memory: 29% used (43804MB free)
+Memory: 29% used (43741MB free)
+Memory: 29% used (43753MB free)
+Memory: 29% used (43775MB free)
+Memory: 29% used (43769MB free)
+Memory: 29% used (43777MB free)
+Memory: 29% used (43756MB free)
+Memory: 29% used (43784MB free)
+Memory: 29% used (43807MB free)
+Memory: 29% used (43831MB free)
+Memory: 29% used (43817MB free)
+Memory: 29% used (43834MB free)
+Memory: 29% used (43835MB free)
+Memory: 29% used (43825MB free)
+Memory: 29% used (43821MB free)
+[2025-06-17 16:56:20] Test duration (60s) exceeded, terminating...
+[2025-06-17 16:56:20] Starting test: CPU Load 90%
+[2025-06-17 16:56:20] Command: python -c while True: [i*i for i in range(1000000)]
+Memory: 29% used (43828MB free)
+Memory: 29% used (43744MB free)
+Memory: 29% used (43777MB free)
+Memory: 29% used (43775MB free)
+Memory: 29% used (43784MB free)
+Memory: 29% used (43805MB free)
+Memory: 29% used (43825MB free)
+Memory: 29% used (43829MB free)
+Memory: 29% used (43811MB free)
+Memory: 29% used (43819MB free)
+Memory: 29% used (43824MB free)
+Memory: 29% used (43840MB free)
+Memory: 29% used (43849MB free)
+Memory: 29% used (43848MB free)
+Memory: 29% used (43820MB free)
+Memory: 29% used (43827MB free)
+Memory: 29% used (43807MB free)
+Memory: 29% used (43831MB free)
+Memory: 29% used (43834MB free)
+Memory: 29% used (43835MB free)
+Memory: 29% used (43835MB free)
+Memory: 29% used (43772MB free)
+Memory: 29% used (43793MB free)
+Memory: 29% used (43824MB free)
+Memory: 29% used (43834MB free)
+Memory: 29% used (43896MB free)
+Memory: 29% used (43905MB free)
+Memory: 29% used (43908MB free)
+Memory: 29% used (43913MB free)
+Memory: 29% used (43899MB free)
+Memory: 29% used (43905MB free)
+Memory: 29% used (43942MB free)
+[2025-06-17 16:57:22] Test duration (60s) exceeded, terminating...
+[2025-06-17 16:57:22] Starting test: Memory Load 30%
+[2025-06-17 16:57:22] Command: python -c 
+import time
+import psutil
+
+def safe_memory_allocation(target_percent, safety_factor, min_free_mb):
+    total_mb = int(psutil.virtual_memory().total / (1024 * 1024) * target_percent / 100 * safety_factor)
+    free_mb = int(psutil.virtual_memory().available / (1024 * 1024))
+    safe_mb = free_mb - min_free_mb
+    
+    if safe_mb < 1024:  # At least 1GB
+        safe_mb = 1024
+    if total_mb > safe_mb:
+        print(f'[SAFE] Adjusted memory target from {total_mb}MB to {safe_mb}MB')
+        return safe_mb
+    return total_mb
+
+try:
+    # Calculate safe allocation
+    total_mb = safe_memory_allocation(30, 0.75, 8192)
+    chunks = []
+    print(f'[TEST] Allocating {total_mb}MB...')
+    
+    # Allocate in chunks with progress
+    chunk_mb = 100  # 100MB chunks
+    for i in range(0, total_mb, chunk_mb):
+        chunk_size_mb = min(chunk_mb, total_mb - i)
+        chunk = ' ' * (chunk_size_mb * 1024 * 1024 // 10)  # Approximate
+        chunks.append(chunk)
+        print(f'[PROGRESS] Allocated {i + chunk_size_mb}/{total_mb}MB', end='\r')
+        time.sleep(0.1)  # Small delay to prevent CPU overload
+    
+    print(f'\n[TEST] Holding {len(chunks) * chunk_mb}MB for 30 seconds...')
+    time.sleep(30)
+    print('[TEST] Memory test completed successfully')
+    
+except MemoryError:
+    print('\n[ERROR] Memory limit reached!')
+    raise
+
+except Exception as e:
+    print(f'\n[ERROR] Test failed: {str(e)}')
+    raise
+
+Memory: 29% used (43955MB free)
+Memory: 29% used (43732MB free)
+Memory: 29% used (43540MB free)
+Memory: 29% used (43353MB free)
+Memory: 30% used (43177MB free)
+Memory: 30% used (42966MB free)
+Memory: 30% used (42750MB free)
+Memory: 31% used (42551MB free)
+Memory: 31% used (42567MB free)
+Memory: 31% used (42577MB free)
+Memory: 31% used (42579MB free)
+Memory: 31% used (42590MB free)
+Memory: 31% used (42592MB free)
+Memory: 31% used (42574MB free)
+Memory: 31% used (42572MB free)
+Memory: 31% used (42575MB free)
+Memory: 31% used (42564MB free)
+Memory: 31% used (42598MB free)
+Memory: 31% used (42601MB free)
+Memory: 31% used (42558MB free)
+Memory: 31% used (42575MB free)
+Memory: 31% used (42573MB free)
+Memory: 31% used (42572MB free)
+[TEST] Allocating 13930MB...
+[PROGRESS] Allocated 100/13930MB[PROGRESS] Allocated 200/13930MB[PROGRESS] Allocated 300/13930MB[PROGRESS] Allocated 400/13930MB[PROGRESS] Allocated 500/13930MB[PROGRESS] Allocated 600/13930MB[PROGRESS] Allocated 700/13930MB[PROGRESS] Allocated 800/13930MB[PROGRESS] Allocated 900/13930MB[PROGRESS] Allocated 1000/13930MB[PROGRESS] Allocated 1100/13930MB[PROGRESS] Allocated 1200/13930MB[PROGRESS] Allocated 1300/13930MB[PROGRESS] Allocated 1400/13930MB[PROGRESS] Allocated 1500/13930MB[PROGRESS] Allocated 1600/13930MB[PROGRESS] Allocated 1700/13930MB[PROGRESS] Allocated 1800/13930MB[PROGRESS] Allocated 1900/13930MB[PROGRESS] Allocated 2000/13930MB[PROGRESS] Allocated 2100/13930MB[PROGRESS] Allocated 2200/13930MB[PROGRESS] Allocated 2300/13930MB[PROGRESS] Allocated 2400/13930MB[PROGRESS] Allocated 2500/13930MB[PROGRESS] Allocated 2600/13930MB[PROGRESS] Allocated 2700/13930MB[PROGRESS] Allocated 2800/13930MB[PROGRESS] Allocated 2900/13930MB[PROGRESS] Allocated 3000/13930MB[PROGRESS] Allocated 3100/13930MB[PROGRESS] Allocated 3200/13930MB[PROGRESS] Allocated 3300/13930MB[PROGRESS] Allocated 3400/13930MB[PROGRESS] Allocated 3500/13930MB[PROGRESS] Allocated 3600/13930MB[PROGRESS] Allocated 3700/13930MB[PROGRESS] Allocated 3800/13930MB[PROGRESS] Allocated 3900/13930MB[PROGRESS] Allocated 4000/13930MB[PROGRESS] Allocated 4100/13930MB[PROGRESS] Allocated 4200/13930MB[PROGRESS] Allocated 4300/13930MB[PROGRESS] Allocated 4400/13930MB[PROGRESS] Allocated 4500/13930MB[PROGRESS] Allocated 4600/13930MB[PROGRESS] Allocated 4700/13930MB[PROGRESS] Allocated 4800/13930MB[PROGRESS] Allocated 4900/13930MB[PROGRESS] Allocated 5000/13930MB[PROGRESS] Allocated 5100/13930MB[PROGRESS] Allocated 5200/13930MB[PROGRESS] Allocated 5300/13930MB[PROGRESS] Allocated 5400/13930MB[PROGRESS] Allocated 5500/13930MB[PROGRESS] Allocated 5600/13930MB[PROGRESS] Allocated 5700/13930MB[PROGRESS] Allocated 5800/13930MB[PROGRESS] Allocated 5900/13930MB[PROGRESS] Allocated 6000/13930MB[PROGRESS] Allocated 6100/13930MB[PROGRESS] Allocated 6200/13930MB[PROGRESS] Allocated 6300/13930MB[PROGRESS] Allocated 6400/13930MB[PROGRESS] Allocated 6500/13930MB[PROGRESS] Allocated 6600/13930MB[PROGRESS] Allocated 6700/13930MB[PROGRESS] Allocated 6800/13930MB[PROGRESS] Allocated 6900/13930MB[PROGRESS] Allocated 7000/13930MB[PROGRESS] Allocated 7100/13930MB[PROGRESS] Allocated 7200/13930MB[PROGRESS] Allocated 7300/13930MB[PROGRESS] Allocated 7400/13930MB[PROGRESS] Allocated 7500/13930MB[PROGRESS] Allocated 7600/13930MB[PROGRESS] Allocated 7700/13930MB[PROGRESS] Allocated 7800/13930MB[PROGRESS] Allocated 7900/13930MB[PROGRESS] Allocated 8000/13930MB[PROGRESS] Allocated 8100/13930MB[PROGRESS] Allocated 8200/13930MB[PROGRESS] Allocated 8300/13930MB[PROGRESS] Allocated 8400/13930MB[PROGRESS] Allocated 8500/13930MB[PROGRESS] Allocated 8600/13930MB[PROGRESS] Allocated 8700/13930MB[PROGRESS] Allocated 8800/13930MB[PROGRESS] Allocated 8900/13930MB[PROGRESS] Allocated 9000/13930MB[PROGRESS] Allocated 9100/13930MB[PROGRESS] Allocated 9200/13930MB[PROGRESS] Allocated 9300/13930MB[PROGRESS] Allocated 9400/13930MB[PROGRESS] Allocated 9500/13930MB[PROGRESS] Allocated 9600/13930MB[PROGRESS] Allocated 9700/13930MB[PROGRESS] Allocated 9800/13930MB[PROGRESS] Allocated 9900/13930MB[PROGRESS] Allocated 10000/13930MB[PROGRESS] Allocated 10100/13930MB[PROGRESS] Allocated 10200/13930MB[PROGRESS] Allocated 10300/13930MB[PROGRESS] Allocated 10400/13930MB[PROGRESS] Allocated 10500/13930MB[PROGRESS] Allocated 10600/13930MB[PROGRESS] Allocated 10700/13930MB[PROGRESS] Allocated 10800/13930MB[PROGRESS] Allocated 10900/13930MB[PROGRESS] Allocated 11000/13930MB[PROGRESS] Allocated 11100/13930MB[PROGRESS] Allocated 11200/13930MB[PROGRESS] Allocated 11300/13930MB[PROGRESS] Allocated 11400/13930MB[PROGRESS] Allocated 11500/13930MB[PROGRESS] Allocated 11600/13930MB[PROGRESS] Allocated 11700/13930MB[PROGRESS] Allocated 11800/13930MB[PROGRESS] Allocated 11900/13930MB[PROGRESS] Allocated 12000/13930MB[PROGRESS] Allocated 12100/13930MB[PROGRESS] Allocated 12200/13930MB[PROGRESS] Allocated 12300/13930MB[PROGRESS] Allocated 12400/13930MB[PROGRESS] Allocated 12500/13930MB[PROGRESS] Allocated 12600/13930MB[PROGRESS] Allocated 12700/13930MB[PROGRESS] Allocated 12800/13930MB[PROGRESS] Allocated 12900/13930MB[PROGRESS] Allocated 13000/13930MB[PROGRESS] Allocated 13100/13930MB[PROGRESS] Allocated 13200/13930MB[PROGRESS] Allocated 13300/13930MB[PROGRESS] Allocated 13400/13930MB[PROGRESS] Allocated 13500/13930MB[PROGRESS] Allocated 13600/13930MB[PROGRESS] Allocated 13700/13930MB[PROGRESS] Allocated 13800/13930MB[PROGRESS] Allocated 13900/13930MB[PROGRESS] Allocated 13930/13930MB
+[TEST] Holding 14000MB for 30 seconds...
+[TEST] Memory test completed successfully
+[2025-06-17 16:58:08] Test completed successfully
+[2025-06-17 16:58:08] Starting test: Memory Load 50%
+[2025-06-17 16:58:08] Command: python -c 
+import time
+import psutil
+
+def safe_memory_allocation(target_percent, safety_factor, min_free_mb):
+    total_mb = int(psutil.virtual_memory().total / (1024 * 1024) * target_percent / 100 * safety_factor)
+    free_mb = int(psutil.virtual_memory().available / (1024 * 1024))
+    safe_mb = free_mb - min_free_mb
+    
+    if safe_mb < 1024:  # At least 1GB
+        safe_mb = 1024
+    if total_mb > safe_mb:
+        print(f'[SAFE] Adjusted memory target from {total_mb}MB to {safe_mb}MB')
+        return safe_mb
+    return total_mb
+
+try:
+    # Calculate safe allocation
+    total_mb = safe_memory_allocation(50, 0.75, 8192)
+    chunks = []
+    print(f'[TEST] Allocating {total_mb}MB...')
+    
+    # Allocate in chunks with progress
+    chunk_mb = 100  # 100MB chunks
+    for i in range(0, total_mb, chunk_mb):
+        chunk_size_mb = min(chunk_mb, total_mb - i)
+        chunk = ' ' * (chunk_size_mb * 1024 * 1024 // 10)  # Approximate
+        chunks.append(chunk)
+        print(f'[PROGRESS] Allocated {i + chunk_size_mb}/{total_mb}MB', end='\r')
+        time.sleep(0.1)  # Small delay to prevent CPU overload
+    
+    print(f'\n[TEST] Holding {len(chunks) * chunk_mb}MB for 30 seconds...')
+    time.sleep(30)
+    print('[TEST] Memory test completed successfully')
+    
+except MemoryError:
+    print('\n[ERROR] Memory limit reached!')
+    raise
+
+except Exception as e:
+    print(f'\n[ERROR] Test failed: {str(e)}')
+    raise
+
+Memory: 28% used (43973MB free)
+Memory: 29% used (43758MB free)
+Memory: 29% used (43562MB free)
+Memory: 29% used (43350MB free)
+Memory: 30% used (43156MB free)
+Memory: 30% used (42955MB free)
+Memory: 30% used (42761MB free)
+Memory: 31% used (42557MB free)
+Memory: 31% used (42362MB free)
+Memory: 31% used (42169MB free)
+Memory: 32% used (41960MB free)
+Memory: 32% used (41785MB free)
+Memory: 32% used (41628MB free)
+Memory: 32% used (41623MB free)
+Memory: 32% used (41629MB free)
+Memory: 32% used (41626MB free)
+Memory: 32% used (41627MB free)
+Memory: 32% used (41627MB free)
+Memory: 32% used (41619MB free)
+Memory: 32% used (41633MB free)
+Memory: 32% used (41622MB free)
+Memory: 32% used (41627MB free)
+Memory: 32% used (41637MB free)
+Memory: 32% used (41636MB free)
+Memory: 32% used (41625MB free)
+Memory: 32% used (41633MB free)
+Memory: 32% used (41616MB free)
+[TEST] Allocating 23217MB...
+[PROGRESS] Allocated 100/23217MB[PROGRESS] Allocated 200/23217MB[PROGRESS] Allocated 300/23217MB[PROGRESS] Allocated 400/23217MB[PROGRESS] Allocated 500/23217MB[PROGRESS] Allocated 600/23217MB[PROGRESS] Allocated 700/23217MB[PROGRESS] Allocated 800/23217MB[PROGRESS] Allocated 900/23217MB[PROGRESS] Allocated 1000/23217MB[PROGRESS] Allocated 1100/23217MB[PROGRESS] Allocated 1200/23217MB[PROGRESS] Allocated 1300/23217MB[PROGRESS] Allocated 1400/23217MB[PROGRESS] Allocated 1500/23217MB[PROGRESS] Allocated 1600/23217MB[PROGRESS] Allocated 1700/23217MB[PROGRESS] Allocated 1800/23217MB[PROGRESS] Allocated 1900/23217MB[PROGRESS] Allocated 2000/23217MB[PROGRESS] Allocated 2100/23217MB[PROGRESS] Allocated 2200/23217MB[PROGRESS] Allocated 2300/23217MB[PROGRESS] Allocated 2400/23217MB[PROGRESS] Allocated 2500/23217MB[PROGRESS] Allocated 2600/23217MB[PROGRESS] Allocated 2700/23217MB[PROGRESS] Allocated 2800/23217MB[PROGRESS] Allocated 2900/23217MB[PROGRESS] Allocated 3000/23217MB[PROGRESS] Allocated 3100/23217MB[PROGRESS] Allocated 3200/23217MB[PROGRESS] Allocated 3300/23217MB[PROGRESS] Allocated 3400/23217MB[PROGRESS] Allocated 3500/23217MB[PROGRESS] Allocated 3600/23217MB[PROGRESS] Allocated 3700/23217MB[PROGRESS] Allocated 3800/23217MB[PROGRESS] Allocated 3900/23217MB[PROGRESS] Allocated 4000/23217MB[PROGRESS] Allocated 4100/23217MB[PROGRESS] Allocated 4200/23217MB[PROGRESS] Allocated 4300/23217MB[PROGRESS] Allocated 4400/23217MB[PROGRESS] Allocated 4500/23217MB[PROGRESS] Allocated 4600/23217MB[PROGRESS] Allocated 4700/23217MB[PROGRESS] Allocated 4800/23217MB[PROGRESS] Allocated 4900/23217MB[PROGRESS] Allocated 5000/23217MB[PROGRESS] Allocated 5100/23217MB[PROGRESS] Allocated 5200/23217MB[PROGRESS] Allocated 5300/23217MB[PROGRESS] Allocated 5400/23217MB[PROGRESS] Allocated 5500/23217MB[PROGRESS] Allocated 5600/23217MB[PROGRESS] Allocated 5700/23217MB[PROGRESS] Allocated 5800/23217MB[PROGRESS] Allocated 5900/23217MB[PROGRESS] Allocated 6000/23217MB[PROGRESS] Allocated 6100/23217MB[PROGRESS] Allocated 6200/23217MB[PROGRESS] Allocated 6300/23217MB[PROGRESS] Allocated 6400/23217MB[PROGRESS] Allocated 6500/23217MB[PROGRESS] Allocated 6600/23217MB[PROGRESS] Allocated 6700/23217MB[PROGRESS] Allocated 6800/23217MB[PROGRESS] Allocated 6900/23217MB[PROGRESS] Allocated 7000/23217MB[PROGRESS] Allocated 7100/23217MB[PROGRESS] Allocated 7200/23217MB[PROGRESS] Allocated 7300/23217MB[PROGRESS] Allocated 7400/23217MB[PROGRESS] Allocated 7500/23217MB[PROGRESS] Allocated 7600/23217MB[PROGRESS] Allocated 7700/23217MB[PROGRESS] Allocated 7800/23217MB[PROGRESS] Allocated 7900/23217MB[PROGRESS] Allocated 8000/23217MB[PROGRESS] Allocated 8100/23217MB[PROGRESS] Allocated 8200/23217MB[PROGRESS] Allocated 8300/23217MB[PROGRESS] Allocated 8400/23217MB[PROGRESS] Allocated 8500/23217MB[PROGRESS] Allocated 8600/23217MB[PROGRESS] Allocated 8700/23217MB[PROGRESS] Allocated 8800/23217MB[PROGRESS] Allocated 8900/23217MB[PROGRESS] Allocated 9000/23217MB[PROGRESS] Allocated 9100/23217MB[PROGRESS] Allocated 9200/23217MB[PROGRESS] Allocated 9300/23217MB[PROGRESS] Allocated 9400/23217MB[PROGRESS] Allocated 9500/23217MB[PROGRESS] Allocated 9600/23217MB[PROGRESS] Allocated 9700/23217MB[PROGRESS] Allocated 9800/23217MB[PROGRESS] Allocated 9900/23217MB[PROGRESS] Allocated 10000/23217MB[PROGRESS] Allocated 10100/23217MB[PROGRESS] Allocated 10200/23217MB[PROGRESS] Allocated 10300/23217MB[PROGRESS] Allocated 10400/23217MB[PROGRESS] Allocated 10500/23217MB[PROGRESS] Allocated 10600/23217MB[PROGRESS] Allocated 10700/23217MB[PROGRESS] Allocated 10800/23217MB[PROGRESS] Allocated 10900/23217MB[PROGRESS] Allocated 11000/23217MB[PROGRESS] Allocated 11100/23217MB[PROGRESS] Allocated 11200/23217MB[PROGRESS] Allocated 11300/23217MB[PROGRESS] Allocated 11400/23217MB[PROGRESS] Allocated 11500/23217MB[PROGRESS] Allocated 11600/23217MB[PROGRESS] Allocated 11700/23217MB[PROGRESS] Allocated 11800/23217MB[PROGRESS] Allocated 11900/23217MB[PROGRESS] Allocated 12000/23217MB[PROGRESS] Allocated 12100/23217MB[PROGRESS] Allocated 12200/23217MB[PROGRESS] Allocated 12300/23217MB[PROGRESS] Allocated 12400/23217MB[PROGRESS] Allocated 12500/23217MB[PROGRESS] Allocated 12600/23217MB[PROGRESS] Allocated 12700/23217MB[PROGRESS] Allocated 12800/23217MB[PROGRESS] Allocated 12900/23217MB[PROGRESS] Allocated 13000/23217MB[PROGRESS] Allocated 13100/23217MB[PROGRESS] Allocated 13200/23217MB[PROGRESS] Allocated 13300/23217MB[PROGRESS] Allocated 13400/23217MB[PROGRESS] Allocated 13500/23217MB[PROGRESS] Allocated 13600/23217MB[PROGRESS] Allocated 13700/23217MB[PROGRESS] Allocated 13800/23217MB[PROGRESS] Allocated 13900/23217MB[PROGRESS] Allocated 14000/23217MB[PROGRESS] Allocated 14100/23217MB[PROGRESS] Allocated 14200/23217MB[PROGRESS] Allocated 14300/23217MB[PROGRESS] Allocated 14400/23217MB[PROGRESS] Allocated 14500/23217MB[PROGRESS] Allocated 14600/23217MB[PROGRESS] Allocated 14700/23217MB[PROGRESS] Allocated 14800/23217MB[PROGRESS] Allocated 14900/23217MB[PROGRESS] Allocated 15000/23217MB[PROGRESS] Allocated 15100/23217MB[PROGRESS] Allocated 15200/23217MB[PROGRESS] Allocated 15300/23217MB[PROGRESS] Allocated 15400/23217MB[PROGRESS] Allocated 15500/23217MB[PROGRESS] Allocated 15600/23217MB[PROGRESS] Allocated 15700/23217MB[PROGRESS] Allocated 15800/23217MB[PROGRESS] Allocated 15900/23217MB[PROGRESS] Allocated 16000/23217MB[PROGRESS] Allocated 16100/23217MB[PROGRESS] Allocated 16200/23217MB[PROGRESS] Allocated 16300/23217MB[PROGRESS] Allocated 16400/23217MB[PROGRESS] Allocated 16500/23217MB[PROGRESS] Allocated 16600/23217MB[PROGRESS] Allocated 16700/23217MB[PROGRESS] Allocated 16800/23217MB[PROGRESS] Allocated 16900/23217MB[PROGRESS] Allocated 17000/23217MB[PROGRESS] Allocated 17100/23217MB[PROGRESS] Allocated 17200/23217MB[PROGRESS] Allocated 17300/23217MB[PROGRESS] Allocated 17400/23217MB[PROGRESS] Allocated 17500/23217MB[PROGRESS] Allocated 17600/23217MB[PROGRESS] Allocated 17700/23217MB[PROGRESS] Allocated 17800/23217MB[PROGRESS] Allocated 17900/23217MB[PROGRESS] Allocated 18000/23217MB[PROGRESS] Allocated 18100/23217MB[PROGRESS] Allocated 18200/23217MB[PROGRESS] Allocated 18300/23217MB[PROGRESS] Allocated 18400/23217MB[PROGRESS] Allocated 18500/23217MB[PROGRESS] Allocated 18600/23217MB[PROGRESS] Allocated 18700/23217MB[PROGRESS] Allocated 18800/23217MB[PROGRESS] Allocated 18900/23217MB[PROGRESS] Allocated 19000/23217MB[PROGRESS] Allocated 19100/23217MB[PROGRESS] Allocated 19200/23217MB[PROGRESS] Allocated 19300/23217MB[PROGRESS] Allocated 19400/23217MB[PROGRESS] Allocated 19500/23217MB[PROGRESS] Allocated 19600/23217MB[PROGRESS] Allocated 19700/23217MB[PROGRESS] Allocated 19800/23217MB[PROGRESS] Allocated 19900/23217MB[PROGRESS] Allocated 20000/23217MB[PROGRESS] Allocated 20100/23217MB[PROGRESS] Allocated 20200/23217MB[PROGRESS] Allocated 20300/23217MB[PROGRESS] Allocated 20400/23217MB[PROGRESS] Allocated 20500/23217MB[PROGRESS] Allocated 20600/23217MB[PROGRESS] Allocated 20700/23217MB[PROGRESS] Allocated 20800/23217MB[PROGRESS] Allocated 20900/23217MB[PROGRESS] Allocated 21000/23217MB[PROGRESS] Allocated 21100/23217MB[PROGRESS] Allocated 21200/23217MB[PROGRESS] Allocated 21300/23217MB[PROGRESS] Allocated 21400/23217MB[PROGRESS] Allocated 21500/23217MB[PROGRESS] Allocated 21600/23217MB[PROGRESS] Allocated 21700/23217MB[PROGRESS] Allocated 21800/23217MB[PROGRESS] Allocated 21900/23217MB[PROGRESS] Allocated 22000/23217MB[PROGRESS] Allocated 22100/23217MB[PROGRESS] Allocated 22200/23217MB[PROGRESS] Allocated 22300/23217MB[PROGRESS] Allocated 22400/23217MB[PROGRESS] Allocated 22500/23217MB[PROGRESS] Allocated 22600/23217MB[PROGRESS] Allocated 22700/23217MB[PROGRESS] Allocated 22800/23217MB[PROGRESS] Allocated 22900/23217MB[PROGRESS] Allocated 23000/23217MB[PROGRESS] Allocated 23100/23217MB[PROGRESS] Allocated 23200/23217MB[PROGRESS] Allocated 23217/23217MB
+[TEST] Holding 23300MB for 30 seconds...
+[TEST] Memory test completed successfully
+[2025-06-17 16:59:02] Test completed successfully
+[2025-06-17 16:59:02] Starting test: Memory Load 70%
+[2025-06-17 16:59:02] Command: python -c 
+import time
+import psutil
+
+def safe_memory_allocation(target_percent, safety_factor, min_free_mb):
+    total_mb = int(psutil.virtual_memory().total / (1024 * 1024) * target_percent / 100 * safety_factor)
+    free_mb = int(psutil.virtual_memory().available / (1024 * 1024))
+    safe_mb = free_mb - min_free_mb
+    
+    if safe_mb < 1024:  # At least 1GB
+        safe_mb = 1024
+    if total_mb > safe_mb:
+        print(f'[SAFE] Adjusted memory target from {total_mb}MB to {safe_mb}MB')
+        return safe_mb
+    return total_mb
+
+try:
+    # Calculate safe allocation
+    total_mb = safe_memory_allocation(70, 0.75, 8192)
+    chunks = []
+    print(f'[TEST] Allocating {total_mb}MB...')
+    
+    # Allocate in chunks with progress
+    chunk_mb = 100  # 100MB chunks
+    for i in range(0, total_mb, chunk_mb):
+        chunk_size_mb = min(chunk_mb, total_mb - i)
+        chunk = ' ' * (chunk_size_mb * 1024 * 1024 // 10)  # Approximate
+        chunks.append(chunk)
+        print(f'[PROGRESS] Allocated {i + chunk_size_mb}/{total_mb}MB', end='\r')
+        time.sleep(0.1)  # Small delay to prevent CPU overload
+    
+    print(f'\n[TEST] Holding {len(chunks) * chunk_mb}MB for 30 seconds...')
+    time.sleep(30)
+    print('[TEST] Memory test completed successfully')
+    
+except MemoryError:
+    print('\n[ERROR] Memory limit reached!')
+    raise
+
+except Exception as e:
+    print(f'\n[ERROR] Test failed: {str(e)}')
+    raise
+
+Memory: 28% used (43964MB free)
+Memory: 29% used (43791MB free)
+Memory: 29% used (43543MB free)
+Memory: 30% used (43332MB free)
+Memory: 30% used (43138MB free)
+Memory: 30% used (42932MB free)
+Memory: 30% used (42732MB free)
+Memory: 31% used (42536MB free)
+Memory: 31% used (42337MB free)
+Memory: 31% used (42144MB free)
+Memory: 32% used (41944MB free)
+Memory: 32% used (41742MB free)
+[TEST] Allocating 32504MB...
+[PROGRESS] Allocated 100/32504MB[PROGRESS] Allocated 200/32504MB[PROGRESS] Allocated 300/32504MB[PROGRESS] Allocated 400/32504MB[PROGRESS] Allocated 500/32504MB[PROGRESS] Allocated 600/32504MB[PROGRESS] Allocated 700/32504MB[PROGRESS] Allocated 800/32504MB[PROGRESS] Allocated 900/32504MB[PROGRESS] Allocated 1000/32504MB[PROGRESS] Allocated 1100/32504MB[PROGRESS] Allocated 1200/32504MB[PROGRESS] Allocated 1300/32504MB[PROGRESS] Allocated 1400/32504MB[PROGRESS] Allocated 1500/32504MB[PROGRESS] Allocated 1600/32504MB[PROGRESS] Allocated 1700/32504MB[PROGRESS] Allocated 1800/32504MB[PROGRESS] Allocated 1900/32504MB[PROGRESS] Allocated 2000/32504MB[PROGRESS] Allocated 2100/32504MB[PROGRESS] Allocated 2200/32504MB[PROGRESS] Allocated 2300/32504MB[PROGRESS] Allocated 2400/32504MB[PROGRESS] Allocated 2500/32504MB[PROGRESS] Allocated 2600/32504MB[PROGRESS] Allocated 2700/32504MB[PROGRESS] Allocated 2800/32504MB[PROGRESS] Allocated 2900/32504MB[PROGRESS] Allocated 3000/32504MB[PROGRESS] Allocated 3100/32504MB[PROGRESS] Allocated 3200/32504MB[PROGRESS] Allocated 3300/32504MB[PROGRESS] Allocated 3400/32504MB[PROGRESS] Allocated 3500/32504MB[PROGRESS] Allocated 3600/32504MB[PROGRESS] Allocated 3700/32504MB[PROGRESS] Allocated 3800/32504MB[PROGRESS] Allocated 3900/32504MB[PROGRESS] Allocated 4000/32504MB[PROGRESS] Allocated 4100/32504MB[PROGRESS] Allocated 4200/32504MB[PROGRESS] Allocated 4300/32504MB[PROGRESS] Allocated 4400/32504MB[PROGRESS] Allocated 4500/32504MB[PROGRESS] Allocated 4600/32504MB[PROGRESS] Allocated 4700/32504MB[PROGRESS] Allocated 4800/32504MB[PROGRESS] Allocated 4900/32504MB[PROGRESS] Allocated 5000/32504MB[PROGRESS] Allocated 5100/32504MB[PROGRESS] Allocated 5200/32504MB[PROGRESS] Allocated 5300/32504MB[PROGRESS] Allocated 5400/32504MB[PROGRESS] Allocated 5500/32504MB[PROGRESS] Allocated 5600/32504MB[PROGRESS] Allocated 5700/32504MB[PROGRESS] Allocated 5800/32504MB[PROGRESS] Allocated 5900/32504MB[PROGRESS] Allocated 6000/32504MB[PROGRESS] Allocated 6100/32504MB[PROGRESS] Allocated 6200/32504MB[PROGRESS] Allocated 6300/32504MB[PROGRESS] Allocated 6400/32504MB[PROGRESS] Allocated 6500/32504MB[PROGRESS] Allocated 6600/32504MB[PROGRESS] Allocated 6700/32504MB[PROGRESS] Allocated 6800/32504MB[PROGRESS] Allocated 6900/32504MB[PROGRESS] Allocated 7000/32504MB[PROGRESS] Allocated 7100/32504MB[PROGRESS] Allocated 7200/32504MB[PROGRESS] Allocated 7300/32504MB[PROGRESS] Allocated 7400/32504MB[PROGRESS] Allocated 7500/32504MB[PROGRESS] Allocated 7600/32504MB[PROGRESS] Allocated 7700/32504MB[PROGRESS] Allocated 7800/32504MB[PROGRESS] Allocated 7900/32504MB[PROGRESS] Allocated 8000/32504MB[PROGRESS] Allocated 8100/32504MB[PROGRESS] Allocated 8200/32504MB[PROGRESS] Allocated 8300/32504MB[PROGRESS] Allocated 8400/32504MB[PROGRESS] Allocated 8500/32504MB[PROGRESS] Allocated 8600/32504MB[PROGRESS] Allocated 8700/32504MB[PROGRESS] Allocated 8800/32504MB[PROGRESS] Allocated 8900/32504MB[PROGRESS] Allocated 9000/32504MB[PROGRESS] Allocated 9100/32504MB[PROGRESS] Allocated 9200/32504MB[PROGRESS] Allocated 9300/32504MB[PROGRESS] Allocated 9400/32504MB[PROGRESS] Allocated 9500/32504MB[PROGRESS] Allocated 9600/32504MB[PROGRESS] Allocated 9700/32504MB[PROGRESS] Allocated 9800/32504MB[PROGRESS] Allocated 9900/32504MB[PROGRESS] Allocated 10000/32504MB[PROGRESS] Allocated 10100/32504MB[PROGRESS] Allocated 10200/32504MB[PROGRESS] Allocated 10300/32504MB[PROGRESS] Allocated 10400/32504MB[PROGRESS] Allocated 10500/32504MB[PROGRESS] Allocated 10600/32504MB[PROGRESS] Allocated 10700/32504MB[PROGRESS] Allocated 10800/32504MB[PROGRESS] Allocated 10900/32504MB[PROGRESS] Allocated 11000/32504MB[PROGRESS] Allocated 11100/32504MB[PROGRESS] Allocated 11200/32504MB[PROGRESS] Allocated 11300/32504MB[PROGRESS] Allocated 11400/32504MB[PROGRESS] Allocated 11500/32504MB[PROGRESS] Allocated 11600/32504MB[PROGRESS] Allocated 11700/32504MB[PROGRESS] Allocated 11800/32504MB[PROGRESS] Allocated 11900/32504MB[PROGRESS] Allocated 12000/32504MB[PROGRESS] Allocated 12100/32504MB[PROGRESS] Allocated 12200/32504MB[PROGRESS] Allocated 12300/32504MB[PROGRESS] Allocated 12400/32504MB[PROGRESS] Allocated 12500/32504MB[PROGRESS] Allocated 12600/32504MB[PROGRESS] Allocated 12700/32504MB[PROGRESS] Allocated 12800/32504MB[PROGRESS] Allocated 12900/32504MB[PROGRESS] Allocated 13000/32504MB[PROGRESS] Allocated 13100/32504MB[PROGRESS] Allocated 13200/32504MB[PROGRESS] Allocated 13300/32504MB[PROGRESS] Allocated 13400/32504MB[PROGRESS] Allocated 13500/32504MB[PROGRESS] Allocated 13600/32504MB[PROGRESS] Allocated 13700/32504MB[PROGRESS] Allocated 13800/32504MB[PROGRESS] Allocated 13900/32504MB[PROGRESS] Allocated 14000/32504MB[PROGRESS] Allocated 14100/32504MB[PROGRESS] Allocated 14200/32504MB[PROGRESS] Allocated 14300/32504MB[PROGRESS] Allocated 14400/32504MB[PROGRESS] Allocated 14500/32504MB[PROGRESS] Allocated 14600/32504MB[PROGRESS] Allocated 14700/32504MB[PROGRESS] Allocated 14800/32504MB[PROGRESS] Allocated 14900/32504MB[PROGRESS] Allocated 15000/32504MB[PROGRESS] Allocated 15100/32504MB[PROGRESS] Allocated 15200/32504MB[PROGRESS] Allocated 15300/32504MB[PROGRESS] Allocated 15400/32504MB[PROGRESS] Allocated 15500/32504MB[PROGRESS] Allocated 15600/32504MB[PROGRESS] Allocated 15700/32504MB[PROGRESS] Allocated 15800/32504MB[PROGRESS] Allocated 15900/32504MB[PROGRESS] Allocated 16000/32504MB[PROGRESS] Allocated 16100/32504MB[PROGRESS] Allocated 16200/32504MB[PROGRESS] Allocated 16300/32504MB[PROGRESS] Allocated 16400/32504MB[PROGRESS] Allocated 16500/32504MB[PROGRESS] Allocated 16600/32504MB[PROGRESS] Allocated 16700/32504MB[PROGRESS] Allocated 16800/32504MB[PROGRESS] Allocated 16900/32504MB[PROGRESS] Allocated 17000/32504MB[PROGRESS] Allocated 17100/32504MB[PROGRESS] Allocated 17200/32504MB[PROGRESS] Allocated 17300/32504MB[PROGRESS] Allocated 17400/32504MB[PROGRESS] Allocated 17500/32504MB[PROGRESS] Allocated 17600/32504MB[PROGRESS] Allocated 17700/32504MB[PROGRESS] Allocated 17800/32504MB[PROGRESS] Allocated 17900/32504MB[PROGRESS] Allocated 18000/32504MB[PROGRESS] Allocated 18100/32504MB[PROGRESS] Allocated 18200/32504MB[PROGRESS] Allocated 18300/32504MB[PROGRESS] Allocated 18400/32504MB[PROGRESS] Allocated 18500/32504MB[PROGRESS] Allocated 18600/32504MB[PROGRESS] Allocated 18700/32504MB[PROGRESS] Allocated 18800/32504MB[PROGRESS] Allocated 18900/32504MB[PROGRESS] Allocated 19000/32504MB[PROGRESS] Allocated 19100/32504MB[PROGRESS] Allocated 19200/32504MB[PROGRESS] Allocated 19300/32504MB[PROGRESS] Allocated 19400/32504MB[PROGRESS] Allocated 19500/32504MB[PROGRESS] Allocated 19600/32504MB[PROGRESS] Allocated 19700/32504MB[PROGRESS] Allocated 19800/32504MB[PROGRESS] Allocated 19900/32504MB[PROGRESS] Allocated 20000/32504MB[PROGRESS] Allocated 20100/32504MB[PROGRESS] Allocated 20200/32504MB[PROGRESS] Allocated 20300/32504MB[PROGRESS] Allocated 20400/32504MB[PROGRESS] Allocated 20500/32504MB[PROGRESS] Allocated 20600/32504MB[PROGRESS] Allocated 20700/32504MB[PROGRESS] Allocated 20800/32504MB[PROGRESS] Allocated 20900/32504MB[PROGRESS] Allocated 21000/32504MB[PROGRESS] Allocated 21100/32504MB[PROGRESS] Allocated 21200/32504MB[PROGRESS] Allocated 21300/32504MB[PROGRESS] Allocated 21400/32504MB[PROGRESS] Allocated 21500/32504MB[PROGRESS] Allocated 21600/32504MB[PROGRESS] Allocated 21700/32504MB[PROGRESS] Allocated 21800/32504MB[PROGRESS] Allocated 21900/32504MB[PROGRESS] Allocated 22000/32504MB[PROGRESS] Allocated 22100/32504MB[PROGRESS] Allocated 22200/32504MB[PROGRESS] Allocated 22300/32504MB[PROGRESS] Allocated 22400/32504MB[PROGRESS] Allocated 22500/32504MB[PROGRESS] Allocated 22600/32504MB[PROGRESS] Allocated 22700/32504MB[PROGRESS] Allocated 22800/32504MB[PROGRESS] Allocated 22900/32504MB[PROGRESS] Allocated 23000/32504MB[PROGRESS] Allocated 23100/32504MB[PROGRESS] Allocated 23200/32504MB[PROGRESS] Allocated 23300/32504MB[PROGRESS] Allocated 23400/32504MB[PROGRESS] Allocated 23500/32504MB[PROGRESS] Allocated 23600/32504MB[PROGRESS] Allocated 23700/32504MBMemory: 32% used (41539MB free)
+Memory: 33% used (41341MB free)
+Memory: 33% used (41124MB free)
+Memory: 33% used (40907MB free)
+Memory: 34% used (40710MB free)
+Memory: 34% used (40663MB free)
+Memory: 34% used (40522MB free)
+Memory: 34% used (40502MB free)
+Memory: 34% used (40509MB free)
+Memory: 34% used (40511MB free)
+Memory: 34% used (40510MB free)
+Memory: 34% used (40517MB free)
+Memory: 34% used (40521MB free)
+Memory: 34% used (40529MB free)
+Memory: 34% used (40536MB free)
+Memory: 34% used (40529MB free)
+Memory: 34% used (40522MB free)
+Memory: 34% used (40517MB free)
+Memory: 34% used (40519MB free)
+Memory: 34% used (40446MB free)
+[2025-06-17 17:00:04] Test duration (60s) exceeded, terminating...
+[2025-06-17 17:00:04] All tests completed
+[2025-06-17 17:00:04] Test results saved to: tests/results/load_tests_20250617_165315.log

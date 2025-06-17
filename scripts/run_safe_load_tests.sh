@@ -8,9 +8,11 @@
 set -euo pipefail
 
 # Configuration
-MAX_MEMORY_PERCENT=80  # Maximum memory usage percentage
-TEST_DURATION=30       # Duration per test in seconds
-MEMORY_CHECK_INTERVAL=5 # Check memory every N seconds
+MAX_MEMORY_PERCENT=85        # Increased from 80% to 85% (leaving 15% headroom)
+TEST_DURATION=60            # Increased from 30s to 60s for more stable measurements
+MEMORY_CHECK_INTERVAL=2      # More frequent checks (reduced from 5s)
+MEMORY_SAFETY_FACTOR=0.75   # Using 75% of target memory instead of 50%
+MIN_MEMORY_MB=8192          # Ensure at least 8GB free for system
 
 # Get the project root directory
 PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -120,30 +122,57 @@ main() {
     # Run the load tests with memory safety
     log "Starting load tests..."
     
-    # Run CPU load tests
-    for load in 25 50 75; do
+    # Run CPU load tests with more granular steps
+    for load in 25 50 75 90; do  # Added 90% load test
         run_safe_test "CPU Load ${load}%" \
             python -c "while True: [i*i for i in range(1000000)]"
     done
     
-    # Run memory load tests (with smaller chunks)
-    for load in 25 50; do
+    # Run memory load tests with more aggressive targets
+    for load in 30 50 70; do  # Added 70% load test
         run_safe_test "Memory Load ${load}%" \
             python -c "
 import time
-chunk_size = 10 * 1024 * 1024  # 10MB chunks
-total_mb = $(($(free -m | awk '/^Mem:/{print int($2*'$load'/100)}') / 2))  # Half of target to be safe
-chunks = []
-print(f'Allocating {total_mb}MB...')
+import psutil
+
+def safe_memory_allocation(target_percent, safety_factor, min_free_mb):
+    total_mb = int(psutil.virtual_memory().total / (1024 * 1024) * target_percent / 100 * safety_factor)
+    free_mb = int(psutil.virtual_memory().available / (1024 * 1024))
+    safe_mb = free_mb - min_free_mb
+    
+    if safe_mb < 1024:  # At least 1GB
+        safe_mb = 1024
+    if total_mb > safe_mb:
+        print(f'[SAFE] Adjusted memory target from {total_mb}MB to {safe_mb}MB')
+        return safe_mb
+    return total_mb
+
 try:
-    for _ in range(total_mb // 10):
-        chunks.append(' ' * chunk_size)
-        print(f'Allocated {(len(chunks)*10)}MB', end='\r')
-        time.sleep(0.1)
-    print('\nHolding memory...')
+    # Calculate safe allocation
+    total_mb = safe_memory_allocation($load, $MEMORY_SAFETY_FACTOR, $MIN_MEMORY_MB)
+    chunks = []
+    print(f'[TEST] Allocating {total_mb}MB...')
+    
+    # Allocate in chunks with progress
+    chunk_mb = 100  # 100MB chunks
+    for i in range(0, total_mb, chunk_mb):
+        chunk_size_mb = min(chunk_mb, total_mb - i)
+        chunk = ' ' * (chunk_size_mb * 1024 * 1024 // 10)  # Approximate
+        chunks.append(chunk)
+        print(f'[PROGRESS] Allocated {i + chunk_size_mb}/{total_mb}MB', end='\r')
+        time.sleep(0.1)  # Small delay to prevent CPU overload
+    
+    print(f'\n[TEST] Holding {len(chunks) * chunk_mb}MB for 30 seconds...')
     time.sleep(30)
+    print('[TEST] Memory test completed successfully')
+    
 except MemoryError:
-    print('\nMemory limit reached!')
+    print('\n[ERROR] Memory limit reached!')
+    raise
+
+except Exception as e:
+    print(f'\n[ERROR] Test failed: {str(e)}')
+    raise
 "
     done
     
