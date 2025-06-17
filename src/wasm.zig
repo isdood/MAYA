@@ -36,7 +36,7 @@ var result_memory: []u8 = undefined;  // Fixed memory for results
 var result_length: usize = 0;  // Track actual data length
 var result_valid: bool = false;  // Track if result is valid
 var last_error: ErrorCode = ErrorCode.Success;  // Track last error
-var memory_owner: bool = true;  // Track if we own the memory
+var buffer_locked: bool = false;  // Track if buffer is locked
 
 // Error buffer
 var error_buffer: [1024]u8 = undefined;
@@ -140,7 +140,7 @@ export fn init() u32 {
     is_initialized = true;
     result_valid = false;
     last_error = ErrorCode.Success;
-    memory_owner = true;
+    buffer_locked = false;
     return @intFromEnum(ErrorCode.Success);
 }
 
@@ -209,7 +209,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
             result_length = input_len;
             result_valid = true;
-            memory_owner = true;
+            buffer_locked = true;
             
             return ErrorCode.Success;
         }
@@ -252,7 +252,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         @memcpy(result_memory[0..transformed.?.len], transformed.?);
         result_length = transformed.?.len;
         result_valid = true;
-        memory_owner = true;
+        buffer_locked = true;
         
         // Free transformed data
         allocator.free(transformed.?);
@@ -269,14 +269,14 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
         result_length = input_len;
         result_valid = true;
-        memory_owner = true;
+        buffer_locked = true;
         
         return ErrorCode.Success;
     }
 }
 
 export fn getResult() [*]const u8 {
-    if (!is_initialized or !result_valid or !memory_owner) {
+    if (!is_initialized or !result_valid or !buffer_locked) {
         return &zero_bytes;
     }
     return result_memory.ptr;
@@ -292,7 +292,7 @@ export fn getBufferSize() usize {
 
 // Export the current length
 export fn getLength() usize {
-    if (!is_initialized or !result_valid or !memory_owner) {
+    if (!is_initialized or !result_valid or !buffer_locked) {
         return 0;
     }
     return result_length;
@@ -300,7 +300,7 @@ export fn getLength() usize {
 
 // Export the buffer directly for debugging
 export fn getBuffer() [*]const u8 {
-    if (!is_initialized or !result_valid or !memory_owner) {
+    if (!is_initialized or !result_valid or !buffer_locked) {
         return &zero_bytes;
     }
     return result_memory.ptr;
@@ -322,7 +322,7 @@ export fn releaseBuffer() void {
     buffer.length = 0;
     buffer.is_valid = true;
     result_valid = false;
-    memory_owner = false;
+    buffer_locked = false;
 }
 
 // Export pattern information
@@ -367,6 +367,6 @@ export fn cleanup() void {
         is_initialized = false;
         result_valid = false;
         last_error = ErrorCode.Success;
-        memory_owner = false;
+        buffer_locked = false;
     }
 } 
