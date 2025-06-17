@@ -1,14 +1,26 @@
 //! Integration tests for the knowledge graph
 
 use maya_knowledge_graph::{
-    prelude::*,
-    storage::{Storage, WriteBatchExt},
+    storage::WriteBatchExt,
     query::QueryExt,
-    KnowledgeGraph, Node, Edge
+    KnowledgeGraph, Node, Edge, PropertyValue
 };
-use serde_json::json;
 use tempfile::tempdir;
 use uuid::Uuid;
+
+fn create_test_node(label: &str, name: &str, age: i32) -> Node {
+    let mut node = Node::new(label);
+    node.properties.insert("name".to_string(), PropertyValue::String(name.to_string()));
+    node.properties.insert("age".to_string(), PropertyValue::Number(age.into()));
+    node
+}
+
+fn create_location_node(name: &str, capacity: i32) -> Node {
+    let mut node = Node::new("Location");
+    node.properties.insert("name".to_string(), PropertyValue::String(name.to_string()));
+    node.properties.insert("capacity".to_string(), PropertyValue::Number(capacity.into()));
+    node
+}
 
 #[test]
 fn test_end_to_end_workflow() -> Result<()> {
@@ -17,17 +29,9 @@ fn test_end_to_end_workflow() -> Result<()> {
     let graph = KnowledgeGraph::open(dir.path())?;
     
     // Create some nodes
-    let alice = Node::new("Person")
-        .with_property("name", "Alice".into())
-        .with_property("age", 30.into());
-    
-    let bob = Node::new("Person")
-        .with_property("name", "Bob".into())
-        .with_property("age", 25.into());
-    
-    let office = Node::new("Location")
-        .with_property("name", "Office".into())
-        .with_property("capacity", 50.into());
+    let alice = create_test_node("Person", "Alice", 30);
+    let bob = create_test_node("Person", "Bob", 25);
+    let office = create_location_node("Office", 50);
     
     // Add nodes in a transaction
     graph.transaction(|tx| {

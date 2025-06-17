@@ -2,19 +2,20 @@
 
 use maya_knowledge_graph::{
     KnowledgeGraph, Node, Edge, Uuid,
-    storage::{SledStore, Storage, WriteBatchExt},
-    error::Result,
+    storage::{SledStore, WriteBatchExt},
+    error::{Result, KnowledgeGraphError},
     query::QueryExt,
 };
-use serde_json::json;
 use tempfile::tempdir;
-use std::path::Path;
+
+use maya_knowledge_graph::PropertyValue;
 
 // Helper function to create a test node
 fn create_test_node(label: &str, name: &str, age: i32) -> Node {
-    Node::new(label)
-        .with_property("name", name.into())
-        .with_property("age", age.into())
+    let mut node = Node::new(label);
+    node.properties.insert("name".to_string(), PropertyValue::String(name.to_string()));
+    node.properties.insert("age".to_string(), PropertyValue::Number(age.into()));
+    node
 }
 
 // Helper function to create a test edge
@@ -33,8 +34,8 @@ fn assert_nodes_eq(expected: &Node, actual: &Node) {
 fn assert_edges_eq(expected: &Edge, actual: &Edge) {
     assert_eq!(expected.id, actual.id);
     assert_eq!(expected.label, actual.label);
-    assert_eq!(expected.from, actual.from);
-    assert_eq!(expected.to, actual.to);
+    assert_eq!(expected.source, actual.source);
+    assert_eq!(expected.target, actual.target);
     assert_eq!(expected.properties, actual.properties);
 }
 
@@ -127,7 +128,7 @@ fn test_query_with_property() -> Result<()> {
     
     // Add a node with a specific property
     let special_node = Node::new("Special")
-        .with_property("unique_key", "special_value".into());
+        .with_property("unique_key", "special_value");
     graph.add_node(special_node.clone())?;
     
     // Query for it
@@ -147,9 +148,9 @@ fn test_transaction() -> Result<()> {
     let dir = tempfile::tempdir()?;
     let graph = KnowledgeGraph::open(dir.path())?;
     
-    // Create some test data
-    let node1 = create_test_node("Test");
-    let node2 = create_test_node("Test");
+    // Create some test data with proper parameters
+    let node1 = create_test_node("Test", "Node 1", 30);
+    let node2 = create_test_node("Test", "Node 2", 25);
     let edge = create_test_edge("RELATES_TO", node1.id, node2.id);
     
     // Execute in a transaction
@@ -167,19 +168,18 @@ fn test_transaction() -> Result<()> {
     
     // Test rollback on error
     let result = graph.transaction(|tx| {
-        tx.add_node(&create_test_node("Should not exist"))?;
-        Err(KnowledgeGraphError::ValidationError("Test error".into()))
+        let bad_node = create_test_node("Should not exist", "Bad Node", 0);
+        tx.add_node(&bad_node)?;
+        Err(KnowledgeGraphError::SerializationError("Test error".into()))
     });
     
     assert!(result.is_err());
     
     // Verify the node wasn't added
-    let count = graph.query()
+    let results = graph.query()
         .with_label("Should not exist")
-        .execute()?
-        .len();
-    
-    assert_eq!(count, 0);
+        .execute()?;
+    assert_eq!(results.nodes.len(), 0);
     
     Ok(())
 }
@@ -191,9 +191,9 @@ fn test_pagination() -> Result<()> {
     
     // Add multiple test nodes
     for i in 0..10 {
-        let node = Node::new("PaginationTest")
-            .with_property("index", i.into());
-        graph.add_node(&node)?;
+        let mut node = Node::new("PaginationTest");
+        node.properties.insert("index".to_string(), PropertyValue::Number(i.into()));
+        graph.add_node(node)?;
     }
     
     // Test limit
@@ -201,7 +201,7 @@ fn test_pagination() -> Result<()> {
         .with_label("PaginationTest")
         .limit(3)
         .execute()?;
-    assert_eq!(limited.len(), 3);
+    assert_eq!(limited.nodes.len(), 3);
     
     // Test offset
     let offset = graph.query()
@@ -209,11 +209,11 @@ fn test_pagination() -> Result<()> {
         .limit(3)
         .offset(3)
         .execute()?;
-    assert_eq!(offset.len(), 3);
+    assert_eq!(offset.nodes.len(), 3);
     
     // Verify different results
-    let limited_ids: Vec<_> = limited.iter().map(|n| n.id).collect();
-    let offset_ids: Vec<_> = offset.iter().map(|n| n.id).collect();
+    let limited_ids: Vec<_> = limited.nodes.iter().map(|n| n.id).collect();
+    let offset_ids: Vec<_> = offset.nodes.iter().map(|n| n.id).collect();
     
     for id in &limited_ids {
         assert!(!offset_ids.contains(id), "Overlap between limited and offset results");
@@ -224,7 +224,7 @@ fn test_pagination() -> Result<()> {
         .with_label("PaginationTest")
         .limit(10)
         .execute()?;
-    assert_eq!(all.len(), 10);
+    assert_eq!(all.nodes.len(), 10);
     
     Ok(())
 }
