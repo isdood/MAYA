@@ -17,6 +17,8 @@ log = "0.4"
 pretty_assertions = "1.0"
 tempfile = { version = "3.3", optional = true }
 rand = "0.8"
+futures = "0.3"
+anyhow = "1.0"
 
 [dev-dependencies]
 serial_test = "2.0"

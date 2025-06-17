@@ -15,6 +15,73 @@ pub struct SledStore {
     db: Arc<Db>,
 }
 
+impl Storage for SledStore {
+    type Batch = SledWriteBatch;
+    
+    fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let db = sled::open(path)?;
+        info!("Opened Sled database");
+        Ok(Self {
+            db: Arc::new(db),
+        })
+    }
+    
+    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
+        match self.db.get(key)? {
+            Some(bytes) => {
+                let value = deserialize(&bytes)?;
+                Ok(Some(value))
+            }
+            None => Ok(None),
+        }
+    }
+    
+    fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
+        let bytes = serialize(value)?;
+        self.db.insert(key, bytes)?;
+        self.db.flush()?;
+        Ok(())
+    }
+    
+    fn delete(&self, key: &[u8]) -> Result<()> {
+        self.db.remove(key)?;
+        self.db.flush()?;
+        Ok(())
+    }
+    
+    fn exists(&self, key: &[u8]) -> Result<bool> {
+        Ok(self.db.contains_key(key)?)
+    }
+    
+    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+        let iter = self.db.range(prefix..);
+        let prefix_vec = prefix.to_vec();
+        
+        let filtered = iter.filter_map(move |item| {
+            match item {
+                Ok((key, value)) if key.starts_with(&prefix_vec) => {
+                    Some((key.to_vec(), value.to_vec()))
+                }
+                _ => None,
+            }
+        });
+        
+        Box::new(filtered)
+    }
+    
+    fn batch(&self) -> Self::Batch {
+        SledWriteBatch::new(Arc::clone(&self.db))
+    }
+}
+
+impl WriteBatchExt for SledStore {
+    type Batch = SledWriteBatch;
+    
+    fn batch(&self) -> Self::Batch {
+        Storage::batch(self)
+    }
+}
+
 impl SledStore {
     /// Open or create a new Sled database at the given path
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -80,15 +147,12 @@ impl Storage for SledStore {
     }
 
     fn batch(&self) -> Box<dyn WriteBatch> {
-        Box::new(SledWriteBatch {
-            ops: Vec::new(),
-            db: Arc::clone(&self.db),
-        })
+        Box::new(SledWriteBatch::new(Arc::clone(&self.db)))
     }
 }
 
 /// Sled write batch wrapper
-struct SledWriteBatch {
+pub struct SledWriteBatch {
     ops: Vec<BatchOp>,
     db: Arc<Db>,
 }
@@ -103,18 +167,19 @@ impl WriteBatch for SledWriteBatch {
         self.ops.push(BatchOp::Put(key.to_vec(), value.to_vec()));
         Ok(())
     }
-
+    
     fn delete(&mut self, key: &[u8]) -> Result<()> {
         self.ops.push(BatchOp::Delete(key.to_vec()));
         Ok(())
     }
-
+    
     fn commit(self: Box<Self>) -> Result<()> {
+        use sled::transaction::TransactionError;
+        
         let ops = self.ops;
         let db = self.db.clone();
         
-        // Execute transaction
-        let result: std::result::Result<(), sled::transaction::TransactionError> = db.transaction(|tx| {
+        let result: std::result::Result<(), TransactionError<Box<dyn std::error::Error + Send + Sync>>> = db.transaction(|tx| {
             for op in ops {
                 match op {
                     BatchOp::Put(key, value) => {
@@ -125,15 +190,23 @@ impl WriteBatch for SledWriteBatch {
                     }
                 }
             }
-            Ok(())
+            Ok::<(), TransactionError<Box<dyn std::error::Error + Send + Sync>>>(())
         });
         
-        // Convert transaction result to our error type
-        result.map_err(|e| KnowledgeGraphError::TransactionError(format!("{:?}", e)))?;
+        result.map_err(|e| crate::error::KnowledgeGraphError::TransactionError(format!("{:?}", e)))?;
         
-        // Flush to disk
         db.flush()?;
         Ok(())
+    }
+}
+
+impl SledWriteBatch {
+    /// Create a new write batch
+    pub fn new(db: Arc<Db>) -> Self {
+        Self {
+            ops: Vec::new(),
+            db,
+        }
     }
 }
 

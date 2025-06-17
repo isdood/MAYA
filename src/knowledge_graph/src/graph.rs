@@ -9,7 +9,7 @@ use log::{info, error};
 use crate::{
     error::{Result, KnowledgeGraphError},
     models::{Node, Edge, Property},
-    storage::Storage,
+    storage::{Storage, WriteBatch, WriteBatchExt},
 };
 
 /// Main knowledge graph structure
@@ -17,9 +17,17 @@ pub struct KnowledgeGraph<S: Storage> {
     storage: S,
 }
 
-impl<S: Storage> KnowledgeGraph<S> {
+impl<S> KnowledgeGraph<S> 
+where
+    S: Storage + WriteBatchExt,
+    S::Batch: WriteBatch + 'static,
+    for<'a> &'a S: 'a,
+{
     /// Create or open a knowledge graph at the given path
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self>
+    where
+        S: Sized,
+    {
         let storage = S::open(path)?;
         info!("Opened knowledge graph database");
         Ok(Self { storage })
@@ -32,22 +40,20 @@ impl<S: Storage> KnowledgeGraph<S> {
 
     /// Add a node to the graph
     pub fn add_node(&self, node: Node) -> Result<()> {
-        let node_key = format!("node:{}", node.id).into_bytes();
+        let key = format!("node:{}", node.id).into_bytes();
         
         // Check if node already exists
-        if self.storage.exists(&node_key)? {
+        if self.storage.exists(&key)? {
             return Err(KnowledgeGraphError::DuplicateNode(node.id.to_string()));
         }
         
-        // Store node
+        // Add node to storage using batch for atomicity
         let mut batch = self.storage.batch();
-        let serialized = serde_json::to_vec(&node)?;
-        batch.put_serialized(&node_key, &serialized)?;
+        let value = serde_json::to_vec(&node)
+            .map_err(KnowledgeGraphError::SerializationError)?;
         
-        // Add to indexes
-        // TODO: Add indexing
-        
-        batch.commit()
+        batch.put_serialized(&key, &value)?;
+        Box::new(batch).commit()
     }
 
     /// Get a node by ID
@@ -63,8 +69,9 @@ impl<S: Storage> KnowledgeGraph<S> {
         
         for result in self.storage.iter_prefix(prefix) {
             let (_, value) = result?;
-            if let Ok(node) = serde_json::from_slice::<Node>(&value) {
-                nodes.push(node);
+            match serde_json::from_slice::<Node>(&value) {
+                Ok(node) => nodes.push(node),
+                Err(e) => return Err(KnowledgeGraphError::SerializationError(e)),
             }
         }
         
@@ -73,21 +80,45 @@ impl<S: Storage> KnowledgeGraph<S> {
 
     /// Add an edge between two nodes
     pub fn add_edge(&self, edge: &Edge) -> Result<()> {
-        // Verify nodes exist
-        if !self.storage.exists(&format!("node:{}", edge.source).into_bytes())? {
+        // Verify source and target nodes exist
+        let source_key = format!("node:{}", edge.source).into_bytes();
+        let target_key = format!("node:{}", edge.target).into_bytes();
+        
+        if !self.storage.exists(&source_key)? {
             return Err(KnowledgeGraphError::NodeNotFound(edge.source.to_string()));
         }
-        if !self.storage.exists(&node_key(edge.target))? {
+        
+        if !self.storage.exists(&target_key)? {
             return Err(KnowledgeGraphError::NodeNotFound(edge.target.to_string()));
         }
-
-        let edge_key = edge_key(edge.id);
-        self.storage.put(&edge_key, edge)?;
         
-        info!("Added edge: {} -[{}]-> {}", 
-            edge.source, edge.label, edge.target);
+        // Add edge to storage using batch for atomicity
+        let mut batch = self.storage.batch();
+        let key = format!("edge:{}:{}", edge.source, edge.id).into_bytes();
+        let value = serde_json::to_vec(edge)
+            .map_err(KnowledgeGraphError::SerializationError)?;
             
-        Ok(())
+        batch.put_serialized(&key, &value)?;
+        
+        // Add edge to source node's outgoing edges
+        let source_edges_key = format!("node_edges:{}:outgoing", edge.source).into_bytes();
+        let mut source_edges: Vec<Uuid> = self.storage.get(&source_edges_key)?.unwrap_or_default();
+        source_edges.push(edge.id);
+        let source_edges_value = serde_json::to_vec(&source_edges)
+            .map_err(KnowledgeGraphError::SerializationError)?;
+            
+        batch.put_serialized(&source_edges_key, &source_edges_value)?;
+        
+        // Add edge to target node's incoming edges
+        let target_edges_key = format!("node_edges:{}:incoming", edge.target).into_bytes();
+        let mut target_edges: Vec<Uuid> = self.storage.get(&target_edges_key)?.unwrap_or_default();
+        target_edges.push(edge.id);
+        let target_edges_value = serde_json::to_vec(&target_edges)
+            .map_err(KnowledgeGraphError::SerializationError)?;
+            
+        batch.put_serialized(&target_edges_key, &target_edges_value)?;
+        
+        batch.commit()
     }
 
     /// Get an edge by ID
@@ -127,34 +158,49 @@ impl<S: Storage> KnowledgeGraph<S> {
 }
 
 /// A transaction for atomic operations
-pub struct Transaction<'a, S: Storage> {
+pub struct Transaction<'a, S> 
+where
+    S: Storage + WriteBatchExt,
+    S::Batch: WriteBatch,
+{
     storage: &'a S,
-    batch: Box<dyn WriteBatch>,
+    batch: Option<Box<dyn WriteBatch>>,
 }
 
-impl<'a, S: Storage> Transaction<'a, S> {
+impl<'a, S> Transaction<'a, S> 
+where
+    S: Storage + WriteBatchExt,
+{
     fn new(storage: &'a S) -> Self {
         Self {
             storage,
-            batch: storage.batch(),
+            batch: Some(Box::new(storage.batch()) as Box<dyn WriteBatch>),
         }
     }
 
     /// Add a node within the transaction
     pub fn add_node(&mut self, node: &Node) -> Result<()> {
         let node_key = node_key(node.id);
-        self.batch.put(&node_key, node)
+        let value = serde_json::to_vec(node)
+            .map_err(KnowledgeGraphError::SerializationError)?;
+        self.batch.as_mut().unwrap().put_serialized(&node_key, &value)
     }
 
     /// Add an edge within the transaction
     pub fn add_edge(&mut self, edge: &Edge) -> Result<()> {
         let edge_key = edge_key(edge.id);
-        self.batch.put(&edge_key, edge)
+        let value = serde_json::to_vec(edge)
+            .map_err(KnowledgeGraphError::SerializationError)?;
+        self.batch.as_mut().unwrap().put_serialized(&edge_key, &value)
     }
 
     /// Commit the transaction
     pub fn commit(self) -> Result<()> {
-        self.batch.commit()
+        if let Some(batch) = self.batch {
+            batch.commit()
+        } else {
+            Err(KnowledgeGraphError::Other("Transaction already committed".to_string()))
+        }
     }
 }
 

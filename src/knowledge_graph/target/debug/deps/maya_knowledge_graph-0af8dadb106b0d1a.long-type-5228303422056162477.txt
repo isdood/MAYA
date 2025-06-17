@@ -1,0 +1,12 @@
+UnsafeCell<sled::lru::Shard>
+sled::fastlock::FastLock<sled::lru::Shard>
+(sled::lru::AccessQueue, sled::fastlock::FastLock<sled::lru::Shard>)
+PhantomData<(sled::lru::AccessQueue, sled::fastlock::FastLock<sled::lru::Shard>)>
+alloc::raw_vec::RawVec<(sled::lru::AccessQueue, sled::fastlock::FastLock<sled::lru::Shard>)>
+Vec<(sled::lru::AccessQueue, sled::fastlock::FastLock<sled::lru::Shard>)>
+sled::arc::ArcInner<PageCache>
+*mut sled::arc::ArcInner<PageCache>
+sled::arc::Arc<PageCache>
+alloc::sync::ArcInner<Db>
+PhantomData<alloc::sync::ArcInner<Db>>
+{closure@src/storage/sled_store.rs:247:47: 247:49}

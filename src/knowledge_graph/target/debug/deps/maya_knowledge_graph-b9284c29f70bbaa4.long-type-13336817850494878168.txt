@@ -1,0 +1,3 @@
+Box<dyn WriteBatch>: WriteBatch
+Box<Box<dyn WriteBatch>>
+Box<(dyn WriteBatch + 'static)>

@@ -12,6 +12,9 @@ use crate::error::Result;
 
 /// Trait defining the storage operations for the knowledge graph
 pub trait Storage: Send + Sync + 'static {
+    /// The batch type for this storage backend
+    type Batch: WriteBatch + 'static;
+    
     /// Create or open a database at the given path
     fn open<P: AsRef<Path>>(path: P) -> Result<Self> where Self: Sized;
     
@@ -31,7 +34,7 @@ pub trait Storage: Send + Sync + 'static {
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
     
     /// Create a batch of operations
-    fn batch(&self) -> Box<dyn WriteBatch>;
+    fn batch(&self) -> Self::Batch;
 }
 
 /// Trait for batch operations
@@ -46,16 +49,35 @@ pub trait WriteBatch: Send + 'static {
     fn commit(self: Box<Self>) -> Result<()>;
 }
 
-/// Helper trait for working with WriteBatch
-trait WriteBatchExt {
-    /// Add a put operation to the batch with a serializable value
-    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()>;
+/// Extension trait for batch operations
+pub trait WriteBatchExt: Send + 'static {
+    /// The batch type for this storage backend
+    type Batch: WriteBatch;
+    
+    /// Create a new batch
+    fn batch(&self) -> Self::Batch;
+    
+    /// Put a serializable value into the batch
+    fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
+        let bytes = serialize(value)?;
+        let mut batch = self.batch();
+        batch.put_serialized(key, &bytes)?;
+        batch.commit()
+    }
+    
+    /// Delete a key from the batch
+    fn delete_serialized(&self, key: &[u8]) -> Result<()> {
+        let mut batch = self.batch();
+        batch.delete(key)?;
+        batch.commit()
+    }
 }
 
-impl<T: WriteBatch> WriteBatchExt for T {
-    fn put<V: Serialize>(&mut self, key: &[u8], value: &V) -> Result<()> {
-        let bytes = serialize(value)?;
-        self.put_serialized(key, &bytes)
+// Implement WriteBatchExt for all types that implement WriteBatch
+impl<T: WriteBatch + ?Sized> WriteBatchExt for T {
+    type Batch = T;
+    fn batch(&self) -> Self::Batch {
+        self
     }
 }
 

@@ -2,48 +2,52 @@
 
 use std::fmt;
 use std::error::Error as StdError;
+use std::fmt;
 use serde_json::Error as JsonError;
-use thiserror::Error;
 
 /// Error type for the knowledge graph
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum KnowledgeGraphError {
     /// JSON serialization/deserialization error
-    #[error("JSON error: {0}")]
-    JsonError(#[from] JsonError),
+    SerializationError(JsonError),
     
     /// I/O error
-    #[error("I/O error: {0}")]
-    IoError(#[from] std::io::Error),
+    IoError(std::io::Error),
     
     /// Sled database error
-    #[error("Database error: {0}")]
-    SledError(#[from] sled::Error),
+    SledError(sled::Error),
     
     /// Transaction error
-    #[error("Transaction error: {0}")]
     TransactionError(String),
     
+    /// Node not found error
+    NodeNotFound(String),
+    
+    /// Edge not found error
+    EdgeNotFound(String),
+    
+    /// Duplicate node error
+    DuplicateNode(String),
+    
+    /// Duplicate edge error
+    DuplicateEdge(String),
+    
     /// Other error
-    #[error("Error: {0}")]
     Other(String),
-}
-
-impl From<sled::transaction::TransactionError> for KnowledgeGraphError {
-    fn from(err: sled::transaction::TransactionError) -> Self {
-        KnowledgeGraphError::TransactionError(format!("{:?}", err))
-    }
 }
 
 impl fmt::Display for KnowledgeGraphError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::JsonError(e) => write!(f, "JSON error: {}", e),
+            Self::SerializationError(e) => write!(f, "Serialization error: {}", e),
             Self::IoError(e) => write!(f, "I/O error: {}", e),
             Self::SledError(e) => write!(f, "Database error: {}", e),
             Self::TransactionError(msg) => write!(f, "Transaction error: {}", msg),
+            Self::NodeNotFound(msg) => write!(f, "Node not found: {}", msg),
+            Self::EdgeNotFound(msg) => write!(f, "Edge not found: {}", msg),
+            Self::DuplicateNode(msg) => write!(f, "Duplicate node: {}", msg),
+            Self::DuplicateEdge(msg) => write!(f, "Duplicate edge: {}", msg),
             Self::Other(msg) => write!(f, "Error: {}", msg),
-            _ => write!(f, "Unknown error"),
         }
     }
 }
@@ -51,17 +55,17 @@ impl fmt::Display for KnowledgeGraphError {
 impl StdError for KnowledgeGraphError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
-            Self::JsonError(e) => Some(e),
+            Self::SerializationError(e) => Some(e),
             Self::IoError(e) => Some(e),
             Self::SledError(e) => Some(e),
-            Self::Other(_) => None,
+            _ => None,
         }
     }
 }
 
 impl From<JsonError> for KnowledgeGraphError {
     fn from(err: JsonError) -> Self {
-        Self::JsonError(err)
+        Self::SerializationError(err)
     }
 }
 
@@ -74,6 +78,12 @@ impl From<std::io::Error> for KnowledgeGraphError {
 impl From<sled::Error> for KnowledgeGraphError {
     fn from(err: sled::Error) -> Self {
         Self::SledError(err)
+    }
+}
+
+impl From<sled::transaction::TransactionError> for KnowledgeGraphError {
+    fn from(err: sled::transaction::TransactionError) -> Self {
+        Self::TransactionError(format!("{:?}", err))
     }
 }
 

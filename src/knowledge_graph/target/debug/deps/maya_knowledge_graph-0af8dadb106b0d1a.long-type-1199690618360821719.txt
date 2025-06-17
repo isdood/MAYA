@@ -1,0 +1,3 @@
+Box<dyn storage::WriteBatch>: storage::WriteBatch
+Box<Box<dyn storage::WriteBatch>>
+Box<(dyn storage::WriteBatch + 'static)>

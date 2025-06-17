@@ -1,0 +1,1 @@
+std::result::Result<(), TransactionError<Box<dyn StdError + Send + Sync>>>

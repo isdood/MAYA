@@ -1,0 +1,8 @@
+UnsafeCell<HashMap<IVec, Tree, BuildHasherDefault<fxhash::FxHasher64>>>
+lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock, HashMap<IVec, Tree, BuildHasherDefault<fxhash::FxHasher64>>>
+sled::arc::ArcInner<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock, HashMap<IVec, Tree, BuildHasherDefault<fxhash::FxHasher64>>>>
+*mut sled::arc::ArcInner<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock, HashMap<IVec, Tree, BuildHasherDefault<fxhash::FxHasher64>>>>
+sled::arc::Arc<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock, HashMap<IVec, Tree, BuildHasherDefault<fxhash::FxHasher64>>>>
+alloc::sync::ArcInner<Db>
+PhantomData<alloc::sync::ArcInner<Db>>
+{closure@src/storage/sled_store.rs:247:47: 247:49}

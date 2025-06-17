@@ -1,0 +1,8 @@
+UnsafeCell<std::option::Option<Box<(dyn MergeOperator + 'static)>>>
+lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock, std::option::Option<Box<(dyn MergeOperator + 'static)>>>
+sled::arc::ArcInner<sled::tree::TreeInner>
+*mut sled::arc::ArcInner<sled::tree::TreeInner>
+sled::arc::Arc<sled::tree::TreeInner>
+alloc::sync::ArcInner<Db>
+PhantomData<alloc::sync::ArcInner<Db>>
+{closure@src/storage/sled_store.rs:247:47: 247:49}

@@ -3,7 +3,7 @@
 //! A high-performance, embedded knowledge graph for MAYA's intelligent coding assistant.
 //! 
 //! ## Features
-//! - High-performance embedded storage using RocksDB
+//! - High-performance embedded storage using Sled
 //! - Type-safe Rust API
 //! - ACID-compliant transactions
 //! - Query builder for complex graph traversals
@@ -23,8 +23,8 @@ pub mod query;
 pub use error::{Result, KnowledgeGraphError};
 pub use graph::KnowledgeGraph;
 pub use models::*;
-pub use query::QueryExt;
-pub use storage::SledStore as Storage;
+pub use query::{QueryBuilder, QueryResult};
+pub use storage::SledStore;
 
 /// Prelude module for convenient imports
 pub mod prelude {
@@ -40,11 +40,14 @@ pub mod prelude {
     
     pub use crate::{
         KnowledgeGraph,
-        QueryExt,
-        Storage,
+        QueryBuilder,
+        QueryResult,
+        SledStore,
         Node,
         Edge,
         Property,
+        Result,
+        KnowledgeGraphError,
     };
 }
 
@@ -59,22 +62,21 @@ mod tests {
     #[test]
     fn test_basic_graph_operations() -> Result<()> {
         let dir = tempdir()?;
-        let graph = KnowledgeGraph::open(dir.path())?;
-        
-        // Test node creation
-        let node = Node::new("TestNode")
-            .with_property("test", "value".into());
-            
-        graph.add_node(&node)?;
-        
-        // Test retrieval
-        let retrieved = graph.get_node(node.id)?
-            .ok_or_else(|| KnowledgeGraphError::NodeNotFound(node.id.to_string()))?;
-            
-        assert_eq!(node.id, retrieved.id);
-        assert_eq!(node.label, retrieved.label);
-        assert_eq!(node.properties, retrieved.properties);
-        
+        let store = SledStore::open(dir.path())?;
+        let graph = KnowledgeGraph::with_storage(store);
+
+        // Create and add a node
+        let mut node = Node::new("TestNode".into());
+        node.properties.push(Property::new("name", "Test Node"));
+        graph.add_node(node.clone())?;
+
+        // Retrieve the node
+        let retrieved = graph.get_node(&node.id)?.unwrap();
+        assert_eq!(retrieved.id, node.id);
+        assert_eq!(retrieved.node_type, "TestNode");
+        assert_eq!(retrieved.properties[0].key, "name");
+        assert_eq!(retrieved.properties[0].value, "Test Node");
+
         Ok(())
     }
 }

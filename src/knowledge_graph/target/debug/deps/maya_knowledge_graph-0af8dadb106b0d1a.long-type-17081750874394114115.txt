@@ -1,0 +1,20 @@
+(dyn StdError + Send + Sync + 'static)
+PhantomData<(dyn StdError + Send + Sync + 'static)>
+Unique<(dyn StdError + Send + Sync + 'static)>
+Box<(dyn StdError + Send + Sync + 'static)>
+PhantomData<std::io::error::Custom>
+Unique<std::io::error::Custom>
+Box<std::io::error::Custom>
+std::io::error::ErrorData<Box<std::io::error::Custom>>
+PhantomData<std::io::error::ErrorData<Box<std::io::error::Custom>>>
+std::io::error::repr_bitpacked::Repr
+PhantomData<*mut sled::Error>
+sled::arc::ArcInner<Atomic<sled::Error>>
+*mut sled::arc::ArcInner<Atomic<sled::Error>>
+sled::arc::Arc<Atomic<sled::Error>>
+sled::arc::ArcInner<sled::config::Inner>
+*mut sled::arc::ArcInner<sled::config::Inner>
+sled::arc::Arc<sled::config::Inner>
+alloc::sync::ArcInner<Db>
+PhantomData<alloc::sync::ArcInner<Db>>
+{closure@src/storage/sled_store.rs:241:47: 241:49}

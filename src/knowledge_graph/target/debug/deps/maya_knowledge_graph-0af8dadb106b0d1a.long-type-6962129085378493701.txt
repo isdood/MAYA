@@ -1,0 +1,8 @@
+UnsafeCell<std::option::Option<sled::flusher::Flusher>>
+lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, std::option::Option<sled::flusher::Flusher>>
+sled::arc::ArcInner<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, std::option::Option<sled::flusher::Flusher>>>
+*mut sled::arc::ArcInner<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, std::option::Option<sled::flusher::Flusher>>>
+sled::arc::Arc<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, std::option::Option<sled::flusher::Flusher>>>
+alloc::sync::ArcInner<Db>
+PhantomData<alloc::sync::ArcInner<Db>>
+{closure@src/storage/sled_store.rs:247:47: 247:49}
