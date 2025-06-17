@@ -1,0 +1,93 @@
+[2025-06-17 16:35:33] === Starting MAYA Safe Load Tests ===
+[2025-06-17 16:35:33] Max memory usage: 80%
+[2025-06-17 16:35:33] Test duration: 30 seconds per test
+[2025-06-17 16:35:33] Log file: tests/results/load_tests_20250617_163533.log
+[2025-06-17 16:35:33] Installing test dependencies...
+[2025-06-17 16:35:34] Starting load tests...
+[2025-06-17 16:35:34] Starting test: CPU Load 25%
+[2025-06-17 16:35:34] Command: python -c while True: [i*i for i in range(1000000)]
+Memory: 25% used (45930MB free)
+Memory: 25% used (45906MB free)
+Memory: 25% used (45898MB free)
+Memory: 25% used (45965MB free)
+Memory: 25% used (45943MB free)
+Memory: 25% used (45959MB free)
+Memory: 25% used (45986MB free)
+Memory: 25% used (46009MB free)
+[2025-06-17 16:36:09] Test duration (30s) exceeded, terminating...
+[2025-06-17 16:36:09] Starting test: CPU Load 50%
+[2025-06-17 16:36:09] Command: python -c while True: [i*i for i in range(1000000)]
+Memory: 25% used (46022MB free)
+Memory: 25% used (46021MB free)
+Memory: 25% used (45954MB free)
+Memory: 25% used (45935MB free)
+Memory: 25% used (45979MB free)
+Memory: 25% used (46001MB free)
+Memory: 25% used (46033MB free)
+Memory: 25% used (45972MB free)
+[2025-06-17 16:36:44] Test duration (30s) exceeded, terminating...
+[2025-06-17 16:36:44] Starting test: CPU Load 75%
+[2025-06-17 16:36:44] Command: python -c while True: [i*i for i in range(1000000)]
+Memory: 25% used (45975MB free)
+Memory: 25% used (45971MB free)
+Memory: 25% used (45998MB free)
+Memory: 25% used (46009MB free)
+Memory: 25% used (45982MB free)
+Memory: 25% used (46004MB free)
+Memory: 25% used (46010MB free)
+Memory: 25% used (45911MB free)
+[2025-06-17 16:37:19] Test duration (30s) exceeded, terminating...
+[2025-06-17 16:37:19] Starting test: Memory Load 25%
+[2025-06-17 16:37:19] Command: python -c 
+import time
+chunk_size = 10 * 1024 * 1024  # 10MB chunks
+total_mb = 7739  # Half of target to be safe
+chunks = []
+print(f'Allocating {total_mb}MB...')
+try:
+    for _ in range(total_mb // 10):
+        chunks.append(' ' * chunk_size)
+        print(f'Allocated {(len(chunks)*10)}MB', end='\r')
+        time.sleep(0.1)
+    print('\nHolding memory...')
+    time.sleep(30)
+except MemoryError:
+    print('\nMemory limit reached!')
+
+Memory: 25% used (45912MB free)
+Memory: 26% used (45471MB free)
+Memory: 27% used (44990MB free)
+Memory: 28% used (44546MB free)
+Memory: 29% used (43815MB free)
+Memory: 30% used (43302MB free)
+Memory: 31% used (42715MB free)
+Memory: 31% used (42243MB free)
+[2025-06-17 16:37:54] Test duration (30s) exceeded, terminating...
+[2025-06-17 16:37:54] Starting test: Memory Load 50%
+[2025-06-17 16:37:54] Command: python -c 
+import time
+chunk_size = 10 * 1024 * 1024  # 10MB chunks
+total_mb = 15478  # Half of target to be safe
+chunks = []
+print(f'Allocating {total_mb}MB...')
+try:
+    for _ in range(total_mb // 10):
+        chunks.append(' ' * chunk_size)
+        print(f'Allocated {(len(chunks)*10)}MB', end='\r')
+        time.sleep(0.1)
+    print('\nHolding memory...')
+    time.sleep(30)
+except MemoryError:
+    print('\nMemory limit reached!')
+
+Memory: 26% used (45704MB free)
+Memory: 26% used (45226MB free)
+Memory: 27% used (44750MB free)
+Memory: 28% used (44296MB free)
+Memory: 29% used (43818MB free)
+Memory: 30% used (43035MB free)
+Memory: 31% used (42564MB free)
+Memory: 32% used (41943MB free)
+[2025-06-17 16:38:29] Test duration (30s) exceeded, terminating...
+[2025-06-17 16:38:29] All tests completed
+[2025-06-17 16:38:29] Test results saved to: tests/results/load_tests_20250617_163533.log

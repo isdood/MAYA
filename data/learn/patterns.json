@@ -1,5 +1,176 @@
 {
   "version": "1.0",
-  "updated_at": 1750189778.31048,
-  "patterns": []
+  "updated_at": 1750192658.371474,
+  "patterns": [
+    {
+      "id": "high_network_e8946520",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 30202.6,
+        "bytes_recv_ps": 3673188.6,
+        "timestamp": 1750189833.803628
+      },
+      "created_at": 1750189833.803628,
+      "updated_at": 1750189833.803628,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_cdaf4e39",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 34858.73333333333,
+        "bytes_recv_ps": 1607666.2,
+        "timestamp": 1750190193.906401
+      },
+      "created_at": 1750190193.906401,
+      "updated_at": 1750190193.906401,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_01c9cf55",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 2621610.466666667,
+        "bytes_recv_ps": 34978.666666666664,
+        "timestamp": 1750190313.939194
+      },
+      "created_at": 1750190313.939194,
+      "updated_at": 1750190313.939194,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_9a8b0d79",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 18085.666666666668,
+        "bytes_recv_ps": 1279160.2666666666,
+        "timestamp": 1750190734.061529
+      },
+      "created_at": 1750190734.061529,
+      "updated_at": 1750190734.061529,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_ead62197",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 44188.86666666667,
+        "bytes_recv_ps": 5546234.666666667,
+        "timestamp": 1750191454.271299
+      },
+      "created_at": 1750191454.271299,
+      "updated_at": 1750191454.271299,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_76dfc48e",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 12841.866666666667,
+        "bytes_recv_ps": 1792807.7333333334,
+        "timestamp": 1750191994.431071
+      },
+      "created_at": 1750191994.431071,
+      "updated_at": 1750191994.431071,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_071fd041",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 73012.2,
+        "bytes_recv_ps": 4764985.133333334,
+        "timestamp": 1750192295.438226
+      },
+      "created_at": 1750192295.438226,
+      "updated_at": 1750192295.438226,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_c2b667fd",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 33257.53333333333,
+        "bytes_recv_ps": 3372666.066666667,
+        "timestamp": 1750192355.456741
+      },
+      "created_at": 1750192355.456741,
+      "updated_at": 1750192355.456741,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_6121af3a",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 41227.26666666667,
+        "bytes_recv_ps": 4456698.866666666,
+        "timestamp": 1750192415.476441
+      },
+      "created_at": 1750192415.476441,
+      "updated_at": 1750192415.476441,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    },
+    {
+      "id": "high_network_9e36fa84",
+      "pattern_type": "high_network",
+      "data": {
+        "interface": "wlan0",
+        "bytes_sent_ps": 28519.333333333332,
+        "bytes_recv_ps": 1870391.0,
+        "timestamp": 1750192535.512037
+      },
+      "created_at": 1750192535.512037,
+      "updated_at": 1750192535.512037,
+      "confidence": 0.8,
+      "metadata": {
+        "detection_method": "threshold",
+        "threshold": 1000000
+      }
+    }
+  ]
 }

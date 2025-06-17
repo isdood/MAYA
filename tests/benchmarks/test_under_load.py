@@ -4,7 +4,21 @@ Load testing for MAYA Monitoring System
 
 This script simulates different system load conditions and measures
 how the monitoring system performs under stress.
+
+Memory Safety Features:
+- Memory limits to prevent system crashes
+- Automatic cleanup of resources
+- Graceful degradation under memory pressure
+- Detailed memory usage logging
 """
+
+# Memory safety imports
+from .memory_safe_runner import (
+    memory_safe, 
+    MemoryMonitor, 
+    log_memory_usage,
+    MemoryLimitExceededError
+)
 
 import asyncio
 import time
@@ -144,6 +158,7 @@ class LoadTester:
         
         return result
     
+    @memory_safe(0.8)  # Limit to 80% of available memory
     async def _run_load_test(self, test_name: str, load_level: float, duration: int) -> LoadTestResult:
         """Run a load test and collect metrics."""
         metrics = {
@@ -225,16 +240,66 @@ class LoadTester:
         return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     def _start_memory_load(self, load_level: float) -> subprocess.Popen:
-        """Start a memory load generator."""
-        # Calculate target memory in MB (percentage of total memory)
-        total_memory = psutil.virtual_memory().total / (1024 * 1024)  # MB
-        target_mb = int(total_memory * load_level)
+        """
+        Start a memory load generator with safety limits.
         
-        cmd = [
-            "python3", "-c",
-            f"import time; x = ' ' * ({target_mb} * 1024 * 1024); time.sleep(3600)"
-        ]
-        return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        Args:
+            load_level: Fraction of total memory to use (0.0 - 1.0)
+            
+        Returns:
+            subprocess.Popen: Process handle for the memory load
+        """
+        try:
+            # Get available memory (leave some headroom)
+            available_mem = psutil.virtual_memory().available
+            max_safe_mb = int((available_mem * 0.8) / (1024 * 1024))  # Use 80% of available
+            
+            # Calculate target memory with upper bound
+            total_memory = psutil.virtual_memory().total / (1024 * 1024)  # MB
+            target_mb = min(int(total_memory * load_level), max_safe_mb)
+            
+            if target_mb < 10:  # Minimum 10MB to be meaningful
+                raise MemoryError("Not enough available memory for test")
+                
+            logger.info(f"Allocating {target_mb}MB for memory load test "
+                      f"(requested {int(total_memory * load_level)}MB)")
+            
+            # Use a generator to allocate memory in chunks
+            cmd = [
+                "python3", "-c",
+                f"""
+                import sys
+                chunk_size = 10 * 1024 * 1024  # 10MB chunks
+                chunks = []
+                target = {target_mb} * 1024 * 1024
+                allocated = 0
+                
+                print(f"Allocating {{target/1024/1024:.1f}}MB...")
+                try:
+                    while allocated < target:
+                        chunk = ' ' * min(chunk_size, target - allocated)
+                        chunks.append(chunk)
+                        allocated += len(chunk)
+                        print(f"Allocated {{allocated/1024/1024:.1f}}MB", end='\r')
+                        
+                    print("\nHolding memory...")
+                    import time
+                    time.sleep(3600)  # Hold for up to an hour
+                except MemoryError:
+                    print("\nMemory limit reached!")
+                    sys.exit(1)
+                """
+            ]
+            return subprocess.Popen(
+                cmd, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to start memory load: {e}")
+            raise
     
     def _start_io_load(self, load_level: float) -> subprocess.Popen:
         """Start an I/O load generator using Python's built-in I/O."""
@@ -316,9 +381,17 @@ class LoadTester:
         }
 
 async def run_load_tests():
-    """Run all load tests."""
+    """
+    Run all load tests with memory safety.
+    
+    This function coordinates running different types of load tests
+    while monitoring system resources to prevent crashes.
+    """
     print("🚀 Starting MAYA Load Testing Suite")
     print("=" * 50)
+    
+    # Log initial memory state
+    log_memory_usage("Initial")
     
     # Configure tests
     config = LoadTestConfig(
@@ -332,29 +405,63 @@ async def run_load_tests():
     tester = LoadTester(config)
     
     try:
-        # Start monitoring
-        print("\n🔄 Starting monitoring system...")
-        await tester.start_monitoring()
+        # Start monitoring with memory safety
+        print("\n🔄 Starting monitoring system with memory safety...")
         
-        # Run CPU load tests
+        # Use memory monitor context
+        with MemoryMonitor(threshold=0.8):
+            await tester.start_monitoring()
+            
+            # Log memory after monitor start
+            log_memory_usage("After monitor start")
+        
+        # Run CPU load tests with memory monitoring
         print("\n🔧 Running CPU load tests...")
         for load in config.cpu_loads:
-            await tester.run_cpu_load_test(load, config.duration)
+            log_memory_usage(f"Before CPU load {int(load*100)}%")
+            try:
+                await tester.run_cpu_load_test(load, config.duration)
+            except MemoryLimitExceededError as e:
+                logger.error(f"Memory limit exceeded during CPU load test: {e}")
+                logger.warning("Skipping remaining CPU load tests")
+                break
+            log_memory_usage(f"After CPU load {int(load*100)}%")
         
-        # Run memory load tests
+        # Run memory load tests with extra caution
         print("\n🧠 Running memory load tests...")
         for load in config.memory_loads:
-            await tester.run_memory_load_test(load, config.duration)
+            log_memory_usage(f"Before memory load {int(load*100)}%")
+            try:
+                await tester.run_memory_load_test(load, config.duration)
+            except MemoryLimitExceededError as e:
+                logger.error(f"Memory limit exceeded during memory load test: {e}")
+                logger.warning("Skipping remaining memory load tests")
+                break
+            log_memory_usage(f"After memory load {int(load*100)}%")
         
-        # Run I/O load tests
+        # Run I/O load tests with monitoring
         print("\n💾 Running I/O load tests...")
         for load in config.io_loads:
-            await tester.run_io_load_test(load, config.duration)
+            log_memory_usage(f"Before I/O load {int(load*100)}%")
+            try:
+                await tester.run_io_load_test(load, config.duration)
+            except MemoryLimitExceededError as e:
+                logger.error(f"Memory limit exceeded during I/O test: {e}")
+                logger.warning("Skipping remaining I/O tests")
+                break
+            log_memory_usage(f"After I/O load {int(load*100)}%")
         
-        # Run network load tests
+        # Run network load tests with monitoring
         print("\n🌐 Running network load tests...")
         for load in config.network_loads:
-            await tester.run_network_load_test(load, config.duration)
+            log_memory_usage(f"Before network load {int(load*100)}%")
+            try:
+                await tester.run_network_load_test(load, config.duration)
+            except MemoryLimitExceededError as e:
+                logger.error(f"Memory limit exceeded during network test: {e}")
+                logger.warning("Skipping remaining network tests")
+                break
+            log_memory_usage(f"After network load {int(load*100)}%")
         
     except asyncio.CancelledError:
         print("\n⚠️  Tests cancelled by user")
