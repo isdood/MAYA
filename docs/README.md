@@ -61,17 +61,21 @@ graph TB
 - [Neural Integration](integration/001-neural.md)
 - [Quantum Bridge](integration/002-quantum.md)
 
-### 3. Protocols [<span style="color: #DDA0DD">→</span>](protocols/000-index.md)
+### 3. Implementation Plans [<span style="color: #D19FE8">→</span>](plans/000-index.md)
+- [GLIMMER Phase 1](plans/001-phase1-implementation.md)
+- [Future Roadmap](plans/002-roadmap.md)
+
+### 4. Protocols [<span style="color: #DDA0DD">→</span>](protocols/000-index.md)
 - [Universal Protocols](protocols/000-index.md)
 - [Neural Standards](protocols/001-neural.md)
 - [Quantum Links](protocols/002-quantum.md)
 
-### 4. Reference [<span style="color: #98FB98">→</span>](reference/000-index.md)
+### 5. Reference [<span style="color: #98FB98">→</span>](reference/000-index.md)
 - [API Documentation](reference/000-index.md)
 - [Pattern Guide](reference/001-patterns.md)
 - [Neural Map](reference/002-neural.md)
 
-### 5. Tutorials [<span style="color: #B19CD9">→</span>](tutorials/000-index.md)
+### 6. Tutorials [<span style="color: #B19CD9">→</span>](tutorials/000-index.md)
 - [Quick Start](tutorials/000-index.md#quick-start)
 - [Deep Dive](tutorials/000-index.md#deep-dive)
 - [Advanced Patterns](tutorials/000-index.md#advanced-patterns)

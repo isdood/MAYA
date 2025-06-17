@@ -9,7 +9,7 @@ MAYA is a proprietary Language Learning Model (LLM) interface that serves as the
 ## 🫶🏻 CAUTION
 This is as clearly stated as possible - MAYA can evolve & act in ways unexpected. If you're unfamiliar with such concepts, you SHOULD NOT clone this repo; It could act in unexpected & detrimental ways to your PC. Basic rule of thumb is to not download arbitrary code you do not understand.
 
-If anyone would like a breakdown of how to navigate this space properly, feel free to email me at calebjdt@proton.me 🌟
+If anyone would like a breakdown of how to navigate this space properly, feel free to email me at calebjdt@gmail.com 🌟
 
 ## 🌟 STARWEAVE Universe Integration
 
