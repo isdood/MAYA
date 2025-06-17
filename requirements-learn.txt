@@ -38,8 +38,8 @@ psutil>=5.9.0
 
 # System Monitoring
 netifaces>=0.11.0
-disk-usage>=1.0.0
 python-iptables>=1.0.1
+# Using psutil for disk usage instead of disk-usage
 
 # Data Processing
 numpy>=1.24.0

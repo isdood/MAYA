@@ -1,0 +1,61 @@
+{
+  "system_info": {
+    "hostname": "001-STARCORE",
+    "os": "Linux 6.15.2-arch1-1",
+    "python_version": "3.13.3",
+    "cpu_count": 32,
+    "cpu_freq": 5180.2744375,
+    "total_memory_gb": 60.46,
+    "disk_usage": {
+      "/": "52.5%",
+      "/swap": "52.5%",
+      "/home": "52.5%",
+      "/var/cache": "52.5%",
+      "/var/log": "52.5%",
+      "/boot/efi": "0.0%"
+    }
+  },
+  "timestamp": 1750192017.418214,
+  "results": [
+    {
+      "test_name": "cpu_load_25%",
+      "load_level": 0.25,
+      "metrics": {
+        "avg_cpu_usage": 9.029083665338646,
+        "max_cpu_usage": 31.3,
+        "avg_memory_usage": 28.327490039840637,
+        "max_memory_usage": 28.5,
+        "avg_response_time_ms": 0.006621597467854886,
+        "p95_response_time_ms": 0.00869099676492624,
+        "max_response_time_ms": 0.011971998901572078
+      },
+      "system_metrics": {
+        "io_read_mb": 0.0,
+        "io_write_mb": 140.73046875,
+        "network_sent_mb": 0.14853954315185547,
+        "network_recv_mb": 0.16424942016601562
+      },
+      "timestamp": 1750191957.4101143
+    },
+    {
+      "test_name": "cpu_load_50%",
+      "load_level": 0.5,
+      "metrics": {
+        "avg_cpu_usage": 12.586799999999998,
+        "max_cpu_usage": 30.7,
+        "avg_memory_usage": 28.392799999999998,
+        "max_memory_usage": 28.5,
+        "avg_response_time_ms": 0.007530983886681497,
+        "p95_response_time_ms": 0.01088949611585121,
+        "max_response_time_ms": 0.017553000361658633
+      },
+      "system_metrics": {
+        "io_read_mb": 0.0,
+        "io_write_mb": 164.41796875,
+        "network_sent_mb": 0.5922966003417969,
+        "network_recv_mb": 50.43624305725098
+      },
+      "timestamp": 1750192017.4172537
+    }
+  ]
+}
