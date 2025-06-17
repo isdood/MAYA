@@ -36,28 +36,63 @@ class SystemMonitor:
         self._metrics_cache = None
         self._lock = asyncio.Lock()
         self._tasks = set()
+        
+    def _task_completed(self, task):
+        """Handle task completion."""
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            self.logger.error(f"Monitoring task failed: {e}", exc_info=True)
+        finally:
+            self._tasks.discard(task)
+            
+            # If all tasks are done and we're still supposed to be running, restart
+            if not self._tasks and self._running:
+                self.logger.warning("All monitoring tasks stopped unexpectedly")
+                asyncio.create_task(self.start())
     
     async def start(self):
         """Start the monitoring service."""
-        if self._running:
-            self.logger.warning("Monitor is already running")
-            return
+        async with self._lock:
+            if self._running:
+                self.logger.warning("Monitor is already running")
+                return self
+                
+            self._running = True
+            self.logger.info("Starting system monitor")
             
-        self._running = True
-        self.logger.info("Starting system monitor")
-        
-        # Start monitoring tasks
-        tasks = [
-            self._monitor_cpu(),
-            self._monitor_memory(),
-            self._monitor_disk(),
-            self._monitor_network(),
-            self._monitor_system()
-        ]
-        
-        self._tasks = {asyncio.create_task(t) for t in tasks}
-        for task in self._tasks:
-            task.add_done_callback(self._tasks.discard)
+            # Initialize metrics
+            self._metrics_cache = SystemMetrics(
+                timestamp=datetime.now().timestamp(),
+                cpu_percent=0.0,
+                memory_percent=0.0,
+                disk_usage={},
+                network_io={},
+                processes=0,
+                load_avg={"1min": 0.0, "5min": 0.0, "15min": 0.0},
+                boot_time=psutil.boot_time(),
+                users=0
+            )
+            
+            # Start monitoring tasks
+            tasks = [
+                self._monitor_cpu(),
+                self._monitor_memory(),
+                self._monitor_disk(),
+                self._monitor_network(),
+                self._monitor_system()
+            ]
+            
+            # Store tasks to cancel them later
+            self._tasks = {asyncio.create_task(t) for t in tasks}
+            
+            # Add callback to handle task completion
+            for task in self._tasks:
+                task.add_done_callback(self._task_completed)
+                
+            return self
     
     async def stop(self):
         """Stop the monitoring service."""
@@ -70,10 +105,29 @@ class SystemMonitor:
         """Clean up resources."""
         await self.stop()
     
-    async def get_metrics(self) -> Optional[SystemMetrics]:
-        """Get the latest system metrics."""
-        async with self._lock:
-            return self._metrics_cache
+    def get_metrics(self) -> Optional[SystemMetrics]:
+        """Get the latest system metrics.
+        
+        Returns:
+            The latest system metrics, or None if not available.
+        """
+        # This is a synchronous wrapper around the async method
+        if not self._metrics_cache:
+            return None
+            
+        # Create a thread-safe copy of the metrics
+        metrics = self._metrics_cache
+        return SystemMetrics(
+            timestamp=metrics.timestamp,
+            cpu_percent=metrics.cpu_percent,
+            memory_percent=metrics.memory_percent,
+            disk_usage=metrics.disk_usage.copy(),
+            network_io=metrics.network_io.copy(),
+            processes=metrics.processes,
+            load_avg=metrics.load_avg.copy(),
+            boot_time=metrics.boot_time,
+            users=metrics.users
+        )
     
     async def _monitor_cpu(self):
         """Monitor CPU usage."""

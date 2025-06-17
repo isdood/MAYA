@@ -109,28 +109,36 @@ class ConsoleDashboard:
         try:
             with Live(self.layout, refresh_per_second=4, screen=True) as live:
                 while self.running:
-                    metrics = self.monitor.get_metrics()
-                    
-                    # Update header
-                    self.layout["header"].update(self._update_header())
-                    
-                    # Update metrics table
-                    table = self._create_metrics_table(metrics)
-                    self.layout["left"].update(Panel(table, title="System Metrics"))
-                    
-                    # Update progress bars
-                    bars = self._create_progress_bars(metrics)
-                    self.layout["right"].update(Panel(bars, title="Resource Usage"))
-                    
-                    # Update footer
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    self.layout["footer"].update(
-                        Panel(f"Last updated: {timestamp}", style="dim")
-                    )
+                    try:
+                        metrics = self.monitor.get_metrics()
+                        if metrics is None:
+                            await asyncio.sleep(self.update_interval)
+                            continue
+                            
+                        # Update header
+                        self.layout["header"].update(self._update_header())
+                        
+                        # Update metrics table
+                        table = self._create_metrics_table(metrics)
+                        self.layout["left"].update(Panel(table, title="System Metrics"))
+                        
+                        # Update progress bars
+                        bars = self._create_progress_bars(metrics)
+                        self.layout["right"].update(Panel(bars, title="Resource Usage"))
+                        
+                        # Update footer
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        self.layout["footer"].update(
+                            Panel(f"Last updated: {timestamp}", style="dim")
+                        )
+                    except Exception as e:
+                        self.console.print(f"[red]Error updating dashboard: {e}[/]")
                     
                     await asyncio.sleep(self.update_interval)
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            self.console.print(f"[red]Error in dashboard: {e}[/]")
+            self.console.print(f"[red]Fatal error in dashboard: {e}[/]")
             raise
 
     def start(self) -> None:

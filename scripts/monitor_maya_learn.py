@@ -30,8 +30,8 @@ def setup_logging():
         ]
     )
 
-def main():
-    """Main entry point for the monitoring script."""
+async def async_main():
+    """Async entry point for the monitoring script."""
     print("Starting MAYA Learning Service Monitor...")
     print("Press Ctrl+C to exit\n")
     
@@ -43,11 +43,39 @@ def main():
         # Setup logging
         setup_logging()
         
-        # Run the console dashboard
-        run_console_dashboard(config)
+        # Import here to avoid circular imports
+        from src.maya_learn.monitor import SystemMonitor
+        from src.maya_learn.console_dashboard import ConsoleDashboard
         
+        # Initialize and start monitoring
+        monitor = SystemMonitor(config)
+        dashboard = ConsoleDashboard(monitor)
+        
+        # Start monitoring
+        await monitor.start()
+        dashboard.start()
+        
+        # Keep the dashboard running
+        try:
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            print("\nShutting down monitor...")
+        finally:
+            dashboard.stop()
+            await monitor.stop()
+            print("Dashboard stopped.")
+            
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise
+
+def main():
+    """Main entry point."""
+    try:
+        asyncio.run(async_main())
     except KeyboardInterrupt:
-        print("\nShutting down monitor...")
+        print("\nShutdown requested. Exiting...")
         sys.exit(0)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
