@@ -31,13 +31,21 @@ class MayaLerningService:
     
     def setup_signal_handlers(self):
         """Set up signal handlers for graceful shutdown."""
-        loop = asyncio.get_running_loop()
+        self._shutdown_requested = False
+        self._signals = (signal.SIGINT, signal.SIGTERM)
         
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(
-                sig, 
-                lambda s=sig: asyncio.create_task(self.shutdown(s))
-            )
+        # Store the original handlers
+        self._original_handlers = {}
+        
+        def handle_signal(signum, frame):
+            """Handle shutdown signals."""
+            if not self._shutdown_requested:
+                self._shutdown_requested = True
+                asyncio.create_task(self.shutdown(signum))
+        
+        # Set up signal handlers
+        for sig in self._signals:
+            self._original_handlers[sig] = signal.signal(sig, handle_signal)
     
     async def start(self):
         """Start the learning service."""
@@ -47,6 +55,16 @@ class MayaLerningService:
             
         self.running = True
         self.logger.info(f"Starting MAYA Learning Service v{__version__}")
+        
+        # Set up signal handlers now that we have a running loop
+        if hasattr(self, '_pending_signals'):
+            loop = asyncio.get_running_loop()
+            for sig in self._pending_signals:
+                loop.add_signal_handler(
+                    sig,
+                    lambda s=sig: asyncio.create_task(self.shutdown(s))
+                )
+            del self._pending_signals
         
         try:
             # Start monitoring
@@ -97,18 +115,40 @@ class MayaLerningService:
         self.logger.info("Shutting down MAYA Learning Service...")
         self.running = False
         
-        # Cancel all running tasks
-        for task in self.tasks:
+        # Create a list of tasks to cancel (to avoid set modification during iteration)
+        tasks_to_cancel = []
+        task_coros = []
+        
+        # First gather all tasks that need to be cancelled
+        for task in list(self.tasks):  # Create a copy of the set for iteration
             if not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+                tasks_to_cancel.append(task)
+        
+        # Then cancel them and gather the coroutines
+        for task in tasks_to_cancel:
+            task.cancel()
+            task_coros.append(task)
+        
+        # Wait for all tasks to complete
+        if task_coros:
+            await asyncio.gather(*task_coros, return_exceptions=True)
         
         # Clean up resources
-        await self.learner.cleanup()
-        await self.monitor.cleanup()
+        await self.cleanup()
+        
+        self.logger.info("Service shutdown complete")
+
+    async def cleanup(self):
+        """Clean up resources."""
+        # Restore original signal handlers
+        for sig, handler in self._original_handlers.items():
+            if handler is not None:
+                signal.signal(sig, handler)
+        
+        if hasattr(self, 'learner') and self.learner:
+            await self.learner.cleanup()
+        if hasattr(self, 'monitor') and self.monitor:
+            await self.monitor.cleanup()
         
         self.logger.info("Service shutdown complete")
 

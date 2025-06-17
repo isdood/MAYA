@@ -1,6 +1,4 @@
-""
-Pattern learning and recognition for MAYA Learning Service.
-"""
+"""Pattern learning and recognition for MAYA Learning Service."""
 
 import asyncio
 import json
@@ -46,12 +44,18 @@ class PatternLearner:
     
     async def process(self, metrics: SystemMetrics) -> None:
         """Process new metrics and learn patterns."""
-        if not self.config.learning.enabled:
+        if not self.config.learning.enabled or metrics is None:
             return
         
         try:
             # Convert metrics to dict for processing
-            metrics_dict = asdict(metrics)
+            metrics_dict = {}
+            if hasattr(metrics, '__dataclass_fields__'):
+                metrics_dict = asdict(metrics)
+            elif hasattr(metrics, '__dict__'):
+                metrics_dict = vars(metrics)
+            else:
+                metrics_dict = dict(metrics)
             
             # Simple pattern detection (can be enhanced with ML models)
             await self._detect_cpu_patterns(metrics_dict)

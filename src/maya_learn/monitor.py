@@ -1,6 +1,4 @@
-""
-System monitoring for MAYA Learning Service.
-"""
+"""System monitoring for MAYA Learning Service."""
 
 import asyncio
 import psutil
