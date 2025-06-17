@@ -180,10 +180,51 @@ The MAYA Learning Service is a continuous learning system that runs as a backgro
 
 ### Managing the Service
 
+#### Basic Commands
 - Check status: `systemctl status maya-learn`
 - View logs: `journalctl -u maya-learn -f`
 - Restart service: `sudo systemctl restart maya-learn`
 - Stop service: `sudo systemctl stop maya-learn`
+
+#### Console Monitoring Dashboard
+
+MAYA includes a rich console-based monitoring dashboard that provides real-time metrics and system information.
+
+To start the monitoring dashboard:
+
+```bash
+# Make the script executable
+chmod +x scripts/monitor_maya_learn.py
+
+# Run the monitor
+./scripts/monitor_maya_learn.py
+```
+
+**Dashboard Features:**
+- Real-time CPU, memory, and disk usage
+- Color-coded progress bars
+- System uptime tracking
+- Automatic refresh
+
+**Keyboard Shortcuts:**
+- `Ctrl+C` - Exit the dashboard
+
+**Logs:**
+Detailed logs are saved to `maya_monitor.log` in the current directory.
+
+#### Metrics Collected
+
+| Metric | Description |
+|--------|-------------|
+| CPU Usage | Current CPU utilization percentage |
+| Memory Usage | Current memory usage percentage |
+| Disk Usage | Disk usage for all mounted filesystems |
+| Uptime | Service uptime |
+| Timestamp | Last update time |
+
+#### Alerting
+
+Critical conditions (e.g., >90% disk usage) will be highlighted in red in the dashboard.
 
 ## 🚀 Future Development
 
