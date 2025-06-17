@@ -1,0 +1,33 @@
+{
+  "test_start_time": "20250617_161027",
+  "system_info": {
+    "cpu_count": 32,
+    "cpu_freq": {
+      "current": 4504.988468750001,
+      "min": 2982.259000000001,
+      "max": 5756.451999999998
+    },
+    "total_memory_gb": 60.46,
+    "os": "Linux 6.15.2-arch1-1",
+    "python_version": "3.13.3",
+    "hostname": "001-STARCORE"
+  },
+  "tests": {
+    "monitoring_overhead": {
+      "baseline_cpu_percent": 6.0,
+      "baseline_memory_mb": 34.8125,
+      "avg_cpu_percent": -3.7933333333333334,
+      "max_cpu_percent": 1.4000000000000004,
+      "avg_memory_mb": 0.0,
+      "max_memory_mb": 0.0,
+      "test_duration_seconds": 30
+    },
+    "metric_collection_time": {
+      "iterations": 100,
+      "avg_time_ms": 0.00048346013500122353,
+      "min_time_ms": 0.00036100027500651777,
+      "max_time_ms": 0.004517998604569584,
+      "p95_time_ms": 0.0006620031854254194
+    }
+  }
+}

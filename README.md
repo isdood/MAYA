@@ -178,53 +178,152 @@ The MAYA Learning Service is a continuous learning system that runs as a backgro
    ./scripts/install_maya_learn.sh
    ```
 
-### Managing the Service
+## 📊 Monitoring & Observability
+
+MAYA provides comprehensive monitoring capabilities to help you keep track of system health and performance.
+
+### Service Management
 
 #### Basic Commands
-- Check status: `systemctl status maya-learn`
-- View logs: `journalctl -u maya-learn -f`
-- Restart service: `sudo systemctl restart maya-learn`
-- Stop service: `sudo systemctl stop maya-learn`
+```bash
+# Check service status
+systemctl status maya-learn
 
-#### Console Monitoring Dashboard
+# View logs in real-time
+journalctl -u maya-learn -f
 
-MAYA includes a rich console-based monitoring dashboard that provides real-time metrics and system information.
+# Restart the service
+sudo systemctl restart mayya-learn
 
-To start the monitoring dashboard:
+# Stop the service
+sudo systemctl stop maya-learn
+```
+
+### Console Monitoring Dashboard
+
+MAYA features an advanced console-based monitoring dashboard built with [Rich](https://github.com/Textualize/rich), providing real-time system metrics and visualizations.
+
+#### Quick Start
 
 ```bash
-# Make the script executable
+# Make the monitoring script executable
 chmod +x scripts/monitor_maya_learn.py
 
-# Run the monitor
+# Start the monitoring dashboard
 ./scripts/monitor_maya_learn.py
 ```
 
-**Dashboard Features:**
-- Real-time CPU, memory, and disk usage
-- Color-coded progress bars
-- System uptime tracking
-- Automatic refresh
+#### Dashboard Features
 
-**Keyboard Shortcuts:**
-- `Ctrl+C` - Exit the dashboard
+- **Real-time Metrics**
+  - CPU, memory, and disk usage
+  - Network I/O statistics
+  - System load averages
+  - Active processes count
+  - Disk space utilization
 
-**Logs:**
-Detailed logs are saved to `maya_monitor.log` in the current directory.
+- **Visual Indicators**
+  - Color-coded progress bars
+  - Threshold-based highlighting
+  - Responsive layout
+  - Automatic refresh (1s interval)
 
-#### Metrics Collected
+- **System Information**
+  - Uptime tracking
+  - Last update timestamp
+  - Host information
+  - Python environment
 
-| Metric | Description |
-|--------|-------------|
-| CPU Usage | Current CPU utilization percentage |
-| Memory Usage | Current memory usage percentage |
-| Disk Usage | Disk usage for all mounted filesystems |
-| Uptime | Service uptime |
-| Timestamp | Last update time |
+#### Keyboard Shortcuts
 
-#### Alerting
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+C` | Exit the dashboard |
+| `r` | Force refresh |
+| `q` | Quit (alternative to Ctrl+C) |
 
-Critical conditions (e.g., >90% disk usage) will be highlighted in red in the dashboard.
+### Logging
+
+MAYA maintains detailed logs for monitoring and debugging:
+
+- **Log Location**: `maya_monitor.log` in the current directory
+- **Log Rotation**: Automatic daily rotation with 7-day retention
+- **Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+### Metrics Collection
+
+#### System Metrics
+
+| Metric | Description | Threshold (Warning/Critical) |
+|--------|-------------|-----------------------------|
+| CPU Usage | Current CPU utilization | 80% / 95% |
+| Memory Usage | RAM utilization | 85% / 95% |
+| Disk Usage | Filesystem usage | 85% / 95% |
+| Load Average | 1/5/15 minute load averages | 70% / 90% of CPU cores |
+| Processes | Number of running processes | N/A |
+| Network I/O | Bytes sent/received | N/A |
+
+#### Custom Metrics
+
+You can extend the monitoring with custom metrics by modifying `src/maya_learn/monitor.py`:
+
+```python
+# Example: Add custom metric
+@dataclass
+class CustomMetrics:
+    custom_metric: float = 0.0
+
+class SystemMonitor:
+    def __init__(self, config):
+        self.custom_metrics = CustomMetrics()
+    
+    async def _monitor_custom(self):
+        while self._running:
+            # Update custom metrics here
+            self.custom_metrics.custom_metric = get_custom_metric()
+            await asyncio.sleep(5)  # Update every 5 seconds
+```
+
+### Alerting & Notifications
+
+Critical conditions trigger visual alerts in the dashboard:
+
+- **Warning Level** (Yellow):
+  - CPU > 80%
+  - Memory > 85%
+  - Disk > 85%
+  
+- **Critical Level** (Red):
+  - CPU > 95%
+  - Memory > 95% 
+  - Disk > 95%
+  - Service not responding
+
+### Performance Considerations
+
+- The monitoring system is designed to be lightweight (<1% CPU usage)
+- Metrics are collected asynchronously to minimize impact
+- The dashboard updates at 1-second intervals by default
+- Historical data is not persisted (use external monitoring for long-term metrics)
+
+### Troubleshooting
+
+**Dashboard won't start:**
+```bash
+# Check Python environment
+python --version  # Requires Python 3.8+
+
+# Check dependencies
+pip install -r requirements-learn.txt
+
+# Check for permission issues
+chmod +x scripts/*.py
+```
+
+**Missing metrics:**
+- Verify the MAYA service is running
+- Check `maya_monitor.log` for errors
+- Ensure system has necessary permissions to read metrics
 
 ## 🚀 Future Development
 
