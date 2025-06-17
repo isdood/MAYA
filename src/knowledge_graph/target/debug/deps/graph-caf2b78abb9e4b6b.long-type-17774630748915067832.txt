@@ -1,0 +1,1 @@
+maya_knowledge_graph::KnowledgeGraph<_>

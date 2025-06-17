@@ -122,15 +122,18 @@ impl WriteBatch for SledWriteBatch {
         let ops = self.ops;
         let db = self.db.clone();
         
-        // Execute the transaction
-        let result = db.transaction(|tx| {
-            for op in ops {
+        // Execute the transaction with explicit type annotation
+        type TransactionResult = std::result::Result<(), sled::transaction::TransactionError<()>>;
+        let result: TransactionResult = db.transaction(|tx| {
+            for op in &ops {
                 match op {
                     BatchOp::Put(key, value) => {
-                        tx.insert(key, value)?;
+                        // Convert Vec<u8> to &[u8] for the key and value
+                        tx.insert(key.as_slice(), value.as_slice())?;
                     }
                     BatchOp::Delete(key) => {
-                        tx.remove(key)?;
+                        // Convert Vec<u8> to &[u8] for the key
+                        tx.remove(key.as_slice())?;
                     }
                 }
             }
