@@ -1,0 +1,2 @@
+[console_scripts]
+maya-learn = maya_learn.service:main

@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+src/maya_learn/__init__.py
+src/maya_learn/config.py
+src/maya_learn/monitor.py
+src/maya_learn/patterns.py
+src/maya_learn/service.py
+src/maya_learn.egg-info/PKG-INFO
+src/maya_learn.egg-info/SOURCES.txt
+src/maya_learn.egg-info/dependency_links.txt
+src/maya_learn.egg-info/entry_points.txt
+src/maya_learn.egg-info/requires.txt
+src/maya_learn.egg-info/top_level.txt

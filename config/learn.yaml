@@ -1,0 +1,40 @@
+# MAYA Learning Service Configuration
+
+general:
+  log_level: "info"
+  max_threads: 4
+
+learning:
+  enabled: true
+  interval: 60.0  # seconds
+  batch_size: 100
+  max_patterns: 1000
+
+monitoring:
+  cpu_interval: 5.0
+  memory_interval: 10.0
+  disk_interval: 30.0
+  network_interval: 15.0
+
+storage:
+  data_dir: "data/learn"
+  model_dir: "data/models"
+  max_size_gb: 50.0
+  retention_days: 30
+
+privacy:
+  collect_personal_data: false
+  anonymize_data: true
+  opt_in_features: []
+
+git:
+  enabled: true
+  auto_commit: true
+  commit_message: "[MAYA] Autonomous learning update"
+  branch: "main"
+  remote: "origin"
+
+resources:
+  max_cpu_percent: 50
+  max_memory_mb: 2048
+  idle_threshold: 10  # CPU % below which to run background tasks

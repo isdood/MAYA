@@ -1,0 +1,12 @@
+core
+glimmer
+glm
+learning
+maya_learn
+neural
+renderer
+scibble
+starweave
+test
+ui
+utils
