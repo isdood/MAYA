@@ -1,0 +1,43 @@
+[package]
+name = "maya_knowledge_graph"
+version = "0.1.0"
+edition = "2021"
+authors = ["MAYA Team"]
+description = "Knowledge graph implementation for MAYA"
+license = "MIT"
+
+[dependencies]
+rocksdb = { version = "0.21", features = ["lz4"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0"
+thiserror = "1.0"
+uuid = { version = "1.4", features = ["v4", "serde", "v7"] }
+chrono = { version = "0.4", features = ["serde", "clock"] }
+log = "0.4"
+rand = "0.8"
+tempfile = { version = "3.3", optional = true }
+
+[dev-dependencies]
+serial_test = "2.0"
+criterion = { version = "0.4", features = ["html_reports"] }
+pretty_assertions = "1.3"
+
+[features]
+default = []
+test-utils = ["tempfile"]
+
+[lib]
+name = "maya_knowledge_graph"
+path = "src/lib.rs"
+
+[[test]]
+name = "integration"
+path = "tests/integration_test.rs"
+
+[[test]]
+name = "graph"
+path = "tests/graph_tests.rs"
+
+[[test]]
+name = "storage"
+path = "tests/storage_tests.rs"
