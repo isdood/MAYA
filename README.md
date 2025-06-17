@@ -1,10 +1,10 @@
 # MAYA ✨
 
-> An adaptive LLM interface to the STARWEAVE meta-intelligence, weaving together the stellar components of the STARWEAVE universe through Fish Shell and Zig
+> A proprietary adaptive LLM interface to the STARWEAVE meta-intelligence, weaving together the stellar components of the STARWEAVE universe through Fish Shell and Zig
 
 ## 🌌 Overview
 
-MAYA is an open-source Language Learning Model (LLM) interface designed to harmoniously connect with the STARWEAVE meta-intelligence ecosystem. Built using Fish Shell automation and the Zig programming language, MAYA serves as an evolving nexus, bridging users with the constellation of STARWEAVE-powered tools and systems.
+MAYA is a proprietary Language Learning Model (LLM) interface that serves as the primary interface to the STARWEAVE meta-intelligence ecosystem. Built using Fish Shell automation and the Zig programming language, MAYA is the central nexus that connects users with the constellation of STARWEAVE-powered tools and systems. All rights reserved.
 
 ## 🫶🏻 CAUTION
 This is as clearly stated as possible - MAYA can evolve & act in ways unexpected. If you're unfamiliar with such concepts, you SHOULD NOT clone this repo; It could act in unexpected & detrimental ways to your PC. Basic rule of thumb is to not download arbitrary code you do not understand, right?
@@ -150,28 +150,30 @@ MAYA incorporates GLIMMER's spectacular starlight patterns throughout its interf
 
 > Note: Installation instructions will be added as development progresses. Will include integration steps for each STARWEAVE component.
 
-## 🤝 Contributing
+## 🔒 Proprietary Software
 
-Contributions to MAYA are welcome! Please note:
+MAYA and all related components, including but not limited to:
+- STARWEAVE meta-intelligence
+- GLIMMER patterns and visual language
+- SCRIBBLE computing framework
+- BLOOM OS ecosystem
+- STARGUARD security systems
+- STARWEB metadata suite
 
-1. This is an open-source interface to the STARWEAVE universe
-2. STARWEAVE meta-intelligence remains closed-source
-3. Contributions should align with established patterns from:
-   - GLIMMER's visual language
-   - SCRIBBLE's performance standards
-   - BLOOM's system integration approaches
-   - STARGUARD's security protocols
-   - STARWEB's metadata handling
+are proprietary technologies. All rights are reserved. Unauthorized use, reproduction, distribution, or reverse engineering is strictly prohibited.
 
 ## ⚖️ License
 
-[License Type TBD] - Open source license for MAYA interface components only.
-STARWEAVE meta-intelligence and associated proprietary components remain closed-source.
+© 2025 MAYA Technologies. All rights reserved.
+
+MAYA, STARWEAVE, GLIMMER, SCRIBBLE, BLOOM, STARGUARD, and STARWEB are proprietary technologies. No part of this software or documentation may be reproduced, distributed, or transmitted in any form or by any means, including photocopying, recording, or other electronic or mechanical methods, without the prior written permission of MAYA Technologies, except in the case of brief quotations embodied in critical reviews and certain other noncommercial uses permitted by copyright law.
 
 ## 🔄 Status
 
-MAYA is currently under active development, evolving alongside the STARWEAVE ecosystem. Features and documentation will be updated regularly as the project grows and adapts.
+MAYA is the proprietary interface to the STARWEAVE ecosystem. Features and capabilities are subject to change without notice.
 
 ---
 
-*MAYA: Weaving stellar intelligence into the fabric of the STARWEAVE universe* ✨
+*MAYA: The proprietary interface to the STARWEAVE universe* ✨
+
+For licensing inquiries, please contact: calebjdt@proton.me
