@@ -5,9 +5,6 @@ use maya_knowledge_graph::{
     error::Result,
 };
 use tempfile::tempdir;
-use std::str;
-use std::convert::TryInto;
-use std::sync::Arc;
 
 #[test]
 fn test_sled_store() -> Result<()> {
@@ -27,9 +24,9 @@ fn test_sled_store() -> Result<()> {
     
     // Test batch operations
     let mut batch = <SledStore as WriteBatchExt>::batch(&store);
-    batch.put_serialized(b"key2", b"value2")?;
-    batch.put_serialized(b"key3", b"value3")?;
-    <SledStore as WriteBatchExt>::commit(Box::new(batch))?;
+    batch.put(b"key2", b"value2")?;
+    batch.put(b"key3", b"value3")?;
+    batch.commit()?;
     
     assert_eq!(store.get(b"key2")?, Some(b"value2".to_vec()));
     assert_eq!(store.get(b"key3")?, Some(b"value3".to_vec()));
@@ -83,14 +80,16 @@ fn test_iter_prefix() -> Result<()> {
     assert_eq!(val2, Some(b"value2".to_vec()));
     assert_eq!(val3, Some(b"value3".to_vec()));
     
-    // Test prefix scan
+    // Test prefix iteration
     let mut prefixed = Vec::new();
-    store.scan_prefix(b"prefix:", |key, value| {
-        let key_str = String::from_utf8_lossy(key).into_owned();
-        let value_str: String = serde_json::from_slice(value)?;
-        prefixed.push((key_str, value_str));
-        Ok(())
-    })?;
+    for result in store.iter() {
+        let (key, value) = result?;
+        if key.starts_with(b"prefix:") {
+            let key_str = String::from_utf8_lossy(&key).into_owned();
+            let value_str: String = serde_json::from_slice(&value)?;
+            prefixed.push((key_str, value_str));
+        }
+    }
     
     prefixed.sort();
     assert_eq!(prefixed, vec![

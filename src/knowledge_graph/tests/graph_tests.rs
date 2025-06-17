@@ -170,9 +170,9 @@ fn test_transaction() -> Result<()> {
     let result = graph.transaction(|tx| {
         let bad_node = create_test_node("Should not exist", "Bad Node", 0);
         tx.add_node(&bad_node)?;
-        // Use an IO error for testing
-        let io_err = std::io::Error::new(std::io::ErrorKind::Other, "Test error");
-        Err(KnowledgeGraphError::IoError(Arc::new(io_err)))
+        // Use a serialization error for testing
+        let json_err = serde_json::Error::custom("Test error");
+        Err(KnowledgeGraphError::SerializationError(json_err))
     });
     
     assert!(result.is_err());
