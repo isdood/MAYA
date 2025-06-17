@@ -5,7 +5,7 @@ use maya_knowledge_graph::{
     error::Result,
 };
 use tempfile::tempdir;
-use serde::de::DeserializeOwned;
+use std::sync::Arc;
 
 #[test]
 fn test_sled_store() -> Result<()> {
@@ -30,10 +30,10 @@ fn test_sled_store() -> Result<()> {
     
     // Test batch operations
     // Create a batch and add some operations
-    let mut batch = <SledStore as WriteBatchExt>::batch(&store);
+    let mut batch = store.batch();
     batch.put_serialized(b"batch1", b"value1")?;
     batch.put_serialized(b"batch2", b"value2")?;
-    <SledStore as WriteBatchExt>::commit(Box::new(batch))?;
+    Box::new(batch).commit()?;
     
     assert_eq!(store.get(b"batch1")?, Some(b"value1".to_vec()));
     assert_eq!(store.get(b"batch2")?, Some(b"value2".to_vec()));
@@ -116,14 +116,11 @@ fn test_transaction() -> Result<()> {
     let store = SledStore::open(dir.path())?;
     
     // Create a batch of operations
+    // Test batch operations with serialization
     let mut batch = store.batch();
-    
-    // Add some operations
-    batch.put_serialized(b"key1", &serde_json::to_vec(&"value1")?)?;
-    batch.put_serialized(b"key2", &serde_json::to_vec(&"value2")?)?;
+    batch.put_serialized(b"key1", &b"value1".to_vec())?;
+    batch.put_serialized(b"key2", &b"value2".to_vec())?;
     batch.delete(b"key1")?;
-    
-    // Commit the batch
     Box::new(batch).commit()?;
     
     // Verify the results

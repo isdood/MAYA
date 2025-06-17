@@ -92,6 +92,16 @@ impl WriteBatchExt for SledStore {
     fn batch(&self) -> Self::Batch {
         SledWriteBatch::new(Arc::clone(&self.db))
     }
+    
+    fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
+        if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
+            Box::new(batch.clone()).commit()
+        } else {
+            Err(crate::error::KnowledgeGraphError::StorageError(
+                "Invalid batch type".to_string()
+            ))
+        }
+    }
 }
 
 /// Sled write batch wrapper
@@ -106,6 +116,10 @@ enum BatchOp {
 }
 
 impl WriteBatch for SledWriteBatch {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         self.ops.push(BatchOp::Put(key.to_vec(), value.to_vec()));
         Ok(())

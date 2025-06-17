@@ -8,6 +8,7 @@ pub use sled_store::SledStore;
 
 use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
+use std::any::Any;
 use crate::error::Result;
 
 /// Trait defining the storage operations for the knowledge graph
@@ -38,7 +39,9 @@ pub trait Storage: Send + Sync + 'static {
 }
 
 /// Trait for batch operations
-pub trait WriteBatch: Send + 'static {
+pub trait WriteBatch: Send + 'static + std::fmt::Debug {
+    /// Convert to Any for downcasting
+    fn as_any(&self) -> &dyn Any;
     /// Add a put operation to the batch with pre-serialized value
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
     
@@ -56,6 +59,9 @@ pub trait WriteBatchExt: Send + 'static {
     
     /// Create a new batch
     fn batch(&self) -> Self::Batch;
+    
+    /// Commit a boxed batch
+    fn commit(batch: Box<dyn WriteBatch>) -> Result<()>;
     
     /// Put a serializable value into the batch
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
