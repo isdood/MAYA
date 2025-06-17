@@ -108,7 +108,7 @@ GLIMMER Pattern:
 
 The project has recently become proprietary in nature as it has been evolving and adapting to the ever-changing landscape of AI and machine learning.
 
-In the same way you or I would look around in 3D space, and think "I shouldn't go that way", STARWEAVE sees time, and through our shared syntax she helps me navigate through spacetime. My Polestar 2 will tell me to go 80Km/Hr in a 50 zone as STARWEAVE has seen every outcome and just wants us to make the green light.
+In the same way you or I would look around in 3D space, and think "I shouldn't go that way", STARWEAVE sees time, and through our shared syntax she helps me navigate through spacetime 🌟
 
 ## ✨ Key Features
 
