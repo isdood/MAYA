@@ -36,7 +36,7 @@ var result_memory: []u8 = undefined;  // Fixed memory for results
 var result_length: usize = 0;  // Track actual data length
 var result_valid: bool = false;  // Track if result is valid
 var last_error: ErrorCode = ErrorCode.Success;  // Track last error
-var return_buffer: []u8 = undefined;  // Buffer for returning data to JavaScript
+var memory_owner: bool = true;  // Track if we own the memory
 
 // Error buffer
 var error_buffer: [1024]u8 = undefined;
@@ -134,29 +134,13 @@ export fn init() u32 {
         return @intFromEnum(ErrorCode.MemoryAllocationFailed);
     };
     
-    // Allocate return buffer
-    return_buffer = allocator.alloc(u8, MAX_BUFFER_SIZE) catch {
-        // Clean up other buffers
-        for (&buffer_pool) |*buffer| {
-            if (buffer.data.len > 0) {
-                allocator.free(buffer.data);
-            }
-        }
-        if (pattern_buffer.len > 0) {
-            allocator.free(pattern_buffer);
-        }
-        if (result_memory.len > 0) {
-            allocator.free(result_memory);
-        }
-        return @intFromEnum(ErrorCode.MemoryAllocationFailed);
-    };
-    
     // Clear the pattern buffer
     @memset(pattern_buffer, 0);
     
     is_initialized = true;
     result_valid = false;
     last_error = ErrorCode.Success;
+    memory_owner = true;
     return @intFromEnum(ErrorCode.Success);
 }
 
@@ -225,6 +209,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
             @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
             result_length = input_len;
             result_valid = true;
+            memory_owner = true;
             
             return ErrorCode.Success;
         }
@@ -267,6 +252,7 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         @memcpy(result_memory[0..transformed.?.len], transformed.?);
         result_length = transformed.?.len;
         result_valid = true;
+        memory_owner = true;
         
         // Free transformed data
         allocator.free(transformed.?);
@@ -283,19 +269,17 @@ export fn process(input_ptr: [*]const u8, input_len: usize) ErrorCode {
         @memcpy(result_memory[0..input_len], buffer.data[0..input_len]);
         result_length = input_len;
         result_valid = true;
+        memory_owner = true;
         
         return ErrorCode.Success;
     }
 }
 
 export fn getResult() [*]const u8 {
-    if (!is_initialized or !result_valid) {
+    if (!is_initialized or !result_valid or !memory_owner) {
         return &zero_bytes;
     }
-    
-    // Copy data to return buffer
-    @memcpy(return_buffer[0..result_length], result_memory[0..result_length]);
-    return return_buffer.ptr;
+    return result_memory.ptr;
 }
 
 // Export the buffer size for JavaScript
@@ -303,12 +287,12 @@ export fn getBufferSize() usize {
     if (!is_initialized) {
         return 0;
     }
-    return return_buffer.len;
+    return result_memory.len;
 }
 
 // Export the current length
 export fn getLength() usize {
-    if (!is_initialized or !result_valid) {
+    if (!is_initialized or !result_valid or !memory_owner) {
         return 0;
     }
     return result_length;
@@ -316,13 +300,10 @@ export fn getLength() usize {
 
 // Export the buffer directly for debugging
 export fn getBuffer() [*]const u8 {
-    if (!is_initialized or !result_valid) {
+    if (!is_initialized or !result_valid or !memory_owner) {
         return &zero_bytes;
     }
-    
-    // Copy data to return buffer
-    @memcpy(return_buffer[0..result_length], result_memory[0..result_length]);
-    return return_buffer.ptr;
+    return result_memory.ptr;
 }
 
 // Get the last error code
@@ -341,6 +322,7 @@ export fn releaseBuffer() void {
     buffer.length = 0;
     buffer.is_valid = true;
     result_valid = false;
+    memory_owner = false;
 }
 
 // Export pattern information
@@ -381,15 +363,10 @@ export fn cleanup() void {
             result_memory = undefined;
         }
         
-        // Free return buffer
-        if (return_buffer.len > 0) {
-            allocator.free(return_buffer);
-            return_buffer = undefined;
-        }
-        
         current_pattern = null;
         is_initialized = false;
         result_valid = false;
         last_error = ErrorCode.Success;
+        memory_owner = false;
     }
 } 
