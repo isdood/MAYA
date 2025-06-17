@@ -34,10 +34,10 @@ end
 
 # Set build options
 if test "$release_build" = "true"
-    set build_options "-Drelease-safe=true"
+    set build_options "-Doptimize=ReleaseSafe"
     echo "Building in release mode..."
 else
-    set build_options "-Ddebug=true"
+    set build_options "-Doptimize=Debug"
     echo "Building in debug mode..."
 end
 
@@ -67,14 +67,17 @@ end
 # Run tests if requested
 if test "$run_tests" = "true"
     echo "Running tests..."
-    if not $zig_cmd test $build_options test/main.zig
-        echo "Tests failed"
-        return 1
+    # First run the main test suite if it exists
+    if test -f "test/main.zig"
+        if not $zig_cmd test test/main.zig $build_options
+            echo "Tests failed"
+            return 1
+        end
     end
     
     # Run integration tests
     echo "Running integration tests..."
-    if not $zig_cmd test $build_options src/starweave/client_test.zig --test-filter "integration"
+    if not $zig_cmd test src/starweave/client_test.zig $build_options --test-filter "integration"
         echo "Integration tests failed"
         return 1
     end

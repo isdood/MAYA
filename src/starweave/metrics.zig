@@ -177,7 +177,7 @@ pub const Histogram = struct {
     }
     
     pub fn getSum(self: *const Histogram) f64 {
-        return @bitCast(f64, self.sum.load(.Unordered));
+        return @bitCast(f64, self.sum.load(.Unordered, .{}));
     }
     
     pub fn getCount(self: *const Histogram) u64 {
@@ -255,7 +255,7 @@ pub const Registry = struct {
         
         if (self.metrics.get(name)) |metric| {
             if (metric.metric_type == .counter) {
-                return @fieldParentPtr(Counter, "base", metric);
+                return @fieldParentPtr(Counter, metric, "base");
             }
         }
         return null;
@@ -267,7 +267,7 @@ pub const Registry = struct {
         
         if (self.metrics.get(name)) |metric| {
             if (metric.metric_type == .gauge) {
-                return @fieldParentPtr(Gauge, "base", metric);
+                return @fieldParentPtr(Gauge, metric, "base");
             }
         }
         return null;
@@ -279,7 +279,7 @@ pub const Registry = struct {
         
         if (self.metrics.get(name)) |metric| {
             if (metric.metric_type == .histogram) {
-                return @fieldParentPtr(Histogram, "base", metric);
+                return @fieldParentPtr(Histogram, metric, "base");
             }
         }
         return null;
@@ -314,7 +314,6 @@ pub fn getDefaultRegistry() !*Registry {
     return error.DefaultRegistryNotInitialized;
 }
 
-/// Export metrics in Prometheus text format
 test "metrics export" {
     const allocator = std.testing.allocator;
     var registry = try Registry.init(allocator);

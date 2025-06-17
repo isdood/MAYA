@@ -96,11 +96,19 @@ pub const MockServer = struct {
             message: []const u8,
         ) !void {
             const error_msg = Message{
-                .message_type = .error,
-                .error = .{
-                    .code = code,
-                    .message = message,
+                .msg_type = .error_report,
+                .timestamp = @intToFloat(f64, std.time.milliTimestamp()),
+                .data = .{
+                    .error_report = .{
+                        .error_code = @enumToInt(code),
+                        .error_message = message,
+                        .severity = .err,
+                        .context = "mock server",
+                    },
                 },
+                .priority = 1,
+                .source = "mock-server",
+                .target = "client",
             };
             
             try self.sendMessage(&error_msg);

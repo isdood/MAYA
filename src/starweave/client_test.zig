@@ -11,10 +11,10 @@ const Message = protocol.Message;
 const MessageType = protocol.MessageType;
 const ErrorCode = protocol.ErrorCode;
 
-const client = @import("client.zig");
-const Client = client.StarweaveClient;
-const ClientConfig = client.Config;
-const ClientError = client.Error;
+const starweave_client = @import("client.zig");
+const Client = starweave_client.StarweaveClient;
+const ClientConfig = starweave_client.Config;
+const ClientError = starweave_client.Error;
 
 const mock = @import("mock_server.zig");
 const MockServer = mock.MockServer;
@@ -373,7 +373,7 @@ test "error handling" {
     
     // Test message with invalid type
     const invalid_msg = Message{
-        .message_type = @intToEnum(MessageType, 9999), // Invalid type
+        .message_type = @as(MessageType, @enumFromInt(9999)), // Invalid type
     };
     
     try testing.expectError(ClientError.InvalidMessage, client.sendMessage(&invalid_msg));

@@ -42,7 +42,7 @@ const ConnectionState = enum {
     authenticating,
     ready,
     disconnecting,
-    error,
+    errored,  // Changed from 'error' to 'errored' to avoid keyword conflict
 };
 
 pub const StarweaveClient = struct {
@@ -297,7 +297,7 @@ pub const StarweaveClient = struct {
             self.mutex.lock();
             
             // Wait for connection request or shutdown
-            while (!self.should_stop && self.state != .connecting) {
+            while (!self.should_stop and self.state != .connecting) {
                 self.cond.wait(&self.mutex);
             }
             
@@ -311,7 +311,7 @@ pub const StarweaveClient = struct {
                 if (self.on_error) |callback| {
                     callback(self, err);
                 }
-                self.state = .error;
+                self.state = .errored;
                 self.mutex.unlock();
                 std.time.sleep(1 * time.ns_per_s); // Backoff before retry
                 continue;
