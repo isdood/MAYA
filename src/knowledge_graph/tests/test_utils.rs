@@ -8,6 +8,7 @@ use maya_knowledge_graph::{
     KnowledgeGraph, Node, Edge, Property, PropertyValue,
     storage::{SledStore, Storage}
 };
+use serde_json::Number;
 
 /// Type alias for test graph
 pub type TestGraph = KnowledgeGraph<SledStore>;
@@ -16,7 +17,7 @@ pub type TestGraph = KnowledgeGraph<SledStore>;
 pub fn create_test_node(label: &str) -> Node {
     let mut node = Node::new(label);
     node.properties.push(Property::new("name", PropertyValue::String(format!("Test {}", Uuid::new_v4()))));
-    node.properties.push(Property::new("value", PropertyValue::Number((rand::random::<u32>() % 100) as f64)));
+    node.properties.push(Property::new("value", PropertyValue::Number(Number::from(rand::random::<u32>() % 100))));
     node.created_at = chrono::Utc::now();
     node.updated_at = chrono::Utc::now();
     node
@@ -30,7 +31,7 @@ pub fn create_test_edge(label: &str, source: Uuid, target: Uuid) -> Edge {
         source,
         target,
         properties: vec![
-            Property::new("weight", PropertyValue::Number((rand::random::<f32>() * 10.0).into())),
+            Property::new("weight", PropertyValue::Number(Number::from_f64(rand::random::<f32>() as f64 * 10.0).unwrap())),
         ],
         created_at: chrono::Utc::now(),
     }
