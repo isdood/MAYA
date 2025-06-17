@@ -1,11 +1,68 @@
 //! Tests for the graph operations
 
-use super::test_utils::*;
 use maya_knowledge_graph::{
-    prelude::*,
-    storage::WriteBatchExt,
+    KnowledgeGraph, Node, Edge, Uuid,
+    storage::{SledStore, Storage, WriteBatchExt},
+    error::Result,
+    query::QueryExt,
 };
 use serde_json::json;
+use tempfile::tempdir;
+use std::path::Path;
+
+// Helper function to create a test node
+fn create_test_node(label: &str, name: &str, age: i32) -> Node {
+    Node::new(label)
+        .with_property("name", name.into())
+        .with_property("age", age.into())
+}
+
+// Helper function to create a test edge
+fn create_test_edge(rel_type: &str, from: Uuid, to: Uuid) -> Edge {
+    Edge::new(rel_type, from, to)
+}
+
+// Helper function to assert node equality
+fn assert_nodes_eq(expected: &Node, actual: &Node) {
+    assert_eq!(expected.id, actual.id);
+    assert_eq!(expected.label, actual.label);
+    assert_eq!(expected.properties, actual.properties);
+}
+
+// Helper function to assert edge equality
+fn assert_edges_eq(expected: &Edge, actual: &Edge) {
+    assert_eq!(expected.id, actual.id);
+    assert_eq!(expected.label, actual.label);
+    assert_eq!(expected.from, actual.from);
+    assert_eq!(expected.to, actual.to);
+    assert_eq!(expected.properties, actual.properties);
+}
+
+// Helper function to create a test graph
+fn create_test_graph() -> (KnowledgeGraph<SledStore>, Vec<Node>, Vec<Edge>) {
+    let dir = tempfile::tempdir().unwrap();
+    let graph = KnowledgeGraph::open(dir.path()).unwrap();
+    
+    // Create test nodes
+    let node1 = create_test_node("Person", "Alice", 30);
+    let node2 = create_test_node("Person", "Bob", 25);
+    let node3 = create_test_node("Location", "Office", 50);
+    
+    // Add nodes to graph
+    graph.add_node(node1.clone()).unwrap();
+    graph.add_node(node2.clone()).unwrap();
+    graph.add_node(node3.clone()).unwrap();
+    
+    // Create test edges
+    let edge1 = create_test_edge("WORKS_AT", node1.id, node3.id);
+    let edge2 = create_test_edge("WORKS_AT", node2.id, node3.id);
+    
+    // Add edges to graph
+    graph.add_edge(&edge1).unwrap();
+    graph.add_edge(&edge2).unwrap();
+    
+    (graph, vec![node1, node2, node3], vec![edge1, edge2])
+}
 
 #[test]
 fn test_add_and_retrieve_node() -> Result<()> {
@@ -49,8 +106,8 @@ fn test_find_nodes_by_label() -> Result<()> {
         .execute()?;
     
     // Should be 2 person nodes (from test_utils)
-    assert_eq!(person_nodes.len(), 2);
-    assert!(person_nodes.iter().all(|n| n.label == "Person"));
+    assert_eq!(person_nodes.nodes.len(), 2);
+    assert!(person_nodes.nodes.iter().all(|n| n.label == "Person"));
     
     // Find location nodes
     let location_nodes = graph.query()
@@ -58,8 +115,8 @@ fn test_find_nodes_by_label() -> Result<()> {
         .execute()?;
     
     // Should be 1 location node
-    assert_eq!(location_nodes.len(), 1);
-    assert_eq!(location_nodes[0].label, "Location");
+    assert_eq!(location_nodes.nodes.len(), 1);
+    assert_eq!(location_nodes.nodes[0].label, "Location");
     
     Ok(())
 }
@@ -71,7 +128,7 @@ fn test_query_with_property() -> Result<()> {
     // Add a node with a specific property
     let special_node = Node::new("Special")
         .with_property("unique_key", "special_value".into());
-    graph.add_node(&special_node)?;
+    graph.add_node(special_node.clone())?;
     
     // Query for it
     let results = graph.query()
@@ -79,8 +136,8 @@ fn test_query_with_property() -> Result<()> {
         .execute()?;
     
     // Should find exactly one node
-    assert_eq!(results.len(), 1);
-    assert_eq!(results[0].id, special_node.id);
+    assert_eq!(results.nodes.len(), 1);
+    assert_eq!(results.nodes[0].id, special_node.id);
     
     Ok(())
 }
