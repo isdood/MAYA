@@ -3,11 +3,21 @@
 # Exit on error
 set -e
 
-# Check if running as root
+# Check if running as root, use sudo if not
+SUDO=""
 if [ "$(id -u)" -ne 0 ]; then
-    echo "This script must be run as root"
-    exit 1
+    SUDO="sudo"
+    echo "This script requires root privileges. Using sudo..."
 fi
+
+# Function to run commands with sudo if needed
+run_as_root() {
+    if [ -n "$SUDO" ]; then
+        $SUDO "$@"
+    else
+        "$@"
+    fi
+}
 
 # Get the directory of this script
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -17,33 +27,61 @@ SERVICE_GROUP=${SERVICE_USER}
 VENV_DIR="$PROJECT_DIR/.venv"
 
 # Create necessary directories
-mkdir -p /var/log/maya-learn
-chown ${SERVICE_USER}:${SERVICE_GROUP} /var/log/maya-learn
-chmod 755 /var/log/maya-learn
+run_as_root mkdir -p /var/log/maya-learn
+run_as_root chown ${SERVICE_USER}:${SERVICE_GROUP} /var/log/maya-learn
+run_as_root chmod 755 /var/log/maya-learn
 
-# Ensure virtual environment exists
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating virtual environment..."
-    python -m venv "$VENV_DIR"
-    
-    # Activate virtual environment and install dependencies
-    source "$VENV_DIR/bin/activate"
-    pip install --upgrade pip
-    pip install -r "$PROJECT_DIR/requirements-learn.txt"
-    deactivate
-else
-    echo "Virtual environment already exists at $VENV_DIR"
+# Remove existing virtual environment if it exists
+if [ -d "$VENV_DIR" ]; then
+    echo "Removing existing virtual environment..."
+    rm -rf "$VENV_DIR"
 fi
 
-# Ensure we have the Python path from the virtual environment
-PYTHON_PATH="$VENV_DIR/bin/python"
-if [ ! -f "$PYTHON_PATH" ]; then
-    echo "Error: Python not found in virtual environment at $PYTHON_PATH"
+# Create new virtual environment as current user
+echo "Creating new virtual environment..."
+python3 -m venv --clear --copies "$VENV_DIR"
+
+# Ensure the virtual environment is owned by the current user
+chown -R $USER:$USER "$VENV_DIR"
+
+# Activate virtual environment and install dependencies
+echo "Installing dependencies..."
+source "$VENV_DIR/bin/activate"
+python -m pip install --upgrade pip
+python -m pip install -r "$PROJECT_DIR/requirements-learn.txt"
+deactivate
+
+# Set secure permissions for the virtual environment
+chmod -R u+rwX,go-w "$VENV_DIR"
+chmod -R go-w "$VENV_DIR/bin"
+
+# Ensure scripts directory exists and is executable
+run_as_root chmod +x "$PROJECT_DIR/scripts"/*.sh
+
+# Verify the wrapper script exists
+if [ ! -f "$PROJECT_DIR/scripts/run_maya_learn.sh" ]; then
+    echo "Error: Wrapper script not found at $PROJECT_DIR/scripts/run_maya_learn.sh"
     exit 1
 fi
 
-# Create systemd service file
-cat > /etc/systemd/system/maya-learn.service << EOL
+# Make the wrapper script executable
+run_as_root chmod +x "$PROJECT_DIR/scripts/run_maya_learn.sh"
+
+# Verify the virtual environment exists
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Error: Virtual environment not found at $VENV_DIR"
+    exit 1
+fi
+
+# Create a dedicated directory for logs
+LOG_DIR="/var/log/maya-learn"
+run_as_root mkdir -p "$LOG_DIR"
+run_as_root chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$LOG_DIR"
+run_as_root chmod 755 "$LOG_DIR"
+
+# Create systemd service file with absolute paths
+SERVICE_TEMP=$(mktemp)
+cat > "$SERVICE_TEMP" << EOL
 [Unit]
 Description=MAYA Learning Service
 After=network.target
@@ -53,9 +91,11 @@ Type=simple
 User=${SERVICE_USER}
 Group=${SERVICE_GROUP}
 WorkingDirectory=${PROJECT_DIR}
+Environment="PYTHONUNBUFFERED=1"
 Environment="PYTHONPATH=${PROJECT_DIR}/src"
-ExecStart=${PYTHON_PATH} -m maya_learn.service --config ${PROJECT_DIR}/config/learn.yaml
-Environment=PATH=${VENV_DIR}/bin:${PATH}
+ExecStart=/bin/bash ${PROJECT_DIR}/scripts/run_maya_learn.sh
+StandardOutput=append:${LOG_DIR}/maya-learn.log
+StandardError=append:${LOG_DIR}/maya-learn-error.log
 Restart=always
 RestartSec=10
 
@@ -64,12 +104,6 @@ NoNewPrivileges=true
 ProtectSystem=full
 PrivateTmp=true
 ProtectHome=true
-PrivateDevices=true
-ProtectKernelTunables=true
-ProtectControlGroups=true
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-RestrictNamespaces=true
-MemoryDenyWriteExecute=true
 LockPersonality=true
 RestrictRealtime=true
 RestrictSUIDSGID=true
@@ -85,15 +119,17 @@ MemorySwapMax=100M
 WantedBy=multi-user.target
 EOL
 
-# Set permissions on the service file
-chmod 644 /etc/systemd/system/maya-learn.service
+# Install the service file
+run_as_root cp "$SERVICE_TEMP" /etc/systemd/system/maya-learn.service
+run_as_root chmod 644 /etc/systemd/system/maya-learn.service
+run_as_root systemctl daemon-reload
 
-# Reload systemd to recognize the new service
-systemctl daemon-reload
+# Clean up
+rm -f "$SERVICE_TEMP"
 
 # Enable and start the service
-systemctl enable maya-learn.service
-systemctl start maya-learn.service
+run_as_root systemctl enable maya-learn.service
+run_as_root systemctl restart maya-learn.service
 
 echo "MAYA Learning Service has been installed and started"
 echo "Check status with: systemctl status maya-learn"
