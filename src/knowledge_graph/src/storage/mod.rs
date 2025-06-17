@@ -52,7 +52,7 @@ pub trait WriteBatch: Send + 'static {
 /// Extension trait for batch operations
 pub trait WriteBatchExt: Send + 'static {
     /// The batch type for this storage backend
-    type Batch: WriteBatch;
+    type Batch: WriteBatch + 'static;
     
     /// Create a new batch
     fn batch(&self) -> Self::Batch;
@@ -62,22 +62,27 @@ pub trait WriteBatchExt: Send + 'static {
         let bytes = serialize(value)?;
         let mut batch = self.batch();
         batch.put_serialized(key, &bytes)?;
-        batch.commit()
+        Box::new(batch).commit()
     }
     
     /// Delete a key from the batch
     fn delete_serialized(&self, key: &[u8]) -> Result<()> {
         let mut batch = self.batch();
         batch.delete(key)?;
-        batch.commit()
+        Box::new(batch).commit()
     }
 }
 
-// Implement WriteBatchExt for all types that implement WriteBatch
-impl<T: WriteBatch + ?Sized> WriteBatchExt for T {
-    type Batch = T;
+// Implement WriteBatchExt for any type that implements Storage and has a Batch type that implements WriteBatch
+impl<S> WriteBatchExt for S
+where
+    S: Storage + ?Sized,
+    S::Batch: WriteBatch + 'static,
+{
+    type Batch = S::Batch;
+    
     fn batch(&self) -> Self::Batch {
-        self
+        Storage::batch(self)
     }
 }
 

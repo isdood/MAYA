@@ -66,16 +66,16 @@ mod tests {
         let graph = KnowledgeGraph::with_storage(store);
 
         // Create and add a node
-        let mut node = Node::new("TestNode".into());
-        node.properties.push(Property::new("name", "Test Node"));
+        let mut node = Node::new("TestNode");
+        node.properties.push(Property::new("name", serde_json::json!("Test Node")));
         graph.add_node(node.clone())?;
 
         // Retrieve the node
-        let retrieved = graph.get_node(&node.id)?.unwrap();
+        let retrieved = graph.get_node(node.id)?.unwrap();
         assert_eq!(retrieved.id, node.id);
-        assert_eq!(retrieved.node_type, "TestNode");
+        assert_eq!(retrieved.label, "TestNode");
         assert_eq!(retrieved.properties[0].key, "name");
-        assert_eq!(retrieved.properties[0].value, "Test Node");
+        assert_eq!(retrieved.properties[0].value, serde_json::json!("Test Node"));
 
         Ok(())
     }

@@ -40,8 +40,9 @@ where
 
 impl<'a, S> QueryBuilder<'a, S>
 where
-    S: Storage + WriteBatchExt,
-    S::Batch: WriteBatch + 'static,
+    S: Storage<Batch = <S as WriteBatchExt>::Batch> + WriteBatchExt,
+    <S as Storage>::Batch: WriteBatch + 'static,
+    <S as WriteBatchExt>::Batch: WriteBatch + 'static,
     for<'b> &'b S: 'b,
 {
     /// Create a new query builder
@@ -57,9 +58,9 @@ where
     }
 
     /// Filter nodes by label
-    pub fn with_node_type(mut self, node_type: &'a str) -> Self {
-        let node_type = node_type.to_string();
-        self.node_filters.push(Box::new(move |node: &Node| node.label == node_type));
+    pub fn with_label(mut self, label: &'a str) -> Self {
+        let label = label.to_string();
+        self.node_filters.push(Box::new(move |node: &Node| node.label == label));
         self
     }
 
@@ -121,8 +122,9 @@ where
 /// Extension trait for KnowledgeGraph to support fluent queries
 pub trait QueryExt<S>
 where
-    S: Storage + WriteBatchExt,
-    S::Batch: WriteBatch + 'static,
+    S: Storage<Batch = <S as WriteBatchExt>::Batch> + WriteBatchExt,
+    <S as Storage>::Batch: WriteBatch + 'static,
+    <S as WriteBatchExt>::Batch: WriteBatch + 'static,
     for<'b> &'b S: 'b,
 {
     /// Start building a query
@@ -131,8 +133,9 @@ where
 
 impl<S> QueryExt<S> for KnowledgeGraph<S>
 where
-    S: Storage + WriteBatchExt,
-    S::Batch: WriteBatch + 'static,
+    S: Storage<Batch = <S as WriteBatchExt>::Batch> + WriteBatchExt,
+    <S as Storage>::Batch: WriteBatch + 'static,
+    <S as WriteBatchExt>::Batch: WriteBatch + 'static,
     for<'b> &'b S: 'b,
 {
     fn query(&self) -> QueryBuilder<S> {
@@ -167,7 +170,7 @@ mod tests {
             .execute()?;
             
         assert_eq!(result.nodes.len(), 2);
-        assert!(result.nodes.iter().all(|n| n.node_type == "type1"));
+        assert!(result.nodes.iter().all(|n| n.label == "type1"));
         
         // Test with limit and offset
         let result = QueryBuilder::new(&graph)
@@ -177,7 +180,7 @@ mod tests {
             .execute()?;
             
         assert_eq!(result.nodes.len(), 1);
-        assert_eq!(result.nodes[0].node_type, "type1");
+        assert_eq!(result.nodes[0].label, "type1");
         
         Ok(())
     }

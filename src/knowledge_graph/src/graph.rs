@@ -48,10 +48,11 @@ where
         }
         
         // Add node to storage using batch for atomicity
-        let mut batch = self.storage.batch();
+        let batch = <S as Storage>::batch(&self.storage);
         let value = serde_json::to_vec(&node)
             .map_err(KnowledgeGraphError::SerializationError)?;
         
+        let mut batch = batch;
         batch.put_serialized(&key, &value)?;
         Box::new(batch).commit()
     }
@@ -93,11 +94,12 @@ where
         }
         
         // Add edge to storage using batch for atomicity
-        let mut batch = self.storage.batch();
+        let batch = <S as Storage>::batch(&self.storage);
         let key = format!("edge:{}:{}", edge.source, edge.id).into_bytes();
         let value = serde_json::to_vec(edge)
             .map_err(KnowledgeGraphError::SerializationError)?;
             
+        let mut batch = batch;
         batch.put_serialized(&key, &value)?;
         
         // Add edge to source node's outgoing edges
@@ -118,7 +120,8 @@ where
             
         batch.put_serialized(&target_edges_key, &target_edges_value)?;
         
-        batch.commit()
+        // Commit the batch
+        Box::new(batch).commit()
     }
 
     /// Get an edge by ID
@@ -145,7 +148,7 @@ where
         Ok(nodes)
     }
 
-    /// Execute a transaction
+    /// Create a new transaction
     pub fn transaction<F, T>(&self, f: F) -> Result<T>
     where
         F: FnOnce(&mut Transaction<S>) -> Result<T>,
@@ -161,7 +164,7 @@ where
 pub struct Transaction<'a, S> 
 where
     S: Storage + WriteBatchExt,
-    S::Batch: WriteBatch,
+    S::Batch: WriteBatch + 'static,
 {
     storage: &'a S,
     batch: Option<Box<dyn WriteBatch>>,
@@ -170,11 +173,13 @@ where
 impl<'a, S> Transaction<'a, S> 
 where
     S: Storage + WriteBatchExt,
+    S::Batch: WriteBatch + 'static,
 {
     fn new(storage: &'a S) -> Self {
+        let batch = <S as Storage>::batch(storage);
         Self {
             storage,
-            batch: Some(Box::new(storage.batch()) as Box<dyn WriteBatch>),
+            batch: Some(Box::new(batch) as Box<dyn WriteBatch>),
         }
     }
 

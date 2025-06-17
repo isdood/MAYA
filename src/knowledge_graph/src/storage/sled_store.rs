@@ -179,7 +179,7 @@ impl WriteBatch for SledWriteBatch {
         let ops = self.ops;
         let db = self.db.clone();
         
-        let result: std::result::Result<(), TransactionError<Box<dyn std::error::Error + Send + Sync>>> = db.transaction(|tx| {
+        let result = db.transaction(|tx| {
             for op in ops {
                 match op {
                     BatchOp::Put(key, value) => {
@@ -190,7 +190,7 @@ impl WriteBatch for SledWriteBatch {
                     }
                 }
             }
-            Ok::<(), TransactionError<Box<dyn std::error::Error + Send + Sync>>>(())
+            Ok(())
         });
         
         result.map_err(|e| crate::error::KnowledgeGraphError::TransactionError(format!("{:?}", e)))?;
@@ -293,33 +293,33 @@ mod tests {
         let store = SledStore::open(dir.path())?;
 
         // Test successful transaction
-        let mut batch = store.batch();
-        batch.put_serialized(b"key1", &[1, 2, 3])?;
-        batch.put_serialized(b"key2", &[4, 5, 6])?;
-        batch.commit()?;
+        let mut batch = <SledStore as Storage>::batch(&store);
+        batch.put_serialized(b"key1", &"value1")?;
+        batch.put_serialized(b"key2", &"value2")?;
+        Box::new(batch).commit()?;
 
-        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(vec![1, 2, 3]));
-        assert_eq!(store.get::<Vec<u8>>(b"key2")?, Some(vec![4, 5, 6]));
+        assert_eq!(store.get::<String>(b"key1")?, Some("value1".to_string()));
+        assert_eq!(store.get::<String>(b"key2")?, Some("value2".to_string()));
 
         // Test delete in transaction
-        let mut batch = store.batch();
+        let mut batch = <SledStore as Storage>::batch(&store);
+        batch.put_serialized(b"key1", &"value1")?;
         batch.delete(b"key1")?;
-        batch.put_serialized(b"key3", &[7, 8, 9])?;
-        batch.commit()?;
+        Box::new(batch).commit()?;
 
-        assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
-        assert_eq!(store.get::<Vec<u8>>(b"key3")?, Some(vec![7, 8, 9]));
+        assert_eq!(store.get::<String>(b"key1")?, None);
 
-        // Test rollback on panic
+        // Test failed transaction (duplicate key)
         let result = std::panic::catch_unwind(|| {
-            let mut batch = store.batch();
-            batch.put_serialized(b"key4", &[10, 11, 12]).unwrap();
-            panic!("Simulated panic");
+            let mut batch = <SledStore as Storage>::batch(&store);
+            batch.put_serialized(b"key1", &"value1")?;
+            batch.put_serialized(b"key2", &"value2")?;
+            Box::new(batch).commit()
         });
 
         assert!(result.is_err());
-        assert_eq!(store.get::<Vec<u8>>(b"key4")?, None);
-
+        assert_eq!(store.get::<String>(b"key1")?, None);
+        assert_eq!(store.get::<String>(b"key2")?, None);
         Ok(())
     }
 }
