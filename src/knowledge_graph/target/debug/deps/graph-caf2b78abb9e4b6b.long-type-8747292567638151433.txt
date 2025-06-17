@@ -1,0 +1,2 @@
+serde_json::error::Error
+serde_json::error::Error: From<&str>
