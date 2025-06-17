@@ -4,28 +4,22 @@ use std::path::Path;
 use tempfile::TempDir;
 use uuid::Uuid;
 
-use crate::{
-    prelude::*,
-    models::{Node, Edge, Property},
-    storage::Storage,
+use maya_knowledge_graph::{
+    KnowledgeGraph, Node, Edge, Property, PropertyValue,
+    storage::{SledStore, Storage}
 };
 
 /// Type alias for test graph
-pub type TestGraph = KnowledgeGraph<sled::Db>;
+pub type TestGraph = KnowledgeGraph<SledStore>;
 
 /// Create a test node with random properties
 pub fn create_test_node(label: &str) -> Node {
-    let id = Uuid::new_v4();
-    Node {
-        id,
-        label: label.to_string(),
-        properties: vec![
-            Property::new("name", format!("Test {}", Uuid::new_v4()).into()),
-            Property::new("value", (rand::random::<u32>() % 100).into()),
-        ],
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-    }
+    let mut node = Node::new(label);
+    node.properties.push(Property::new("name", PropertyValue::String(format!("Test {}", Uuid::new_v4()))));
+    node.properties.push(Property::new("value", PropertyValue::Number((rand::random::<u32>() % 100).into())));
+    node.created_at = chrono::Utc::now();
+    node.updated_at = chrono::Utc::now();
+    node
 }
 
 /// Create a test edge
@@ -53,9 +47,9 @@ pub fn create_test_graph() -> (TestGraph, Vec<Node>, Vec<Edge>) {
     let node3 = create_test_node("Location");
     
     // Add nodes to graph
-    graph.add_node(&node1).expect("Failed to add node1");
-    graph.add_node(&node2).expect("Failed to add node2");
-    graph.add_node(&node3).expect("Failed to add node3");
+    graph.add_node(node1).expect("Failed to add node1");
+    graph.add_node(node2).expect("Failed to add node2");
+    graph.add_node(node3).expect("Failed to add node3");
     
     // Create some test edges
     let edge1 = create_test_edge("KNOWS", node1.id, node2.id);

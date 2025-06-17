@@ -4,33 +4,48 @@ use maya_knowledge_graph::{
     storage::{SledStore, Storage, WriteBatchExt},
     error::Result,
 };
-use serde_json::json;
 use tempfile::tempdir;
-use std::path::Path;
+use std::str;
+use std::convert::TryInto;
 
 #[test]
-fn test_put_and_get() -> Result<()> {
-    let dir = tempfile::tempdir()?;
+fn test_sled_store() -> Result<()> {
+    let dir = tempdir()?;
     let store = SledStore::open(dir.path())?;
-
-    // Test basic put and get
-    let value1 = serde_json::to_vec(&"value1")?;
-    store.put_serialized(b"key1", &value1)?;
     
-    let stored: Option<String> = store.get(b"key1")?;
-    assert_eq!(stored, Some("value1".to_string()));
-
-    // Test overwrite
-    let new_value = serde_json::to_vec(&"new_value")?;
-    store.put_serialized(b"key1", &new_value)?;
+    // Test basic operations
+    store.put(b"key1", b"value1")?;
+    assert_eq!(store.get(b"key1")?, Some(b"value1".to_vec()));
     
-    let stored: Option<String> = store.get(b"key1")?;
-    assert_eq!(stored, Some("new_value".to_string()));
-
     // Test non-existent key
-    let missing: Option<String> = store.get(b"nonexistent")?;
-    assert_eq!(missing, None);
-
+    assert_eq!(store.get(b"nonexistent")?, None);
+    
+    // Test delete
+    store.delete(b"key1")?;
+    assert_eq!(store.get(b"key1")?, None);
+    
+    // Test batch operations
+    let mut batch = store.batch();
+    batch.put_serialized(b"key2", b"value2")?;
+    batch.put_serialized(b"key3", b"value3")?;
+    batch.commit()?;
+    
+    assert_eq!(store.get(b"key2")?, Some(b"value2".to_vec()));
+    assert_eq!(store.get(b"key3")?, Some(b"value3".to_vec()));
+    
+    // Test scan
+    let mut results = Vec::new();
+    store.scan(|k, v| {
+        results.push((k.to_vec(), v.to_vec()));
+        Ok(())
+    })?;
+    
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0].0, b"key2");
+    assert_eq!(results[0].1, b"value2");
+    assert_eq!(results[1].0, b"key3");
+    assert_eq!(results[1].1, b"value3");
+    
     Ok(())
 }
 

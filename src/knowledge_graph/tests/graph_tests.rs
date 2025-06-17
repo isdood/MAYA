@@ -1,21 +1,20 @@
 //! Tests for the graph operations
 
 use maya_knowledge_graph::{
-    KnowledgeGraph, Node, Edge, Uuid, Property,
-    storage::{SledStore, WriteBatchExt},
+    KnowledgeGraph, Node, Edge, Property, PropertyValue,
+    storage::{SledStore, Storage, WriteBatchExt},
     error::Result,
     query::QueryExt,
 };
 use tempfile::tempdir;
-use std::str::FromStr;
-
-use maya_knowledge_graph::PropertyValue;
+use uuid::Uuid;
+use serde_json::Error as JsonError;
 
 // Helper function to create a test node
 fn create_test_node(label: &str, name: &str, age: i32) -> Node {
     let mut node = Node::new(label);
-    node.properties.push(Property::new("name", name.into()));
-    node.properties.push(Property::new("age", age.into()));
+    node.properties.push(Property::new("name", PropertyValue::String(name.to_string())));
+    node.properties.push(Property::new("age", PropertyValue::Number(age.into())));
     node
 }
 
@@ -171,7 +170,7 @@ fn test_transaction() -> Result<()> {
     let result = graph.transaction(|tx| {
         let bad_node = create_test_node("Should not exist", "Bad Node", 0);
         tx.add_node(&bad_node)?;
-        Err(anyhow::anyhow!("Test error"))
+        Err(JsonError::custom("Test error"))
     });
     
     assert!(result.is_err());
@@ -193,7 +192,7 @@ fn test_pagination() -> Result<()> {
     // Add multiple test nodes
     for i in 0..10 {
         let mut node = Node::new("PaginationTest");
-        node.properties.push(Property::new("index", i.into()));
+        node.properties.push(Property::new("index", PropertyValue::Number(i.into())));
         graph.add_node(node)?;
     }
     
