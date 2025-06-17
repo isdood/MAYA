@@ -86,25 +86,26 @@ fn test_iter_prefix() -> Result<()> {
 
 #[test]
 fn test_transaction() -> Result<()> {
-    use maya_knowledge_graph::storage::WriteBatchExt;
-    
     let dir = tempdir()?;
-    let store = Storage::open(dir.path())?;
+    let store = SledStore::open(dir.path())?;
     
     // Create a batch of operations
     let mut batch = store.batch();
     
     // Add some operations
-    batch.put(b"key1", &"value1")?;
-    batch.put(b"key2", &"value2")?;
+    batch.put_serialized(b"key1", &serde_json::to_vec(&"value1")?)?;
+    batch.put_serialized(b"key2", &serde_json::to_vec(&"value2")?)?;
     batch.delete(b"key1")?;
     
     // Commit the batch
     batch.commit()?;
     
     // Verify the results
-    assert!(store.get::<String>(b"key1")?.is_none());
-    assert_eq!(store.get::<String>(b"key2")?, Some("\"value2\"".to_string()));
+    let val1: Option<String> = store.get(b"key1")?;
+    let val2: Option<String> = store.get(b"key2")?;
+    
+    assert!(val1.is_none());
+    assert_eq!(val2, Some("value2".to_string()));
     
     Ok(())
 }
