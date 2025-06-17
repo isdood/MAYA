@@ -21,6 +21,27 @@ mkdir -p /var/log/maya-learn
 chown ${SERVICE_USER}:${SERVICE_GROUP} /var/log/maya-learn
 chmod 755 /var/log/maya-learn
 
+# Ensure virtual environment exists
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Creating virtual environment..."
+    python -m venv "$VENV_DIR"
+    
+    # Activate virtual environment and install dependencies
+    source "$VENV_DIR/bin/activate"
+    pip install --upgrade pip
+    pip install -r "$PROJECT_DIR/requirements-learn.txt"
+    deactivate
+else
+    echo "Virtual environment already exists at $VENV_DIR"
+fi
+
+# Ensure we have the Python path from the virtual environment
+PYTHON_PATH="$VENV_DIR/bin/python"
+if [ ! -f "$PYTHON_PATH" ]; then
+    echo "Error: Python not found in virtual environment at $PYTHON_PATH"
+    exit 1
+fi
+
 # Create systemd service file
 cat > /etc/systemd/system/maya-learn.service << EOL
 [Unit]
@@ -32,8 +53,9 @@ Type=simple
 User=${SERVICE_USER}
 Group=${SERVICE_GROUP}
 WorkingDirectory=${PROJECT_DIR}
-Environment="PATH=${VENV_DIR}/bin"
-ExecStart=${VENV_DIR}/bin/python -m maya_learn.service --config ${PROJECT_DIR}/config/learn.yaml
+Environment="PYTHONPATH=${PROJECT_DIR}/src"
+ExecStart=${PYTHON_PATH} -m maya_learn.service --config ${PROJECT_DIR}/config/learn.yaml
+Environment=PATH=${VENV_DIR}/bin:${PATH}
 Restart=always
 RestartSec=10
 
