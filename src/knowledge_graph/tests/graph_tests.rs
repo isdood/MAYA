@@ -1,7 +1,10 @@
 //! Tests for the graph operations
 
 use super::test_utils::*;
-use maya_knowledge_graph::prelude::*;
+use maya_knowledge_graph::{
+    prelude::*,
+    storage::WriteBatchExt,
+};
 use serde_json::json;
 
 #[test]

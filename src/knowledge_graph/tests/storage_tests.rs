@@ -3,45 +3,55 @@
 use super::test_utils::*;
 use maya_knowledge_graph::{
     prelude::*,
-    storage::RocksDBStore,
+    storage::{SledStore, WriteBatchExt},
 };
 use serde_json::json;
 use tempfile::tempdir;
 
 #[test]
 fn test_put_and_get() -> Result<()> {
-    let dir = tempdir()?;
-    let store = RocksDBStore::open(dir.path())?;
-    
+    let dir = tempfile::tempdir()?;
+    let store = SledStore::open(dir.path())?;
+
     // Test basic put and get
-    let key = b"test_key";
-    let value = json!({ "name": "test", "value": 42 });
+    let value1 = serde_json::to_vec(&"value1")?;
+    store.put_serialized(b"key1", &value1)?;
     
-    store.put(key, &value)?;
-    let retrieved: serde_json::Value = store.get(key)?.expect("Value not found");
+    let stored: Option<String> = store.get(b"key1")?;
+    assert_eq!(stored, Some("value1".to_string()));
+
+    // Test overwrite
+    let new_value = serde_json::to_vec(&"new_value")?;
+    store.put_serialized(b"key1", &new_value)?;
     
-    assert_eq!(retrieved, value);
+    let stored: Option<String> = store.get(b"key1")?;
+    assert_eq!(stored, Some("new_value".to_string()));
+
+    // Test non-existent key
+    let missing: Option<String> = store.get(b"nonexistent")?;
+    assert_eq!(missing, None);
+
     Ok(())
 }
 
 #[test]
 fn test_delete() -> Result<()> {
     let dir = tempdir()?;
-    let store = RocksDBStore::open(dir.path())?;
+    let store = SledStore::open(dir.path())?;
     
     // Add a value
     let key = b"test_key";
-    store.put(key, &json!("test_value"))?;
+    let value = serde_json::to_vec(&"test_value")?;
     
-    // Verify it exists
+    store.put_serialized(key, &value)?;
     assert!(store.exists(key)?);
     
-    // Delete it
+    // Delete the value
     store.delete(key)?;
-    
-    // Verify it's gone
     assert!(!store.exists(key)?);
-    assert!(store.get::<String>(key)?.is_none());
+    
+    // Deleting non-existent key should not error
+    store.delete(key)?;
     
     Ok(())
 }
@@ -49,40 +59,37 @@ fn test_delete() -> Result<()> {
 #[test]
 fn test_iter_prefix() -> Result<()> {
     let dir = tempdir()?;
-    let store = RocksDBStore::open(dir.path())?;
+    let store = SledStore::open(dir.path())?;
     
-    // Add some test data
-    let data = [
-        (b"prefix:1", "value1"),
-        (b"prefix:2", "value2"),
-        (b"other:1", "value3"),
-    ];
-    
-    for (key, value) in &data {
-        store.put(key, value)?;
-    }
+    // Add values with different prefixes
+    store.put_serialized(b"prefix:1", &serde_json::to_vec(&"value1")?)?;
+    store.put_serialized(b"prefix:2", &serde_json::to_vec(&"value2")?)?;
+    store.put_serialized(b"other:1", &serde_json::to_vec(&"value3")?)?;
     
     // Test prefix iteration
-    let prefix = b"prefix:";
-    let mut results: Vec<_> = store.iter_prefix(prefix)
-        .map(|(k, v)| (k, String::from_utf8_lossy(&v).into_owned()))
-        .collect();
+    let mut prefixed = Vec::new();
+    for result in store.iter_prefix(b"prefix:") {
+        let (key, value) = result?;
+        let key = String::from_utf8(key.to_vec()).unwrap();
+        let value: String = serde_json::from_slice(&value)?;
+        prefixed.push((key, value));
+    }
     
-    // Sort for consistent ordering
-    results.sort_by_key(|(k, _)| k.clone());
-    
-    // Verify results
-    assert_eq!(results.len(), 2);
-    assert_eq!(results[0], (b"prefix:1".to_vec(), "\"value1\"".to_string()));
-    assert_eq!(results[1], (b"prefix:2".to_vec(), "\"value2\"".to_string()));
+    prefixed.sort();
+    assert_eq!(prefixed, vec![
+        ("prefix:1".to_string(), "value1".to_string()),
+        ("prefix:2".to_string(), "value2".to_string())
+    ]);
     
     Ok(())
 }
 
 #[test]
 fn test_transaction() -> Result<()> {
+    use maya_knowledge_graph::storage::WriteBatchExt;
+    
     let dir = tempdir()?;
-    let store = RocksDBStore::open(dir.path())?;
+    let store = Storage::open(dir.path())?;
     
     // Create a batch of operations
     let mut batch = store.batch();

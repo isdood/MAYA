@@ -3,6 +3,7 @@
 //! Provides a fluent API for querying the knowledge graph.
 
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use uuid::Uuid;
 use serde_json::Value;
 
@@ -20,6 +21,7 @@ pub struct QueryBuilder<'a, S: Storage> {
     edge_filters: Vec<Box<dyn Fn(&Edge) -> bool + 'static>>,
     limit: Option<usize>,
     offset: usize,
+    _marker: PhantomData<S>,
 }
 
 impl<'a, S: Storage> QueryBuilder<'a, S> {
@@ -31,6 +33,7 @@ impl<'a, S: Storage> QueryBuilder<'a, S> {
             edge_filters: Vec::new(),
             limit: None,
             offset: 0,
+            _marker: PhantomData,
         }
     }
 
@@ -62,30 +65,29 @@ impl<'a, S: Storage> QueryBuilder<'a, S> {
     }
 
     /// Execute the query and return matching nodes
-    pub fn execute(&self) -> Result<Vec<Node>> {
-        // In a real implementation, this would use indices for efficient querying
-        // For now, we'll do a full scan (not efficient for large graphs)
+    pub fn execute(self) -> Result<Vec<Node>> {
         let prefix = b"node:";
         let mut results = Vec::new();
         
-        for (_, value) in self.graph.storage.iter_prefix(prefix) {
-            if let Ok(node) = serde_json::from_slice::<Node>(&value) {
-                if self.node_filters.iter().all(|f| f(&node)) {
-                    results.push(node);
-                }
-            }
-            
-            // Apply limit if set
-            if let Some(limit) = self.limit {
-                if results.len() >= limit + self.offset {
-                    break;
+        // Get an iterator over all nodes
+        let node_iter = self.graph.get_nodes()?;
+        
+        for node in node_iter {
+            if self.node_filters.iter().all(|f| f(&node)) {
+                results.push(node);
+                
+                // Apply limit if set
+                if let Some(limit) = self.limit {
+                    if results.len() >= limit {
+                        break;
+                    }
                 }
             }
         }
         
-        // Apply offset and limit
+        // Apply offset
         let start = std::cmp::min(self.offset, results.len());
-        let end = self.limit.map_or(results.len(), |l| std::cmp::min(start + l, results.len()));
+        let end = std::cmp::min(start + self.limit.unwrap_or(usize::MAX), results.len());
         
         Ok(results.into_iter().skip(start).take(end - start).collect())
     }

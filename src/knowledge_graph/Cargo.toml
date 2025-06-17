@@ -7,15 +7,16 @@ description = "Knowledge graph implementation for MAYA"
 license = "MIT"
 
 [dependencies]
-rocksdb = { version = "0.21", features = ["lz4"] }
+sled = { version = "0.34.7", features = ["compression"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 thiserror = "1.0"
-uuid = { version = "1.4", features = ["v4", "serde", "v7"] }
-chrono = { version = "0.4", features = ["serde", "clock"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 log = "0.4"
-rand = "0.8"
+pretty_assertions = "1.0"
 tempfile = { version = "3.3", optional = true }
+rand = "0.8"
 
 [dev-dependencies]
 serial_test = "2.0"

@@ -9,7 +9,7 @@ use log::{info, error};
 use crate::{
     error::{Result, KnowledgeGraphError},
     models::{Node, Edge, Property},
-    storage::{Storage, RocksDBStore},
+    storage::Storage,
 };
 
 /// Main knowledge graph structure
@@ -17,39 +17,64 @@ pub struct KnowledgeGraph<S: Storage> {
     storage: S,
 }
 
-impl KnowledgeGraph<RocksDBStore> {
+impl<S: Storage> KnowledgeGraph<S> {
     /// Create or open a knowledge graph at the given path
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let storage = RocksDBStore::open(path)?;
+        let storage = S::open(path)?;
         info!("Opened knowledge graph database");
         Ok(Self { storage })
     }
-}
-
-impl<S: Storage> KnowledgeGraph<S> {
+    
     /// Create a new knowledge graph with a custom storage backend
     pub fn with_storage(storage: S) -> Self {
         Self { storage }
     }
 
     /// Add a node to the graph
-    pub fn add_node(&self, node: &Node) -> Result<()> {
-        let node_key = node_key(node.id);
-        self.storage.put(&node_key, node)?;
-        info!("Added node: {} ({})", node.id, node.label);
-        Ok(())
+    pub fn add_node(&self, node: Node) -> Result<()> {
+        let node_key = format!("node:{}", node.id).into_bytes();
+        
+        // Check if node already exists
+        if self.storage.exists(&node_key)? {
+            return Err(KnowledgeGraphError::DuplicateNode(node.id.to_string()));
+        }
+        
+        // Store node
+        let mut batch = self.storage.batch();
+        let serialized = serde_json::to_vec(&node)?;
+        batch.put_serialized(&node_key, &serialized)?;
+        
+        // Add to indexes
+        // TODO: Add indexing
+        
+        batch.commit()
     }
 
     /// Get a node by ID
     pub fn get_node(&self, id: Uuid) -> Result<Option<Node>> {
-        let key = node_key(id);
+        let key = format!("node:{}", id).into_bytes();
         self.storage.get(&key)
+    }
+    
+    /// Get all nodes in the graph
+    pub fn get_nodes(&self) -> Result<Vec<Node>> {
+        let prefix = b"node:";
+        let mut nodes = Vec::new();
+        
+        for result in self.storage.iter_prefix(prefix) {
+            let (_, value) = result?;
+            if let Ok(node) = serde_json::from_slice::<Node>(&value) {
+                nodes.push(node);
+            }
+        }
+        
+        Ok(nodes)
     }
 
     /// Add an edge between two nodes
     pub fn add_edge(&self, edge: &Edge) -> Result<()> {
         // Verify nodes exist
-        if !self.storage.exists(&node_key(edge.source))? {
+        if !self.storage.exists(&format!("node:{}", edge.source).into_bytes())? {
             return Err(KnowledgeGraphError::NodeNotFound(edge.source.to_string()));
         }
         if !self.storage.exists(&node_key(edge.target))? {

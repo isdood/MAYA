@@ -1,6 +1,9 @@
 //! Integration tests for the knowledge graph
 
-use maya_knowledge_graph::prelude::*;
+use maya_knowledge_graph::{
+    prelude::*,
+    storage::WriteBatchExt,
+};
 use serde_json::json;
 use tempfile::tempdir;
 

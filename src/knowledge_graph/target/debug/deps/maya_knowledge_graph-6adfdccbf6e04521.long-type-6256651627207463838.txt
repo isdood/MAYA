@@ -1,0 +1,5 @@
+error::KnowledgeGraphError
+std::result::Result<sled_store::SledStore, error::KnowledgeGraphError>
+std::result::Result<std::option::Option<T>, error::KnowledgeGraphError>
+std::result::Result<(), error::KnowledgeGraphError>
+std::result::Result<bool, error::KnowledgeGraphError>

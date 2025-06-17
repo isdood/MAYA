@@ -1,16 +1,20 @@
 //! Storage module for the knowledge graph
 //! 
-//! Provides a key-value storage abstraction using RocksDB with JSON serialization.
+//! Provides a key-value storage abstraction using Sled with JSON serialization.
 
-mod rocksdb_store;
+mod sled_store;
 
-pub use rocksdb_store::RocksDBStore;
+pub use sled_store::SledStore;
 
 use serde::{Serialize, de::DeserializeOwned};
+use std::path::Path;
 use crate::error::Result;
 
 /// Trait defining the storage operations for the knowledge graph
 pub trait Storage: Send + Sync + 'static {
+    /// Create or open a database at the given path
+    fn open<P: AsRef<Path>>(path: P) -> Result<Self> where Self: Sized;
+    
     /// Get a value by key
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>>;
     
@@ -31,9 +35,9 @@ pub trait Storage: Send + Sync + 'static {
 }
 
 /// Trait for batch operations
-pub trait WriteBatch {
-    /// Add a put operation to the batch
-    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()>;
+pub trait WriteBatch: Send + 'static {
+    /// Add a put operation to the batch with pre-serialized value
+    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
     
     /// Add a delete operation to the batch
     fn delete(&mut self, key: &[u8]) -> Result<()>;
@@ -42,12 +46,25 @@ pub trait WriteBatch {
     fn commit(self: Box<Self>) -> Result<()>;
 }
 
+/// Helper trait for working with WriteBatch
+trait WriteBatchExt {
+    /// Add a put operation to the batch with a serializable value
+    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()>;
+}
+
+impl<T: WriteBatch> WriteBatchExt for T {
+    fn put<V: Serialize>(&mut self, key: &[u8], value: &V) -> Result<()> {
+        let bytes = serialize(value)?;
+        self.put_serialized(key, &bytes)
+    }
+}
+
 /// Serialize a value to JSON bytes
-fn serialize<T: Serialize>(value: &T) -> Result<Vec<u8>> {
+pub(crate) fn serialize<T: Serialize>(value: &T) -> Result<Vec<u8>> {
     serde_json::to_vec(value).map_err(Into::into)
 }
 
 /// Deserialize a value from JSON bytes
-fn deserialize<T: DeserializeOwned>(bytes: &[u8]) -> Result<T> {
+pub(crate) fn deserialize<T: DeserializeOwned>(bytes: &[u8]) -> Result<T> {
     serde_json::from_slice(bytes).map_err(Into::into)
 }

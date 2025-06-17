@@ -1,0 +1,2 @@
+error::KnowledgeGraphError
+std::result::Result<(), error::KnowledgeGraphError>

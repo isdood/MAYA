@@ -24,7 +24,7 @@ pub use error::{Result, KnowledgeGraphError};
 pub use graph::KnowledgeGraph;
 pub use models::*;
 pub use query::QueryExt;
-pub use storage::RocksDBStore as Storage;
+pub use storage::SledStore as Storage;
 
 /// Prelude module for convenient imports
 pub mod prelude {

@@ -7,7 +7,11 @@ use uuid::Uuid;
 use crate::{
     prelude::*,
     models::{Node, Edge, Property},
+    storage::Storage,
 };
+
+/// Type alias for test graph
+pub type TestGraph = KnowledgeGraph<sled::Db>;
 
 /// Create a test node with random properties
 pub fn create_test_node(label: &str) -> Node {
@@ -39,7 +43,7 @@ pub fn create_test_edge(label: &str, source: Uuid, target: Uuid) -> Edge {
 }
 
 /// Create a test graph with sample data
-pub fn create_test_graph() -> (KnowledgeGraph<Storage>, Vec<Node>, Vec<Edge>) {
+pub fn create_test_graph() -> (TestGraph, Vec<Node>, Vec<Edge>) {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let graph = KnowledgeGraph::open(temp_dir.path()).expect("Failed to create graph");
     
