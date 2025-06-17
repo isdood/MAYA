@@ -1,10 +1,11 @@
 //! Tests for the storage module
 
 use maya_knowledge_graph::{
-    storage::{SledStore, Storage, WriteBatchExt, WriteBatch},
+    storage::{SledStore, Storage, WriteBatch, WriteBatchExt},
     error::Result,
 };
 use tempfile::tempdir;
+use serde::de::DeserializeOwned;
 
 #[test]
 fn test_sled_store() -> Result<()> {
@@ -13,16 +14,22 @@ fn test_sled_store() -> Result<()> {
     
     // Test basic operations
     store.put(b"key1", b"value1")?;
-    assert_eq!(store.get(b"key1")?, Some(b"value1".to_vec()));
+    let val1: Option<Vec<u8>> = store.get(b"key1")?;
+    assert_eq!(val1, Some(b"value1".to_vec()));
     
-    // Test non-existent key
-    assert_eq!(store.get(b"nonexistent")?, None);
+    store.delete(b"key1")?;
+    let val1: Option<Vec<u8>> = store.get(b"key1")?;
+    assert_eq!(val1, None);
     
     // Test delete
     store.delete(b"key1")?;
     assert_eq!(store.get(b"key1")?, None);
     
+    // Test non-existent key
+    assert_eq!(store.get(b"nonexistent")?, None);
+    
     // Test batch operations
+    // Create a batch and add some operations
     let mut batch = <SledStore as WriteBatchExt>::batch(&store);
     batch.put_serialized(b"batch1", b"value1")?;
     batch.put_serialized(b"batch2", b"value2")?;
@@ -32,11 +39,11 @@ fn test_sled_store() -> Result<()> {
     assert_eq!(store.get(b"batch2")?, Some(b"value2".to_vec()));
     
     // Test get for each key
-    let val1 = store.get::<Vec<u8>>(b"batch1")?;
-    let val2 = store.get::<Vec<u8>>(b"batch2")?;
+    let val1 = store.get(b"batch1")?;
+    let val2 = store.get(b"batch2")?;
     
+    assert_eq!(val1, Some(b"value1".to_vec()));
     assert_eq!(val2, Some(b"value2".to_vec()));
-    assert_eq!(val3, Some(b"value3".to_vec()));
     
     Ok(())
 }
@@ -85,12 +92,12 @@ fn test_iter_prefix() -> Result<()> {
     
     // Get values one by one since we can't iterate directly
     if let Some(value1) = store.get::<Vec<u8>>(b"prefix:1")? {
-        let value_str: String = serde_json::from_slice(&value1)?;
+        let value_str = String::from_utf8_lossy(&value1).into_owned();
         prefixed.push(("prefix:1".to_string(), value_str));
     }
     
     if let Some(value2) = store.get::<Vec<u8>>(b"prefix:2")? {
-        let value_str: String = serde_json::from_slice(&value2)?;
+        let value_str = String::from_utf8_lossy(&value2).into_owned();
         prefixed.push(("prefix:2".to_string(), value_str));
     }
     

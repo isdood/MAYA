@@ -1,11 +1,13 @@
 //! Integration tests for the knowledge graph
 
 use maya_knowledge_graph::{
-    storage::{SledStore, Storage, WriteBatchExt},
+    KnowledgeGraph, Node, Edge, Property, PropertyValue,
+    storage::SledStore,
+    error::KnowledgeGraphError,
     query::QueryExt,
-    KnowledgeGraph, Node, Edge, Property, PropertyValue
 };
 use tempfile::tempdir;
+use std::error::Error;
 use uuid::Uuid;
 use serde_json::Error as JsonError;
 
@@ -24,7 +26,7 @@ fn create_location_node(name: &str, capacity: i32) -> Node {
 }
 
 #[test]
-fn test_end_to_end_workflow() -> Result<()> {
+fn test_end_to_end_workflow() -> Result<(), Box<dyn Error>> {
     // Create a test graph with explicit type
     let dir = tempdir()?;
     let graph: KnowledgeGraph<SledStore> = KnowledgeGraph::open(dir.path())?;
@@ -110,7 +112,7 @@ fn test_end_to_end_workflow() -> Result<()> {
 }
 
 #[test]
-fn test_persistence() -> Result<()> {
+fn test_persistence() -> Result<(), Box<dyn Error>> {
     // Create and populate a graph
     let dir = tempfile::tempdir()?;
     let path = dir.path();
