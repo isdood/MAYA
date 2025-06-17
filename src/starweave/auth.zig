@@ -3,70 +3,349 @@ const crypto = std.crypto;
 const base64 = std.base64;
 const json = std.json;
 const Allocator = std.mem.Allocator;
+const time = std.time;
+const fmt = std.fmt;
+const hmac = std.crypto.auth.hmac;
+const hmac_sha256 = hmac.sha2.HmacSha256;
+
+/// Supported authentication methods
+pub const AuthMethod = enum {
+    /// Simple token-based authentication
+    token,
+    
+    /// JSON Web Token (JWT) authentication
+    jwt,
+    
+    /// OAuth 2.0 Bearer token
+    oauth2,
+    
+    /// HMAC-based authentication
+    hmac_sha256,
+    
+    /// API key authentication
+    api_key,
+};
 
 pub const AuthError = error{
     InvalidToken,
     TokenExpired,
     AuthenticationFailed,
     PermissionDenied,
+    InvalidSignature,
+    TokenNotYetValid,
+    InvalidIssuer,
+    InvalidAudience,
+    InvalidAlgorithm,
+    KeyRequired,
+    InvalidKey,
+    TokenGenerationFailed,
+    RefreshFailed,
+    UnsupportedAuthMethod,
 };
 
-pub const AuthConfig = struct {
+/// Configuration for token-based authentication
+pub const TokenConfig = struct {
+    /// The authentication token
     token: []const u8,
-    token_expiry: i64 = 0, // 0 means no expiry
+    
+    /// Token expiration timestamp (0 means no expiry)
+    expiry: i64 = 0,
+    
+    /// Optional refresh token
     refresh_token: ?[]const u8 = null,
+    
+    /// Optional token type (e.g., "Bearer")
+    token_type: ?[]const u8 = null,
 };
 
+/// Configuration for JWT authentication
+pub const JwtConfig = struct {
+    /// The JWT token
+    token: []const u8,
+    
+    /// Optional public key for verification
+    public_key: ?[]const u8 = null,
+    
+    /// Required audience
+    audience: ?[]const u8 = null,
+    
+    /// Required issuer
+    issuer: ?[]const u8 = null,
+    
+    /// Allowed clock skew in seconds
+    leeway: u64 = 60,
+};
+
+/// Configuration for OAuth2 authentication
+pub const OAuth2Config = struct {
+    /// OAuth2 access token
+    access_token: []const u8,
+    
+    /// Token type (usually "Bearer")
+    token_type: []const u8 = "Bearer",
+    
+    /// Refresh token (if available)
+    refresh_token: ?[]const u8 = null,
+    
+    /// Token expiration timestamp (0 means no expiry)
+    expires_in: i64 = 0,
+    
+    /// Token scopes
+    scope: ?[]const u8 = null,
+};
+
+/// Configuration for HMAC authentication
+pub const HmacConfig = struct {
+    /// API key ID
+    key_id: []const u8,
+    
+    /// Secret key for HMAC
+    secret_key: []const u8,
+    
+    /// Header name for the key ID (default: "X-API-Key")
+    key_id_header: []const u8 = "X-API-Key",
+    
+    /// Header name for the signature (default: "X-API-Signature")
+    signature_header: []const u8 = "X-API-Signature",
+    
+    /// Algorithm to use (default: sha256)
+    algorithm: enum { sha256, sha384, sha512 } = .sha256,
+};
+
+/// Generic API key configuration
+pub const ApiKeyConfig = struct {
+    /// The API key
+    api_key: []const u8,
+    
+    /// Header name (default: "X-API-Key")
+    header_name: []const u8 = "X-API-Key",
+    
+    /// Optional prefix (e.g., "Bearer ")
+    prefix: ?[]const u8 = null,
+};
+
+/// Union of all authentication configurations
+pub const AuthConfig = union(AuthMethod) {
+    token: TokenConfig,
+    jwt: JwtConfig,
+    oauth2: OAuth2Config,
+    hmac_sha256: HmacConfig,
+    api_key: ApiKeyConfig,
+};
+
+/// Manages authentication state and token refresh
 pub const AuthManager = struct {
     allocator: Allocator,
     config: AuthConfig,
     last_refresh: i64,
     
+    /// Initialize a new AuthManager with the given configuration
     pub fn init(allocator: Allocator, config: AuthConfig) AuthManager {
         return .{
             .allocator = allocator,
             .config = config,
-            .last_refresh = std.time.timestamp(),
+            .last_refresh = time.timestamp(),
         };
     }
     
+    /// Clean up any allocated resources
     pub fn deinit(self: *AuthManager) void {
-        // Clean up any allocated resources
-    }
-    
-    pub fn getAuthHeader(self: *AuthManager) ![]const u8 {
-        if (self.isTokenExpired()) {
-            try self.refreshToken();
+        // Clean up any allocated resources based on the auth method
+        switch (self.config) {
+            .token => |*token| {
+                if (token.refresh_token) |rt| self.allocator.free(rt);
+                if (token.token_type) |tt| self.allocator.free(tt);
+            },
+            .jwt => |*jwt| {
+                if (jwt.public_key) |pk| self.allocator.free(pk);
+                if (jwt.audience) |a| self.allocator.free(a);
+                if (jwt.issuer) |i| self.allocator.free(i);
+            },
+            .oauth2 => |*oauth| {
+                if (oauth.refresh_token) |rt| self.allocator.free(rt);
+                if (oauth.scope) |s| self.allocator.free(s);
+            },
+            .hmac_sha256 => |*hmac| {
+                self.allocator.free(hmac.key_id);
+                self.allocator.free(hmac.secret_key);
+                self.allocator.free(hmac.key_id_header);
+                self.allocator.free(hmac.signature_header);
+            },
+            .api_key => |*api_key| {
+                self.allocator.free(api_key.api_key);
+                self.allocator.free(api_key.header_name);
+                if (api_key.prefix) |p| self.allocator.free(p);
+            },
         }
-        
-        var header = std.fmt.allocPrint(
-            self.allocator,
-            "Bearer {s}",
-            .{self.config.token}
-        ) catch return error.OutOfMemory;
-        
-        return header;
     }
     
-    fn isTokenExpired(self: *AuthManager) bool {
-        if (self.config.token_expiry == 0) return false;
-        return std.time.timestamp() >= self.config.token_expiry;
+    /// Get the authentication header for the current authentication method
+    pub fn getAuthHeader(self: *AuthManager) ![]const u8 {
+        switch (self.config) {
+            .token => |*token| {
+                if (self.isTokenExpired(token.expiry)) {
+                    try self.refreshToken();
+                }
+                
+                if (token.token_type) |token_type| {
+                    return fmt.allocPrint(
+                        self.allocator,
+                        "{s} {s}",
+                        .{ token_type, token.token }
+                    );
+                } else {
+                    return fmt.allocPrint(
+                        self.allocator,
+                        "Bearer {s}",
+                        .{token.token}
+                    );
+                }
+            },
+            .jwt => |jwt| {
+                // In a real implementation, we would validate the JWT here
+                return fmt.allocPrint(
+                    self.allocator,
+                    "Bearer {s}",
+                    .{jwt.token}
+                );
+            },
+            .oauth2 => |oauth| {
+                return fmt.allocPrint(
+                    self.allocator,
+                    "{s} {s}",
+                    .{ oauth.token_type, oauth.access_token }
+                );
+            },
+            .hmac_sha256 => |hmac| {
+                // Generate a signature for the current timestamp
+                const timestamp = fmt.allocPrint(
+                    self.allocator,
+                    "{d}",
+                    .{time.timestamp()}
+                ) catch return error.OutOfMemory;
+                defer self.allocator.free(timestamp);
+                
+                var signature: [32]u8 = undefined;
+                var h = hmac_sha256.create(
+                    &signature,
+                    timestamp,
+                    hmac.secret_key
+                );
+                
+                const signature_hex = fmt.bytesToHex(signature, .lower);
+                
+                return fmt.allocPrint(
+                    self.allocator,
+                    "{s}: {s}\n{s}: {s}",
+                    .{
+                        hmac.key_id_header, hmac.key_id,
+                        hmac.signature_header, signature_hex,
+                    }
+                );
+            },
+            .api_key => |api_key| {
+                if (api_key.prefix) |prefix| {
+                    return fmt.allocPrint(
+                        self.allocator,
+                        "{s}{s}",
+                        .{ prefix, api_key.api_key }
+                    );
+                } else {
+                    return api_key.api_key;
+                }
+            },
+        }
     }
     
+    /// Add authentication headers to a request
+    pub fn addAuthHeaders(
+        self: *AuthManager,
+        headers: *std.http.Headers,
+    ) !void {
+        switch (self.config) {
+            .token, .jwt, .oauth2 => {
+                const header = try self.getAuthHeader();
+                defer self.allocator.free(header);
+                try headers.append("Authorization", header);
+            },
+            .hmac_sha256 => |hmac| {
+                const header = try self.getAuthHeader();
+                defer self.allocator.free(header);
+                
+                // Split the header into key: value pairs
+                var it = std.mem.split(u8, header, "\n");
+                while (it.next()) |line| {
+                    var parts = std.mem.split(u8, line, ": ");
+                    if (parts.next()) |key| {
+                        if (parts.next()) |value| {
+                            try headers.append(key, value);
+                        }
+                    }
+                }
+            },
+            .api_key => |api_key| {
+                const value = if (api_key.prefix) |prefix|
+                    try fmt.allocPrint(self.allocator, "{s}{s}", .{
+                        prefix, api_key.api_key
+                    })
+                else
+                    api_key.api_key;
+                
+                defer if (api_key.prefix != null) self.allocator.free(value);
+                
+                try headers.append(api_key.header_name, value);
+            },
+        }
+    }
+    
+    /// Check if the current token is expired
+    fn isTokenExpired(self: *const AuthManager, expiry: i64) bool {
+        if (expiry == 0) return false;
+        return time.timestamp() >= expiry;
+    }
+    
+    /// Refresh the authentication token
     fn refreshToken(self: *AuthManager) !void {
-        // Implement token refresh logic here
-        // This would typically make an HTTP request to the auth server
+        // In a real implementation, this would make an HTTP request to the auth server
         // For now, we'll just update the timestamp
-        self.last_refresh = std.time.timestamp();
+        self.last_refresh = time.timestamp();
+        
+        // If we have a refresh token, we would use it here
+        switch (self.config) {
+            .token => |*token| {
+                if (token.refresh_token != null) {
+                    // TODO: Implement token refresh logic
+                }
+            },
+            .oauth2 => |*oauth| {
+                if (oauth.refresh_token != null) {
+                    // TODO: Implement OAuth2 token refresh
+                }
+            },
+            else => {},
+        }
     }
     
-    pub fn validateToken(self: *const AuthManager, token: []const u8) !void {
-        // Simple token validation
-        if (token.len == 0) return error.InvalidToken;
+    /// Validate a JWT token
+    pub fn validateJwt(
+        self: *const AuthManager,
+        token: []const u8,
+        options: struct {
+            audience: ?[]const u8 = null,
+            issuer: ?[]const u8 = null,
+            leeway: u64 = 60,
+        },
+    ) !void {
+        _ = self;
+        _ = token;
+        _ = options;
         
         // In a real implementation, this would verify the JWT signature
-        // and check the expiration time
-        _ = self;
+        // and validate the claims (exp, nbf, iss, aud, etc.)
+        // For now, we'll just check if the token is not empty
+        if (token.len == 0) {
+            return error.InvalidToken;
+        }
     }
 };
 

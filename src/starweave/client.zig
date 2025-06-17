@@ -11,6 +11,12 @@ const AuthManager = @import("auth.zig").AuthManager;
 const MessageQueue = @import("queue.zig").MessageQueue;
 const RetryConfig = @import("retry.zig").RetryConfig;
 const withRetry = @import("retry.zig").withRetry;
+const TlsConfig = @import("tls.zig").TlsConfig;
+const TlsStream = @import("tls.zig").TlsStream;
+const CompressionAlgorithm = @import("compression.zig").CompressionAlgorithm;
+const CompressionLevel = @import("compression.zig").CompressionLevel;
+const CompressionStream = @import("compression.zig").CompressionStream;
+const DecompressionStream = @import("compression.zig").DecompressionStream;
 
 const default_retry_config = RetryConfig{
     .max_attempts = 3,
@@ -47,9 +53,24 @@ pub const StarweaveClient = struct {
     state: ConnectionState = .disconnected,
     
     // Connection
-    stream: ?net.Stream = null,
-    reader: ?std.net.Stream.Reader = null,
-    writer: ?std.net.Stream.Writer = null,
+    stream: union(enum) {
+        plain: net.Stream,
+        tls: *TlsStream,
+    },
+    reader: union(enum) {
+        plain: net.Stream.Reader,
+        decompress: *DecompressionStream,
+    },
+    writer: union(enum) {
+        plain: net.Stream.Writer,
+        compress: *CompressionStream,
+    },
+    tls_config: ?TlsConfig = null,
+    compression: struct {
+        algorithm: CompressionAlgorithm = .none,
+        level: CompressionLevel = .default,
+    } = .{},
+    is_connected: bool = false,
     
     // Message handling
     message_queue: MessageQueue(Message),
@@ -71,6 +92,23 @@ pub const StarweaveClient = struct {
         port: u16,
         auth_token: ?[]const u8 = null,
         queue_capacity: usize = 1000,
+        
+        // TLS configuration
+        tls: ?struct {
+            ca_cert_path: ?[]const u8 = null,
+            client_cert_path: ?[]const u8 = null,
+            client_key_path: ?[]const u8 = null,
+            verify_certificate: bool = true,
+            verify_hostname: bool = true,
+        } = null,
+        
+        // Compression configuration
+        compression: struct {
+            algorithm: CompressionAlgorithm = .none,
+            level: CompressionLevel = .default,
+        } = .{},
+        
+        // Callbacks
         on_connect: ?*const fn(*StarweaveClient) void = null,
         on_disconnect: ?*const fn(*StarweaveClient) void = null,
         on_error: ?*const fn(*StarweaveClient, anyerror) void = null,
@@ -90,6 +128,30 @@ pub const StarweaveClient = struct {
             .on_connect = config.on_connect,
             .on_disconnect = config.on_disconnect,
             .on_error = config.on_error,
+            // Initialize with placeholder values that will be replaced in connect()
+            .stream = undefined,
+            .reader = undefined,
+            .writer = undefined,
+        };
+        
+        // Set up TLS configuration if enabled
+        if (config.tls) |tls_config| {
+            self.tls_config = .{
+                .ca_cert_path = if (tls_config.ca_cert_path) |path| 
+                    try allocator.dupe(u8, path) else null,
+                .client_cert_path = if (tls_config.client_cert_path) |path| 
+                    try allocator.dupe(u8, path) else null,
+                .client_key_path = if (tls_config.client_key_path) |path| 
+                    try allocator.dupe(u8, path) else null,
+                .verify_certificate = tls_config.verify_certificate,
+                .verify_hostname = tls_config.verify_hostname,
+            };
+        }
+        
+        // Set up compression
+        self.compression = .{
+            .algorithm = config.compression.algorithm,
+            .level = config.compression.level,
         };
         
         return self;
@@ -145,13 +207,41 @@ pub const StarweaveClient = struct {
         }
         
         self.state = .disconnecting;
+        self.is_connected = false;
+        
+        // Clean up compression streams
+        switch (self.writer) {
+            .compress => |*c| {
+                c.deinit();
+                self.allocator.destroy(c);
+            },
+            .plain => {},
+        }
+        
+        switch (self.reader) {
+            .decompress => |*d| {
+                d.deinit();
+                self.allocator.destroy(d);
+            },
+            .plain => {},
+        }
         
         // Close the connection
-        if (self.stream) |*stream| {
-            stream.close();
-            self.stream = null;
-            self.reader = null;
-            self.writer = null;
+        switch (self.stream) {
+            .tls => |*tls| {
+                tls.close();
+                self.allocator.destroy(tls);
+            },
+            .plain => |stream| {
+                stream.close();
+            },
+        }
+        
+        // Clean up TLS config
+        if (self.tls_config) |*tls_config| {
+            if (tls_config.ca_cert_path) |path| self.allocator.free(path);
+            if (tls_config.client_cert_path) |path| self.allocator.free(path);
+            if (tls_config.client_key_path) |path| self.allocator.free(path);
         }
         
         self.state = .disconnected;
@@ -243,11 +333,54 @@ pub const StarweaveClient = struct {
         
         // Resolve address and connect
         const addr = try net.Address.resolveIp(self.host, self.port);
-        self.stream = try net.tcpConnectToAddress(addr);
+        const tcp_stream = try net.tcpConnectToAddress(addr);
         
-        // Set up reader/writer
-        self.reader = self.stream.?.reader();
-        self.writer = self.stream.?.writer();
+        // Set up TLS if configured
+        if (self.tls_config) |tls_config| {
+            var tls_stream = try self.allocator.create(TlsStream);
+            tls_stream.* = try TlsStream.initTlsClient(
+                self.allocator,
+                tcp_stream,
+                self.host,
+                tls_config,
+            );
+            self.stream = .{ .tls = tls_stream };
+            
+            // Set up reader/writer with TLS
+            self.reader = .{ .plain = tls_stream.reader() };
+            self.writer = .{ .plain = tls_stream.writer() };
+        } else {
+            // No TLS, use plain TCP
+            self.stream = .{ .plain = tcp_stream };
+            self.reader = .{ .plain = tcp_stream.reader() };
+            self.writer = .{ .plain = tcp_stream.writer() };
+        }
+        
+        // Set up compression if enabled
+        if (self.compression.algorithm != .none) {
+            const compress = try self.allocator.create(CompressionStream);
+            compress.* = try CompressionStream.initCompressor(
+                self.allocator,
+                self.compression.algorithm,
+                self.compression.level,
+                switch (self.writer) {
+                    .plain => |w| w,
+                    .compress => unreachable, // Shouldn't happen
+                },
+            );
+            self.writer = .{ .compress = compress };
+            
+            const decompress = try self.allocator.create(DecompressionStream);
+            decompress.* = try DecompressionStream.initDecompressor(
+                self.allocator,
+                self.compression.algorithm,
+                switch (self.reader) {
+                    .plain => |r| r,
+                    .decompress => unreachable, // Shouldn't happen
+                },
+            );
+            self.reader = .{ .decompress = decompress };
+        }
         
         // Authenticate if needed
         if (self.auth) |*auth| {
@@ -256,6 +389,7 @@ pub const StarweaveClient = struct {
         }
         
         self.state = .connected;
+        self.is_connected = true;
         
         // Notify listeners
         if (self.on_connect) |callback| {
@@ -334,12 +468,27 @@ pub const StarweaveClient = struct {
         self: *StarweaveClient,
         message: Message,
     }) !void {
-        _ = try ctx.self.writer.?.writeAll(ctx.message.data);
-        _ = try ctx.self.writer.?.writeAll("\r\n");
+        const writer = switch (ctx.self.writer) {
+            .plain => |w| w,
+            .compress => |c| c.writer(),
+        };
+        
+        _ = try writer.writeAll(ctx.message.data);
+        _ = try writer.writeAll("\r\n");
+        
+        // If using compression, flush the stream
+        if (ctx.self.writer == .compress) {
+            try ctx.self.writer.compress.finish();
+        }
         
         // Read acknowledgment
         var ack_buf: [1024]u8 = undefined;
-        const len = try ctx.self.reader.?.read(&ack_buf);
+        const reader = switch (ctx.self.reader) {
+            .plain => |r| r,
+            .decompress => |d| d.reader(),
+        };
+        
+        const len = try reader.read(&ack_buf);
         
         if (len < 3 or !std.mem.eql(u8, ack_buf[0..3], "OK ")) {
             return error.AckFailed;
