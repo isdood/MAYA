@@ -54,7 +54,7 @@ pub fn withRetry(
         
         // Check if we've exceeded the timeout
         if (config.timeout_ns > 0) {
-            const elapsed = @intCast(u64, @max(0, time.nanoTimestamp() - start_time));
+            const elapsed = @as(u64, @intCast(@max(0, time.nanoTimestamp() - start_time)));
             if (elapsed >= config.timeout_ns) {
                 return error.Timeout;
             }
@@ -84,18 +84,18 @@ pub fn withRetry(
             }
             
             // Calculate delay with exponential backoff and jitter
-            const base_delay = @floatToInt(u64, 
+            const base_delay = @as(u64, @intFromFloat(
                 @min(
-                    @intToFloat(f64, config.max_delay_ns),
-                    @intToFloat(f64, config.initial_delay_ns) * 
-                        std.math.pow(f64, config.backoff_factor, @intToFloat(f64, attempt - 1))
+                    @as(f64, @floatFromInt(config.max_delay_ns)),
+                    @as(f64, @floatFromInt(config.initial_delay_ns)) * 
+                        std.math.pow(f64, config.backoff_factor, @as(f64, @floatFromInt(attempt - 1)))
                 )
-            );
+            ));
             
             // Add jitter
-            const jitter_range = @floatToInt(u64, 
-                @intToFloat(f64, base_delay) * config.jitter_factor
-            );
+            const jitter_range = @as(u64, @intFromFloat(
+                @as(f64, @floatFromInt(base_delay)) * config.jitter_factor
+            ));
             const jitter = if (jitter_range > 0) 
                 std.crypto.random.intRangeAtMost(u64, 0, jitter_range) 
             else 0;
@@ -184,7 +184,7 @@ test "retry with max attempts exceeded" {
         .{ .max_attempts = 3, .initial_delay_ns = 1 },
         &counter,
         struct {
-            fn f(_: *u32) error!u32 {
+            fn f(_: *u32) anyerror!u32 {
                 return error.PersistentFailure;
             }
         }.f,
@@ -207,7 +207,7 @@ test "retry with timeout" {
         },
         &counter,
         struct {
-            fn f(_: *u32) error!u32 {
+            fn f(_: *u32) anyerror!u32 {
                 return error.TempFailure;
             }
         }.f,

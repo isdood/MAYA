@@ -98,7 +98,6 @@ pub fn MessageQueue(comptime T: type) type {
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            const start_time = std.time.nanoTimestamp();
             var remaining_time = @as(i128, @intCast(timeout_ns_param));
 
             while (true) {
@@ -129,7 +128,7 @@ pub fn MessageQueue(comptime T: type) type {
                 };
                 
                 const elapsed = @as(u64, @intCast(std.time.nanoTimestamp() - wait_start));
-                remaining_time -= @intCast(i128, elapsed);
+                remaining_time -= @as(i128, @intCast(elapsed));
             }
         }
 
