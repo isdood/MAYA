@@ -166,7 +166,7 @@ fn test_transaction() -> Result<()> {
     assert!(graph.get_edge(edge.id)?.is_some());
     
     // Test rollback on error
-    let result = graph.transaction(|tx| {
+    let result: Result<_, maya_knowledge_graph::error::KnowledgeGraphError> = graph.transaction(|tx| {
         let bad_node = create_test_node("Bad Node", "Test Node", 0);
         tx.add_node(&bad_node)?;
         // Use a serialization error for testing

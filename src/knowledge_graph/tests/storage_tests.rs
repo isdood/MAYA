@@ -122,7 +122,7 @@ fn test_transaction() -> Result<()> {
     let mut batch = <SledStore as Storage>::batch(&store);
     batch.put_serialized(b"key1", &b"value1".to_vec())?;
     batch.put_serialized(b"key2", &b"value2".to_vec())?;
-    batch.delete(b"key1")?;
+    batch.delete(b"key1").expect("Failed to delete key1");
     Box::new(batch).commit()?;
     
     // Verify the results
