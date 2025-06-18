@@ -425,7 +425,6 @@ impl HybridBatch {
         }
     }
 }
-}
 
 impl WriteBatch for HybridBatch {
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {

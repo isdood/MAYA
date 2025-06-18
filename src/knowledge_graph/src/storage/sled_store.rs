@@ -96,9 +96,9 @@ impl Storage for SledStore {
 
 // Implement WriteBatchExt for SledStore
 impl WriteBatchExt for SledStore {
-    type BatchType<'a> = SledWriteBatch where Self: 'a;
+    type Batch<'a> = SledWriteBatch where Self: 'a;
 
-    fn create_batch(&self) -> Self::BatchType<'_> {
+    fn create_batch(&self) -> Self::Batch<'_> {
         SledWriteBatch::with_options(self.db.clone(), 10_000, true)
     }
 }

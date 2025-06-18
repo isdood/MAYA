@@ -237,18 +237,6 @@ impl<K, V> Drop for PrefetchingIterator<K, V> {
     }
 }
 
-// Implement Clone for PrefetchConfig
-impl Clone for PrefetchConfig {
-    fn clone(&self) -> Self {
-        Self {
-            prefetch_size: self.prefetch_size,
-            max_buffers: self.max_buffers,
-            buffer_size: self.buffer_size,
-            prefetch_timeout_ms: self.prefetch_timeout_ms,
-        }
-    }
-}
-
 // The PrefetchingIterator implementation has been moved above and is now a standalone type
 // that doesn't depend on the Storage trait directly, making it more flexible and easier to use.
 

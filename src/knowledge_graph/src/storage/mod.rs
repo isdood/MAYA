@@ -94,22 +94,17 @@ pub use hybrid_store::{HybridStore, HybridConfig};
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use serde::{Serialize, de::DeserializeOwned};
+
 use bincode;
-use thiserror::Error;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use crate::error::KnowledgeGraphError;
 
 /// Type alias for Result<T, KnowledgeGraphError>
 pub type Result<T> = std::result::Result<T, KnowledgeGraphError>;
 
-impl From<Box<bincode::ErrorKind>> for KnowledgeGraphError {
-    fn from(err: Box<bincode::ErrorKind>) -> Self {
-        KnowledgeGraphError::BincodeError(err.to_string())
-    }
-}
-
-pub type Result<T> = std::result::Result<T, KnowledgeGraphError>;
+// Bincode error handling is handled by the From<BincodeError> implementation in error.rs
 
 /// Trait for key-value storage operations
 /// A storage backend that supports prefetching

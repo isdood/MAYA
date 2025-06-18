@@ -503,14 +503,13 @@ where
     for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
     for<'a> <<S as Storage>::Batch<'a> as WriteBatch>::Batch: 'static,
 {
-    type Batch = CachedBatch<S::Batch<'static>>;
-    type BatchType<'a> = CachedBatch<<S as Storage>::Batch<'a>> where Self: 'a;
+    type Batch<'a> = CachedBatch<S::Batch<'a>> where Self: 'a;
     
-    fn batch(&self) -> Self::BatchType<'_> {
+    fn batch(&self) -> Self::Batch<'_> {
         self.create_batch()
     }
     
-    fn create_batch(&self) -> Self::BatchType<'_> {
+    fn create_batch(&self) -> Self::Batch<'_> {
         CachedBatch {
             inner: self.inner.batch(),
             cache: self.cache.clone(),
