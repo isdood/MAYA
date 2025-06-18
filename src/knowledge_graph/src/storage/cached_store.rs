@@ -369,8 +369,9 @@ where
             metrics: self.metrics.clone(),
             pending_puts: self.pending_puts.clone(),
             pending_deletes: self.pending_deletes.clone(),
-            config: self.config.clone(),
+            max_batch_size: self.max_batch_size,
             total_ops: AtomicUsize::new(0),
+            config: self.config.clone(),
             stats: Arc::new(RwLock::new(BatchStats::new(self.config.initial_batch_size))),
         }
     }

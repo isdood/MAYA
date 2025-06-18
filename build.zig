@@ -2,7 +2,7 @@
 //! ✨ Version: 2025.6.18
 //! 🎨 Pattern: 1.0.0
 //! ⚡ Seed: 
-//! 📅 Woven: 2025-06-18 21:10:22
+//! 📅 Woven: 2025-06-18 21:15:30
 //! 👤 Weaver: isdood
 
 const std = @import("std");
@@ -13,18 +13,18 @@ pub fn build(b: *std.Build) void {
 
     // 🎨 STARWEAVE Module Definitions
     const starweave_mod = b.createModule(.{
-        .root_source_file = .{ .path = "src/starweave/protocol.zig" },
+        .root_source_file = .{ .cwd_relative = "src/starweave/protocol.zig" },
     });
 
     const glimmer_mod = b.createModule(.{
-        .root_source_file = .{ .path = "src/glimmer/patterns.zig" },
+        .root_source_file = .{ .cwd_relative = "src/glimmer/patterns.zig" },
         .imports = &.{
             .{ .name = "starweave", .module = starweave_mod },
         },
     });
 
     const neural_mod = b.createModule(.{
-        .root_source_file = .{ .path = "src/neural/bridge.zig" },
+        .root_source_file = .{ .cwd_relative = "src/neural/bridge.zig" },
         .imports = &.{
             .{ .name = "starweave", .module = starweave_mod },
             .{ .name = "glimmer", .module = glimmer_mod },
@@ -32,7 +32,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const colors_mod = b.createModule(.{
-        .root_source_file = .{ .path = "src/glimmer/colors.zig" },
+        .root_source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
         .imports = &.{
             .{ .name = "glimmer", .module = glimmer_mod },
         },
@@ -41,7 +41,7 @@ pub fn build(b: *std.Build) void {
     // 🌟 Main MAYA Executable
     const exe = b.addExecutable(.{
         .name = "maya",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -53,16 +53,16 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("colors", colors_mod);
 
     // 🎨 System Library Integration
-    exe.root_module.linkSystemLibrary("glfw");
-    exe.root_module.linkSystemLibrary("vulkan");
-    exe.root_module.linkSystemLibrary("freetype");
-    exe.root_module.linkSystemLibrary("harfbuzz");
+    exe.linkSystemLibrary("glfw");
+    exe.linkSystemLibrary("vulkan");
+    exe.linkSystemLibrary("freetype");
+    exe.linkSystemLibrary("harfbuzz");
     exe.linkLibC();
 
     // 🌐 WASM Configuration
     const wasm = b.addExecutable(.{
         .name = "maya-wasm",
-        .root_source_file = .{ .path = "src/wasm.zig" },
+        .root_source_file = .{ .cwd_relative = "src/wasm.zig" },
         .target = b.standardTargetOptions(.{
             .default_target = .{
                 .cpu_arch = .wasm32,
@@ -78,7 +78,7 @@ pub fn build(b: *std.Build) void {
     // 🧪 Quantum Test Configuration
     const test_step = b.step("test", "🧪 Run MAYA quantum tests");
     const main_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/test/main.zig" },
+        .root_source_file = .{ .cwd_relative = "src/test/main.zig" },
         .target = target,
         .optimize = optimize,
     });
