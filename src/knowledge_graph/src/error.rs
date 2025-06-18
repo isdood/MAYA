@@ -3,6 +3,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 use serde_json::Error as JsonError;
+use bincode::Error as BincodeError;
 use std::sync::Arc;
 
 /// Error type for the knowledge graph
@@ -14,8 +15,11 @@ pub enum KnowledgeGraphError {
     /// Storage error
     StorageError(String),
     
-    /// Serialization/deserialization error
+    /// JSON serialization/deserialization error
     SerializationError(JsonError),
+    
+    /// Bincode serialization/deserialization error
+    BincodeError(String),
     
     /// Node not found
     NodeNotFound(String),
@@ -50,7 +54,8 @@ impl fmt::Display for KnowledgeGraphError {
         match self {
             Self::IoError(e) => write!(f, "I/O error: {}", e),
             Self::StorageError(msg) => write!(f, "Storage error: {}", msg),
-            Self::SerializationError(e) => write!(f, "Serialization error: {}", e),
+            KnowledgeGraphError::SerializationError(ref e) => write!(f, "JSON serialization error: {}", e),
+            KnowledgeGraphError::BincodeError(ref e) => write!(f, "Bincode error: {}", e),
             Self::NodeNotFound(id) => write!(f, "Node not found: {}", id),
             Self::EdgeNotFound(id) => write!(f, "Edge not found: {}", id),
             Self::DuplicateNode(id) => write!(f, "Duplicate node: {}", id),
@@ -67,7 +72,8 @@ impl fmt::Display for KnowledgeGraphError {
 impl StdError for KnowledgeGraphError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
-            Self::SerializationError(e) => Some(e),
+            KnowledgeGraphError::SerializationError(ref e) => Some(e),
+            KnowledgeGraphError::BincodeError(_) => None,
             Self::IoError(e) => Some(e),
             Self::SledError(e) => Some(e),
             _ => None,
@@ -102,6 +108,12 @@ impl From<sled::transaction::TransactionError> for KnowledgeGraphError {
 impl From<String> for KnowledgeGraphError {
     fn from(err: String) -> Self {
         Self::Other(err)
+    }
+}
+
+impl From<BincodeError> for KnowledgeGraphError {
+    fn from(err: BincodeError) -> Self {
+        KnowledgeGraphError::BincodeError(err.to_string())
     }
 }
 

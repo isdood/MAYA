@@ -138,8 +138,8 @@ pub trait WriteBatch: std::fmt::Debug + Send + 'static {
         unimplemented!("as_any must be implemented for WriteBatch")
     }
     
-    /// Commit the batch
-    fn commit(self: Box<Self>) -> Result<()>;
+    /// Commit the batch to storage
+    fn commit(self) -> Result<()>;
 }
 
 /// Extension trait for batch operations

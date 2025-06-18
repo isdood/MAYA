@@ -37,13 +37,6 @@ impl Storage for SledStore {
         SledStore::open(path)
     }
     
-    fn batch(&self) -> Self::Batch<'_> {
-        SledWriteBatch {
-            db: self.db.clone(),
-            ops: Vec::new(),
-        }
-    }
-
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
         match self.db.get(key)? {
             Some(bytes) => {
@@ -107,33 +100,27 @@ impl WriteBatchExt for SledStore {
         }
     }
     
-    fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
-        if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
-            let db = batch.db.clone();
-            
-            // Create a new sled batch
-            let mut sled_batch = sled::Batch::default();
-            
-            // Apply all operations to the sled batch
-            for op in &batch.ops {
-                match op {
-                    BatchOp::Put(k, v) => { sled_batch.insert(k.clone(), v.clone()); }
-                    BatchOp::Delete(k) => { sled_batch.remove(k); }
-                }
+    fn commit(self) -> Result<()> {
+        // Create a new sled batch
+        let mut sled_batch = sled::Batch::default();
+        
+        // Apply all operations to the sled batch
+        for op in self.ops {
+            match op {
+                BatchOp::Put(k, v) => { sled_batch.insert(k, v); }
+                BatchOp::Delete(k) => { sled_batch.remove(k); }
             }
-            
-            // Apply the batch to the database
-            db.apply_batch(sled_batch)
-                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
-                
-            // Ensure all changes are persisted to disk
-            db.flush()
-                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
-                
-            Ok(())
-        } else {
-            Err(crate::error::KnowledgeGraphError::from("Failed to downcast batch to SledWriteBatch"))
         }
+        
+        // Apply the batch to the database
+        self.db.apply_batch(sled_batch)
+            .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+            
+        // Ensure all changes are persisted to disk
+        self.db.flush()
+            .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+            
+        Ok(())
     }
 }
 

@@ -4,12 +4,20 @@ const c = @cImport({
 });
 const ImGuiRenderer = @import("imgui.zig").ImGuiRenderer;
 const widgets = @import("widgets.zig");
+const layout = @import("layout.zig");
 
 pub const WidgetsExample = struct {
     const Self = @This();
 
     renderer: *ImGuiRenderer,
     window: widgets.Window,
+    flex_layout: layout.FlexLayout,
+    stack_layout: layout.StackLayout,
+    split_layout: layout.SplitLayout,
+    horizontal_layout: layout.Layout,
+    vertical_layout: layout.Layout,
+    grid_layout: layout.GridLayout,
+    scroll_layout: layout.ScrollLayout,
     toolbar: widgets.Toolbar,
     status_bar: widgets.StatusBar,
     menu_bar: widgets.MenuBar,
@@ -93,6 +101,73 @@ pub const WidgetsExample = struct {
                 "Widgets Example",
                 .{ 100, 100 },
                 .{ 800, 1000 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .flex_layout = layout.FlexLayout.init(
+                "flex_layout",
+                .Horizontal,
+                .SpaceBetween,
+                layout.Padding.all(10),
+                10,
+                .{ 10, 50 },
+                .{ 780, 100 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .stack_layout = layout.StackLayout.init(
+                "stack_layout",
+                layout.Padding.all(10),
+                .{ 10, 160 },
+                .{ 780, 200 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .split_layout = layout.SplitLayout.init(
+                "split_layout",
+                .Horizontal,
+                0.7,
+                layout.Padding.all(10),
+                10,
+                undefined,
+                undefined,
+                .{ 10, 370 },
+                .{ 780, 300 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .horizontal_layout = layout.Layout.init(
+                "horizontal_layout",
+                .Horizontal,
+                .SpaceBetween,
+                layout.Padding.all(10),
+                10,
+                .{ 10, 50 },
+                .{ 780, 100 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .vertical_layout = layout.Layout.init(
+                "vertical_layout",
+                .Vertical,
+                .Start,
+                layout.Padding.all(10),
+                10,
+                .{ 10, 160 },
+                .{ 780, 200 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .grid_layout = layout.GridLayout.init(
+                "grid_layout",
+                3,
+                layout.Padding.all(10),
+                .{ 10, 10 },
+                .{ 10, 370 },
+                .{ 780, 300 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .scroll_layout = layout.ScrollLayout.init(
+                "scroll_layout",
+                .Vertical,
+                layout.Padding.all(10),
+                10,
+                .{ 10, 680 },
+                .{ 780, 300 },
                 c.ImGuiWindowFlags_None,
             ),
             .toolbar = undefined,
@@ -727,7 +802,88 @@ pub const WidgetsExample = struct {
         try self.scrollable_area.addContent(&self.drag_vec3.widget);
         try self.scrollable_area.addContent(&self.drag_vec4.widget);
 
-        // Add widgets to window
+        // Add widgets to flex layout with different flex properties
+        const flex_button1 = widgets.Button.init(
+            "flex_button1",
+            "Flex 1",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 100, 30 },
+            c.ImGuiButtonFlags_None,
+        );
+        const flex_button2 = widgets.Button.init(
+            "flex_button2",
+            "Flex 2",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 100, 30 },
+            c.ImGuiButtonFlags_None,
+        );
+        const flex_button3 = widgets.Button.init(
+            "flex_button3",
+            "Flex 3",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 100, 30 },
+            c.ImGuiButtonFlags_None,
+        );
+
+        try self.flex_layout.addChild(&flex_button1.widget, .{ .grow = 1 });
+        try self.flex_layout.addChild(&flex_button2.widget, .{ .grow = 2 });
+        try self.flex_layout.addChild(&flex_button3.widget, .{ .grow = 1 });
+
+        // Add widgets to stack layout
+        const stack_button1 = widgets.Button.init(
+            "stack_button1",
+            "Stack 1",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 200, 50 },
+            c.ImGuiButtonFlags_None,
+        );
+        const stack_button2 = widgets.Button.init(
+            "stack_button2",
+            "Stack 2",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 150, 40 },
+            c.ImGuiButtonFlags_None,
+        );
+        const stack_button3 = widgets.Button.init(
+            "stack_button3",
+            "Stack 3",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 100, 30 },
+            c.ImGuiButtonFlags_None,
+        );
+
+        try self.stack_layout.addChild(&stack_button1.widget);
+        try self.stack_layout.addChild(&stack_button2.widget);
+        try self.stack_layout.addChild(&stack_button3.widget);
+
+        // Create widgets for split layout
+        const split_left = widgets.Button.init(
+            "split_left",
+            "Left Panel",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 0, 0 },
+            c.ImGuiButtonFlags_None,
+        );
+        const split_right = widgets.Button.init(
+            "split_right",
+            "Right Panel",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 0, 0 },
+            c.ImGuiButtonFlags_None,
+        );
+
+        self.split_layout.first = &split_left.widget;
+        self.split_layout.second = &split_right.widget;
+
+        // Add layouts to window
         try self.window.addChild(&self.menu_bar.widget);
         try self.window.addChild(&self.context_menu.widget);
         try self.window.addChild(&self.popup.widget);
@@ -762,6 +918,9 @@ pub const WidgetsExample = struct {
         try self.window.addChild(&self.input_text_multiline.widget);
         try self.window.addChild(&self.input_float.widget);
         try self.window.addChild(&self.input_int.widget);
+        try self.window.addChild(&self.flex_layout.widget);
+        try self.window.addChild(&self.stack_layout.widget);
+        try self.window.addChild(&self.split_layout.widget);
 
         // Add window to renderer
         try renderer.addWidget(&self.window.widget);
@@ -770,6 +929,13 @@ pub const WidgetsExample = struct {
     }
 
     pub fn deinit(self: *Self) void {
+        self.flex_layout.deinit();
+        self.stack_layout.deinit();
+        self.split_layout.deinit();
+        self.horizontal_layout.deinit();
+        self.vertical_layout.deinit();
+        self.grid_layout.deinit();
+        self.scroll_layout.deinit();
         self.window.deinit();
         self.menu_bar.deinit();
         self.file_menu.deinit();

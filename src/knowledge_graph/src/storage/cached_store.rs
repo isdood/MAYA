@@ -237,16 +237,17 @@ where
     
     fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>> {
         // Check cache first
-        if let Some(cached) = self.cache.read().get(key) {
+        let cache = self.cache.read();
+        if let Some(cached) = cache.get(key) {
             self.metrics.record_hit(cached.len());
             return deserialize(cached).map(Some);
         }
         
         // Cache miss, get from storage
         self.metrics.record_miss();
-        if let Some(value) = self.inner.get(key).map_err(|e| KnowledgeGraphError::StorageError(e.into()))? {
+        if let Some(value) = self.inner.get(key).map_err(|e| KnowledgeGraphError::StorageError(e.to_string()))? {
             // Store the raw bytes in the cache
-            let bytes = bincode::serialize(&value).map_err(|e| KnowledgeGraphError::SerializationError(e.to_string()))?;
+            let bytes = bincode::serialize(&value).map_err(|e| KnowledgeGraphError::BincodeError(e.to_string()))?;
             self.metrics.record_write(bytes.len());
             
             // Update cache
@@ -378,8 +379,11 @@ where
         self
     }
     
-    fn commit(self: Box<Self>) -> Result<()> {
-        // Update cache with pending operations
+    fn commit(self) -> Result<()> {
+        // Commit the inner batch first
+        self.inner.commit()?;
+        
+        // Then update cache with pending operations
         let mut cache = self.cache.write();
         
         // Apply all pending puts
@@ -396,9 +400,7 @@ where
         let bytes_written: usize = self.pending_puts.values().map(|v| v.len()).sum();
         self.metrics.record_write(bytes_written);
         
-        // Commit the inner batch
-        let inner_box = Box::new(self.inner);
-        <B as WriteBatch>::commit(inner_box)
+        Ok(())
     }
 }
 
