@@ -1,4 +1,4 @@
-// 🌈 GLIMMER Colors
+// 🌈 GLIMMER Colors v1.0.0
 pub const Colors = struct {
     pub const Palette = struct {
         starlight_pink: []const u8 = "FF69B4",

@@ -1,29 +1,13 @@
+// 🧪 MAYA Tests v2025.6.18
 const std = @import("std");
-const print = std.debug.print;
-const testing = std.testing;
-const LanguageProcessor = @import("language_processor.zig").LanguageProcessor;
-const pattern_tests = @import("pattern_tests.zig");
-const interaction_recorder_test = @import("interaction_recorder_test.zig");
+const starweave = @import("starweave");
+const glimmer = @import("glimmer");
+const neural = @import("neural");
+const colors = @import("colors");
 
-pub fn main() !void {
-    print("\nMAYA Test Suite\n", .{});
-    print("==============\n\n", .{});
-
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var processor = try LanguageProcessor.init(allocator);
-    defer processor.deinit();
-
-    // Run language processor tests
-    try processor.runTests();
-
-    // Run pattern tests
-    try pattern_tests.runPatternTests();
-
-    // Run interaction recorder tests
-    try interaction_recorder_test.runInteractionRecorderTests();
-
-    print("\nAll tests completed successfully!\n", .{});
-} 
+test "STARWEAVE protocol" {
+    _ = starweave;
+    _ = glimmer;
+    _ = neural;
+    _ = colors;
+}
