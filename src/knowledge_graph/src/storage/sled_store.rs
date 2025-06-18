@@ -137,34 +137,16 @@ impl WriteBatchExt for SledStore {
 #[derive(Debug)]
 pub struct SledWriteBatch {
     db: Arc<Db>,
-    ops: Vec<BatchOp<Vec<u8>, Vec<u8>>>,
+    ops: Vec<BatchOp>,
 }
 
 #[derive(Debug, Clone)]
-enum BatchOp<K: AsRef<[u8]>, V: AsRef<[u8]>> {
-    Put(K, V),
-    Delete(K),
+enum BatchOp {
+    Put(Vec<u8>, Vec<u8>),
+    Delete(Vec<u8>),
 }
 
-// Helper trait to convert between BatchOp types
-trait BatchOpConvert<K1, V1, K2, V2> {
-    fn convert(self) -> BatchOp<K2, V2>;
-}
 
-impl<K1, V1, K2, V2> BatchOpConvert<K1, V1, K2, V2> for BatchOp<K1, V1>
-where
-    K1: AsRef<[u8]>,
-    V1: AsRef<[u8]>,
-    K2: From<K1> + AsRef<[u8]>,
-    V2: From<V1> + AsRef<[u8]>,
-{
-    fn convert(self) -> BatchOp<K2, V2> {
-        match self {
-            BatchOp::Put(k, v) => BatchOp::Put(k.into(), v.into()),
-            BatchOp::Delete(k) => BatchOp::Delete(k.into()),
-        }
-    }
-}
 
 impl WriteBatch for SledWriteBatch {
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
@@ -187,22 +169,21 @@ impl WriteBatch for SledWriteBatch {
     
     fn commit(self: Box<Self>) -> Result<()> {
         let batch = *self;
-        let db = batch.db.clone();
-        let ops = batch.ops;
+        let db = batch.db;
         
         // Execute the transaction
-        let result = db.transaction(|tx| {
-            for op in &ops {
+        let result: std::result::Result<_, sled::transaction::TransactionError> = db.transaction(|tx| {
+            for op in &batch.ops {
                 match op {
                     BatchOp::Put(key, value) => {
-                        tx.insert(key.as_slice(), value.as_slice())?;
+                        tx.insert(key, value)?;
                     }
                     BatchOp::Delete(key) => {
-                        tx.remove(key.as_slice())?;
+                        tx.remove(key)?;
                     }
                 }
             }
-            Ok::<_, sled::transaction::TransactionError>(())
+            Ok(())
         });
         
         match result {
@@ -213,7 +194,6 @@ impl WriteBatch for SledWriteBatch {
             }
             Err(e) => Err(crate::error::KnowledgeGraphError::TransactionError(e.to_string()))
         }
-    }
     }
 }
 
@@ -332,7 +312,7 @@ mod tests {
         // Test delete in transaction
         let mut batch = <SledStore as Storage>::batch(&store);
         batch.put_serialized(b"key1", &b"value1".to_vec())?;
-        batch.delete(b"key1")?;
+        batch.delete(b"key1".to_vec());
         Box::new(batch).commit()?;
 
         assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
