@@ -278,7 +278,9 @@ mod tests {
         store.put(b"other:1", &b"other1".to_vec())?;
         
         // Test prefix iteration
-        let mut results: Vec<_> = store.iter_prefix(b"prefix:").collect();
+        let mut results: Vec<_> = store.iter_prefix(b"prefix:")
+            .map(|(k, v)| (k, deserialize::<Vec<u8>>(&v).unwrap()))
+            .collect();
         results.sort();
         
         let expected = vec![
