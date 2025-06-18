@@ -40,7 +40,7 @@ where
 
     /// Add a node to the graph
     pub fn add_node(&self, node: Node) -> Result<()> {
-        let key = format!("node:{}", node.id).into_bytes();
+        let key = node_key(node.id);
         
         // Check if node already exists
         if self.storage.exists(&key)? {
@@ -59,7 +59,7 @@ where
 
     /// Get a node by ID
     pub fn get_node(&self, id: Uuid) -> Result<Option<Node>> {
-        let key = format!("node:{}", id).into_bytes();
+        let key = node_key(id);
         self.storage.get(&key)
     }
     
@@ -82,8 +82,8 @@ where
     /// Add an edge between two nodes
     pub fn add_edge(&self, edge: &Edge) -> Result<()> {
         // Verify source and target nodes exist
-        let source_key = format!("node:{}", edge.source).into_bytes();
-        let target_key = format!("node:{}", edge.target).into_bytes();
+        let source_key = node_key(edge.source);
+        let target_key = node_key(edge.target);
         
         if !self.storage.exists(&source_key)? {
             return Err(KnowledgeGraphError::NodeNotFound(edge.source.to_string()));
@@ -95,7 +95,7 @@ where
         
         // Add edge to storage using batch for atomicity
         let batch = <S as Storage>::batch(&self.storage);
-        let key = format!("edge:{}:{}", edge.source, edge.id).into_bytes();
+        let key = edge_key(edge.id);
         let value = serde_json::to_vec(edge)
             .map_err(KnowledgeGraphError::SerializationError)?;
             

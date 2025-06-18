@@ -302,35 +302,44 @@ mod tests {
         let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
 
+        // Helper function to create a serialized value
+        fn to_serialized(value: &[u8]) -> Vec<u8> {
+            serde_json::to_vec(&value).unwrap()
+        }
+
         // Test successful transaction
         let mut batch = <SledStore as Storage>::batch(&store);
-        let value1 = b"value1".to_vec();
-        let value2 = b"value2".to_vec();
+        let value1 = b"value1";
+        let value2 = b"value2";
         
-        batch.put_serialized(b"key1", &value1)?;
-        batch.put_serialized(b"key2", &value2)?;
+        // Use put_serialized with already serialized values
+        batch.put_serialized(b"key1", &to_serialized(value1))?;
+        batch.put_serialized(b"key2", &to_serialized(value2))?;
         Box::new(batch).commit()?;
 
-        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(value1.clone()));
-        assert_eq!(store.get::<Vec<u8>>(b"key2")?, Some(value2.clone()));
+        // Verify the values were stored and can be retrieved
+        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(value1.to_vec()));
+        assert_eq!(store.get::<Vec<u8>>(b"key2")?, Some(value2.to_vec()));
 
         // Test delete in transaction
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put_serialized(b"key1", &value1)?;
-        batch.delete(b"key1")?;
+        batch.put_serialized(b"key1", &to_serialized(value1))?;
+        batch.delete(b"key1");  // Delete the key
         Box::new(batch).commit()?;
 
+        // Verify the key was deleted
         assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
 
         // Test transaction with duplicate key in the same batch
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put_serialized(b"key1", &value1)?;
-        // Second put to the same key will overwrite in sled
-        batch.put_serialized(b"key1", &value2)?;
+        // First put
+        batch.put_serialized(b"key1", &to_serialized(value1))?;
+        // Second put to the same key will overwrite
+        batch.put_serialized(b"key1", &to_serialized(value2))?;
         Box::new(batch).commit()?;
 
         // Verify the value was updated to the last write
-        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(value2));
+        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(value2.to_vec()));
         
         Ok(())
     }

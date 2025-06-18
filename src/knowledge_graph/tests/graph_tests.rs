@@ -153,35 +153,40 @@ fn test_transaction() -> Result<()> {
     let edge = create_test_edge("RELATES_TO", node1.id, node2.id);
     
     // Execute in a transaction
-    graph.transaction(|tx| {
+    let result = graph.transaction(|tx| {
         tx.add_node(&node1)?;
         tx.add_node(&node2)?;
         tx.add_edge(&edge)?;
         Ok(())
-    })?;
-    
-    // Verify everything was added
-    assert!(graph.get_node(node1.id)?.is_some());
-    assert!(graph.get_node(node2.id)?.is_some());
-    assert!(graph.get_edge(edge.id)?.is_some());
-    
-    // Test transaction rollback on error
-    let result: std::result::Result<_, maya_knowledge_graph::error::KnowledgeGraphError> = graph.transaction(|tx| {
-        let bad_node = create_test_node("Bad Node", "Test Node", 0);
-        tx.add_node(&bad_node)?;
-        // Use a serialization error for testing
-        use serde::de::Error as _;
-        let json_err = serde_json::Error::custom("Test error");
-        Err::<(), _>(maya_knowledge_graph::error::KnowledgeGraphError::SerializationError(json_err))
     });
     
-    assert!(result.is_err());
+    // Verify the transaction was successful
+    assert!(result.is_ok());
     
-    // Verify the node wasn't added
+    // Verify everything was added
+    assert!(graph.get_node(node1.id)?.is_some(), "Node 1 not found");
+    assert!(graph.get_node(node2.id)?.is_some(), "Node 2 not found");
+    assert!(graph.get_edge(edge.id)?.is_some(), "Edge not found");
+    
+    // Test transaction rollback on error
+    let result: std::result::Result<(), _> = graph.transaction(|tx| {
+        let bad_node = create_test_node("BadNode", "Test Node", 0);
+        tx.add_node(&bad_node)?;
+        // Force an error to test rollback
+        Err::<(), _>(maya_knowledge_graph::error::KnowledgeGraphError::Other("Test rollback".to_string()))
+    });
+    
+    assert!(result.is_err(), "Expected transaction to fail");
+    
+    // Verify the bad node wasn't added
     let results = graph.query()
-        .with_label("Should not exist")
+        .with_label("BadNode")
         .execute()?;
-    assert_eq!(results.nodes.len(), 0);
+    assert_eq!(results.nodes.len(), 0, "Bad node should not have been committed");
+    
+    // Verify the original nodes are still there
+    assert!(graph.get_node(node1.id)?.is_some(), "Original node 1 missing after rollback");
+    assert!(graph.get_node(node2.id)?.is_some(), "Original node 2 missing after rollback");
     
     Ok(())
 }
