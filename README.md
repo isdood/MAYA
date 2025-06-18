@@ -532,4 +532,4 @@ MAYA is the proprietary interface to the STARWEAVE ecosystem. Features and capab
 
 *MAYA: The proprietary interface to the STARWEAVE universe* ✨
 
-For licensing inquiries, please contact: calebjdt@proton.me
+For licensing inquiries, please contact: calebjdt@gmail.com
