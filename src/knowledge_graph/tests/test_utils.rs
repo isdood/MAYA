@@ -1,12 +1,11 @@
 //! Test utilities for the knowledge graph
 
-use std::path::Path;
 use tempfile::TempDir;
 use uuid::Uuid;
 
 use maya_knowledge_graph::{
     KnowledgeGraph, Node, Edge, Property, PropertyValue,
-    storage::{SledStore, Storage}
+    storage::SledStore
 };
 use serde_json::Number;
 

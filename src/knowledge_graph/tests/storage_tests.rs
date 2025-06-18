@@ -5,7 +5,6 @@ use maya_knowledge_graph::{
     error::Result,
 };
 use tempfile::tempdir;
-use std::sync::Arc;
 
 #[test]
 fn test_sled_store() -> Result<()> {
@@ -25,19 +24,18 @@ fn test_sled_store() -> Result<()> {
     // Test non-existent key
     assert_eq!(store.get::<Vec<u8>>(b"nonexistent")?, None);
     
-    // Test batch operations
-    // Create a batch and add some operations
+    // Test batch operations with proper JSON serialization
     let mut batch = <SledStore as Storage>::batch(&store);
-    batch.put_serialized(b"batch1", b"value1")?;
-    batch.put_serialized(b"batch2", b"value2")?;
+    batch.put_serialized(b"batch1", &serde_json::to_vec(&"value1")?)?;
+    batch.put_serialized(b"batch2", &serde_json::to_vec(&"value2")?)?;
     Box::new(batch).commit()?;
     
-    // Verify batch operations
-    let val1 = store.get::<Vec<u8>>(b"batch1")?;
-    let val2 = store.get::<Vec<u8>>(b"batch2")?;
+    // Verify batch operations with deserialization
+    let val1: String = store.get(b"batch1")?.unwrap();
+    let val2: String = store.get(b"batch2")?.unwrap();
     
-    assert_eq!(val1, Some(b"value1".to_vec()));
-    assert_eq!(val2, Some(b"value2".to_vec()));
+    assert_eq!(val1, "value1");
+    assert_eq!(val2, "value2");
     
     Ok(())
 }
@@ -84,15 +82,15 @@ fn test_iter_prefix() -> Result<()> {
     // Test getting values directly
     let mut prefixed = Vec::new();
     
-    // Get values one by one since we can't iterate directly
+    // Get values one by one and deserialize JSON
     if let Some(value1) = store.get::<Vec<u8>>(b"prefix:1")? {
-        let value_str = String::from_utf8_lossy(&value1).into_owned();
-        prefixed.push(("prefix:1".to_string(), value_str));
+        let value: String = serde_json::from_slice(&value1)?;
+        prefixed.push(("prefix:1".to_string(), value));
     }
     
     if let Some(value2) = store.get::<Vec<u8>>(b"prefix:2")? {
-        let value_str = String::from_utf8_lossy(&value2).into_owned();
-        prefixed.push(("prefix:2".to_string(), value_str));
+        let value: String = serde_json::from_slice(&value2)?;
+        prefixed.push(("prefix:2".to_string(), value));
     }
     
     prefixed.sort();
@@ -109,20 +107,19 @@ fn test_transaction() -> Result<()> {
     let dir = tempdir()?;
     let store = SledStore::open(dir.path())?;
     
-    // Create a batch of operations
-    // Test batch operations with serialization
+    // Create a batch of operations with proper JSON serialization
     let mut batch = <SledStore as Storage>::batch(&store);
-    batch.put_serialized(b"key1", b"value1")?;
-    batch.put_serialized(b"key2", b"value2")?;
+    batch.put_serialized(b"key1", &serde_json::to_vec(&"value1")?)?;
+    batch.put_serialized(b"key2", &serde_json::to_vec(&"value2")?)?;
     batch.delete(b"key1");
     Box::new(batch).commit()?;
     
-    // Verify the results
-    let val1: Option<Vec<u8>> = store.get(b"key1")?;
-    let val2: Option<Vec<u8>> = store.get(b"key2")?;
+    // Verify the results with deserialization
+    let val1: Option<String> = store.get(b"key1")?;
+    let val2: Option<String> = store.get(b"key2")?;
     
     assert!(val1.is_none());
-    assert_eq!(val2, Some(b"value2".to_vec()));
+    assert_eq!(val2, Some("value2".to_string()));
     
     Ok(())
 }

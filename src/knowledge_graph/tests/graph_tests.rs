@@ -6,7 +6,6 @@ use maya_knowledge_graph::{
     error::Result,
     query::QueryExt,
 };
-use tempfile::tempdir;
 use uuid::Uuid;
 
 // Helper function to create a test node
@@ -66,10 +65,10 @@ fn create_test_graph() -> (KnowledgeGraph<SledStore>, Vec<Node>, Vec<Edge>) {
 
 #[test]
 fn test_add_and_retrieve_node() -> Result<()> {
-    let (graph, nodes, _) = create_test_graph();
+    let (graph, _nodes, _) = create_test_graph();
     
     // Test retrieving each node
-    for node in &nodes {
+    for node in &_nodes {
         let retrieved = graph.get_node(node.id)?.expect("Node not found");
         assert_nodes_eq(node, &retrieved);
     }
@@ -82,7 +81,7 @@ fn test_add_and_retrieve_node() -> Result<()> {
 
 #[test]
 fn test_add_and_retrieve_edge() -> Result<()> {
-    let (graph, nodes, edges) = create_test_graph();
+    let (graph, _nodes, edges) = create_test_graph();
     
     // Test retrieving each edge
     for edge in &edges {
@@ -98,7 +97,7 @@ fn test_add_and_retrieve_edge() -> Result<()> {
 
 #[test]
 fn test_find_nodes_by_label() -> Result<()> {
-    let (graph, nodes, _) = create_test_graph();
+    let (graph, _nodes, _) = create_test_graph();
     
     // Find all person nodes
     let person_nodes = graph.query()
@@ -123,7 +122,7 @@ fn test_find_nodes_by_label() -> Result<()> {
 
 #[test]
 fn test_query_with_property() -> Result<()> {
-    let (graph, nodes, _) = create_test_graph();
+    let (graph, _nodes, _) = create_test_graph();
     
     // Add a node with a specific property
     let special_node = Node::new("Special")
