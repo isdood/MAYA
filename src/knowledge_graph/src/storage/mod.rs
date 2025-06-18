@@ -137,7 +137,7 @@ pub enum KnowledgeGraphError {
     SerializationError(String),
     
     #[error("Bincode error: {0}")]
-    BincodeError(#[from] bincode::Error),
+    BincodeError(String),
     
     #[error("Key not found")]
     KeyNotFound,
@@ -148,15 +148,11 @@ pub enum KnowledgeGraphError {
 
 impl From<Box<bincode::ErrorKind>> for KnowledgeGraphError {
     fn from(err: Box<bincode::ErrorKind>) -> Self {
-        KnowledgeGraphError::BincodeError(bincode::Error::from(err))
+        KnowledgeGraphError::BincodeError(err.to_string())
     }
 }
 
-impl From<futures_io::Error> for KnowledgeGraphError {
-    fn from(err: futures_io::Error) -> Self {
-        KnowledgeGraphError::IoError(err.into())
-    }
-}
+
 
 impl From<error::KnowledgeGraphError> for KnowledgeGraphError {
     fn from(err: error::KnowledgeGraphError) -> Self {
@@ -166,7 +162,7 @@ impl From<error::KnowledgeGraphError> for KnowledgeGraphError {
             error::KnowledgeGraphError::JsonError(e) => KnowledgeGraphError::JsonError(e),
             error::KnowledgeGraphError::SledError(e) => KnowledgeGraphError::SledError(e),
             error::KnowledgeGraphError::SerializationError(s) => KnowledgeGraphError::SerializationError(s),
-            error::KnowledgeGraphError::BincodeError(s) => KnowledgeGraphError::BincodeError(bincode::Error::new(s.into())),
+            error::KnowledgeGraphError::BincodeError(s) => KnowledgeGraphError::BincodeError(s),
             error::KnowledgeGraphError::KeyNotFound => KnowledgeGraphError::KeyNotFound,
             error::KnowledgeGraphError::InvalidArgument(s) => KnowledgeGraphError::InvalidArgument(s),
         }
@@ -202,15 +198,30 @@ pub trait WriteBatchExt: Storage {
 }
 
 /// Trait for batch operations
-pub trait WriteBatch {
+pub trait WriteBatch: std::fmt::Debug + Send + 'static {
     /// Add a put operation to the batch
     fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()>;
+    
+    /// Add a put operation with pre-serialized value to the batch
+    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
     
     /// Add a delete operation to the batch
     fn delete(&mut self, key: &[u8]) -> Result<()>;
     
+    /// Add a delete operation with pre-serialized key to the batch
+    fn delete_serialized(&mut self, key: &[u8]) -> Result<()>;
+    
+    /// Clear all operations in the batch
+    fn clear(&mut self);
+    
     /// Commit the batch
     fn commit(self) -> Result<()>;
+    
+    /// Get a reference to the underlying batch as `Any`
+    fn as_any(&self) -> &dyn std::any::Any;
+    
+    /// Get a mutable reference to the underlying batch as `Any`
+    fn as_mut_any(&mut self) -> &mut dyn std::any::Any;
 }
 
 /// Extension trait for batch operations
@@ -221,23 +232,20 @@ pub trait WriteBatchExt: Storage {
     /// Create a new batch
     fn create_batch(&self) -> Self::BatchType<'_>;
     
-
-    
     /// Put a serializable value into the batch
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
         let bytes = serialize(value)?;
         let mut batch = self.create_batch();
         batch.put_serialized(key, &bytes)?;
-        Box::new(batch).commit()
+        batch.commit()
     }
     
     /// Delete a key from the batch
     fn delete_serialized(&self, key: &[u8]) -> Result<()> {
         let mut batch = self.create_batch();
-        batch.delete(key)?;
-        Box::new(batch).commit()
-    }
-}
+        batch.delete_serialized(key)?;
+        batch.commit()
+    }}
 
 // Note: Specific implementations of WriteBatchExt are provided by each storage backend
 // to avoid conflicts with the blanket implementation

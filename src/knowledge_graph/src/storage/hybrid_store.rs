@@ -167,7 +167,7 @@ impl HybridStore {
 }
 
 impl Storage for HybridStore {
-    type Batch = HybridBatch;
+    type Batch<'a> = HybridBatch where Self: 'a;
 
     fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
         let primary = SledStore::open(path)?;
@@ -312,6 +312,18 @@ impl Storage for HybridStore {
 }
 
 impl WriteBatchExt for HybridStore {
+    type Batch = HybridBatch;
+    
+    fn batch(&self) -> Self::Batch {
+        HybridBatch {
+            primary_batch: self.primary.batch(),
+            cache_batch: self.cache.batch(),
+            key_routing: self.key_routing.clone(),
+        }
+    }
+}
+
+impl WriteBatchExt for HybridStore {
     type BatchType<'a> = HybridBatch where Self: 'a;
 
     fn batch(&self) -> Self::BatchType<'_> {
@@ -328,20 +340,40 @@ impl WriteBatchExt for HybridStore {
     
     fn put_serialized(&self, key: &[u8], value: &[u8]) -> Result<()> {
         self.primary.put_serialized(key, value)?;
-        if let Err(e) = self.cache.put_serialized(key, value) {
-            log::warn!("Failed to update cache: {}", e);
+        match self.cache.put_serialized(key, value) {
+            Ok(_) => {}
+            Err(e) => log::warn!("Failed to update cache in put_serialized: {}", e),
         }
         self.key_routing.write().insert(key.to_vec(), true);
         Ok(())
     }
-
+    
     fn delete_serialized(&self, key: &[u8]) -> Result<()> {
         self.primary.delete_serialized(key)?;
         if let Err(e) = self.cache.delete_serialized(key) {
-            log::warn!("Failed to delete from cache: {}", e);
+            log::warn!("Failed to delete from cache in delete_serialized: {}", e);
         }
         self.key_routing.write().remove(key);
         Ok(())
+    }
+    
+    fn iter_prefix(&self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + '_> {
+        // For now, just delegate to the primary storage
+        // In a more advanced implementation, we might want to merge results from both stores
+        self.primary.iter_prefix(prefix)
+    }
+    
+    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        if self.route_read(key) {
+            match self.cache.get_raw(key) {
+                Ok(Some(value)) => return Ok(Some(value)),
+                Ok(None) => {}
+                Err(e) => log::warn!("Cache get_raw failed: {}", e),
+            }
+        }
+        
+        // Fall back to primary storage
+        self.primary.get_raw(key)
     }
 }
 
@@ -402,6 +434,22 @@ impl WriteBatch for HybridBatch {
         }
         
         Ok(())
+    }
+    
+    fn clear(&mut self) {
+        // Clear both batches
+        self.primary_batch.clear();
+        self.cache_batch.clear();
+        // Clear routing for this batch
+        self.key_routing.write().clear();
+    }
+    
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    
+    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
 

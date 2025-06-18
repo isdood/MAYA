@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::fmt;
+use bincode;
 use rayon::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -370,15 +371,23 @@ where
 impl<B> WriteBatch for CachedBatch<B>
 where
     B: WriteBatch + Clone + 'static,
-    B: std::any::Any,
+    B: std::any::Any + Send + Sync,
 {
-    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
+    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()> {
+        let bytes = bincode::serialize(value).map_err(KnowledgeGraphError::from)?;
+        self.put_serialized(key, &bytes)
+    }
+    
+    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         // Check if we need to flush pending operations
         if self.pending_puts.len() + self.pending_deletes.len() >= self.max_batch_size {
             self.apply_pending_ops()?;
         }
         
+        // Forward to inner batch
         self.inner.put_serialized(key, value)?;
+        
+        // Update pending operations
         self.pending_puts.insert(key.to_vec(), value.to_vec());
         self.pending_deletes.remove(key);
         
@@ -388,21 +397,20 @@ where
         Ok(())
     }
     
-    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        // Store the serialized value in pending_puts
-        self.pending_puts.insert(key.to_vec(), value.to_vec());
-        
-        // Forward to inner batch
-        self.inner.put_serialized(key, value)
+    fn delete(&mut self, key: &[u8]) -> Result<()> {
+        self.delete_serialized(key)
     }
     
-    fn delete(&mut self, key: &[u8]) -> Result<()> {
+    fn delete_serialized(&mut self, key: &[u8]) -> Result<()> {
         // Check if we need to flush pending operations
         if self.pending_puts.len() + self.pending_deletes.len() >= self.max_batch_size {
             self.apply_pending_ops()?;
         }
         
-        self.inner.delete(key)?;
+        // Forward to inner batch
+        self.inner.delete_serialized(key)?;
+        
+        // Update pending operations
         self.pending_puts.remove(key);
         self.pending_deletes.insert(key.to_vec());
         
@@ -498,11 +506,16 @@ where
     S: Storage + WriteBatchExt + 'static,
     for<'a> <S as Storage>::Batch<'a>: WriteBatch + Clone + 'static,
     for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
+    for<'a> <<S as Storage>::Batch<'a> as WriteBatch>::Batch: 'static,
 {
+    type Batch = CachedBatch<S::Batch<'static>>;
     type BatchType<'a> = CachedBatch<<S as Storage>::Batch<'a>> where Self: 'a;
     
+    fn batch(&self) -> Self::BatchType<'_> {
+        self.create_batch()
+    }
+    
     fn create_batch(&self) -> Self::BatchType<'_> {
-        // Create a new batch from the inner storage
         CachedBatch {
             inner: self.inner.batch(),
             cache: self.cache.clone(),
@@ -511,6 +524,43 @@ where
             pending_deletes: HashSet::new(),
             max_batch_size: 10_000,
             total_ops: AtomicUsize::new(0),
+        }
+    }
+    
+    fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
+        let mut batch = self.create_batch();
+        batch.put_serialized(key, value)?;
+        batch.commit()
+    }
+    
+    fn delete_serialized(&self, key: &[u8]) -> Result<()> {
+        let mut batch = self.create_batch();
+        batch.delete_serialized(key)?;
+        batch.commit()
+    }
+    
+    fn iter_prefix(&self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + '_> {
+        self.inner.iter_prefix(prefix)
+    }
+    
+    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        // First check the cache
+        if let Some(cached) = self.cache.read().peek(key).cloned() {
+            self.metrics.record_hit(cached.len());
+            return Ok(Some(cached));
+        }
+        
+        // Cache miss, check the underlying storage
+        self.metrics.record_miss();
+        match self.inner.get_raw(key) {
+            Ok(Some(value)) => {
+                // Update cache for next time
+                let bytes = value.clone();
+                self.cache.write().put(key.to_vec(), bytes.clone());
+                Ok(Some(bytes))
+            },
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
         }
     }
 }

@@ -1,6 +1,6 @@
 const std = @import("std");
 const c = @cImport({
-    @cInclude("imgui.h");
+    @cInclude("cimgui.h");
 });
 const widgets = @import("widgets.zig");
 

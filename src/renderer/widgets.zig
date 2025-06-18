@@ -520,8 +520,8 @@ pub const Separator = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
-        _ = widget;
+    fn render(_widget: *Widget) !void {
+        _ = _widget;
         c.igSeparator();
     }
 };

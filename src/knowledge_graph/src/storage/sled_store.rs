@@ -5,6 +5,7 @@ use std::sync::Arc;
 use sled::{Db, IVec};
 use serde::{Serialize, de::DeserializeOwned};
 use log::info;
+use crate::error::KnowledgeGraphError;
 
 use crate::error::Result;
 use super::{Storage, WriteBatch, WriteBatchExt, serialize, deserialize};
@@ -133,18 +134,22 @@ unsafe impl Sync for BatchOp {}
 // The WriteBatchExt implementation is only for SledStore
 
 impl WriteBatch for SledWriteBatch {
-    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
+    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()> {
+        let bytes = bincode::serialize(value).map_err(KnowledgeGraphError::from)?;
+        self.put_serialized(key, &bytes)
+    }
+    
+    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
         Ok(())
     }
     
     fn delete(&mut self, key: &[u8]) -> Result<()> {
-        self.ops.push(BatchOp::Delete(IVec::from(key)));
-        Ok(())
+        self.delete_serialized(key)
     }
     
-    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
+    fn delete_serialized(&mut self, key: &[u8]) -> Result<()> {
+        self.ops.push(BatchOp::Delete(IVec::from(key)));
         Ok(())
     }
     
@@ -153,6 +158,10 @@ impl WriteBatch for SledWriteBatch {
     }
     
     fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    
+    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
         self
     }
     
