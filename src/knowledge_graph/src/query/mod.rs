@@ -2,9 +2,7 @@
 //!
 //! Provides a fluent API for querying the knowledge graph.
 
-use std::collections::HashMap;
 use std::marker::PhantomData;
-use uuid::Uuid;
 use serde_json::Value;
 
 use crate::{
@@ -94,13 +92,39 @@ where
     pub fn execute(self) -> Result<QueryResult> {
         // Start with all nodes if no filters
         let mut nodes = self.graph.get_nodes()?;
+        let mut edges = Vec::new();
         
-        // Apply filters if any
+        // Apply node filters if any
         if !self.node_filters.is_empty() {
             nodes.retain(|node| self.node_filters.iter().all(|f| f(node)));
         }
         
-        // Apply offset and limit
+        // If we have edge filters, we need to process edges
+        if !self.edge_filters.is_empty() {
+            // For each node, get its edges and apply edge filters
+            let mut filtered_nodes = Vec::new();
+            
+            for node in nodes {
+                // Get all edges where this node is the source
+                let node_edges = self.graph.query_edges_from(node.id)?;
+                
+                // Apply edge filters
+                let filtered_edges: Vec<_> = node_edges
+                    .into_iter()
+                    .filter(|edge| self.edge_filters.iter().all(|f| f(edge)))
+                    .collect();
+                
+                // If we found matching edges, include the node and edges in the result
+                if !filtered_edges.is_empty() {
+                    filtered_nodes.push(node.clone());
+                    edges.extend(filtered_edges);
+                }
+            }
+            
+            nodes = filtered_nodes;
+        }
+        
+        // Apply offset and limit to nodes
         let start = std::cmp::min(self.offset, nodes.len());
         let end = match self.limit {
             Some(limit) => std::cmp::min(start + limit, nodes.len()),
@@ -109,12 +133,7 @@ where
         
         let nodes = nodes.into_iter().skip(start).take(end - start).collect();
         
-        // TODO: Apply edge filters and construct result
-        
-        Ok(QueryResult {
-            nodes,
-            edges: Vec::new(),
-        })
+        Ok(QueryResult { nodes, edges })
     }
 }
 

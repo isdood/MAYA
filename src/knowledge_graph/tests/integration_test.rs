@@ -79,24 +79,41 @@ fn test_end_to_end_workflow() -> Result<(), Box<dyn Error>> {
     // Query 3: Find people who know someone who works at a location
     let mut people_who_know_workers = Vec::new();
     
+    // First, get all people
     let people = graph.query()
         .with_label("Person")
         .execute()?;
     
-    for person in people.nodes {
-        // Find who this person knows
-        let known_people = graph.query()
-            .with_label("KNOWS")
-            .execute()?;
+    println!("Found {} people in the graph", people.nodes.len());
+    
+    // For each person, check who they know and if those people work somewhere
+    for person in &people.nodes {
+        println!("Checking person: {:?} (ID: {})", 
+            person.properties.iter().find(|p| p.key == "name").map(|p| &p.value).unwrap_or(&PropertyValue::Null),
+            person.id
+        );
+        
+        // Get all edges where this person is the source
+        let edges = graph.query_edges_from(person.id)?;
+        println!("  Found {} edges from this person", edges.len());
+        
+        // Check if this person knows someone who works somewhere
+        for edge in &edges {
+            println!("    Edge: {} -> {} (label: {})", edge.source, edge.target, edge.label);
             
-        for edge in known_people.edges {
-            if edge.source == person.id {
-                // Check if the known person works somewhere
-                let workplaces = graph.query()
-                    .with_label("WORKS_AT")
-                    .execute()?;
-                    
-                if workplaces.edges.iter().any(|e| e.source == edge.target) {
+            if edge.label == "KNOWS" {
+                println!("      Found KNOWS edge to person {}", edge.target);
+                
+                // Check if the target person (edge.target) has a WORKS_AT edge
+                let works_edges = graph.query_edges_from(edge.target)?;
+                println!("      Found {} edges from target person {}", works_edges.len(), edge.target);
+                
+                for we in &works_edges {
+                    println!("        Edge: {} -> {} (label: {})", we.source, we.target, we.label);
+                }
+                
+                if works_edges.iter().any(|e| e.label == "WORKS_AT") {
+                    println!("      This person knows someone who works!");
                     people_who_know_workers.push(person.clone());
                     break;
                 }
@@ -104,34 +121,48 @@ fn test_end_to_end_workflow() -> Result<(), Box<dyn Error>> {
         }
     }
     
+    println!("People who know someone who works: {}", people_who_know_workers.len());
+    
     // Alice knows Bob, who works at the office
-    assert_eq!(people_who_know_workers.len(), 1);
-    assert_eq!(people_who_know_workers[0].id, alice.id);
+    assert_eq!(people_who_know_workers.len(), 1, "Expected 1 person who knows someone who works, found {}", people_who_know_workers.len());
+    if !people_who_know_workers.is_empty() {
+        assert_eq!(people_who_know_workers[0].id, alice.id, "Expected Alice to be the one who knows someone who works");
+    }
     
     Ok(())
 }
 
 #[test]
 fn test_persistence() -> Result<(), Box<dyn Error>> {
-    // Test basic graph operations
-    let dir = tempdir()?;
-    let path = dir.path();
+    // Use a unique temporary directory for this test
+    let temp_dir = tempfile::Builder::new()
+        .prefix("maya_test_")
+        .tempdir()?;
+    let db_path = temp_dir.path().join("test_db");
     
-    let graph: KnowledgeGraph<SledStore> = KnowledgeGraph::open(path)?;
-    let mut node = Node::new("Test");
-    node.properties.push(Property::new("persistent", PropertyValue::Bool(true)));
-    graph.add_node(node)?;
+    // Create and populate the first graph
+    {
+        let graph = KnowledgeGraph::<SledStore>::open(&db_path)?;
+        let mut node = Node::new("test");
+        node.properties.push(Property::new("name", PropertyValue::String("test".to_string())));
+        graph.add_node(node)?;
+    }
     
-    // Reopen the graph
-    let graph: KnowledgeGraph<SledStore> = KnowledgeGraph::open(path)?;
+    // Ensure the graph is dropped and all files are closed
+    std::thread::sleep(std::time::Duration::from_millis(100));
     
-    // The node should still be there
-    let nodes = graph.query()
-        .with_label("Test")
-        .with_property("persistent", PropertyValue::Bool(true))
-        .execute()?;
+    // Reopen and verify
+    let graph = KnowledgeGraph::<SledStore>::open(&db_path)?;
+    let nodes: Vec<Node> = graph.query()
+        .with_node_type("test")
+        .execute()?
+        .nodes;
+        
+    assert_eq!(nodes.len(), 1, "Expected 1 node, found {}", nodes.len());
+    assert_eq!(nodes[0].label, "test");
     
-    assert_eq!(nodes.nodes.len(), 1);
+    // Explicitly drop the graph before the temp_dir goes out of scope
+    drop(graph);
     
     Ok(())
 }

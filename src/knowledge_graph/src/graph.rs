@@ -1,14 +1,12 @@
 //! Main knowledge graph implementation
 
 use std::path::Path;
-use std::sync::Arc;
 use uuid::Uuid;
-use serde::{Serialize, de::DeserializeOwned};
-use log::{info, error};
+use log::info;
 
 use crate::{
     error::{Result, KnowledgeGraphError},
-    models::{Node, Edge, Property},
+    models::{Node, Edge},
     storage::{Storage, WriteBatch, WriteBatchExt},
 };
 
@@ -132,20 +130,32 @@ where
 
     /// Find nodes by label and properties
     pub fn find_nodes_by_label(&self, label: &str) -> Result<Vec<Node>> {
-        // In a real implementation, this would use an index
-        // For now, we'll do a full scan (not efficient for large graphs)
-        let prefix = b"node:";
         let mut nodes = Vec::new();
         
-        for (_, value) in self.storage.iter_prefix(prefix) {
-            if let Ok(node) = deserialize::<Node>(&value) {
-                if node.label == label {
-                    nodes.push(node);
-                }
+        for node in self.get_nodes()? {
+            if node.label == label {
+                nodes.push(node);
             }
         }
         
         Ok(nodes)
+    }
+    
+    /// Find all edges originating from a specific node
+    pub fn query_edges_from(&self, node_id: Uuid) -> Result<Vec<Edge>> {
+        let prefix = b"edge:";
+        let mut edges = Vec::new();
+        
+        for result in self.storage.iter_prefix(prefix) {
+            let value = result.1; // Extract the owned Vec<u8>
+            if let Ok(edge) = serde_json::from_slice::<Edge>(&value) {
+                if edge.source == node_id {
+                    edges.push(edge);
+                }
+            }
+        }
+        
+        Ok(edges)
     }
 
     /// Create a new transaction

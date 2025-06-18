@@ -52,7 +52,7 @@ pub mod prelude {
 }
 
 // Re-export serialization functions for internal use
-pub(crate) use storage::{serialize, deserialize};
+// Re-export storage types
 
 #[cfg(test)]
 mod tests {
