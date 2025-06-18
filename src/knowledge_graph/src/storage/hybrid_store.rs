@@ -168,14 +168,8 @@ impl HybridStore {
 
 impl Storage for HybridStore {
     type Batch<'a> = HybridBatch where Self: 'a;
-
-    fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let primary = SledStore::open(path)?;
-        let cache = CachedStore::new(primary.clone());
-        HybridStore::with_config(primary, cache, HybridConfig::default())
-    }
-
-    fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>> {
+    
+    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
         self.update_stats(true, || {
             if self.route_read(key) {
                 // Try cache first
@@ -187,8 +181,8 @@ impl Storage for HybridStore {
                     },
                     Ok(None) => {
                         // Cache miss, try primary
-                        match self.primary.get(key)? {
-                            Some(value) => {
+                        match self.primary.get(key) {
+                            Ok(Some(value)) => {
                                 // Update cache for next time
                                 if let Err(e) = self.cache.put(key, &value) {
                                     log::warn!("Failed to update cache: {}", e);
@@ -196,45 +190,89 @@ impl Storage for HybridStore {
                                 self.key_routing.write().insert(key.to_vec(), true);
                                 Ok(Some(value))
                             },
-                            None => Ok(None),
+                            Ok(None) => Ok(None),
+                            Err(e) => Err(e.into())
                         }
                     },
                     Err(e) => {
                         // Fallback to primary on cache error
                         log::warn!("Cache error: {}, falling back to primary", e);
-                        self.primary.get(key)
+                        self.primary.get(key).map_err(Into::into)
                     },
                 }
             } else {
                 // Read from primary only
                 self.key_routing.write().insert(key.to_vec(), false);
-                self.primary.get(key)
+                self.primary.get(key).map_err(Into::into)
             }
         })
     }
-    
-    fn open<P: AsRef<Path>>(_path: P) -> Result<Self> {
-        Err(KnowledgeGraphError::StorageError("Use HybridStore::new() instead".to_string()))
+
+    fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
+        self.update_stats(false, || {
+            // Write to both stores
+            self.primary.put(key, value)?;
+            
+            // Update cache asynchronously
+            let cache = self.cache.clone();
+            let key = key.to_vec();
+            let value = bincode::serialize(value)
+                .map_err(|e| KnowledgeGraphError::SerializationError(e.to_string()))?;
+            
+            // Spawn a blocking task to update the cache
+            std::thread::spawn(move || {
+                if let Err(e) = cache.put_serialized(&key, &value) {
+                    log::warn!("Failed to update cache: {}", e);
+                }
+            });
+            
+            // Update key routing
+            self.key_routing.write().insert(key, true);
+            
+            Ok(())
+        })
     }
-    
-    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
-        // For now, just forward to the primary storage
-        // In a more advanced implementation, we might want to check the routing table
-        // and potentially fetch some items from the cache
-        self.primary.iter_prefix(prefix)
+
+    fn delete(&self, key: &[u8]) -> Result<()> {
+        self.update_stats(false, || {
+            // Delete from primary
+            self.primary.delete(key)?;
+            
+            // Invalidate cache asynchronously
+            let cache = self.cache.clone();
+            let key = key.to_vec();
+            
+            // Spawn a blocking task to invalidate the cache
+            std::thread::spawn(move || {
+                if let Err(e) = cache.delete_serialized(&key) {
+                    log::warn!("Failed to invalidate cache: {}", e);
+                }
+            });
+            
+            // Update key routing
+            self.key_routing.write().remove(&key);
+            
+            Ok(())
+        })
     }
-    
+
     fn exists(&self, key: &[u8]) -> Result<bool> {
-        if self.route_read(key) {
-            match self.cache.get_raw(key) {
-                Ok(Some(_)) => return Ok(true),
-                Ok(None) => {}
-                Err(e) => log::warn!("Cache error in exists: {}", e),
+        self.update_stats(true, || {
+            if self.route_read(key) {
+                match self.cache.exists(key) {
+                    Ok(true) => Ok(true),
+                    Ok(false) => self.primary.exists(key),
+                    Err(e) => {
+                        log::warn!("Cache error in exists: {}", e);
+                        self.primary.exists(key)
+                    }
+                }
+            } else {
+                self.primary.exists(key)
             }
-        }
-        self.primary.exists(key)
+        })
     }
-    
+
     fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
         self.update_stats(true, || {
             if self.route_read(key) {
@@ -247,8 +285,8 @@ impl Storage for HybridStore {
                     },
                     Ok(None) => {
                         // Cache miss, try primary
-                        match self.primary.get_raw(key)? {
-                            Some(value) => {
+                        match self.primary.get_raw(key) {
+                            Ok(Some(value)) => {
                                 // Update cache for next time
                                 if let Err(e) = self.cache.put_serialized(key, &value) {
                                     log::warn!("Failed to update cache: {}", e);
@@ -256,56 +294,20 @@ impl Storage for HybridStore {
                                 self.key_routing.write().insert(key.to_vec(), true);
                                 Ok(Some(value))
                             },
-                            None => Ok(None),
+                            Ok(None) => Ok(None),
+                            Err(e) => Err(e.into())
                         }
                     },
                     Err(e) => {
                         // Fallback to primary on cache error
                         log::warn!("Cache error: {}, falling back to primary", e);
-                        self.primary.get_raw(key)
+                        self.primary.get_raw(key).map_err(Into::into)
                     },
                 }
             } else {
                 // Read from primary only
                 self.key_routing.write().insert(key.to_vec(), false);
-                self.primary.get_raw(key)
-            }
-        })
-    }
-
-    fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
-        self.update_stats(false, || {
-            // Write to both backends for consistency
-            self.primary.put(key, value)?;
-            if let Err(e) = self.cache.put(key, value) {
-                log::warn!("Failed to update cache: {}", e);
-            }
-            self.key_routing.write().insert(key.to_vec(), true);
-            Ok(())
-        })
-    }
-
-    fn delete(&self, key: &[u8]) -> Result<()> {
-        self.update_stats(false, || {
-            // Delete from both backends
-            self.primary.delete(key)?;
-            if let Err(e) = self.cache.delete(key) {
-                log::warn!("Failed to delete from cache: {}", e);
-            }
-            self.key_routing.write().remove(key);
-            Ok(())
-        })
-    }
-
-    fn exists(&self, key: &[u8]) -> Result<bool> {
-        self.update_stats(true, || {
-            if self.route_read(key) {
-                match self.cache.exists(key) {
-                    Ok(true) => Ok(true),
-                    _ => self.primary.exists(key),
-                }
-            } else {
-                self.primary.exists(key)
+                self.primary.get_raw(key).map_err(Into::into)
             }
         })
     }
@@ -313,7 +315,7 @@ impl Storage for HybridStore {
 
 impl WriteBatchExt for HybridStore {
     type BatchType<'a> = HybridBatch where Self: 'a;
-
+    
     fn create_batch(&self) -> Self::BatchType<'_> {
         HybridBatch::new(
             Box::new(self.primary.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
@@ -342,9 +344,10 @@ impl WriteBatchExt for HybridStore {
         Ok(())
     }
     
-    fn iter_prefix(&self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + '_> {
-        // For now, just delegate to the primary storage
-        // In a more advanced implementation, we might want to merge results from both stores
+    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+        // For now, just forward to the primary storage
+        // In a more advanced implementation, we might want to check the routing table
+        // and potentially fetch some items from the cache
         self.primary.iter_prefix(prefix)
     }
     
@@ -353,11 +356,9 @@ impl WriteBatchExt for HybridStore {
             match self.cache.get_raw(key) {
                 Ok(Some(value)) => return Ok(Some(value)),
                 Ok(None) => {}
-                Err(e) => log::warn!("Cache get_raw failed: {}", e),
+                Err(e) => log::warn!("Cache error in get_raw: {}", e),
             }
         }
-        
-        // Fall back to primary storage
         self.primary.get_raw(key)
     }
 }
@@ -387,39 +388,30 @@ impl HybridBatch {
 
 impl WriteBatch for HybridBatch {
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        // Put in primary batch
+        // Write to both batches
         self.primary_batch.put_serialized(key, value)?;
         
-        // Try to put in cache batch
-        if let Err(e) = self.cache_batch.put_serialized(key, value) {
-            log::warn!("Failed to update cache in batch: {}", e);
-        }
-        
-        // Update routing
+        // Update cache batch and routing
+        self.cache_batch.put_serialized(key, value)?;
         self.key_routing.write().insert(key.to_vec(), true);
+        
         Ok(())
     }
     
     fn delete_serialized(&mut self, key: &[u8]) -> Result<()> {
-        // Delete from primary
+        // Delete from both batches
         self.primary_batch.delete_serialized(key)?;
         
-        // Try to delete from cache
-        if let Err(e) = self.cache_batch.delete_serialized(key) {
-            log::warn!("Failed to delete from cache in batch: {}", e);
-        }
-        
-        // Update routing
+        // Update cache batch and routing
+        self.cache_batch.delete_serialized(key)?;
         self.key_routing.write().remove(key);
+        
         Ok(())
     }
     
     fn clear(&mut self) {
-        // Clear both batches
         self.primary_batch.clear();
         self.cache_batch.clear();
-        // Clear routing for this batch
-        self.key_routing.write().clear();
     }
     
     fn commit(self) -> Result<()> {
@@ -428,8 +420,8 @@ impl WriteBatch for HybridBatch {
         
         // Then commit cache
         if let Err(e) = self.cache_batch.commit() {
-            log::error!("Failed to commit cache batch: {}", e);
-            return Err(KnowledgeGraphError::StorageError("Failed to commit cache batch".into()));
+            log::warn!("Failed to commit cache batch: {}", e);
+            // Don't fail the whole operation if cache update fails
         }
         
         Ok(())

@@ -109,6 +109,9 @@ pub type Result<T> = std::result::Result<T, KnowledgeGraphError>;
 
 /// Trait for key-value storage operations
 pub trait Storage: Send + Sync + 'static {
+    /// The batch type for this storage backend
+    type Batch<'a>: WriteBatch + 'a where Self: 'a;
+    
     /// Get a value by key
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>>;
     
@@ -126,6 +129,9 @@ pub trait Storage: Send + Sync + 'static {
     
     /// Iterate over key-value pairs with a prefix
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
+    
+    /// Create a new batch
+    fn create_batch(&self) -> Self::Batch<'_>;
 }
 
 /// Trait for generic batch operations
@@ -172,12 +178,6 @@ impl<T: WriteBatch> GenericWriteBatch for T {
 
 /// Extension trait for batch operations
 pub trait WriteBatchExt: Storage {
-    /// The batch type for this storage backend
-    type BatchType<'a>: WriteBatch + 'static where Self: 'a;
-    
-    /// Create a new batch
-    fn create_batch(&self) -> Self::BatchType<'_>;
-    
     /// Put a serializable value into the batch
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
         let bytes = serialize(value)?;

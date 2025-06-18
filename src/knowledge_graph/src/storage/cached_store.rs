@@ -225,103 +225,98 @@ impl<S> CachedStore<S> {
 impl<S> Storage for CachedStore<S>
 where
     S: Storage + 'static,
-    for<'a> <S as Storage>::Batch<'a>: WriteBatch + Clone + 'static,
+    S::Batch<'static>: Clone + 'static,
 {
-    type Batch<'a> = CachedBatch<<S as Storage>::Batch<'a>> where Self: 'a;
+    type Batch<'a> = CachedBatch<S::Batch<'a>> where Self: 'a;
     
-    fn open<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
-        let inner = S::open(path)?;
-        Ok(Self::new(inner))
-    }
-    
-    fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>> {
+    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
         // Try to get from cache first
-        let cached = {
+        {
             let cache = self.cache.read();
-            cache.peek(key).cloned()
-        };
-        
-        if let Some(cached_bytes) = cached {
-            self.metrics.record_hit(cached_bytes.len());
-            return deserialize(&cached_bytes).map(Some);
+            if let Some(cached) = cache.get(key) {
+                self.metrics.record_hit(std::mem::size_of_val(cached));
+                return Ok(Some(cached.clone()));
+            }
         }
         
         // Cache miss, get from inner storage
-        match self.inner.get::<T>(key).map_err(|e| KnowledgeGraphError::StorageError(e.to_string()))? {
-            Some(value) => {
-                // Cache the value for future use
-                let bytes = bincode::serialize(&value).map_err(|e| KnowledgeGraphError::BincodeError(e.to_string()))?;
-                self.cache.write().put(key.to_vec(), bytes.clone());
-                self.metrics.record_write(bytes.len());
-                Ok(Some(value))
-            }
-            None => Ok(None),
+        self.metrics.record_miss();
+        let value = self.inner.get(key)?;
+        
+        // Cache the result if found
+        if let Some(ref value) = value {
+            let bytes = bincode::serialize(value)?;
+            self.metrics.record_write(bytes.len());
+            let mut cache = self.cache.write();
+            cache.put(key.to_vec(), value.clone());
+            
+            // Update read-ahead keys
+            self.update_read_ahead_keys(key);
         }
+        
+        Ok(value)
     }
-    
+
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
-        // Serialize the value
-        let serialized = serialize(value)?;
-        
-        // Update storage
-        self.inner.put(key, value)?;
-        
         // Update cache
+        let bytes = bincode::serialize(value)?;
+        self.metrics.record_write(bytes.len());
+        
+        let value = bincode::deserialize(&bytes)?;
         let mut cache = self.cache.write();
-        cache.put(key.to_vec(), serialized);
+        cache.put(key.to_vec(), value);
         
-        // Update metrics
-        self.metrics.record_write(key.len() + std::mem::size_of_val(&value));
-        
-        Ok(())
+        // Write to storage
+        self.inner.put(key, value)
     }
-    
+
     fn delete(&self, key: &[u8]) -> Result<()> {
-        self.inner.delete(key)?;
-        self.cache.write().pop(key);
-        Ok(())
+        // Invalidate cache
+        let mut cache = self.cache.write();
+        cache.pop(key);
+        
+        // Delete from storage
+        self.inner.delete(key)
     }
-    
+
     fn exists(&self, key: &[u8]) -> Result<bool> {
         // Check cache first
-        if self.cache.read().contains(key) {
-            return Ok(true);
+        {
+            let cache = self.cache.read();
+            if cache.contains(key) {
+                return Ok(true);
+            }
         }
         
-        // Fall back to storage
+        // Check storage
         self.inner.exists(key)
+    }
+    
+    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        // Try to get from cache first
+        {
+            let cache = self.cache.read();
+            if let Some(cached) = cache.get(key) {
+                let bytes = bincode::serialize(cached)?;
+                self.metrics.record_hit(bytes.len());
+                return Ok(Some(bytes));
+            }
+        }
+        
+        // Cache miss, get from storage
+        self.metrics.record_miss();
+        self.inner.get_raw(key)
     }
     
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         self.inner.iter_prefix(prefix)
     }
     
-    /// Get raw bytes from the cache or underlying storage without deserialization
-    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        // First check the cache
-        if let Some(cached) = self.cache.read().peek(key).cloned() {
-            self.metrics.record_hit(cached.len());
-            return Ok(Some(cached));
-        }
-        
-        // Cache miss, check the underlying storage
-        self.metrics.record_miss();
-        match self.inner.get_raw(key) {
-            Ok(Some(value)) => {
-                // Update cache for next time
-                let bytes = value.clone();
-                self.cache.write().put(key.to_vec(), bytes.clone());
-                Ok(Some(bytes))
-            },
-            Ok(None) => Ok(None),
-            Err(e) => Err(e),
-        }
-    }
-    
-    fn batch(&self) -> Self::Batch<'_> {
+    fn create_batch(&self) -> Self::Batch<'_> {
         CachedBatch {
-            inner: self.inner.batch(),
+            inner: self.inner.create_batch(),
             cache: self.cache.clone(),
+            pending_ops: RwLock::new(Vec::new()),
             metrics: self.metrics.clone(),
             pending_puts: HashMap::new(),
             pending_deletes: HashSet::new(),

@@ -34,10 +34,6 @@ impl SledStore {
 
 impl Storage for SledStore {
     type Batch<'a> = SledWriteBatch where Self: 'a;
-
-    fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
-        SledStore::open(path)
-    }
     
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
         match self.db.get(key)? {
@@ -92,9 +88,25 @@ impl Storage for SledStore {
         
         Box::new(filtered)
     }
-
-    fn batch(&self) -> Self::Batch<'_> {
+    
+    fn create_batch(&self) -> Self::Batch<'_> {
         SledWriteBatch::new(Arc::clone(&self.db))
+    }
+}
+
+impl SledStore {
+    /// Open or create a new Sled database at the given path
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let db = sled::open(path)?;
+        info!("Opened Sled database");
+        Ok(Self {
+            db: Arc::new(db),
+        })
+    }
+
+    /// Get a reference to the underlying Sled database
+    pub fn inner(&self) -> &Db {
+        &self.db
     }
 }
 

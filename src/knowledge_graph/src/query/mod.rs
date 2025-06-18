@@ -10,6 +10,7 @@ use crate::{
     models::{Node, Edge},
     storage::{Storage, WriteBatch, WriteBatchExt},
     KnowledgeGraph,
+    graph::get_node_ids_by_label,
 };
 
 /// Result of a query execution
@@ -91,8 +92,26 @@ where
 
     /// Execute the query and return the matching nodes and edges
     pub fn execute(self) -> Result<QueryResult> {
-        // Start with all nodes if no filters
-        let mut nodes = self.graph.get_nodes()?;
+        // Optimization: If only a label filter is present, use the label index
+        let mut nodes = if self.node_filters.len() == 1 {
+            // Try to detect if the filter is a label filter
+            // This is a heuristic: if with_label/with_node_type was called, it is always the first filter
+            if let Some(label) = self.extract_label_filter() {
+                // Use label index
+                let node_ids = get_node_ids_by_label(&self.graph.storage, &label)?;
+                let mut result_nodes = Vec::new();
+                for node_id in node_ids {
+                    if let Some(node) = self.graph.get_node(node_id)? {
+                        result_nodes.push(node);
+                    }
+                }
+                result_nodes
+            } else {
+                self.graph.get_nodes()?
+            }
+        } else {
+            self.graph.get_nodes()?
+        };
         let mut edges = Vec::new();
         
         // Apply node filters if any
@@ -135,6 +154,14 @@ where
         let nodes = nodes.into_iter().skip(start).take(end - start).collect();
         
         Ok(QueryResult { nodes, edges })
+    }
+
+    /// Try to extract the label from the node_filters if it was set by with_label/with_node_type
+    fn extract_label_filter(&self) -> Option<String> {
+        // This is a heuristic: we know with_label/with_node_type pushes a filter that checks node.label == label
+        // We can't extract the label directly from the closure, so we could store the label in a field when with_label is called
+        // For now, this is a placeholder for future improvement
+        None
     }
 }
 

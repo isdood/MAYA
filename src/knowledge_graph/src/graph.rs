@@ -127,6 +127,8 @@ where
     }
 
     /// Add a node to the graph
+    ///
+    /// Also updates the label index for fast label-based queries.
     pub fn add_node(&self, node: Node) -> Result<()> {
         let key = node_key(node.id);
         
@@ -142,7 +144,11 @@ where
         
         let mut batch = batch;
         batch.put_serialized(&key, &value)?;
-        Box::new(batch).commit()
+        Box::new(batch).commit()?;
+        
+        // Update label index
+        add_node_to_label_index(&self.storage, &node.label, node.id)?;
+        Ok(())
     }
 
     /// Get a node by ID
@@ -319,3 +325,44 @@ fn edge_key(id: Uuid) -> Vec<u8> {
 }
 
 // Serialization functions are used through the Storage trait
+
+// Label index helper functions
+use uuid::Uuid;
+
+/// Key format for label index: "label_index:<label>"
+fn label_index_key(label: &str) -> Vec<u8> {
+    let mut key = b"label_index:".to_vec();
+    key.extend_from_slice(label.as_bytes());
+    key
+}
+
+/// Add a node ID to the label index
+fn add_node_to_label_index<S: Storage>(storage: &S, label: &str, node_id: Uuid) -> Result<()> {
+    let key = label_index_key(label);
+    let mut node_ids: Vec<Uuid> = storage.get(&key)?.unwrap_or_default();
+    if !node_ids.contains(&node_id) {
+        node_ids.push(node_id);
+        storage.put(&key, &node_ids)?;
+    }
+    Ok(())
+}
+
+/// Remove a node ID from the label index
+fn remove_node_from_label_index<S: Storage>(storage: &S, label: &str, node_id: Uuid) -> Result<()> {
+    let key = label_index_key(label);
+    let mut node_ids: Vec<Uuid> = storage.get(&key)?.unwrap_or_default();
+    let original_len = node_ids.len();
+    node_ids.retain(|id| id != &node_id);
+    if node_ids.is_empty() {
+        storage.delete(&key)?;
+    } else if node_ids.len() != original_len {
+        storage.put(&key, &node_ids)?;
+    }
+    Ok(())
+}
+
+/// Get all node IDs for a given label
+fn get_node_ids_by_label<S: Storage>(storage: &S, label: &str) -> Result<Vec<Uuid>> {
+    let key = label_index_key(label);
+    Ok(storage.get(&key)?.unwrap_or_default())
+}
