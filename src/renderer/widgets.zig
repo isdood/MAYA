@@ -29,63 +29,262 @@ pub const Button = struct {
     }
 };
 
+/// A slider widget for selecting a value within a range
 pub const Slider = struct {
     const Self = @This();
 
     widget: Widget,
-    label: []const u8,
+    label: [*:0]const u8,
     value: *f32,
     min: f32,
     max: f32,
-    format: []const u8,
-    callback: ?*const fn (f32) void,
+    format: [*:0]const u8,
+    flags: c.ImGuiSliderFlags,
 
-    pub fn init(id: []const u8, label: []const u8, value: *f32, min: f32, max: f32, format: []const u8, position: [2]f32, size: [2]f32, callback: ?*const fn (f32) void) Self {
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *f32,
+        min: f32,
+        max: f32,
+        format: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSliderFlags,
+    ) Self {
         return Self{
-            .widget = Widget.init(id, position, size, render),
+            .widget = Widget.init(id, pos, size),
             .label = label,
             .value = value,
             .min = min,
             .max = max,
             .format = format,
-            .callback = callback,
+            .flags = flags,
         };
     }
 
-    fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
-        if (c.igSliderFloat(self.label.ptr, self.value, self.min, self.max, self.format.ptr)) {
-            if (self.callback) |cb| {
-                cb(self.value.*);
-            }
-        }
+    pub fn render(self: *Self) void {
+        _ = c.igSliderFloat(
+            self.label,
+            self.value,
+            self.min,
+            self.max,
+            self.format,
+            self.flags,
+        );
     }
 };
 
+/// A knob widget for circular value selection
+pub const Knob = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *f32,
+    min: f32,
+    max: f32,
+    size: f32,
+    flags: c.ImGuiSliderFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *f32,
+        min: f32,
+        max: f32,
+        size: f32,
+        pos: [2]f32,
+        flags: c.ImGuiSliderFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(id, pos, .{ size, size }),
+            .label = label,
+            .value = value,
+            .min = min,
+            .max = max,
+            .size = size,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igVSliderFloat(
+            self.label,
+            .{ self.size, self.size },
+            self.value,
+            self.min,
+            self.max,
+            "%.2f",
+            self.flags,
+        );
+    }
+};
+
+/// A checkbox widget for boolean values
 pub const Checkbox = struct {
     const Self = @This();
 
     widget: Widget,
-    label: []const u8,
+    label: [*:0]const u8,
     value: *bool,
-    callback: ?*const fn (bool) void,
+    flags: c.ImGuiSelectableFlags,
 
-    pub fn init(id: []const u8, label: []const u8, value: *bool, position: [2]f32, size: [2]f32, callback: ?*const fn (bool) void) Self {
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *bool,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSelectableFlags,
+    ) Self {
         return Self{
-            .widget = Widget.init(id, position, size, render),
+            .widget = Widget.init(id, pos, size),
             .label = label,
             .value = value,
-            .callback = callback,
+            .flags = flags,
         };
     }
 
-    fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
-        if (c.igCheckbox(self.label.ptr, self.value)) {
-            if (self.callback) |cb| {
-                cb(self.value.*);
-            }
+    pub fn render(self: *Self) void {
+        _ = c.igCheckbox(self.label, self.value);
+    }
+};
+
+/// A radio button widget for selecting from multiple options
+pub const RadioButton = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *i32,
+    button_value: i32,
+    flags: c.ImGuiSelectableFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *i32,
+        button_value: i32,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSelectableFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(id, pos, size),
+            .label = label,
+            .value = value,
+            .button_value = button_value,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igRadioButton(self.label, self.value, self.button_value)) {
+            self.value.* = self.button_value;
         }
+    }
+};
+
+/// A progress bar widget for displaying progress
+pub const ProgressBar = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: f32,
+    overlay: ?[*:0]const u8,
+    size: [2]f32,
+    flags: c.ImGuiProgressBarFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: f32,
+        overlay: ?[*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiProgressBarFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(id, pos, size),
+            .label = label,
+            .value = value,
+            .overlay = overlay,
+            .size = size,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        c.igProgressBar(
+            self.value,
+            &self.size,
+            self.overlay,
+        );
+    }
+};
+
+/// A tooltip widget for displaying additional information
+pub const Tooltip = struct {
+    const Self = @This();
+
+    widget: Widget,
+    text: [*:0]const u8,
+    flags: c.ImGuiTooltipFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        text: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiTooltipFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(id, pos, size),
+            .text = text,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginTooltip()) {
+            c.igText(self.text);
+            c.igEndTooltip();
+        }
+    }
+};
+
+/// A collapsible header widget
+pub const CollapsingHeader = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    flags: c.ImGuiTreeNodeFlags,
+    is_open: *bool,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        is_open: *bool,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiTreeNodeFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(id, pos, size),
+            .label = label,
+            .is_open = is_open,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        self.is_open.* = c.igCollapsingHeader(
+            self.label,
+            self.flags,
+        );
     }
 };
 
@@ -240,28 +439,33 @@ pub const ColorPicker = struct {
     const Self = @This();
 
     widget: Widget,
-    label: []const u8,
+    label: [*:0]const u8,
     color: *[4]f32,
     flags: c.ImGuiColorEditFlags,
-    callback: ?*const fn ([4]f32) void,
 
-    pub fn init(id: []const u8, label: []const u8, color: *[4]f32, position: [2]f32, size: [2]f32, flags: c.ImGuiColorEditFlags, callback: ?*const fn ([4]f32) void) Self {
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        color: *[4]f32,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiColorEditFlags,
+    ) Self {
         return Self{
-            .widget = Widget.init(id, position, size, render),
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
             .label = label,
             .color = color,
             .flags = flags,
-            .callback = callback,
         };
     }
 
-    fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
-        if (c.igColorEdit4(self.label.ptr, &self.color[0], self.flags)) {
-            if (self.callback) |cb| {
-                cb(self.color.*);
-            }
-        }
+    pub fn render(self: *Self) void {
+        _ = c.igColorEdit4(self.label, &self.color[0], self.flags);
     }
 };
 
@@ -269,78 +473,39 @@ pub const InputText = struct {
     const Self = @This();
 
     widget: Widget,
-    label: []const u8,
-    buffer: []u8,
+    label: [*:0]const u8,
+    buffer: [*:0]u8,
+    buffer_size: usize,
     flags: c.ImGuiInputTextFlags,
-    callback: ?*const fn ([]const u8) void,
+    callback: ?*const fn([*:0]const u8) void,
 
-    pub fn init(id: []const u8, label: []const u8, buffer: []u8, position: [2]f32, size: [2]f32, flags: c.ImGuiInputTextFlags, callback: ?*const fn ([]const u8) void) Self {
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        buffer: [*:0]u8,
+        buffer_size: usize,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiInputTextFlags,
+        callback: ?*const fn([*:0]const u8) void,
+    ) Self {
         return Self{
-            .widget = Widget.init(id, position, size, render),
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
             .label = label,
             .buffer = buffer,
+            .buffer_size = buffer_size,
             .flags = flags,
             .callback = callback,
         };
     }
 
-    fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
-        if (c.igInputText(self.label.ptr, self.buffer.ptr, self.buffer.len, self.flags, null, null)) {
-            if (self.callback) |cb| {
-                cb(self.buffer);
-            }
-        }
-    }
-};
-
-pub const ProgressBar = struct {
-    const Self = @This();
-
-    widget: Widget,
-    label: []const u8,
-    progress: *f32,
-    overlay_text: ?[]const u8,
-    size: [2]f32,
-
-    pub fn init(id: []const u8, label: []const u8, progress: *f32, position: [2]f32, size: [2]f32, overlay_text: ?[]const u8) Self {
-        return Self{
-            .widget = Widget.init(id, position, size, render),
-            .label = label,
-            .progress = progress,
-            .overlay_text = overlay_text,
-            .size = size,
-        };
-    }
-
-    fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
-        c.igProgressBar(
-            self.progress.*,
-            c.ImVec2{ .x = self.size[0], .y = self.size[1] },
-            if (self.overlay_text) |text| text.ptr else null,
-        );
-    }
-};
-
-pub const Tooltip = struct {
-    const Self = @This();
-
-    widget: Widget,
-    text: []const u8,
-    delay: f32,
-
-    pub fn init(id: []const u8, text: []const u8, position: [2]f32, size: [2]f32, delay: f32) Self {
-        return Self{
-            .widget = Widget.init(id, position, size, render),
-            .text = text,
-            .delay = delay,
-        };
-    }
-
-    fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
-        c.igSetTooltip(self.text.ptr);
+    pub fn render(self: *Self) void {
+        _ = c.igInputText(self.label, self.buffer, self.buffer_size, self.flags, null, null);
     }
 };
 
@@ -358,41 +523,6 @@ pub const Separator = struct {
     fn render(widget: *Widget) !void {
         _ = widget;
         c.igSeparator();
-    }
-};
-
-pub const CollapsingHeader = struct {
-    const Self = @This();
-
-    widget: Widget,
-    label: []const u8,
-    flags: c.ImGuiTreeNodeFlags,
-    children: std.ArrayList(*Widget),
-
-    pub fn init(id: []const u8, label: []const u8, position: [2]f32, size: [2]f32, flags: c.ImGuiTreeNodeFlags) Self {
-        return Self{
-            .widget = Widget.init(id, position, size, render),
-            .label = label,
-            .flags = flags,
-            .children = std.ArrayList(*Widget).init(std.heap.page_allocator),
-        };
-    }
-
-    pub fn deinit(self: *Self) void {
-        self.children.deinit();
-    }
-
-    pub fn addChild(self: *Self, child: *Widget) !void {
-        try self.children.append(child);
-    }
-
-    fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
-        if (c.igCollapsingHeader(self.label.ptr, self.flags)) {
-            for (self.children.items) |child| {
-                try child.render();
-            }
-        }
     }
 };
 
@@ -494,21 +624,38 @@ pub const FileDialog = struct {
     const Self = @This();
 
     widget: Widget,
-    label: []const u8,
-    current_path: []u8,
-    selected_file: []u8,
-    file_filter: []const u8,
-    callback: ?*const fn ([]const u8) void,
+    label: [*:0]const u8,
+    current_path: [*:0]u8,
+    selected_file: [*:0]u8,
+    file_filter: [*:0]const u8,
+    callback: ?*const fn([*:0]const u8) void,
+    flags: c.ImGuiWindowFlags,
     is_open: bool,
 
-    pub fn init(id: []const u8, label: []const u8, current_path: []u8, selected_file: []u8, file_filter: []const u8, position: [2]f32, size: [2]f32, callback: ?*const fn ([]const u8) void) Self {
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        current_path: [*:0]u8,
+        selected_file: [*:0]u8,
+        file_filter: [*:0]const u8,
+        callback: ?*const fn([*:0]const u8) void,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
         return Self{
-            .widget = Widget.init(id, position, size, render),
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
             .label = label,
             .current_path = current_path,
             .selected_file = selected_file,
             .file_filter = file_filter,
             .callback = callback,
+            .flags = flags,
             .is_open = false,
         };
     }
@@ -517,23 +664,20 @@ pub const FileDialog = struct {
         self.is_open = true;
     }
 
-    fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
-        
+    pub fn close(self: *Self) void {
+        self.is_open = false;
+    }
+
+    pub fn render(self: *Self) void {
         if (self.is_open) {
-            if (c.igBegin(self.label.ptr, &self.is_open, c.ImGuiWindowFlags_None)) {
-                // Current path display
-                c.igText("Current Path: %s", self.current_path.ptr);
-                
-                // File filter
-                c.igText("Filter: %s", self.file_filter.ptr);
-                
-                // File list (simplified example)
-                if (c.igButton("Select File", c.ImVec2{ .x = 100, .y = 30 })) {
+            if (c.igBegin(self.label, &self.is_open, self.flags)) {
+                // TODO: Implement file dialog UI
+                // This would require additional file system functionality
+                if (c.igButton("Select File", .{ 100, 30 })) {
                     if (self.callback) |cb| {
                         cb(self.selected_file);
                     }
-                    self.is_open = false;
+                    self.close();
                 }
             }
             c.igEnd();
@@ -976,41 +1120,6 @@ pub const StatusBar = struct {
             }
         }
         c.igEndChild();
-    }
-};
-
-pub const Tooltip = struct {
-    const Self = @This();
-
-    widget: Widget,
-    text: [*:0]const u8,
-    flags: c.ImGuiWindowFlags,
-
-    pub fn init(
-        id: [*:0]const u8,
-        text: [*:0]const u8,
-        pos: [2]f32,
-        size: [2]f32,
-        flags: c.ImGuiWindowFlags,
-    ) Self {
-        return Self{
-            .widget = Widget.init(
-                id,
-                pos,
-                size,
-                flags,
-            ),
-            .text = text,
-            .flags = flags,
-        };
-    }
-
-    pub fn render(self: *Self) void {
-        if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
-            c.igBeginTooltip();
-            c.igText(self.text);
-            c.igEndTooltip();
-        }
     }
 };
 
@@ -1491,5 +1600,226 @@ pub const DragVec4 = struct {
 
     pub fn render(self: *Self) void {
         _ = c.igDragFloat4(self.label, &self.value[0], self.speed, self.min, self.max, self.format, self.flags);
+    }
+};
+
+pub const ComboBox = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    items: []const [*:0]const u8,
+    selected_index: *usize,
+    flags: c.ImGuiComboFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        items: []const [*:0]const u8,
+        selected_index: *usize,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiComboFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .items = items,
+            .selected_index = selected_index,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginCombo(self.label, self.items[self.selected_index.*], self.flags)) {
+            for (self.items, 0..) |item, i| {
+                if (c.igSelectable(item, i == self.selected_index.*, c.ImGuiSelectableFlags_None, .{ 0, 0 })) {
+                    self.selected_index.* = i;
+                }
+            }
+            c.igEndCombo();
+        }
+    }
+};
+
+pub const ListBox = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    items: []const [*:0]const u8,
+    selected_index: *usize,
+    height_in_items: i32,
+    flags: c.ImGuiSelectableFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        items: []const [*:0]const u8,
+        selected_index: *usize,
+        height_in_items: i32,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSelectableFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .items = items,
+            .selected_index = selected_index,
+            .height_in_items = height_in_items,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginListBox(self.label, .{ self.widget.size[0], self.widget.size[1] })) {
+            for (self.items, 0..) |item, i| {
+                if (c.igSelectable(item, i == self.selected_index.*, self.flags, .{ 0, 0 })) {
+                    self.selected_index.* = i;
+                }
+            }
+            c.igEndListBox();
+        }
+    }
+};
+
+pub const InputTextMultiline = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    buffer: [*:0]u8,
+    buffer_size: usize,
+    size: [2]f32,
+    flags: c.ImGuiInputTextFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        buffer: [*:0]u8,
+        buffer_size: usize,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiInputTextFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .buffer = buffer,
+            .buffer_size = buffer_size,
+            .size = size,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igInputTextMultiline(
+            self.label,
+            self.buffer,
+            self.buffer_size,
+            .{ self.size[0], self.size[1] },
+            self.flags,
+            null,
+            null,
+        );
+    }
+};
+
+pub const InputFloat = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *f32,
+    step: f32,
+    step_fast: f32,
+    format: [*:0]const u8,
+    flags: c.ImGuiInputTextFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *f32,
+        step: f32,
+        step_fast: f32,
+        format: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiInputTextFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .value = value,
+            .step = step,
+            .step_fast = step_fast,
+            .format = format,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igInputFloat(self.label, self.value, self.step, self.step_fast, self.format, self.flags);
+    }
+};
+
+pub const InputInt = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *i32,
+    step: i32,
+    step_fast: i32,
+    flags: c.ImGuiInputTextFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *i32,
+        step: i32,
+        step_fast: i32,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiInputTextFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .value = value,
+            .step = step,
+            .step_fast = step_fast,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igInputInt(self.label, self.value, self.step, self.step_fast, self.flags);
     }
 }; 

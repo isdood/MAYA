@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 use std::any::Any;
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
 use log::{debug, trace, warn};
 use serde::{Serialize, de::DeserializeOwned};
@@ -10,8 +10,35 @@ use bincode::{self, Options};
 use lru::LruCache;
 use parking_lot::RwLock;
 
-use crate::error::Result;
+use std::fmt;
+use std::error::Error as StdError;
+
+use crate::error::{Result, KnowledgeGraphError};
 use super::{Storage, WriteBatch, WriteBatchExt, serialize, deserialize};
+
+// Helper error type for CachedStore
+#[derive(Debug)]
+struct CachedStoreError(String);
+
+impl fmt::Display for CachedStoreError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CachedStore error: {}", self.0)
+    }
+}
+
+impl StdError for CachedStoreError {}
+
+impl From<String> for CachedStoreError {
+    fn from(err: String) -> Self {
+        CachedStoreError(err)
+    }
+}
+
+impl From<&str> for CachedStoreError {
+    fn from(err: &str) -> Self {
+        CachedStoreError(err.to_string())
+    }
+}
 
 /// Performance metrics for the cached store
 #[derive(Debug, Default)]
@@ -217,9 +244,9 @@ where
         
         // Cache miss, get from storage
         self.metrics.record_miss();
-        if let Some(value) = self.inner.get(key)? {
+        if let Some(value) = self.inner.get(key).map_err(|e| KnowledgeGraphError::StorageError(e.into()))? {
             // Store the raw bytes in the cache
-            let bytes = bincode::serialize(&value).map_err(|e| Error::new(e))?;
+            let bytes = bincode::serialize(&value).map_err(|e| KnowledgeGraphError::SerializationError(e.to_string()))?;
             self.metrics.record_write(bytes.len());
             
             // Update cache
@@ -377,7 +404,7 @@ where
 
 impl<S> WriteBatchExt for CachedStore<S>
 where
-    S: Storage + 'static,
+    S: Storage + WriteBatchExt + 'static,
     for<'a> <S as Storage>::Batch<'a>: WriteBatch + Clone + 'static,
     for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
 {
@@ -416,7 +443,7 @@ where
             let inner_batch = Box::new(batch.inner);
             <S as Storage>::commit(inner_batch)
         } else {
-            Err(Error::new("Invalid batch type"))
+            Err(KnowledgeGraphError::StorageError("Invalid batch type".into()))
         }
     }
 }

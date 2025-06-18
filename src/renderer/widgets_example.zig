@@ -21,7 +21,10 @@ pub const WidgetsExample = struct {
     toast: widgets.Toast,
     button: widgets.Button,
     slider: widgets.Slider,
+    knob: widgets.Knob,
     checkbox: widgets.Checkbox,
+    radio_button1: widgets.RadioButton,
+    radio_button2: widgets.RadioButton,
     text: widgets.Text,
     plot: widgets.Plot,
     dropdown: widgets.Dropdown,
@@ -44,16 +47,23 @@ pub const WidgetsExample = struct {
     drag_vec2: widgets.DragVec2,
     drag_vec3: widgets.DragVec3,
     drag_vec4: widgets.DragVec4,
+    combo_box: widgets.ComboBox,
+    list_box: widgets.ListBox,
+    input_text_multiline: widgets.InputTextMultiline,
+    input_float: widgets.InputFloat,
+    input_int: widgets.InputInt,
 
     // State variables
     slider_value: f32,
+    knob_value: f32,
     checkbox_value: bool,
+    radio_value: i32,
     plot_values: [100]f32,
     frame_count: u32,
     selected_index: usize,
     color: [4]f32,
     input_buffer: [256]u8,
-    progress: f32,
+    progress_value: f32,
     table_data: [10][3]f32,
     selected_tab: usize,
     current_path: [1024]u8,
@@ -68,6 +78,12 @@ pub const WidgetsExample = struct {
     vec2_value: [2]f32,
     vec3_value: [3]f32,
     vec4_value: [4]f32,
+    combo_items: []const [*:0]const u8,
+    selected_combo: usize,
+    list_items: []const [*:0]const u8,
+    selected_list: usize,
+    text_buffer: [256]u8,
+    multiline_buffer: [1024]u8,
 
     pub fn init(renderer: *ImGuiRenderer) !Self {
         var self = Self{
@@ -90,7 +106,10 @@ pub const WidgetsExample = struct {
             .toast = undefined,
             .button = undefined,
             .slider = undefined,
+            .knob = undefined,
             .checkbox = undefined,
+            .radio_button1 = undefined,
+            .radio_button2 = undefined,
             .text = undefined,
             .plot = undefined,
             .dropdown = undefined,
@@ -113,16 +132,23 @@ pub const WidgetsExample = struct {
             .drag_vec2 = undefined,
             .drag_vec3 = undefined,
             .drag_vec4 = undefined,
+            .combo_box = undefined,
+            .list_box = undefined,
+            .input_text_multiline = undefined,
+            .input_float = undefined,
+            .input_int = undefined,
 
             // Initialize state
             .slider_value = 0.5,
+            .knob_value = 0.0,
             .checkbox_value = false,
+            .radio_value = 0,
             .plot_values = undefined,
             .frame_count = 0,
             .selected_index = 0,
-            .color = .{ 1.0, 0.0, 0.0, 1.0 },
+            .color = .{ 1.0, 1.0, 1.0, 1.0 },
             .input_buffer = undefined,
-            .progress = 0.0,
+            .progress_value = 0.0,
             .table_data = undefined,
             .selected_tab = 0,
             .current_path = undefined,
@@ -137,6 +163,12 @@ pub const WidgetsExample = struct {
             .vec2_value = .{ 0.0, 0.0 },
             .vec3_value = .{ 0.0, 0.0, 0.0 },
             .vec4_value = .{ 0.0, 0.0, 0.0, 0.0 },
+            .combo_items = &[_][*:0]const u8{ "Option 1", "Option 2", "Option 3", "Option 4" },
+            .selected_combo = 0,
+            .list_items = &[_][*:0]const u8{ "Item 1", "Item 2", "Item 3", "Item 4", "Item 5" },
+            .selected_list = 0,
+            .text_buffer = undefined,
+            .multiline_buffer = undefined,
         };
 
         // Initialize plot values with a sine wave
@@ -171,23 +203,54 @@ pub const WidgetsExample = struct {
 
         self.slider = widgets.Slider.init(
             "example_slider",
-            "Value",
+            "Slider",
             &self.slider_value,
             0.0,
             1.0,
             "%.2f",
-            .{ 10, 70 },
+            .{ 10, 50 },
             .{ 200, 30 },
-            sliderCallback,
+            c.ImGuiSliderFlags_None,
+        );
+
+        self.knob = widgets.Knob.init(
+            "example_knob",
+            "Knob",
+            &self.knob_value,
+            0.0,
+            1.0,
+            50.0,
+            .{ 10, 90 },
+            c.ImGuiSliderFlags_None,
         );
 
         self.checkbox = widgets.Checkbox.init(
             "example_checkbox",
-            "Enable Feature",
+            "Checkbox",
             &self.checkbox_value,
-            .{ 10, 110 },
+            .{ 10, 150 },
             .{ 200, 30 },
-            checkboxCallback,
+            c.ImGuiSelectableFlags_None,
+        );
+
+        self.radio_button1 = widgets.RadioButton.init(
+            "example_radio1",
+            "Option 1",
+            &self.radio_value,
+            0,
+            .{ 10, 190 },
+            .{ 200, 30 },
+            c.ImGuiSelectableFlags_None,
+        );
+
+        self.radio_button2 = widgets.RadioButton.init(
+            "example_radio2",
+            "Option 2",
+            &self.radio_value,
+            1,
+            .{ 10, 230 },
+            .{ 200, 30 },
+            c.ImGuiSelectableFlags_None,
         );
 
         self.text = widgets.Text.init(
@@ -219,31 +282,31 @@ pub const WidgetsExample = struct {
 
         self.color_picker = widgets.ColorPicker.init(
             "example_color_picker",
-            "Pick Color",
+            "Color",
             &self.color,
-            .{ 10, 340 },
+            .{ 10, 50 },
             .{ 200, 30 },
             c.ImGuiColorEditFlags_None,
-            colorPickerCallback,
         );
 
         self.input_text = widgets.InputText.init(
             "example_input",
             "Input Text",
-            &self.input_buffer,
-            .{ 10, 380 },
+            &self.text_buffer,
+            256,
+            .{ 10, 290 },
             .{ 200, 30 },
             c.ImGuiInputTextFlags_None,
-            inputTextCallback,
         );
 
         self.progress_bar = widgets.ProgressBar.init(
             "example_progress",
             "Progress",
-            &self.progress,
-            .{ 10, 420 },
-            .{ 200, 30 },
+            self.progress_value,
             "Loading...",
+            .{ 10, 270 },
+            .{ 200, 30 },
+            c.ImGuiProgressBarFlags_None,
         );
 
         self.collapsing_header = widgets.CollapsingHeader.init(
@@ -303,13 +366,14 @@ pub const WidgetsExample = struct {
 
         self.file_dialog = widgets.FileDialog.init(
             "example_file_dialog",
-            "File Dialog",
+            "Open File",
             &self.current_path,
             &self.selected_file,
-            "*.txt",
-            .{ 10, 830 },
-            .{ 400, 300 },
+            "All Files (*.*)\0*.*\0",
             fileDialogCallback,
+            .{ 200, 200 },
+            .{ 400, 300 },
+            c.ImGuiWindowFlags_None,
         );
 
         const tabs = [_][]const u8{ "Tab 1", "Tab 2", "Tab 3" };
@@ -330,6 +394,65 @@ pub const WidgetsExample = struct {
             .{ 10, 910 },
             .{ 200, 30 },
             c.ImGuiTreeNodeFlags_None,
+        );
+
+        // Initialize combo box
+        self.combo_box = widgets.ComboBox.init(
+            "example_combo",
+            "Combo Box",
+            self.combo_items,
+            &self.selected_combo,
+            .{ 10, 90 },
+            .{ 200, 30 },
+            c.ImGuiComboFlags_None,
+        );
+
+        // Initialize list box
+        self.list_box = widgets.ListBox.init(
+            "example_list",
+            "List Box",
+            self.list_items,
+            &self.selected_list,
+            5,
+            .{ 10, 130 },
+            .{ 200, 150 },
+            c.ImGuiSelectableFlags_None,
+        );
+
+        // Initialize multiline input text
+        self.input_text_multiline = widgets.InputTextMultiline.init(
+            "example_input_multiline",
+            "Multiline Text",
+            &self.multiline_buffer,
+            1024,
+            .{ 10, 330 },
+            .{ 200, 100 },
+            c.ImGuiInputTextFlags_None,
+        );
+
+        // Initialize input float
+        self.input_float = widgets.InputFloat.init(
+            "example_input_float",
+            "Float Value",
+            &self.float_value,
+            0.1,
+            1.0,
+            "%.2f",
+            .{ 10, 440 },
+            .{ 200, 30 },
+            c.ImGuiInputTextFlags_None,
+        );
+
+        // Initialize input int
+        self.input_int = widgets.InputInt.init(
+            "example_input_int",
+            "Int Value",
+            &self.int_value,
+            1,
+            10,
+            .{ 10, 480 },
+            .{ 200, 30 },
+            c.ImGuiInputTextFlags_None,
         );
 
         // Initialize menu bar
@@ -611,7 +734,10 @@ pub const WidgetsExample = struct {
         try self.window.addChild(&self.toast.widget);
         try self.window.addChild(&self.button.widget);
         try self.window.addChild(&self.slider.widget);
+        try self.window.addChild(&self.knob.widget);
         try self.window.addChild(&self.checkbox.widget);
+        try self.window.addChild(&self.radio_button1.widget);
+        try self.window.addChild(&self.radio_button2.widget);
         try self.window.addChild(&self.text.widget);
         try self.window.addChild(&self.plot.widget);
         try self.window.addChild(&self.dropdown.widget);
@@ -631,6 +757,11 @@ pub const WidgetsExample = struct {
         try self.window.addChild(&self.status_bar.widget);
         try self.window.addChild(&self.scrollable_area.widget);
         try self.window.addChild(&self.progress_indicator.widget);
+        try self.window.addChild(&self.combo_box.widget);
+        try self.window.addChild(&self.list_box.widget);
+        try self.window.addChild(&self.input_text_multiline.widget);
+        try self.window.addChild(&self.input_float.widget);
+        try self.window.addChild(&self.input_int.widget);
 
         // Add window to renderer
         try renderer.addWidget(&self.window.widget);
@@ -664,7 +795,8 @@ pub const WidgetsExample = struct {
         }
 
         // Update progress bar
-        self.progress = @mod(@as(f32, @floatFromInt(self.frame_count)) * 0.01, 1.0);
+        self.progress_value = @mod(@as(f32, @floatFromInt(self.frame_count)) / 100.0, 1.0);
+        self.progress_bar.value = self.progress_value;
 
         // Update table data
         for (self.table_data, 0..) |*row, i| {
@@ -723,8 +855,8 @@ fn dragDropCallback(data: []const u8) void {
     std.log.info("Drag and drop data received: {s}", .{data});
 }
 
-fn fileDialogCallback(file_path: []const u8) void {
-    std.log.info("File selected: {s}", .{file_path});
+fn fileDialogCallback(path: [*:0]const u8) void {
+    std.log.info("Selected file: {s}", .{path});
 }
 
 fn tabBarCallback(tab_index: usize) void {

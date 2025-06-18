@@ -108,7 +108,7 @@ impl<S> KnowledgeGraph<S>
 where
     S: Storage + WriteBatchExt,
     for<'a> <S as Storage>::Batch<'a>: WriteBatch + 'static,
-    for<'a> <S as WriteBatchExt>::Batch<'a>: WriteBatch + 'static,
+    for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
     for<'a> &'a S: 'a,
 {
     /// Create or open a knowledge graph at the given path
@@ -265,7 +265,7 @@ pub struct Transaction<'a, S>
 where
     S: Storage + WriteBatchExt,
     for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
-    for<'b> <S as WriteBatchExt>::Batch<'b>: WriteBatch + 'static,
+    for<'b> <S as WriteBatchExt>::BatchType<'b>: WriteBatch + 'static,
 {
     batch: <S as Storage>::Batch<'a>,
     _marker: std::marker::PhantomData<&'a S>,
@@ -275,7 +275,7 @@ impl<'a, S> Transaction<'a, S>
 where
     S: Storage + WriteBatchExt,
     for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
-    for<'b> <S as WriteBatchExt>::Batch<'b>: WriteBatch + 'static,
+    for<'b> <S as WriteBatchExt>::BatchType<'b>: WriteBatch + 'static,
 {
     fn new(storage: &'a S) -> Self {
         let batch = <S as Storage>::batch(storage);

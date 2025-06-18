@@ -320,7 +320,7 @@ mod tests {
         }
 
         // Test successful transaction with raw bytes
-        let batch = <SledStore as Storage>::batch(&store);
+        let mut batch = store.batch();
         let value1 = b"value1";
         let value2 = b"value2";
         
@@ -346,7 +346,7 @@ mod tests {
         assert!(store.get::<Vec<u8>>(b"key1")?.is_none());
 
         // Test transaction with duplicate key in the same batch
-        let batch = <SledStore as Storage>::batch(&store);
+        let mut batch = store.batch();
         // First put
         batch.put_serialized(b"key1", value1)?;
         // Second put to the same key will overwrite
