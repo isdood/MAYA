@@ -63,6 +63,13 @@ pub const WidgetsExample = struct {
     wrap_layout: layout.WrapLayout,
     flow_layout: layout.FlowLayout,
     resizable_layout: layout.ResizableLayout,
+    theme_buttons: struct {
+        button1: widgets.Button,
+        button2: widgets.Button,
+        button3: widgets.Button,
+    },
+    current_theme_index: usize = 0,
+    themes: [3]layout.ResizeHandleTheme = undefined,
 
     // State variables
     slider_value: f32,
@@ -240,6 +247,9 @@ pub const WidgetsExample = struct {
                 .{ 780, 300 },
                 c.ImGuiWindowFlags_None,
             ),
+            .theme_buttons = undefined,
+            .current_theme_index = 0,
+            .themes = undefined,
 
             // Initialize state
             .slider_value = 0.5,
@@ -965,6 +975,35 @@ pub const WidgetsExample = struct {
             custom_theme,
         );
 
+        // Add theme transition buttons
+        const theme_button1 = try widgets.Button.init(
+            "Toggle Dark/Light",
+            .{ 300, 50 },
+            .{ 150, 30 },
+        );
+        const theme_button2 = try widgets.Button.init(
+            "Toggle Light/Custom",
+            .{ 300, 90 },
+            .{ 150, 30 },
+        );
+        const theme_button3 = try widgets.Button.init(
+            "Toggle Custom/Dark",
+            .{ 300, 130 },
+            .{ 150, 30 },
+        );
+
+        // Add theme buttons to the window
+        try self.window.addChild(&theme_button1.widget);
+        try self.window.addChild(&theme_button2.widget);
+        try self.window.addChild(&theme_button3.widget);
+
+        // Store theme buttons
+        self.theme_buttons = .{
+            .button1 = theme_button1,
+            .button2 = theme_button2,
+            .button3 = theme_button3,
+        };
+
         // Add layouts to window
         try self.window.addChild(&self.menu_bar.widget);
         try self.window.addChild(&self.context_menu.widget);
@@ -1110,6 +1149,31 @@ pub const WidgetsExample = struct {
             .{ self.frame_count, c.igGetTime() },
         );
         _ = status;
+    }
+
+    pub fn render(self: *Self) void {
+        // Handle theme button clicks
+        if (self.theme_buttons.button1.isClicked()) {
+            self.current_theme_index = (self.current_theme_index + 1) % 3;
+            for (self.resizable_layout.handles.items) |*handle| {
+                handle.setTheme(self.themes[self.current_theme_index]);
+            }
+        }
+        if (self.theme_buttons.button2.isClicked()) {
+            self.current_theme_index = (self.current_theme_index + 1) % 3;
+            for (self.resizable_layout.handles.items) |*handle| {
+                handle.setTheme(self.themes[self.current_theme_index]);
+            }
+        }
+        if (self.theme_buttons.button3.isClicked()) {
+            self.current_theme_index = (self.current_theme_index + 1) % 3;
+            for (self.resizable_layout.handles.items) |*handle| {
+                handle.setTheme(self.themes[self.current_theme_index]);
+            }
+        }
+
+        // Render the window and its contents
+        self.window.render();
     }
 };
 

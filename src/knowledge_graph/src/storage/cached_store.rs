@@ -1,12 +1,10 @@
 //! Cached storage implementation for the knowledge graph
 
 use std::sync::Arc;
-use std::any::Any;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
-use log::{debug, trace, warn};
 use serde::{Serialize, de::DeserializeOwned};
-use bincode::{self, Options};
+use bincode;
 use lru::LruCache;
 use parking_lot::RwLock;
 
@@ -208,7 +206,7 @@ impl<S> CachedStore<S> {
     }
 
     /// Prefetch keys that are likely to be accessed next
-    fn prefetch_keys(&self, prefix: &[u8]) {
+    fn prefetch_keys(&self, _prefix: &[u8]) {
         if !self.config.read_ahead {
             return;
         }
@@ -442,19 +440,15 @@ mod tests {
     
     #[test]
     fn test_cached_store() -> Result<()> {
-        // Create a unique temporary directory for this test run
-        let test_dir = std::env::temp_dir().join(format!("maya_test_{}", std::process::id()));
-        std::fs::create_dir_all(&test_dir)?;
+        // Create a unique temporary directory for the first SledStore
+        let temp_dir1 = tempfile::tempdir()?;
+        let test_path1 = temp_dir1.path().to_path_buf();
         
         // Create a new CachedStore with default config
-        let inner = SledStore::open(&test_dir)?;
+        let inner = SledStore::open(&test_path1)?;
         let cache = CachedStore::new(inner);
         
-        // Ensure the temp directory is cleaned up when the test is done
-        let _temp_dir_guard = scopeguard::guard(test_dir.clone(), |dir| {
-            // This will run when the test completes
-            let _ = std::fs::remove_dir_all(dir);
-        });
+        // Test basic operations
         
         // Test put and get
         let key = b"test_key";
@@ -506,8 +500,11 @@ mod tests {
         // Test clear cache
         cache.clear_cache();
         
-        // Test with custom configuration
-        let inner = SledStore::open(&test_dir)?;
+        // Test with custom configuration using a new temporary directory
+        let temp_dir2 = tempfile::tempdir()?;
+        let test_path2 = temp_dir2.path().to_path_buf();
+        
+        let inner = SledStore::open(&test_path2)?;
         let config = CacheConfig {
             capacity: 100,
             read_ahead: true,

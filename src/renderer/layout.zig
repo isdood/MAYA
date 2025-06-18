@@ -198,6 +198,8 @@ pub const ResizeHandleTheme = struct {
     animations: struct {
         hover_scale: f32 = 1.1,
         transition_speed: f32 = 0.2,
+        color_transition_speed: f32 = 0.15,
+        theme_transition_speed: f32 = 0.3,
     },
 
     pub fn init() ResizeHandleTheme {
@@ -259,6 +261,19 @@ pub const ResizeHandleTheme = struct {
             .colors = colors,
         };
     }
+
+    pub fn lerpColor(a: c.ImVec4, b: c.ImVec4, t: f32) c.ImVec4 {
+        return c.ImVec4{
+            .x = a.x + (b.x - a.x) * t,
+            .y = a.y + (b.y - a.y) * t,
+            .z = a.z + (b.z - a.z) * t,
+            .w = a.w + (b.w - a.w) * t,
+        };
+    }
+
+    pub fn lerpFloat(a: f32, b: f32, t: f32) f32 {
+        return a + (b - a) * t;
+    }
 };
 
 /// Resize handle for widgets
@@ -269,12 +284,14 @@ pub const ResizeHandle = struct {
     target: *widgets.Widget,
     constraints: ResizeConstraints,
     theme: ResizeHandleTheme,
+    target_theme: ResizeHandleTheme,
     is_dragging: bool,
     drag_start: [2]f32,
     start_size: [2]f32,
     is_at_min_aspect: bool = false,
     is_at_max_aspect: bool = false,
     hover_scale: f32 = 1.0,
+    theme_transition: f32 = 0.0,
     allocator: std.mem.Allocator,
 
     pub fn init(
@@ -290,17 +307,96 @@ pub const ResizeHandle = struct {
             .target = target,
             .constraints = constraints,
             .theme = theme,
+            .target_theme = theme,
             .is_dragging = false,
             .drag_start = .{ 0, 0 },
             .start_size = .{ 0, 0 },
             .is_at_min_aspect = false,
             .is_at_max_aspect = false,
             .hover_scale = 1.0,
+            .theme_transition = 0.0,
             .allocator = std.heap.page_allocator,
         };
     }
 
+    pub fn setTheme(self: *Self, new_theme: ResizeHandleTheme) void {
+        self.target_theme = new_theme;
+        self.theme_transition = 0.0;
+    }
+
     pub fn render(self: *Self) void {
+        // Update theme transition
+        if (self.theme_transition < 1.0) {
+            self.theme_transition = @min(
+                1.0,
+                self.theme_transition + self.theme.animations.theme_transition_speed,
+            );
+
+            // Interpolate theme properties
+            self.theme.handle_size = ResizeHandleTheme.lerpFloat(
+                self.theme.handle_size,
+                self.target_theme.handle_size,
+                self.theme_transition,
+            );
+            self.theme.border_width = ResizeHandleTheme.lerpFloat(
+                self.theme.border_width,
+                self.target_theme.border_width,
+                self.theme_transition,
+            );
+            self.theme.corner_radius = ResizeHandleTheme.lerpFloat(
+                self.theme.corner_radius,
+                self.target_theme.corner_radius,
+                self.theme_transition,
+            );
+
+            // Interpolate colors
+            self.theme.colors.normal = ResizeHandleTheme.lerpColor(
+                self.theme.colors.normal,
+                self.target_theme.colors.normal,
+                self.theme_transition,
+            );
+            self.theme.colors.hover = ResizeHandleTheme.lerpColor(
+                self.theme.colors.hover,
+                self.target_theme.colors.hover,
+                self.theme_transition,
+            );
+            self.theme.colors.active = ResizeHandleTheme.lerpColor(
+                self.theme.colors.active,
+                self.target_theme.colors.active,
+                self.theme_transition,
+            );
+            self.theme.colors.border = ResizeHandleTheme.lerpColor(
+                self.theme.colors.border,
+                self.target_theme.colors.border,
+                self.theme_transition,
+            );
+            self.theme.colors.fixed_aspect = ResizeHandleTheme.lerpColor(
+                self.theme.colors.fixed_aspect,
+                self.target_theme.colors.fixed_aspect,
+                self.theme_transition,
+            );
+            self.theme.colors.min_aspect = ResizeHandleTheme.lerpColor(
+                self.theme.colors.min_aspect,
+                self.target_theme.colors.min_aspect,
+                self.theme_transition,
+            );
+            self.theme.colors.max_aspect = ResizeHandleTheme.lerpColor(
+                self.theme.colors.max_aspect,
+                self.target_theme.colors.max_aspect,
+                self.theme_transition,
+            );
+            self.theme.colors.ratio_bg = ResizeHandleTheme.lerpColor(
+                self.theme.colors.ratio_bg,
+                self.target_theme.colors.ratio_bg,
+                self.theme_transition,
+            );
+            self.theme.colors.ratio_text = ResizeHandleTheme.lerpColor(
+                self.theme.colors.ratio_text,
+                self.target_theme.colors.ratio_text,
+                self.theme_transition,
+            );
+        }
+
         // Draw resize handle
         const handle_pos = c.ImVec2{
             .x = self.target.position[0] + self.target.size[0] - self.theme.handle_size,
@@ -320,29 +416,37 @@ pub const ResizeHandle = struct {
             mouse_pos.y >= handle_rect.y and
             mouse_pos.y <= handle_rect.w;
 
-        // Update hover scale
-        if (is_hovered) {
-            self.hover_scale = @min(
-                1.0 + self.theme.animations.hover_scale,
-                self.hover_scale + self.theme.animations.transition_speed,
-            );
-        } else {
-            self.hover_scale = @max(1.0, self.hover_scale - self.theme.animations.transition_speed);
-        }
+        // Update hover scale with smooth transition
+        const target_scale = if (is_hovered)
+            1.0 + self.theme.animations.hover_scale
+        else
+            1.0;
+        self.hover_scale = ResizeHandleTheme.lerpFloat(
+            self.hover_scale,
+            target_scale,
+            self.theme.animations.transition_speed,
+        );
 
         // Determine handle color based on state and constraints
-        var handle_color = self.theme.colors.normal;
+        var target_color = self.theme.colors.normal;
         if (self.is_dragging) {
-            handle_color = self.theme.colors.active;
+            target_color = self.theme.colors.active;
         } else if (is_hovered) {
-            handle_color = self.theme.colors.hover;
+            target_color = self.theme.colors.hover;
         } else if (self.constraints.aspect_ratio != null and self.constraints.preserve_aspect) {
-            handle_color = self.theme.colors.fixed_aspect;
+            target_color = self.theme.colors.fixed_aspect;
         } else if (self.is_at_min_aspect) {
-            handle_color = self.theme.colors.min_aspect;
+            target_color = self.theme.colors.min_aspect;
         } else if (self.is_at_max_aspect) {
-            handle_color = self.theme.colors.max_aspect;
+            target_color = self.theme.colors.max_aspect;
         }
+
+        // Smoothly transition to target color
+        const handle_color = ResizeHandleTheme.lerpColor(
+            self.theme.colors.normal,
+            target_color,
+            self.theme.animations.color_transition_speed,
+        );
 
         // Calculate scaled handle size
         const scaled_size = self.theme.handle_size * self.hover_scale;
