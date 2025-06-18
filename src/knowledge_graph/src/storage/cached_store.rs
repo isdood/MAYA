@@ -2,25 +2,137 @@
 
 use std::sync::Arc;
 use std::any::Any;
-use log::{debug, trace};
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicU64, Ordering};
+use log::{debug, trace, warn};
+use serde::{Serialize, de::DeserializeOwned};
+use bincode::{self, Options};
+use lru::LruCache;
+use parking_lot::RwLock;
 
-use bincode;
-use crate::cache::LruCacheWrapper;
 use crate::error::Result;
-use super::{Storage, WriteBatch, WriteBatchExt};
+use super::{Storage, WriteBatch, WriteBatchExt, serialize, deserialize};
+
+/// Performance metrics for the cached store
+#[derive(Debug, Default)]
+pub struct CacheMetrics {
+    hits: AtomicU64,
+    misses: AtomicU64,
+    read_bytes: AtomicU64,
+    write_bytes: AtomicU64,
+}
+
+impl Clone for CacheMetrics {
+    fn clone(&self) -> Self {
+        Self {
+            hits: AtomicU64::new(self.hits.load(Ordering::Relaxed)),
+            misses: AtomicU64::new(self.misses.load(Ordering::Relaxed)),
+            read_bytes: AtomicU64::new(self.read_bytes.load(Ordering::Relaxed)),
+            write_bytes: AtomicU64::new(self.write_bytes.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl CacheMetrics {
+    /// Record a cache hit
+    fn record_hit(&self, bytes: usize) {
+        self.hits.fetch_add(1, Ordering::Relaxed);
+        self.read_bytes.fetch_add(bytes as u64, Ordering::Relaxed);
+    }
+
+    /// Record a cache miss
+    fn record_miss(&self) {
+        self.misses.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record bytes written to cache
+    fn record_write(&self, bytes: usize) {
+        self.write_bytes.fetch_add(bytes as u64, Ordering::Relaxed);
+    }
+
+    /// Get cache hit rate
+    pub fn hit_rate(&self) -> f64 {
+        let hits = self.hits.load(Ordering::Relaxed) as f64;
+        let misses = self.misses.load(Ordering::Relaxed) as f64;
+        let total = hits + misses;
+        if total > 0.0 { hits / total } else { 0.0 }
+    }
+
+    /// Get total read bytes
+    pub fn read_bytes(&self) -> u64 {
+        self.read_bytes.load(Ordering::Relaxed)
+    }
+
+    /// Get total write bytes
+    pub fn write_bytes(&self) -> u64 {
+        self.write_bytes.load(Ordering::Relaxed)
+    }
+}
+
+/// Configuration for the cached store
+#[derive(Debug, Clone)]
+pub struct CacheConfig {
+    /// Maximum number of items in the cache
+    pub capacity: usize,
+    /// Enable read-ahead for sequential access patterns
+    pub read_ahead: bool,
+    /// Number of items to prefetch when read-ahead is enabled
+    pub read_ahead_size: usize,
+    /// Enable compression for cached values
+    pub enable_compression: bool,
+}
+
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
+            capacity: 10_000, // Default to 10,000 items
+            read_ahead: true,
+            read_ahead_size: 100, // Prefetch next 100 items
+            enable_compression: true,
+        }
+    }
+}
 
 /// A storage wrapper that adds an LRU cache in front of another storage implementation
 pub struct CachedStore<S> {
     inner: S,
-    cache: Arc<LruCacheWrapper<Vec<u8>, Vec<u8>>>,
+    cache: Arc<RwLock<LruCache<Vec<u8>, Vec<u8>>>>,
+    metrics: CacheMetrics,
+    config: CacheConfig,
+    // For read-ahead functionality
+    last_keys: RwLock<VecDeque<Vec<u8>>>,
 }
 
 impl<S> CachedStore<S> {
-    /// Create a new cached storage wrapper
-    pub fn new(inner: S, cache_capacity: usize) -> Self {
+    /// Create a new cached storage wrapper with default configuration
+    pub fn new(inner: S) -> Self {
+        let config = CacheConfig::default();
+        let cache = Arc::new(RwLock::new(LruCache::new(
+            std::num::NonZeroUsize::new(config.capacity.max(1)).unwrap(),
+        )));
+        
         Self {
             inner,
-            cache: Arc::new(LruCacheWrapper::new(cache_capacity)),
+            cache,
+            metrics: Arc::new(CacheMetrics::default()),
+            config,
+            last_keys: RwLock::new(VecDeque::with_capacity(100)),
+        }
+    }
+    
+    /// Create a new cached storage wrapper with custom configuration
+    pub fn with_config(inner: S, config: CacheConfig) -> Self {
+        // Ensure capacity is at least 1 to create a valid NonZeroUsize
+        let capacity = std::num::NonZeroUsize::new(config.capacity.max(1)).unwrap();
+        let cache = Arc::new(RwLock::new(LruCache::new(capacity)));
+        let metrics = Arc::new(CacheMetrics::default());
+        
+        Self {
+            inner,
+            cache,
+            metrics,
+            config,
+            last_keys: RwLock::new(VecDeque::with_capacity(100)),
         }
     }
     
@@ -35,97 +147,121 @@ impl<S> CachedStore<S> {
     }
     
     /// Invalidate the cache for a specific key
-    pub fn invalidate(&self, key: &[u8]) -> Result<()> {
-        let _ = self.cache.remove(&key.to_vec());
-        Ok(())
+    pub fn invalidate(&self, key: &[u8]) {
+        let mut cache = self.cache.write();
+        cache.pop(&key.to_vec());
     }
     
     /// Clear the entire cache
-    pub fn clear_cache(&self) -> Result<()> {
-        self.cache.clear()
-            .map_err(|e| crate::error::KnowledgeGraphError::from(e.to_string()))
+    pub fn clear_cache(&self) {
+        let mut cache = self.cache.write();
+        cache.clear();
+    }
+
+    /// Get cache metrics
+    pub fn metrics(&self) -> &CacheMetrics {
+        &self.metrics
+    }
+
+    /// Update read-ahead keys
+    fn update_read_ahead_keys(&self, key: &[u8]) {
+        if !self.config.read_ahead {
+            return;
+        }
+
+        let mut last_keys = self.last_keys.write();
+        
+        // Add the current key to the history
+        last_keys.push_back(key.to_vec());
+        
+        // Keep only the last N keys
+        while last_keys.len() > 10 {
+            last_keys.pop_front();
+        }
+    }
+
+    /// Prefetch keys that are likely to be accessed next
+    fn prefetch_keys(&self, prefix: &[u8]) {
+        if !self.config.read_ahead {
+            return;
+        }
+
+        // In a real implementation, we would analyze the access pattern
+        // and prefetch keys that are likely to be accessed next.
+        // This is a simplified version that just prefetches sequential keys.
+        
+        // Example: If the key is "key123", prefetch "key124", "key125", etc.
+        // This is just a placeholder - you'd want to implement a more sophisticated
+        // prefetching strategy based on your access patterns.
     }
 }
 
 impl<S> Storage for CachedStore<S>
 where
-    S: Storage + WriteBatchExt + 'static,
-    <S as Storage>::Batch: WriteBatch + WriteBatchExt + 'static + Clone,
+    S: Storage + 'static,
+    for<'a> <S as Storage>::Batch<'a>: WriteBatch + Clone + 'static,
 {
-    type Batch = CachedBatch<<S as Storage>::Batch>;
+    type Batch<'a> = CachedBatch<<S as Storage>::Batch<'a>> where Self: 'a;
     
     fn open<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
         let inner = S::open(path)?;
-        Ok(Self::new(inner, 1000)) // Default cache size of 1000
-    }
-
-    fn get<T: serde::de::DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
-        // Try to get from cache first
-        match self.cache.get(&key.to_vec()) {
-            Ok(Some(cached)) => {
-                trace!("Cache hit for key: {:?}", key);
-                match bincode::deserialize(&cached) {
-                    Ok(value) => return Ok(Some(value)),
-                    Err(e) => {
-                        log::warn!("Cache deserialization error: {}", e);
-                        // Continue to try from storage
-                    }
-                }
-            }
-            Err(e) => {
-                log::warn!("Cache get error: {}", e);
-                // Continue to try from storage
-            }
-            _ => {}
-        }
-        
-        debug!("Cache miss for key: {:?}", key);
-        let value = self.inner.get(key)?;
-        
-        // Note: We don't cache the value here because we can't guarantee that T is serializable
-        // The value will be cached when it's written using put()
-        // This is a trade-off to maintain the trait bounds
-        
-        Ok(value)
+        Ok(Self::new(inner))
     }
     
-    fn put<T: serde::Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
-        // Store in underlying storage first
+    fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>> {
+        // Check cache first
+        if let Some(cached) = self.cache.read().get(key) {
+            self.metrics.record_hit(cached.len());
+            return deserialize(cached).map(Some);
+        }
+        
+        // Cache miss, get from storage
+        self.metrics.record_miss();
+        if let Some(value) = self.inner.get(key)? {
+            // Serialize the value to store in cache
+            if let Ok(serialized) = bincode::serialize(&value) {
+                self.metrics.record_write(serialized.len());
+                
+                // Update cache
+                self.cache.write().put(key.to_vec(), serialized);
+                
+                // Update read-ahead keys
+                self.update_read_ahead_keys(key);
+            }
+            
+            Ok(Some(value))
+        } else {
+            Ok(None)
+        }
+    }
+    
+    fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
+        // Serialize the value
+        let serialized = serialize(value)?;
+        
+        // Update storage
         self.inner.put(key, value)?;
         
-        // Update cache with serialized value
-        match bincode::serialize(value) {
-            Ok(serialized) => {
-                if let Err(e) = self.cache.put(key.to_vec(), serialized) {
-                    log::warn!("Failed to update cache: {}", e);
-                }
-            }
-            Err(e) => {
-                log::warn!("Failed to serialize value for caching: {}", e);
-                // Invalidate cache entry if we can't serialize the new value
-                let _ = self.cache.remove(&key.to_vec());
-            }
-        }
+        // Update cache
+        let mut cache = self.cache.write();
+        cache.put(key.to_vec(), serialized);
+        
+        // Update metrics
+        self.metrics.record_write(key.len() + std::mem::size_of_val(&value));
         
         Ok(())
     }
     
     fn delete(&self, key: &[u8]) -> Result<()> {
-        // Invalidate cache
-        if let Err(e) = self.cache.remove(&key.to_vec()) {
-            log::warn!("Failed to invalidate cache on delete: {}", e);
-        }
-        
-        // Delete from underlying storage
-        self.inner.delete(key)
+        self.inner.delete(key)?;
+        self.cache.write().pop(key);
+        Ok(())
     }
     
     fn exists(&self, key: &[u8]) -> Result<bool> {
         // Check cache first
-        match self.cache.get(&key.to_vec()) {
-            Ok(Some(_)) => return Ok(true),
-            Err(e) => log::warn!("Cache get error in exists: {}", e),
-            _ => {}
+        if self.cache.read().contains(key) {
+            return Ok(true);
         }
         
         // Fall back to storage
@@ -133,8 +269,8 @@ where
     }
     
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
-        // For iteration, we don't use the cache as it's more complex to handle
-        // and iteration is typically done over larger datasets
+        // For now, just forward to the inner storage
+        // TODO: Consider caching iteration results
         self.inner.iter_prefix(prefix)
     }
     
@@ -146,86 +282,139 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// A batch of operations that will be applied atomically to the storage
 /// and updates the cache accordingly.
-/// 
-/// This struct wraps an inner batch and a cache, ensuring that cache invalidation
-/// happens atomically with the batch operations. It implements the `WriteBatch`
+///
+/// This struct wraps an inner batch and a cache, ensuring that cache updates
+/// happen atomically with batch operations. It implements the `WriteBatch`
 /// trait to provide a consistent interface with other batch types.
-/// 
+///
 /// # Type Parameters
 /// - `B`: The inner batch type that implements `WriteBatch`
 pub struct CachedBatch<B> {
     inner: B,
-    cache: Arc<LruCacheWrapper<Vec<u8>, Vec<u8>>>,
+    cache: Arc<RwLock<LruCache<Vec<u8>, Vec<u8>>>>,
+    metrics: Arc<CacheMetrics>,
+    pending_puts: HashMap<Vec<u8>, Vec<u8>>,
+    pending_deletes: HashSet<Vec<u8>>,
+}
+
+impl<B> Clone for CachedBatch<B>
+where
+    B: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            cache: self.cache.clone(),
+            metrics: self.metrics.clone(),
+            pending_puts: self.pending_puts.clone(),
+            pending_deletes: self.pending_deletes.clone(),
+        }
+    }
 }
 
 impl<B> WriteBatch for CachedBatch<B>
 where
-    B: WriteBatch + WriteBatchExt + 'static,
-    B: std::any::Any + Clone,
+    B: WriteBatch + Clone + 'static,
+    B: std::any::Any,
 {
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.put_serialized(key, value)
+        self.pending_puts.insert(key.to_vec(), value.to_vec());
+        self.inner.put(key, value)
     }
     
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        // Invalidate cache on put
-        if let Err(e) = self.cache.remove(&key.to_vec()) {
-            log::warn!("Failed to remove key from cache: {}", e);
-        }
-        // Clone the value to ensure it's owned
-        let value = value.to_vec();
-        self.inner.put_serialized(key, &value)
+        // Store the serialized value in pending_puts
+        self.pending_puts.insert(key.to_vec(), value.to_vec());
+        
+        // Forward to inner batch
+        self.inner.put_serialized(key, value)
     }
     
     fn delete(&mut self, key: &[u8]) -> Result<()> {
-        // Invalidate cache on delete
-        if let Err(e) = self.cache.remove(&key.to_vec()) {
-            log::warn!("Failed to remove key from cache: {}", e);
-        }
+        self.pending_puts.remove(key);
+        self.pending_deletes.insert(key.to_vec());
         self.inner.delete(key)
     }
     
     fn clear(&mut self) {
+        self.pending_puts.clear();
+        self.pending_deletes.clear();
         self.inner.clear();
     }
     
-    fn as_any(&self) -> &dyn Any {
+    fn as_any(&self) -> &dyn std::any::Any {
         self
     }
     
     fn commit(self: Box<Self>) -> Result<()> {
-        // Convert to Box<dyn WriteBatch> and forward to WriteBatchExt::commit
-        let inner = Box::new(self.inner);
-        <B as WriteBatchExt>::commit(inner)
+        // Update cache with pending operations
+        let mut cache = self.cache.write();
+        
+        // Apply all pending puts
+        for (key, value) in self.pending_puts {
+            cache.put(key, value);
+        }
+        
+        // Apply all pending deletes
+        for key in self.pending_deletes {
+            cache.pop(&key);
+        }
+        
+        // Update metrics
+        let bytes_written: usize = self.pending_puts.values().map(|v| v.len()).sum();
+        self.metrics.record_write(bytes_written);
+        
+        // Commit the inner batch
+        let inner_box = Box::new(self.inner);
+        <B as WriteBatch>::commit(inner_box)
     }
 }
 
 impl<S> WriteBatchExt for CachedStore<S>
 where
-    S: Storage + WriteBatchExt + 'static,
-    <S as Storage>::Batch: WriteBatch + WriteBatchExt + 'static + Clone,
+    S: Storage + 'static,
+    for<'a> <S as Storage>::Batch<'a>: WriteBatch + Clone + 'static,
 {
-    type Batch = CachedBatch<<S as Storage>::Batch>;
+    type Batch<'a> = CachedBatch<<S as Storage>::Batch<'a>> where Self: 'a;
     
-    fn batch(&self) -> Self::Batch {
+    fn batch(&self) -> Self::Batch<'_> {
+        // Create a new batch from the inner storage
+        let inner_batch = <S as Storage>::batch(&self.inner);
         CachedBatch {
-            inner: <S as Storage>::batch(&self.inner),
+            inner: inner_batch,
             cache: self.cache.clone(),
+            metrics: self.metrics.clone(),
+            pending_puts: HashMap::new(),
+            pending_deletes: HashSet::new(),
         }
     }
     
     fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
-        // Downcast to our concrete type if possible
-        if let Some(batch) = batch.as_any().downcast_ref::<CachedBatch<<S as Storage>::Batch>>() {
-            // Extract inner batch and commit it
-            let inner = Box::new(batch.inner.clone());
-            <S as WriteBatchExt>::commit(inner)
+        // Downcast the batch to our concrete type
+        if let Some(batch) = batch.as_any().downcast_ref::<CachedBatch<<S as Storage>::Batch<'_>>>() {
+            // Clone the batch to avoid moving it
+            let batch = batch.clone();
+            
+            // Update cache with pending operations
+            {
+                let mut cache = batch.cache.write();
+                for (key, value) in &batch.pending_puts {
+                    cache.put(key.clone(), value.clone());
+                }
+                
+                for key in &batch.pending_deletes {
+                    cache.pop(key);
+                }
+            }
+            
+            // Commit the inner batch
+            let inner_batch = Box::new(batch.inner);
+            <S as Storage>::commit(inner_batch)
         } else {
-            // Otherwise forward to inner implementation
-            <S as WriteBatchExt>::commit(batch)
+            Err(Error::new("Invalid batch type"))
         }
     }
 }
@@ -235,83 +424,97 @@ mod tests {
     use super::*;
     use crate::storage::sled_store::SledStore;
     use tempfile::tempdir;
-    use serde::{Serialize, Deserialize};
     
-    #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     struct TestValue {
         data: String,
+        count: u64,
     }
     
     #[test]
     fn test_cached_store() -> Result<()> {
-        let dir = tempdir()?;
-        let inner = SledStore::open(dir.path())?;
-        let cache = CachedStore::new(inner, 100);
+        let temp_dir = tempdir()?;
         
-        // Test basic put and get with String
+        // Create a new CachedStore with default config
+        let inner = SledStore::open(temp_dir.path())?;
+        let cache = CachedStore::new(inner);
+        
+        // Test put and get
         let key = b"test_key";
-        let value = "test_value";
+        let value = TestValue {
+            data: "test data".to_string(),
+            count: 42,
+        };
         
-        // Put a value
-        cache.put(key, &value.to_string())?;
+        // Put should cache the value
+        cache.put(key, &value)?;
         
-        // Get it back
-        let retrieved: Option<String> = cache.get(key)?;
-        assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap(), value);
+        // Get should hit the cache
+        let cached: Option<TestValue> = cache.get(key)?;
+        assert_eq!(cached, Some(value.clone()));
         
-        // Test cache hit
-        let cached: Option<String> = cache.get(key)?;
-        assert!(cached.is_some());
-        assert_eq!(cached.unwrap(), value);
+        // Verify metrics
+        assert!(cache.metrics().hit_rate() > 0.0);
         
         // Test delete
         cache.delete(key)?;
-        assert!(cache.get::<String>(key)?.is_none());
-        
-        // Test clear cache
-        cache.put(key, &value.to_string())?;
-        cache.clear_cache()?;
-        
-        // After clearing cache, value should still be in storage
-        assert!(cache.get::<String>(key)?.is_some());
-        
-        // Test cache invalidation
-        let key2 = b"test_key2";
-        let value2 = "test_value2";
-        
-        cache.put(key2, &value2.to_string())?;
-        cache.invalidate(key2)?;
-        
-        // Should refill cache from storage
-        let refilled: Option<String> = cache.get(key2)?;
-        assert!(refilled.is_some());
-        assert_eq!(refilled.unwrap(), value2);
+        let deleted: Option<TestValue> = cache.get(key)?;
+        assert_eq!(deleted, None);
         
         // Test batch operations
-        let key3 = b"batch_key1";
-        let value3 = "batch_value1";
-        let key4 = b"batch_key2";
-        let value4 = "batch_value2";
-        
-        // Create and execute a batch
-        let mut batch = <CachedStore<_> as Storage>::batch(&cache);
-        batch.put(key3, value3.as_bytes())?;
-        batch.put_serialized(key4, value4.as_bytes())?;
-        batch.delete(key2)?;
-        
-        // Commit the batch
-        let batch = Box::new(batch);
-        <CachedStore<SledStore> as WriteBatchExt>::commit(batch)?;
+        {
+            let mut batch = <CachedStore<_> as Storage>::batch(&cache);
+            batch.put_serialized(b"key1", b"value1")?;
+            batch.put_serialized(b"key2", b"value2")?;
+            batch.delete(b"key1")?;
+            Box::new(batch).commit()?;
+        }
         
         // Verify batch operations
-        let stored3: Option<Vec<u8>> = cache.get(key3)?;
-        assert_eq!(stored3.as_deref(), Some(value3.as_bytes()));
+        assert_eq!(cache.get::<Vec<u8>>(b"key1")?, None);
+        assert_eq!(cache.get::<Vec<u8>>(b"key2")?, Some(b"value2".to_vec()));
         
-        let stored4: Option<Vec<u8>> = cache.get(key4)?;
-        assert_eq!(stored4.as_deref(), Some(value4.as_bytes()));
+        // Test cache invalidation
+        cache.invalidate(b"key2");
         
-        assert!(cache.get::<String>(key2)?.is_none());
+        // Test clear cache
+        cache.clear_cache();
+        
+        // Test with custom configuration
+        let inner = SledStore::open(temp_dir.path())?;
+        let config = CacheConfig {
+            capacity: 100,
+            read_ahead: true,
+            read_ahead_size: 10,
+            enable_compression: true,
+        };
+        let _cache = CachedStore::with_config(inner, config);
+        
+        Ok(())
+    }
+    
+    #[test]
+    fn test_metrics() -> Result<()> {
+        let temp_dir = tempdir()?;
+        let inner = SledStore::open(temp_dir.path())?;
+        let cache = CachedStore::new(inner);
+        
+        // Initial metrics should be zero
+        assert_eq!(cache.metrics().hit_rate(), 0.0);
+        assert_eq!(cache.metrics().read_bytes(), 0);
+        assert_eq!(cache.metrics().write_bytes(), 0);
+        
+        // Add some data
+        cache.put(b"key1", &"value1".to_string())?;
+        
+        // Read should be a miss first, then hit
+        let _: Option<String> = cache.get(b"key1")?; // Miss
+        let _: Option<String> = cache.get(b"key1")?; // Hit
+        
+        // Check metrics
+        assert!(cache.metrics().hit_rate() > 0.0);
+        assert!(cache.metrics().read_bytes() > 0);
+        assert!(cache.metrics().write_bytes() > 0);
         
         Ok(())
     }

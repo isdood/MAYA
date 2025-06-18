@@ -155,3 +155,29 @@ See the `examples/` directory for complete usage examples.
 ## Support
 
 For API-related questions or issues, please open an issue in our GitHub repository.
+
+## Vulkan & UI Components
+
+### Vulkan Renderer
+
+The Vulkan renderer is implemented in `src/renderer/vulkan.zig`. It provides a low-level interface for Vulkan operations, including:
+
+- Instance, device, swapchain, and surface creation.
+- Image, framebuffer, and render pass setup.
+- Shader module creation and graphics pipeline setup.
+- Frame rendering, synchronization, and command buffer recording.
+
+#### Shader Management
+
+Shaders are loaded from SPIR-V binaries located in the `shaders/` directory. The renderer uses `vkCreateShaderModule` to create shader modules for vertex and fragment shaders.
+
+### ImGui UI Renderer
+
+The ImGui UI renderer is implemented in `src/renderer/imgui.zig`. It integrates ImGui with Vulkan for UI rendering, including:
+
+- Descriptor pool and render pass setup for ImGui.
+- Rendering ImGui UI elements using Vulkan.
+
+### High-Level Renderer Interface
+
+The high-level renderer interface is defined in `src/renderer/renderer.zig`. It wraps the Vulkan renderer and provides a simplified API for rendering operations.

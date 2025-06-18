@@ -1,0 +1,2 @@
+<S as storage::Storage>::Batch<'a>: Clone
+CachedBatch<'a, <S as storage::Storage>::Batch<'a>>

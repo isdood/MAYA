@@ -86,7 +86,7 @@ mod cached_store;
 
 // Re-export public types
 pub use sled_store::SledStore;
-pub use cached_store::{CachedStore, CachedBatch};
+pub use cached_store::{CachedStore, CachedBatch, CacheConfig, CacheMetrics};
 
 use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
@@ -95,7 +95,7 @@ use crate::error::Result;
 /// Trait defining the storage operations for the knowledge graph
 pub trait Storage: Send + Sync + 'static {
     /// The batch type for this storage backend
-    type Batch: WriteBatch + 'static;
+    type Batch<'a>: WriteBatch + 'static where Self: 'a;
     
     /// Create or open a database at the given path
     fn open<P: AsRef<Path>>(path: P) -> Result<Self> where Self: Sized;
@@ -143,9 +143,9 @@ pub trait WriteBatch: std::fmt::Debug + Send + 'static {
 }
 
 /// Extension trait for batch operations
-pub trait WriteBatchExt: Send + 'static {
+pub trait WriteBatchExt: Storage {
     /// The batch type for this storage backend
-    type Batch: WriteBatch + 'static;
+    type Batch<'a>: WriteBatch + 'static where Self: 'a;
     
     /// Create a new batch
     fn batch(&self) -> Self::Batch;
