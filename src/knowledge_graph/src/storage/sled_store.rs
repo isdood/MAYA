@@ -95,7 +95,23 @@ impl WriteBatchExt for SledStore {
     
     fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
         if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
-            Box::new(batch.clone()).commit()
+            let batch = batch.clone();
+            let mut tx = batch.db.transaction();
+            
+            for op in &batch.ops {
+                match op {
+                    BatchOp::Put(key, value) => {
+                        tx.insert(key, value.as_slice())?;
+                    }
+                    BatchOp::Delete(key) => {
+                        tx.remove(key)?;
+                    }
+                }
+            }
+            
+            tx.commit()?;
+            batch.db.flush()?;
+            Ok(())
         } else {
             Err(crate::error::KnowledgeGraphError::StorageError(
                 "Invalid batch type".to_string()
@@ -105,11 +121,13 @@ impl WriteBatchExt for SledStore {
 }
 
 /// Sled write batch wrapper
+#[derive(Debug)]
 pub struct SledWriteBatch {
     ops: Vec<BatchOp>,
     db: Arc<Db>,
 }
 
+#[derive(Debug)]
 enum BatchOp {
     Put(Vec<u8>, Vec<u8>),
     Delete(Vec<u8>),

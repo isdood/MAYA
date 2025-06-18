@@ -3,33 +3,43 @@
 use std::error::Error as StdError;
 use std::fmt;
 use serde_json::Error as JsonError;
+use std::sync::Arc;
 
 /// Error type for the knowledge graph
 #[derive(Debug)]
 pub enum KnowledgeGraphError {
-    /// JSON serialization/deserialization error
+    /// I/O error
+    IoError(Arc<std::io::Error>),
+    
+    /// Storage error
+    StorageError(String),
+    
+    /// Serialization/deserialization error
     SerializationError(JsonError),
     
-    /// I/O error
-    IoError(std::io::Error),
+    /// Node not found
+    NodeNotFound(String),
     
-    /// Sled database error
-    SledError(sled::Error),
+    /// Edge not found
+    EdgeNotFound(String),
+    
+    /// Duplicate node
+    DuplicateNode(String),
+    
+    /// Duplicate edge
+    DuplicateEdge(String),
+    
+    /// Invalid operation
+    InvalidOperation(String),
+    
+    /// Query error
+    QueryError(String),
     
     /// Transaction error
     TransactionError(String),
     
-    /// Node not found error
-    NodeNotFound(String),
-    
-    /// Edge not found error
-    EdgeNotFound(String),
-    
-    /// Duplicate node error
-    DuplicateNode(String),
-    
-    /// Duplicate edge error
-    DuplicateEdge(String),
+    /// Sled database error
+    SledError(sled::Error),
     
     /// Other error
     Other(String),
