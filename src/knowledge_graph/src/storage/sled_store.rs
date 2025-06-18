@@ -142,20 +142,18 @@ pub struct SledWriteBatch {
 
 #[derive(Debug, Clone)]
 enum BatchOp {
-    Put(Vec<u8>, Vec<u8>),
-    Delete(Vec<u8>),
+    Put(IVec, IVec),
+    Delete(IVec),
 }
-
-
 
 impl WriteBatch for SledWriteBatch {
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.ops.push(BatchOp::Put(key.to_vec(), value.to_vec()));
+        self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
         Ok(())
     }
     
     fn delete(&mut self, key: &[u8]) -> Result<()> {
-        self.ops.push(BatchOp::Delete(key.to_vec()));
+        self.ops.push(BatchOp::Delete(IVec::from(key)));
         Ok(())
     }
     
@@ -176,14 +174,14 @@ impl WriteBatch for SledWriteBatch {
             for op in &batch.ops {
                 match op {
                     BatchOp::Put(key, value) => {
-                        tx.insert(key, value)?;
+                        tx.insert(key.as_ref(), value.as_ref())?;
                     }
                     BatchOp::Delete(key) => {
-                        tx.remove(key)?;
+                        tx.remove(key.as_ref())?;
                     }
                 }
             }
-            Ok(())
+            Ok::<_, sled::transaction::TransactionError>(())
         });
         
         match result {
@@ -207,13 +205,13 @@ impl SledWriteBatch {
     }
     
     /// Add a put operation to the batch
-    pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
-        self.ops.push(BatchOp::Put(key, value));
+    pub fn put(&mut self, key: impl Into<IVec>, value: impl Into<IVec>) {
+        self.ops.push(BatchOp::Put(key.into(), value.into()));
     }
     
     /// Add a delete operation to the batch
-    pub fn delete(&mut self, key: Vec<u8>) {
-        self.ops.push(BatchOp::Delete(key));
+    pub fn delete(&mut self, key: impl Into<IVec>) {
+        self.ops.push(BatchOp::Delete(key.into()));
     }
 }
 
