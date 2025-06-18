@@ -273,9 +273,9 @@ where
         self.inner.iter_prefix(prefix)
     }
     
-    fn batch(&self) -> Self::Batch {
+    fn batch(&self) -> Self::Batch<'_> {
         CachedBatch {
-            inner: <S as Storage>::batch(&self.inner),
+            inner: self.inner.batch(),
             cache: self.cache.clone(),
             metrics: self.metrics.clone(),
             pending_puts: HashMap::new(),
@@ -379,14 +379,14 @@ impl<S> WriteBatchExt for CachedStore<S>
 where
     S: Storage + 'static,
     for<'a> <S as Storage>::Batch<'a>: WriteBatch + Clone + 'static,
+    for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
 {
-    type Batch<'a> = CachedBatch<<S as Storage>::Batch<'a>> where Self: 'a;
+    type BatchType<'a> = CachedBatch<<S as Storage>::Batch<'a>> where Self: 'a;
     
-    fn batch(&self) -> Self::Batch<'_> {
+    fn create_batch(&self) -> Self::BatchType<'_> {
         // Create a new batch from the inner storage
-        let inner_batch = <S as Storage>::batch(&self.inner);
         CachedBatch {
-            inner: inner_batch,
+            inner: self.inner.batch(),
             cache: self.cache.clone(),
             metrics: self.metrics.clone(),
             pending_puts: HashMap::new(),

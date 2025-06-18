@@ -36,6 +36,13 @@ impl Storage for SledStore {
     fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
         SledStore::open(path)
     }
+    
+    fn batch(&self) -> Self::Batch<'_> {
+        SledWriteBatch {
+            db: self.db.clone(),
+            ops: Vec::new(),
+        }
+    }
 
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
         match self.db.get(key)? {
@@ -91,11 +98,13 @@ impl Storage for SledStore {
 
 // Implement WriteBatchExt for SledStore
 impl WriteBatchExt for SledStore {
-    type Batch<'a> = SledWriteBatch where Self: 'a;
+    type BatchType<'a> = SledWriteBatch where Self: 'a;
 
-    // Use fully qualified syntax to explicitly use the Storage trait's batch method
-    fn batch(&self) -> Self::Batch<'_> {
-        <Self as Storage>::batch(self)
+    fn create_batch(&self) -> Self::BatchType<'_> {
+        SledWriteBatch {
+            db: self.db.clone(),
+            ops: Vec::new(),
+        }
     }
     
     fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {

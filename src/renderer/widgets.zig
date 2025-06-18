@@ -1096,4 +1096,400 @@ pub const Dummy = struct {
     pub fn render(self: *Self) void {
         c.igDummy(.{ self.widget.size[0], self.widget.size[1] });
     }
+};
+
+pub const ProgressIndicator = struct {
+    const Self = @This();
+
+    widget: Widget,
+    progress: f32,
+    overlay_text: ?[*:0]const u8,
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        progress: f32,
+        overlay_text: ?[*:0]const u8,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .progress = progress,
+            .overlay_text = overlay_text,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        c.igProgressBar(self.progress, .{ self.widget.size[0], self.widget.size[1] }, self.overlay_text);
+    }
+};
+
+pub const ScrollableArea = struct {
+    const Self = @This();
+
+    widget: Widget,
+    content: std.ArrayList(*Widget),
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .content = std.ArrayList(*Widget).init(std.heap.page_allocator),
+            .flags = flags,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.content.deinit();
+    }
+
+    pub fn addContent(self: *Self, widget: *Widget) !void {
+        try self.content.append(widget);
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginChild(self.widget.id, .{ self.widget.size[0], self.widget.size[1] }, true, self.flags)) {
+            for (self.content.items) |item| {
+                item.render();
+            }
+        }
+        c.igEndChild();
+    }
+};
+
+pub const Group = struct {
+    const Self = @This();
+
+    widget: Widget,
+    content: std.ArrayList(*Widget),
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .content = std.ArrayList(*Widget).init(std.heap.page_allocator),
+            .flags = flags,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.content.deinit();
+    }
+
+    pub fn addContent(self: *Self, widget: *Widget) !void {
+        try self.content.append(widget);
+    }
+
+    pub fn render(self: *Self) void {
+        c.igBeginGroup();
+        for (self.content.items) |item| {
+            item.render();
+        }
+        c.igEndGroup();
+    }
+};
+
+pub const CollapsingGroup = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    content: std.ArrayList(*Widget),
+    flags: c.ImGuiTreeNodeFlags,
+    is_open: bool,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiTreeNodeFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .content = std.ArrayList(*Widget).init(std.heap.page_allocator),
+            .flags = flags,
+            .is_open = false,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.content.deinit();
+    }
+
+    pub fn addContent(self: *Self, widget: *Widget) !void {
+        try self.content.append(widget);
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igCollapsingHeader(self.label, self.flags)) {
+            for (self.content.items) |item| {
+                item.render();
+            }
+        }
+    }
+};
+
+pub const DragFloat = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *f32,
+    speed: f32,
+    min: f32,
+    max: f32,
+    format: [*:0]const u8,
+    flags: c.ImGuiSliderFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *f32,
+        speed: f32,
+        min: f32,
+        max: f32,
+        format: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSliderFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .value = value,
+            .speed = speed,
+            .min = min,
+            .max = max,
+            .format = format,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igDragFloat(self.label, self.value, self.speed, self.min, self.max, self.format, self.flags);
+    }
+};
+
+pub const DragInt = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *i32,
+    speed: f32,
+    min: i32,
+    max: i32,
+    format: [*:0]const u8,
+    flags: c.ImGuiSliderFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *i32,
+        speed: f32,
+        min: i32,
+        max: i32,
+        format: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSliderFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .value = value,
+            .speed = speed,
+            .min = min,
+            .max = max,
+            .format = format,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igDragInt(self.label, self.value, self.speed, self.min, self.max, self.format, self.flags);
+    }
+};
+
+pub const DragVec2 = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *[2]f32,
+    speed: f32,
+    min: f32,
+    max: f32,
+    format: [*:0]const u8,
+    flags: c.ImGuiSliderFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *[2]f32,
+        speed: f32,
+        min: f32,
+        max: f32,
+        format: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSliderFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .value = value,
+            .speed = speed,
+            .min = min,
+            .max = max,
+            .format = format,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igDragFloat2(self.label, &self.value[0], self.speed, self.min, self.max, self.format, self.flags);
+    }
+};
+
+pub const DragVec3 = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *[3]f32,
+    speed: f32,
+    min: f32,
+    max: f32,
+    format: [*:0]const u8,
+    flags: c.ImGuiSliderFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *[3]f32,
+        speed: f32,
+        min: f32,
+        max: f32,
+        format: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSliderFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .value = value,
+            .speed = speed,
+            .min = min,
+            .max = max,
+            .format = format,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igDragFloat3(self.label, &self.value[0], self.speed, self.min, self.max, self.format, self.flags);
+    }
+};
+
+pub const DragVec4 = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: [*:0]const u8,
+    value: *[4]f32,
+    speed: f32,
+    min: f32,
+    max: f32,
+    format: [*:0]const u8,
+    flags: c.ImGuiSliderFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        label: [*:0]const u8,
+        value: *[4]f32,
+        speed: f32,
+        min: f32,
+        max: f32,
+        format: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiSliderFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .label = label,
+            .value = value,
+            .speed = speed,
+            .min = min,
+            .max = max,
+            .format = format,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        _ = c.igDragFloat4(self.label, &self.value[0], self.speed, self.min, self.max, self.format, self.flags);
+    }
 }; 

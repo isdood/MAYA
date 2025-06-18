@@ -263,17 +263,19 @@ where
 /// A transaction for atomic operations
 pub struct Transaction<'a, S> 
 where
-    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
-    <S as Storage>::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt,
+    for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
+    for<'b> <S as WriteBatchExt>::Batch<'b>: WriteBatch + 'static,
 {
-    batch: <S as Storage>::Batch,
+    batch: <S as Storage>::Batch<'a>,
     _marker: std::marker::PhantomData<&'a S>,
 }
 
 impl<'a, S> Transaction<'a, S> 
 where
-    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
-    <S as Storage>::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt,
+    for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
+    for<'b> <S as WriteBatchExt>::Batch<'b>: WriteBatch + 'static,
 {
     fn new(storage: &'a S) -> Self {
         let batch = <S as Storage>::batch(storage);

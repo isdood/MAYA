@@ -116,7 +116,7 @@ pub trait Storage: Send + Sync + 'static {
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
     
     /// Create a batch of operations
-    fn batch(&self) -> Self::Batch;
+    fn batch(&self) -> Self::Batch<'_>;
 }
 
 /// Trait for batch operations
@@ -145,10 +145,10 @@ pub trait WriteBatch: std::fmt::Debug + Send + 'static {
 /// Extension trait for batch operations
 pub trait WriteBatchExt: Storage {
     /// The batch type for this storage backend
-    type Batch<'a>: WriteBatch + 'static where Self: 'a;
+    type BatchType<'a>: WriteBatch + 'static where Self: 'a;
     
     /// Create a new batch
-    fn batch(&self) -> Self::Batch;
+    fn create_batch(&self) -> Self::BatchType<'_>;
     
     /// Commit a boxed batch
     fn commit(batch: Box<dyn WriteBatch>) -> Result<()>;
@@ -156,14 +156,14 @@ pub trait WriteBatchExt: Storage {
     /// Put a serializable value into the batch
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
         let bytes = serialize(value)?;
-        let mut batch = self.batch();
+        let mut batch = self.create_batch();
         batch.put_serialized(key, &bytes)?;
         Box::new(batch).commit()
     }
     
     /// Delete a key from the batch
     fn delete_serialized(&self, key: &[u8]) -> Result<()> {
-        let mut batch = self.batch();
+        let mut batch = self.create_batch();
         batch.delete(key)?;
         Box::new(batch).commit()
     }

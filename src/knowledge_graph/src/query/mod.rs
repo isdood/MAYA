@@ -141,10 +141,10 @@ where
 /// Extension trait for KnowledgeGraph to support fluent queries
 pub trait QueryExt<S>
 where
-    S: Storage<Batch = <S as WriteBatchExt>::Batch> + WriteBatchExt,
-    <S as Storage>::Batch: WriteBatch + 'static,
-    <S as WriteBatchExt>::Batch: WriteBatch + 'static,
-    for<'b> &'b S: 'b,
+    S: Storage + WriteBatchExt,
+    for<'a> <S as Storage>::Batch<'a>: WriteBatch + 'static,
+    for<'a> <S as WriteBatchExt>::Batch<'a>: WriteBatch + 'static,
+    for<'a> &'a S: 'a,
 {
     /// Start building a query
     fn query(&self) -> QueryBuilder<S>;

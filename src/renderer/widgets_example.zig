@@ -37,6 +37,13 @@ pub const WidgetsExample = struct {
     file_dialog: widgets.FileDialog,
     tab_bar: widgets.TabBar,
     tree_node: widgets.TreeNode,
+    scrollable_area: widgets.ScrollableArea,
+    progress_indicator: widgets.ProgressIndicator,
+    drag_float: widgets.DragFloat,
+    drag_int: widgets.DragInt,
+    drag_vec2: widgets.DragVec2,
+    drag_vec3: widgets.DragVec3,
+    drag_vec4: widgets.DragVec4,
 
     // State variables
     slider_value: f32,
@@ -56,6 +63,11 @@ pub const WidgetsExample = struct {
     view_menu_selected: bool,
     toolbar_selected: bool,
     status_text: [256]u8,
+    float_value: f32,
+    int_value: i32,
+    vec2_value: [2]f32,
+    vec3_value: [3]f32,
+    vec4_value: [4]f32,
 
     pub fn init(renderer: *ImGuiRenderer) !Self {
         var self = Self{
@@ -94,6 +106,13 @@ pub const WidgetsExample = struct {
             .file_dialog = undefined,
             .tab_bar = undefined,
             .tree_node = undefined,
+            .scrollable_area = undefined,
+            .progress_indicator = undefined,
+            .drag_float = undefined,
+            .drag_int = undefined,
+            .drag_vec2 = undefined,
+            .drag_vec3 = undefined,
+            .drag_vec4 = undefined,
 
             // Initialize state
             .slider_value = 0.5,
@@ -113,6 +132,11 @@ pub const WidgetsExample = struct {
             .view_menu_selected = false,
             .toolbar_selected = false,
             .status_text = undefined,
+            .float_value = 0.0,
+            .int_value = 0,
+            .vec2_value = .{ 0.0, 0.0 },
+            .vec3_value = .{ 0.0, 0.0, 0.0 },
+            .vec4_value = .{ 0.0, 0.0, 0.0, 0.0 },
         };
 
         // Initialize plot values with a sine wave
@@ -489,6 +513,97 @@ pub const WidgetsExample = struct {
 
         try self.status_bar.addItem(&status_text.widget);
 
+        // Initialize scrollable area
+        self.scrollable_area = widgets.ScrollableArea.init(
+            "example_scrollable",
+            .{ 10, 50 },
+            .{ 780, 900 },
+            c.ImGuiWindowFlags_None,
+        );
+
+        // Initialize progress indicator
+        self.progress_indicator = widgets.ProgressIndicator.init(
+            "example_progress",
+            .{ 10, 10 },
+            .{ 200, 30 },
+            0.0,
+            "Loading...",
+            c.ImGuiWindowFlags_None,
+        );
+
+        // Initialize drag widgets
+        self.drag_float = widgets.DragFloat.init(
+            "example_drag_float",
+            "Float Value",
+            &self.float_value,
+            0.1,
+            0.0,
+            100.0,
+            "%.2f",
+            .{ 10, 50 },
+            .{ 200, 30 },
+            c.ImGuiSliderFlags_None,
+        );
+
+        self.drag_int = widgets.DragInt.init(
+            "example_drag_int",
+            "Int Value",
+            &self.int_value,
+            1,
+            0,
+            100,
+            "%d",
+            .{ 10, 90 },
+            .{ 200, 30 },
+            c.ImGuiSliderFlags_None,
+        );
+
+        self.drag_vec2 = widgets.DragVec2.init(
+            "example_drag_vec2",
+            "Vec2 Value",
+            &self.vec2_value,
+            0.1,
+            0.0,
+            100.0,
+            "%.2f",
+            .{ 10, 130 },
+            .{ 200, 30 },
+            c.ImGuiSliderFlags_None,
+        );
+
+        self.drag_vec3 = widgets.DragVec3.init(
+            "example_drag_vec3",
+            "Vec3 Value",
+            &self.vec3_value,
+            0.1,
+            0.0,
+            100.0,
+            "%.2f",
+            .{ 10, 170 },
+            .{ 200, 30 },
+            c.ImGuiSliderFlags_None,
+        );
+
+        self.drag_vec4 = widgets.DragVec4.init(
+            "example_drag_vec4",
+            "Vec4 Value",
+            &self.vec4_value,
+            0.1,
+            0.0,
+            100.0,
+            "%.2f",
+            .{ 10, 210 },
+            .{ 200, 30 },
+            c.ImGuiSliderFlags_None,
+        );
+
+        // Add widgets to scrollable area
+        try self.scrollable_area.addContent(&self.drag_float.widget);
+        try self.scrollable_area.addContent(&self.drag_int.widget);
+        try self.scrollable_area.addContent(&self.drag_vec2.widget);
+        try self.scrollable_area.addContent(&self.drag_vec3.widget);
+        try self.scrollable_area.addContent(&self.drag_vec4.widget);
+
         // Add widgets to window
         try self.window.addChild(&self.menu_bar.widget);
         try self.window.addChild(&self.context_menu.widget);
@@ -514,6 +629,8 @@ pub const WidgetsExample = struct {
         try self.window.addChild(&self.tree_node.widget);
         try self.window.addChild(&self.toolbar.widget);
         try self.window.addChild(&self.status_bar.widget);
+        try self.window.addChild(&self.scrollable_area.widget);
+        try self.window.addChild(&self.progress_indicator.widget);
 
         // Add window to renderer
         try renderer.addWidget(&self.window.widget);
@@ -534,6 +651,8 @@ pub const WidgetsExample = struct {
         self.tree_node.deinit();
         self.toolbar.deinit();
         self.status_bar.deinit();
+        self.scrollable_area.deinit();
+        self.progress_indicator.deinit();
     }
 
     pub fn update(self: *Self) !void {
