@@ -315,11 +315,11 @@ impl WriteBatchExt for HybridStore {
     type BatchType<'a> = HybridBatch where Self: 'a;
 
     fn create_batch(&self) -> Self::BatchType<'_> {
-        HybridBatch {
-            primary_batch: Box::new(self.primary.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
-            cache_batch: Box::new(self.cache.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
-            key_routing: self.key_routing.clone(),
-        }
+        HybridBatch::new(
+            Box::new(self.primary.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
+            Box::new(self.cache.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
+            self.key_routing.clone(),
+        )
     }
     
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
@@ -386,12 +386,6 @@ impl HybridBatch {
 }
 
 impl WriteBatch for HybridBatch {
-    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()> {
-        // Serialize the value first
-        let bytes = bincode::serialize(value).map_err(KnowledgeGraphError::from)?;
-        self.put_serialized(key, &bytes)
-    }
-    
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         // Put in primary batch
         self.primary_batch.put_serialized(key, value)?;
@@ -404,10 +398,6 @@ impl WriteBatch for HybridBatch {
         // Update routing
         self.key_routing.write().insert(key.to_vec(), true);
         Ok(())
-    }
-
-    fn delete(&mut self, key: &[u8]) -> Result<()> {
-        self.delete_serialized(key)
     }
     
     fn delete_serialized(&mut self, key: &[u8]) -> Result<()> {
@@ -423,7 +413,15 @@ impl WriteBatch for HybridBatch {
         self.key_routing.write().remove(key);
         Ok(())
     }
-
+    
+    fn clear(&mut self) {
+        // Clear both batches
+        self.primary_batch.clear();
+        self.cache_batch.clear();
+        // Clear routing for this batch
+        self.key_routing.write().clear();
+    }
+    
     fn commit(self) -> Result<()> {
         // Commit primary first
         self.primary_batch.commit()?;
@@ -435,14 +433,6 @@ impl WriteBatch for HybridBatch {
         }
         
         Ok(())
-    }
-    
-    fn clear(&mut self) {
-        // Clear both batches
-        self.primary_batch.clear();
-        self.cache_batch.clear();
-        // Clear routing for this batch
-        self.key_routing.write().clear();
     }
     
     fn as_any(&self) -> &dyn std::any::Any {

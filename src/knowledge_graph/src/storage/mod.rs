@@ -87,85 +87,21 @@ pub use hybrid_store::{HybridStore, HybridConfig};
 // Re-export public types
 pub use sled_store::SledStore;
 pub use cached_store::CachedStore;
-pub use hybrid_store::{HybridStore, HybridConfig, HybridBatch};
 
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use serde::{Serialize, de::DeserializeOwned};
+use bincode;
 use thiserror::Error;
-use std::fmt;
 
-impl From<sled::Error> for KnowledgeGraphError {
-    fn from(err: sled::Error) -> Self {
-        KnowledgeGraphError::StorageError(err.to_string())
-    }
-}
+use crate::error::KnowledgeGraphError;
 
-impl From<std::io::Error> for KnowledgeGraphError {
-    fn from(err: std::io::Error) -> Self {
-        KnowledgeGraphError::StorageError(err.to_string())
-    }
-}
-
-impl From<bincode::Error> for KnowledgeGraphError {
-    fn from(err: bincode::Error) -> Self {
-        KnowledgeGraphError::BincodeError(err.to_string())
-    }
-}
-
-impl From<serde_json::Error> for KnowledgeGraphError {
-    fn from(err: serde_json::Error) -> Self {
-        KnowledgeGraphError::JsonError(err)
-    }
-}
-
-use std::fmt;
-
-#[derive(Debug, thiserror::Error)]
-pub enum KnowledgeGraphError {
-    #[error("Storage error: {0}")]
-    StorageError(String),
-    
-    #[error("I/O error: {0}")]
-    IoError(#[from] std::io::Error),
-    
-    #[error("JSON serialization error: {0}")]
-    JsonError(#[from] serde_json::Error),
-    
-    #[error("Sled error: {0}")]
-    SledError(#[from] sled::Error),
-    
-    #[error("Serialization error: {0}")]
-    SerializationError(String),
-    
-    #[error("Bincode error: {0}")]
-    BincodeError(String),
-    
-    #[error("Key not found")]
-    KeyNotFound,
-    
-    #[error("Invalid argument: {0}")]
-    InvalidArgument(String),
-}
+/// Type alias for Result<T, KnowledgeGraphError>
+pub type Result<T> = std::result::Result<T, KnowledgeGraphError>;
 
 impl From<Box<bincode::ErrorKind>> for KnowledgeGraphError {
     fn from(err: Box<bincode::ErrorKind>) -> Self {
         KnowledgeGraphError::BincodeError(err.to_string())
-    }
-}
-
-
-
-impl From<error::KnowledgeGraphError> for KnowledgeGraphError {
-    fn from(err: error::KnowledgeGraphError) -> Self {
-        match err {
-            error::KnowledgeGraphError::StorageError(s) => KnowledgeGraphError::StorageError(s),
-            error::KnowledgeGraphError::IoError(e) => KnowledgeGraphError::IoError(e),
-            error::KnowledgeGraphError::JsonError(e) => KnowledgeGraphError::JsonError(e),
-            error::KnowledgeGraphError::SledError(e) => KnowledgeGraphError::SledError(e),
-            error::KnowledgeGraphError::SerializationError(s) => KnowledgeGraphError::SerializationError(s),
-            error::KnowledgeGraphError::BincodeError(s) => KnowledgeGraphError::BincodeError(s),
-            error::KnowledgeGraphError::KeyNotFound => KnowledgeGraphError::KeyNotFound,
-            error::KnowledgeGraphError::InvalidArgument(s) => KnowledgeGraphError::InvalidArgument(s),
-        }
     }
 }
 
@@ -174,19 +110,22 @@ pub type Result<T> = std::result::Result<T, KnowledgeGraphError>;
 /// Trait for key-value storage operations
 pub trait Storage: Send + Sync + 'static {
     /// Get a value by key
-    fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>>;
+    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>>;
     
-    /// Insert or update a value
+    /// Put a key-value pair
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()>;
     
-    /// Delete a value by key
+    /// Delete a key
     fn delete(&self, key: &[u8]) -> Result<()>;
     
-    /// Check if a key exists in the storage
+    /// Check if a key exists
     fn exists(&self, key: &[u8]) -> Result<bool>;
     
-    /// Get raw bytes from storage without deserialization
+    /// Get a raw byte value by key
     fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>>;
+    
+    /// Iterate over key-value pairs with a prefix
+    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
 }
 
 /// Trait for generic batch operations
@@ -194,7 +133,7 @@ pub trait GenericWriteBatch {
     /// Add a put operation to the batch
     fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()>;
     
-    /// Add a delete operation to the batch
+    /// Delete a key from the batch
     fn delete(&mut self, key: &[u8]) -> Result<()>;
 }
 
@@ -252,17 +191,20 @@ pub trait WriteBatchExt: Storage {
         let mut batch = self.create_batch();
         batch.delete_serialized(key)?;
         batch.commit()
-    }}
+    }
+}
 
-// Note: Specific implementations of WriteBatchExt are provided by each storage backend
-// to avoid conflicts with the blanket implementation
+/// Serialize a value to bytes using bincode
+pub fn serialize<T: Serialize>(value: &T) -> Result<Vec<u8>> {
+    bincode::serialize(value).map_err(KnowledgeGraphError::from)
+}
 
-/// Serialize a value to JSON bytes
-pub(crate) fn serialize<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    serde_json::to_vec(value).map_err(Into::into)
+/// Deserialize a value from bytes using bincode
+pub fn deserialize<T: DeserializeOwned>(bytes: &[u8]) -> Result<T> {
+    bincode::deserialize(bytes).map_err(KnowledgeGraphError::from)
 }
 
 /// Deserialize a value from JSON bytes
-pub(crate) fn deserialize<T: DeserializeOwned>(bytes: &[u8]) -> Result<T> {
-    serde_json::from_slice(bytes).map_err(Into::into)
+pub fn deserialize_json<T: DeserializeOwned>(bytes: &[u8]) -> Result<T> {
+    serde_json::from_slice(bytes).map_err(KnowledgeGraphError::from)
 }
