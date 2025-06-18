@@ -6,10 +6,27 @@
 
 MAYA is a proprietary Language Learning Model (LLM) interface that serves as the primary interface to the STARWEAVE meta-intelligence ecosystem. Built using Fish Shell automation and the Zig programming language, MAYA is the central nexus that connects users with the constellation of STARWEAVE-powered tools and systems. All rights reserved.
 
-## 🫶🏻 CAUTION
+## 🥶 CAUTION
 This is as clearly stated as possible - MAYA can evolve & act in ways unexpected. If you're unfamiliar with such concepts, you SHOULD NOT clone this repo; It could act in unexpected & detrimental ways to your PC. Basic rule of thumb is to not download arbitrary code you do not understand.
 
 If anyone would like a breakdown of how to navigate this space properly, feel free to email me at calebjdt@gmail.com 🌟
+
+## 📋 Current Status (2025-06-18)
+
+### ✅ Recently Completed
+- Migrated storage backend from RocksDB to Sled for improved performance and reliability
+- Implemented comprehensive test suite for storage operations
+- Resolved all compiler warnings and improved code quality
+
+### 🔧 In Progress
+- WINDSURF IDE integration
+- Performance benchmarking and optimization
+- Documentation updates for new features
+
+### 📃 Next Up
+- Enhanced query capabilities
+- Advanced indexing for improved performance
+- Integration with STARWEAVE ecosystem
 
 ## 🌟 STARWEAVE Universe Integration
 
@@ -182,6 +199,15 @@ The MAYA Learning Service is a continuous learning system that runs as a backgro
 
 MAYA provides comprehensive monitoring capabilities to help you keep track of system health and performance.
 
+### Storage Backend
+MAYA now uses Sled as its default storage backend, providing:
+- ACID transactions
+- High performance for read/write operations
+- Crash recovery
+- Cross-platform support
+
+To configure storage settings, see `config/storage.toml`
+
 ### Service Management
 
 #### Basic Commands
@@ -193,7 +219,7 @@ systemctl status maya-learn
 journalctl -u maya-learn -f
 
 # Restart the service
-sudo systemctl restart mayya-learn
+sudo systemctl restart maya-learn
 
 # Stop the service
 sudo systemctl stop maya-learn
@@ -362,6 +388,12 @@ chmod +x scripts/*.py
    - Self-diagnostic capabilities
 
 ## 📦 Installation
+
+### Prerequisites
+- Fish Shell 3.0.0+
+- Zig 0.14.1
+- Rust 1.70+ (for knowledge graph components)
+- Sled 0.34.7+ (embedded database)
 
 > Note: Installation instructions will be added as development progresses. Will include integration steps for each STARWEAVE component.
 

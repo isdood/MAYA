@@ -44,3 +44,7 @@ path = "tests/graph_tests.rs"
 [[test]]
 name = "storage"
 path = "tests/storage_tests.rs"
+
+[[bench]]
+name = "storage_benchmark"
+harness = false
