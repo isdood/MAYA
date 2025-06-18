@@ -350,12 +350,14 @@ where
 /// - `B`: The inner batch type that implements `WriteBatch`
 pub struct CachedBatch<B> {
     inner: B,
-    cache: Arc<RwLock<LruCache<Vec<u8>, Vec<u8>>>>,
+    cache: Arc<RwLock<LruCache<Vec<u8>, Vec<u8>>>>>,
     metrics: Arc<CacheMetrics>,
     pending_puts: HashMap<Vec<u8>, Vec<u8>>,
     pending_deletes: HashSet<Vec<u8>>,
     max_batch_size: usize,
     total_ops: AtomicUsize,
+    config: BatchConfig,
+    stats: Arc<RwLock<BatchStats>>,
 }
 
 impl<B> Clone for CachedBatch<B>
@@ -518,6 +520,37 @@ where
 }
 
 impl<B: WriteBatch> CachedBatch<B> {
+    /// Create a new CachedBatch with the given configuration
+    pub(crate) fn with_config(
+        inner: B,
+        cache: Arc<RwLock<LruCache<Vec<u8>, Vec<u8>>>>>,
+        metrics: Arc<CacheMetrics>,
+        config: BatchConfig,
+    ) -> Self {
+        let stats = BatchStats::new(config.initial_batch_size);
+        
+        Self {
+            inner,
+            cache,
+            metrics,
+            pending_puts: HashMap::new(),
+            pending_deletes: HashSet::new(),
+            max_batch_size: config.initial_batch_size,
+            total_ops: AtomicUsize::new(0),
+            config,
+            stats: Arc::new(RwLock::new(stats)),
+        }
+    }
+    
+    /// Create a new CachedBatch with default configuration
+    pub(crate) fn new(
+        inner: B,
+        cache: Arc<RwLock<LruCache<Vec<u8>, Vec<u8>>>>>,
+        metrics: Arc<CacheMetrics>,
+    ) -> Self {
+        let config = BatchConfig::default();
+        Self::with_config(inner, cache, metrics, config)
+    }
     /// Apply pending operations to the inner batch and clear them
     fn apply_pending_ops(&mut self) -> Result<()> {
         if self.pending_puts.is_empty() && self.pending_deletes.is_empty() {

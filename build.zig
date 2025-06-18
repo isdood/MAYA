@@ -63,11 +63,9 @@ pub fn build(b: *std.Build) void {
     const wasm = b.addExecutable(.{
         .name = "maya-wasm",
         .root_source_file = .{ .cwd_relative = "src/wasm.zig" },
-        .target = b.standardTargetOptions(.{
-            .default_target = .{
-                .cpu_arch = .wasm32,
-                .os_tag = .freestanding,
-            },
+        .target = b.resolveTargetQuery(.{
+            .cpu_arch = .wasm32,
+            .os_tag = .freestanding,
         }),
         .optimize = optimize,
     });
