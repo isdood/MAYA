@@ -3,11 +3,14 @@
 //! Provides a key-value storage abstraction using Sled with JSON serialization.
 
 mod sled_store;
+mod cached_store;
 
 pub use sled_store::SledStore;
+pub use cached_store::{CachedStore, CachedBatch};
 
 use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
+use std::any::Any;
 use crate::error::Result;
 
 /// Trait defining the storage operations for the knowledge graph

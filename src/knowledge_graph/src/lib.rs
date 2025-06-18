@@ -13,11 +13,12 @@
 #![warn(rustdoc::missing_crate_level_docs)]
 #![cfg_attr(test, allow(dead_code))] // Allow dead code in tests
 
+pub mod cache;
 pub mod error;
 pub mod graph;
 pub mod models;
-pub mod storage;
 pub mod query;
+pub mod storage;
 
 // Re-exports
 pub use error::{Result, KnowledgeGraphError};
