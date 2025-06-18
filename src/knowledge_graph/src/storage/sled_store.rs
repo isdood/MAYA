@@ -304,8 +304,8 @@ mod tests {
 
         // Test successful transaction
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put_serialized(b"key1", b"value1")?;
-        batch.put_serialized(b"key2", b"value2")?;
+        batch.put(b"key1", &b"value1".to_vec())?;
+        batch.put(b"key2", &b"value2".to_vec())?;
         Box::new(batch).commit()?;
 
         assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(b"value1".to_vec()));
@@ -313,22 +313,22 @@ mod tests {
 
         // Test delete in transaction
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put_serialized(b"key1", b"value1")?;
-        batch.delete(b"key1");
+        batch.put(b"key1", &b"value1".to_vec())?;
+        batch.delete(b"key1")?;
         Box::new(batch).commit()?;
 
         assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
 
         // Test transaction with error (duplicate key in the same batch)
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put_serialized(b"key1", b"value1")?;
+        batch.put(b"key1", &b"value1".to_vec())?;
         // Second put to the same key will overwrite in sled, which is expected
-        batch.put_serialized(b"key1", b"value2")?;
+        batch.put(b"key1", &b"value2".to_vec())?;
         let result = Box::new(batch).commit();
         assert!(result.is_ok()); // This should succeed as sled allows overwrites
 
-        // Verify no partial updates
-        assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
+        // Verify the value was updated
+        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(b"value2".to_vec()));
         
         Ok(())
     }
