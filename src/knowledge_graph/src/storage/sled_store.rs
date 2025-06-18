@@ -130,16 +130,55 @@ impl WriteBatchExt for SledStore {
 }
 
 /// Sled write batch wrapper
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SledWriteBatch {
     db: Arc<Db>,
     ops: Vec<BatchOp>,
 }
 
+unsafe impl Send for SledWriteBatch {}
+unsafe impl Sync for SledWriteBatch {}
+
 #[derive(Debug, Clone)]
 enum BatchOp {
     Put(IVec, IVec),
     Delete(IVec),
+}
+
+unsafe impl Send for BatchOp {}
+unsafe impl Sync for BatchOp {}
+
+impl WriteBatchExt for SledWriteBatch {
+    type Batch = SledWriteBatch;
+    
+    fn batch(&self) -> Self::Batch {
+        SledWriteBatch::new(Arc::clone(&self.db))
+    }
+    
+    fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
+        if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
+            let db = Arc::clone(&batch.db);
+            let ops = batch.ops.clone();
+            
+            // Create a new sled batch
+            let mut sled_batch = sled::Batch::default();
+            
+            // Apply all operations to the sled batch
+            for op in ops {
+                match op {
+                    BatchOp::Put(k, v) => sled_batch.insert(k, v),
+                    BatchOp::Delete(k) => sled_batch.remove(k),
+                }
+            }
+            
+            // Apply the batch to the database
+            db.apply_batch(sled_batch)
+                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+            Ok(())
+        } else {
+            Err(crate::error::KnowledgeGraphError::from("Failed to downcast batch to SledWriteBatch"))
+        }
+    }
 }
 
 impl WriteBatch for SledWriteBatch {

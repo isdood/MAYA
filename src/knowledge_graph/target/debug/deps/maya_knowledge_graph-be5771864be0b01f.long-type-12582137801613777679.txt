@@ -1,0 +1,2 @@
+<S as storage::Storage>::Batch: storage::WriteBatchExt
+CachedBatch<<S as storage::Storage>::Batch>
