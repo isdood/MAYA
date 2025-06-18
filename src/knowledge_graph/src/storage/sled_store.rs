@@ -312,7 +312,7 @@ mod tests {
         // Test delete in transaction
         let mut batch = <SledStore as Storage>::batch(&store);
         batch.put_serialized(b"key1", b"value1")?;
-        batch.delete(b"key1")?;
+        batch.delete(b"key1");
         Box::new(batch).commit()?;
 
         assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
