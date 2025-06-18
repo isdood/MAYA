@@ -237,10 +237,12 @@ where
     
     fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>> {
         // Check cache first
-        let cache = self.cache.read();
-        if let Some(cached) = cache.get(key) {
-            self.metrics.record_hit(cached.len());
-            return deserialize(cached).map(Some);
+        {
+            let cache = self.cache.read();
+            if let Some(cached) = cache.peek(key) {
+                self.metrics.record_hit(cached.len());
+                return deserialize(cached).map(Some);
+            }
         }
         
         // Cache miss, get from storage
@@ -386,18 +388,20 @@ where
         // Then update cache with pending operations
         let mut cache = self.cache.write();
         
+        // Calculate bytes written before moving self.pending_puts
+        let bytes_written: usize = self.pending_puts.values().map(|v| v.len()).sum();
+        
         // Apply all pending puts
-        for (key, value) in self.pending_puts {
+        for (key, value) in self.pending_puts.into_iter() {
             cache.put(key, value);
         }
         
         // Apply all pending deletes
-        for key in self.pending_deletes {
+        for key in self.pending_deletes.into_iter() {
             cache.pop(&key);
         }
         
         // Update metrics
-        let bytes_written: usize = self.pending_puts.values().map(|v| v.len()).sum();
         self.metrics.record_write(bytes_written);
         
         Ok(())
@@ -420,32 +424,6 @@ where
             metrics: self.metrics.clone(),
             pending_puts: HashMap::new(),
             pending_deletes: HashSet::new(),
-        }
-    }
-    
-    fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
-        // Downcast the batch to our concrete type
-        if let Some(batch) = batch.as_any().downcast_ref::<CachedBatch<<S as Storage>::Batch<'_>>>() {
-            // Clone the batch to avoid moving it
-            let batch = batch.clone();
-            
-            // Update cache with pending operations
-            {
-                let mut cache = batch.cache.write();
-                for (key, value) in &batch.pending_puts {
-                    cache.put(key.clone(), value.clone());
-                }
-                
-                for key in &batch.pending_deletes {
-                    cache.pop(key);
-                }
-            }
-            
-            // Commit the inner batch
-            let inner_batch = Box::new(batch.inner);
-            <S as Storage>::commit(inner_batch)
-        } else {
-            Err(KnowledgeGraphError::StorageError("Invalid batch type".into()))
         }
     }
 }
@@ -495,10 +473,12 @@ mod tests {
         // Test batch operations
         {
             let mut batch = <CachedStore<_> as Storage>::batch(&cache);
-            batch.put_serialized(b"key1", b"value1")?;
-            batch.put_serialized(b"key2", b"value2")?;
+            let value1 = b"value1".to_vec();
+            let value2 = b"value2".to_vec();
+            batch.put_serialized(b"key1", &value1)?;
+            batch.put_serialized(b"key2", &value2)?;
             batch.delete(b"key1")?;
-            Box::new(batch).commit()?;
+            batch.commit()?;
         }
         
         // Verify batch operations

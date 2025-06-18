@@ -60,6 +60,9 @@ pub const WidgetsExample = struct {
     input_text_multiline: widgets.InputTextMultiline,
     input_float: widgets.InputFloat,
     input_int: widgets.InputInt,
+    wrap_layout: layout.WrapLayout,
+    flow_layout: layout.FlowLayout,
+    resizable_layout: layout.ResizableLayout,
 
     // State variables
     slider_value: f32,
@@ -212,6 +215,31 @@ pub const WidgetsExample = struct {
             .input_text_multiline = undefined,
             .input_float = undefined,
             .input_int = undefined,
+            .wrap_layout = layout.WrapLayout.init(
+                "wrap_layout",
+                layout.Padding.all(10),
+                10,
+                .{ 10, 50 },
+                .{ 780, 200 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .flow_layout = layout.FlowLayout.init(
+                "flow_layout",
+                .LeftToRight,
+                layout.Padding.all(10),
+                10,
+                .{ 10, 260 },
+                .{ 780, 200 },
+                c.ImGuiWindowFlags_None,
+            ),
+            .resizable_layout = layout.ResizableLayout.init(
+                "resizable_layout",
+                layout.Padding.all(10),
+                10,
+                .{ 10, 50 },
+                .{ 780, 300 },
+                c.ImGuiWindowFlags_None,
+            ),
 
             // Initialize state
             .slider_value = 0.5,
@@ -883,6 +911,67 @@ pub const WidgetsExample = struct {
         self.split_layout.first = &split_left.widget;
         self.split_layout.second = &split_right.widget;
 
+        // Add resizable widgets with different constraints
+        const button1 = widgets.Button.init(
+            "resize_button1",
+            "Resizable 1",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 200, 100 },
+            c.ImGuiButtonFlags_None,
+        );
+        const button2 = widgets.Button.init(
+            "resize_button2",
+            "Resizable 2",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 150, 80 },
+            c.ImGuiButtonFlags_None,
+        );
+        const button3 = widgets.Button.init(
+            "resize_button3",
+            "Resizable 3",
+            buttonCallback,
+            .{ 0, 0 },
+            .{ 180, 120 },
+            c.ImGuiButtonFlags_None,
+        );
+
+        // Add buttons with different resize constraints
+        try self.resizable_layout.addChild(
+            &button1.widget,
+            layout.ResizeConstraints.init(
+                100, 400,  // min/max width
+                50, 200,   // min/max height
+                null,      // no fixed aspect ratio
+                false,     // don't preserve aspect
+                1.5,       // min aspect ratio (width/height)
+                2.5,       // max aspect ratio (width/height)
+            ),
+        );
+        try self.resizable_layout.addChild(
+            &button2.widget,
+            layout.ResizeConstraints.init(
+                100, 300,  // min/max width
+                50, 150,   // min/max height
+                2.0,       // fixed aspect ratio
+                true,      // preserve aspect
+                1.8,       // min aspect ratio (width/height)
+                2.2,       // max aspect ratio (width/height)
+            ),
+        );
+        try self.resizable_layout.addChild(
+            &button3.widget,
+            layout.ResizeConstraints.init(
+                150, 350,  // min/max width
+                80, 180,   // min/max height
+                null,      // no fixed aspect ratio
+                false,     // don't preserve aspect
+                1.2,       // min aspect ratio (width/height)
+                1.8,       // max aspect ratio (width/height)
+            ),
+        );
+
         // Add layouts to window
         try self.window.addChild(&self.menu_bar.widget);
         try self.window.addChild(&self.context_menu.widget);
@@ -921,6 +1010,49 @@ pub const WidgetsExample = struct {
         try self.window.addChild(&self.flex_layout.widget);
         try self.window.addChild(&self.stack_layout.widget);
         try self.window.addChild(&self.split_layout.widget);
+        try self.window.addChild(&self.resizable_layout.widget);
+
+        // Add widgets to wrap layout
+        for (0..12) |i| {
+            const label = try std.fmt.allocPrint(
+                std.heap.page_allocator,
+                "Wrap {d}",
+                .{i + 1},
+            );
+            defer std.heap.page_allocator.free(label);
+
+            const button = widgets.Button.init(
+                label.ptr,
+                label.ptr,
+                buttonCallback,
+                .{ 0, 0 },
+                .{ 150, 40 },
+                c.ImGuiButtonFlags_None,
+            );
+
+            try self.wrap_layout.addChild(&button.widget);
+        }
+
+        // Add widgets to flow layout
+        for (0..8) |i| {
+            const label = try std.fmt.allocPrint(
+                std.heap.page_allocator,
+                "Flow {d}",
+                .{i + 1},
+            );
+            defer std.heap.page_allocator.free(label);
+
+            const button = widgets.Button.init(
+                label.ptr,
+                label.ptr,
+                buttonCallback,
+                .{ 0, 0 },
+                .{ 100, 30 },
+                c.ImGuiButtonFlags_None,
+            );
+
+            try self.flow_layout.addChild(&button.widget);
+        }
 
         // Add window to renderer
         try renderer.addWidget(&self.window.widget);
@@ -950,6 +1082,9 @@ pub const WidgetsExample = struct {
         self.status_bar.deinit();
         self.scrollable_area.deinit();
         self.progress_indicator.deinit();
+        self.wrap_layout.deinit();
+        self.flow_layout.deinit();
+        self.resizable_layout.deinit();
     }
 
     pub fn update(self: *Self) !void {

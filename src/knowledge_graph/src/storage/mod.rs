@@ -150,8 +150,7 @@ pub trait WriteBatchExt: Storage {
     /// Create a new batch
     fn create_batch(&self) -> Self::BatchType<'_>;
     
-    /// Commit a boxed batch
-    fn commit(batch: Box<dyn WriteBatch>) -> Result<()>;
+
     
     /// Put a serializable value into the batch
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {

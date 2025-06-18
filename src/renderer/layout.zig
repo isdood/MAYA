@@ -57,6 +57,210 @@ pub const FlexProperties = struct {
     basis: f32 = 0,
 };
 
+/// Resize constraints for widgets within layouts
+pub const ResizeConstraints = struct {
+    min_width: f32,
+    max_width: f32,
+    min_height: f32,
+    max_height: f32,
+    aspect_ratio: ?f32 = null,
+    preserve_aspect: bool = false,
+    min_aspect_ratio: ?f32 = null,
+    max_aspect_ratio: ?f32 = null,
+
+    pub fn init(
+        min_width: f32,
+        max_width: f32,
+        min_height: f32,
+        max_height: f32,
+        aspect_ratio: ?f32,
+        preserve_aspect: bool,
+        min_aspect_ratio: ?f32,
+        max_aspect_ratio: ?f32,
+    ) ResizeConstraints {
+        return ResizeConstraints{
+            .min_width = min_width,
+            .max_width = max_width,
+            .min_height = min_height,
+            .max_height = max_height,
+            .aspect_ratio = aspect_ratio,
+            .preserve_aspect = preserve_aspect,
+            .min_aspect_ratio = min_aspect_ratio,
+            .max_aspect_ratio = max_aspect_ratio,
+        };
+    }
+
+    pub fn apply(self: *const ResizeConstraints, size: *[2]f32) void {
+        // Apply min/max constraints
+        size[0] = @max(self.min_width, @min(self.max_width, size[0]));
+        size[1] = @max(self.min_height, @min(self.max_height, size[1]));
+
+        // Calculate current aspect ratio
+        const current_ratio = size[0] / size[1];
+
+        // Apply fixed aspect ratio if specified
+        if (self.aspect_ratio) |ratio| {
+            if (self.preserve_aspect) {
+                if (current_ratio > ratio) {
+                    size[0] = size[1] * ratio;
+                } else {
+                    size[1] = size[0] / ratio;
+                }
+            }
+        }
+
+        // Apply minimum aspect ratio constraint
+        if (self.min_aspect_ratio) |min_ratio| {
+            if (current_ratio < min_ratio) {
+                // Adjust width to meet minimum aspect ratio
+                const new_width = size[1] * min_ratio;
+                if (new_width <= self.max_width) {
+                    size[0] = new_width;
+                } else {
+                    // If width can't be increased, adjust height instead
+                    size[1] = size[0] / min_ratio;
+                }
+            }
+        }
+
+        // Apply maximum aspect ratio constraint
+        if (self.max_aspect_ratio) |max_ratio| {
+            if (current_ratio > max_ratio) {
+                // Adjust width to meet maximum aspect ratio
+                const new_width = size[1] * max_ratio;
+                if (new_width >= self.min_width) {
+                    size[0] = new_width;
+                } else {
+                    // If width can't be decreased, adjust height instead
+                    size[1] = size[0] / max_ratio;
+                }
+            }
+        }
+
+        // Ensure final size is within bounds
+        size[0] = @max(self.min_width, @min(self.max_width, size[0]));
+        size[1] = @max(self.min_height, @min(self.max_height, size[1]));
+    }
+
+    pub fn validate(self: *const ResizeConstraints) bool {
+        // Check if constraints are valid
+        if (self.min_width > self.max_width or self.min_height > self.max_height) {
+            return false;
+        }
+
+        // Check if aspect ratio constraints are valid
+        if (self.min_aspect_ratio) |min_ratio| {
+            if (min_ratio <= 0) return false;
+            if (self.max_aspect_ratio) |max_ratio| {
+                if (min_ratio > max_ratio) return false;
+            }
+        }
+
+        if (self.max_aspect_ratio) |max_ratio| {
+            if (max_ratio <= 0) return false;
+        }
+
+        // Check if fixed aspect ratio is valid
+        if (self.aspect_ratio) |ratio| {
+            if (ratio <= 0) return false;
+            if (self.min_aspect_ratio) |min_ratio| {
+                if (ratio < min_ratio) return false;
+            }
+            if (self.max_aspect_ratio) |max_ratio| {
+                if (ratio > max_ratio) return false;
+            }
+        }
+
+        return true;
+    }
+};
+
+/// Resize handle for widgets
+pub const ResizeHandle = struct {
+    const Self = @This();
+
+    widget: widgets.Widget,
+    target: *widgets.Widget,
+    constraints: ResizeConstraints,
+    is_dragging: bool,
+    drag_start: [2]f32,
+    start_size: [2]f32,
+
+    pub fn init(
+        id: [*:0]const u8,
+        target: *widgets.Widget,
+        constraints: ResizeConstraints,
+        position: [2]f32,
+        size: [2]f32,
+    ) Self {
+        return Self{
+            .widget = widgets.Widget.init(id, position, size),
+            .target = target,
+            .constraints = constraints,
+            .is_dragging = false,
+            .drag_start = .{ 0, 0 },
+            .start_size = .{ 0, 0 },
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        const handle_size: f32 = 8;
+        const handle_color = c.ImVec4{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 0.5 };
+
+        // Draw resize handle
+        const handle_pos = c.ImVec2{
+            .x = self.target.position[0] + self.target.size[0] - handle_size,
+            .y = self.target.position[1] + self.target.size[1] - handle_size,
+        };
+        const handle_rect = c.ImVec4{
+            .x = handle_pos.x,
+            .y = handle_pos.y,
+            .z = handle_pos.x + handle_size,
+            .w = handle_pos.y + handle_size,
+        };
+
+        c.igGetWindowDrawList().addRectFilled(
+            .{ .x = handle_rect.x, .y = handle_rect.y },
+            .{ .x = handle_rect.z, .y = handle_rect.w },
+            c.igColorConvertFloat4ToU32(handle_color),
+            0,
+            0,
+        );
+
+        // Handle mouse interaction
+        const mouse_pos = c.igGetMousePos();
+        const is_hovered = mouse_pos.x >= handle_rect.x and
+            mouse_pos.x <= handle_rect.z and
+            mouse_pos.y >= handle_rect.y and
+            mouse_pos.y <= handle_rect.w;
+
+        if (is_hovered) {
+            c.igSetMouseCursor(c.ImGuiMouseCursor_ResizeNWSE);
+        }
+
+        if (c.igIsMouseClicked(c.ImGuiMouseButton_Left, false) and is_hovered) {
+            self.is_dragging = true;
+            self.drag_start = .{ mouse_pos.x, mouse_pos.y };
+            self.start_size = self.target.size;
+        }
+
+        if (self.is_dragging) {
+            if (c.igIsMouseDown(c.ImGuiMouseButton_Left)) {
+                const delta_x = mouse_pos.x - self.drag_start[0];
+                const delta_y = mouse_pos.y - self.drag_start[1];
+                var new_size = .{
+                    self.start_size[0] + delta_x,
+                    self.start_size[1] + delta_y,
+                };
+                self.constraints.apply(&new_size);
+                self.target.size = new_size;
+            } else {
+                self.is_dragging = false;
+            }
+        }
+    }
+};
+
 /// A layout container that automatically positions its child widgets
 pub const Layout = struct {
     const Self = @This();
@@ -611,5 +815,251 @@ pub const SplitLayout = struct {
             self.second.size[1] = second_size;
         }
         self.second.render();
+    }
+};
+
+/// A layout that wraps widgets to the next line when they don't fit
+pub const WrapLayout = struct {
+    const Self = @This();
+
+    widget: widgets.Widget,
+    children: std.ArrayList(*widgets.Widget),
+    padding: Padding,
+    spacing: f32,
+    flags: c.ImGuiWindowFlags,
+    allocator: std.mem.Allocator,
+
+    pub fn init(
+        id: [*:0]const u8,
+        padding: Padding,
+        spacing: f32,
+        position: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = widgets.Widget.init(id, position, size),
+            .children = std.ArrayList(*widgets.Widget).init(std.heap.page_allocator),
+            .padding = padding,
+            .spacing = spacing,
+            .flags = flags,
+            .allocator = std.heap.page_allocator,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.children.deinit();
+    }
+
+    pub fn addChild(self: *Self, child: *widgets.Widget) !void {
+        try self.children.append(child);
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginChild(self.widget.id, .{ self.widget.size[0], self.widget.size[1] }, self.flags)) {
+            var current_x: f32 = self.padding.left;
+            var current_y: f32 = self.padding.top;
+            var max_height: f32 = 0;
+
+            for (self.children.items) |child| {
+                if (current_x + child.size[0] > self.widget.size[0] - self.padding.right) {
+                    current_x = self.padding.left;
+                    current_y += max_height + self.spacing;
+                    max_height = 0;
+                }
+
+                child.position = .{ current_x, current_y };
+                child.render();
+
+                current_x += child.size[0] + self.spacing;
+                max_height = @max(max_height, child.size[1]);
+            }
+        }
+        c.igEndChild();
+    }
+};
+
+/// A layout that flows widgets in a natural reading order
+pub const FlowLayout = struct {
+    const Self = @This();
+
+    widget: widgets.Widget,
+    children: std.ArrayList(*widgets.Widget),
+    padding: Padding,
+    spacing: f32,
+    flags: c.ImGuiWindowFlags,
+    allocator: std.mem.Allocator,
+    direction: enum { LeftToRight, RightToLeft, TopToBottom, BottomToTop },
+
+    pub fn init(
+        id: [*:0]const u8,
+        direction: enum { LeftToRight, RightToLeft, TopToBottom, BottomToTop },
+        padding: Padding,
+        spacing: f32,
+        position: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = widgets.Widget.init(id, position, size),
+            .children = std.ArrayList(*widgets.Widget).init(std.heap.page_allocator),
+            .padding = padding,
+            .spacing = spacing,
+            .flags = flags,
+            .allocator = std.heap.page_allocator,
+            .direction = direction,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.children.deinit();
+    }
+
+    pub fn addChild(self: *Self, child: *widgets.Widget) !void {
+        try self.children.append(child);
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginChild(self.widget.id, .{ self.widget.size[0], self.widget.size[1] }, self.flags)) {
+            var current_x: f32 = switch (self.direction) {
+                .LeftToRight, .TopToBottom => self.padding.left,
+                .RightToLeft => self.widget.size[0] - self.padding.right,
+                .BottomToTop => self.padding.left,
+            };
+            var current_y: f32 = switch (self.direction) {
+                .LeftToRight, .RightToLeft => self.padding.top,
+                .TopToBottom => self.padding.top,
+                .BottomToTop => self.widget.size[1] - self.padding.bottom,
+            };
+
+            for (self.children.items) |child| {
+                switch (self.direction) {
+                    .LeftToRight => {
+                        if (current_x + child.size[0] > self.widget.size[0] - self.padding.right) {
+                            current_x = self.padding.left;
+                            current_y += child.size[1] + self.spacing;
+                        }
+                        child.position = .{ current_x, current_y };
+                        current_x += child.size[0] + self.spacing;
+                    },
+                    .RightToLeft => {
+                        if (current_x - child.size[0] < self.padding.left) {
+                            current_x = self.widget.size[0] - self.padding.right;
+                            current_y += child.size[1] + self.spacing;
+                        }
+                        child.position = .{ current_x - child.size[0], current_y };
+                        current_x -= child.size[0] + self.spacing;
+                    },
+                    .TopToBottom => {
+                        if (current_y + child.size[1] > self.widget.size[1] - self.padding.bottom) {
+                            current_y = self.padding.top;
+                            current_x += child.size[0] + self.spacing;
+                        }
+                        child.position = .{ current_x, current_y };
+                        current_y += child.size[1] + self.spacing;
+                    },
+                    .BottomToTop => {
+                        if (current_y - child.size[1] < self.padding.top) {
+                            current_y = self.widget.size[1] - self.padding.bottom;
+                            current_x += child.size[0] + self.spacing;
+                        }
+                        child.position = .{ current_x, current_y - child.size[1] };
+                        current_y -= child.size[1] + self.spacing;
+                    },
+                }
+                child.render();
+            }
+        }
+        c.igEndChild();
+    }
+};
+
+/// A layout that supports resizable widgets
+pub const ResizableLayout = struct {
+    const Self = @This();
+
+    widget: widgets.Widget,
+    children: std.ArrayList(*widgets.Widget),
+    handles: std.ArrayList(ResizeHandle),
+    padding: Padding,
+    spacing: f32,
+    flags: c.ImGuiWindowFlags,
+    allocator: std.mem.Allocator,
+
+    pub fn init(
+        id: [*:0]const u8,
+        padding: Padding,
+        spacing: f32,
+        position: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = widgets.Widget.init(id, position, size),
+            .children = std.ArrayList(*widgets.Widget).init(std.heap.page_allocator),
+            .handles = std.ArrayList(ResizeHandle).init(std.heap.page_allocator),
+            .padding = padding,
+            .spacing = spacing,
+            .flags = flags,
+            .allocator = std.heap.page_allocator,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.children.deinit();
+        self.handles.deinit();
+    }
+
+    pub fn addChild(
+        self: *Self,
+        child: *widgets.Widget,
+        constraints: ResizeConstraints,
+    ) !void {
+        try self.children.append(child);
+
+        const handle_id = try std.fmt.allocPrint(
+            self.allocator,
+            "{s}_handle_{d}",
+            .{ self.widget.id, self.children.items.len - 1 },
+        );
+        defer self.allocator.free(handle_id);
+
+        const handle = ResizeHandle.init(
+            handle_id.ptr,
+            child,
+            constraints,
+            .{ 0, 0 },
+            .{ 8, 8 },
+        );
+        try self.handles.append(handle);
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginChild(self.widget.id, .{ self.widget.size[0], self.widget.size[1] }, self.flags)) {
+            var current_x: f32 = self.padding.left;
+            var current_y: f32 = self.padding.top;
+            var max_height: f32 = 0;
+
+            // Render children
+            for (self.children.items) |child| {
+                if (current_x + child.size[0] > self.widget.size[0] - self.padding.right) {
+                    current_x = self.padding.left;
+                    current_y += max_height + self.spacing;
+                    max_height = 0;
+                }
+
+                child.position = .{ current_x, current_y };
+                child.render();
+
+                current_x += child.size[0] + self.spacing;
+                max_height = @max(max_height, child.size[1]);
+            }
+
+            // Render resize handles
+            for (self.handles.items) |*handle| {
+                handle.render();
+            }
+        }
+        c.igEndChild();
     }
 }; 

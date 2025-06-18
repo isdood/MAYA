@@ -99,29 +99,6 @@ impl WriteBatchExt for SledStore {
             ops: Vec::new(),
         }
     }
-    
-    fn commit(self) -> Result<()> {
-        // Create a new sled batch
-        let mut sled_batch = sled::Batch::default();
-        
-        // Apply all operations to the sled batch
-        for op in self.ops {
-            match op {
-                BatchOp::Put(k, v) => { sled_batch.insert(k, v); }
-                BatchOp::Delete(k) => { sled_batch.remove(k); }
-            }
-        }
-        
-        // Apply the batch to the database
-        self.db.apply_batch(sled_batch)
-            .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
-            
-        // Ensure all changes are persisted to disk
-        self.db.flush()
-            .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
-            
-        Ok(())
-    }
 }
 
 /// Sled write batch wrapper
@@ -170,15 +147,12 @@ impl WriteBatch for SledWriteBatch {
         self
     }
     
-    fn commit(self: Box<Self>) -> Result<()> {
-        let db = Arc::clone(&self.db);
-        let ops = self.ops;
-        
+    fn commit(mut self) -> Result<()> {
         // Create a new sled batch
         let mut sled_batch = sled::Batch::default();
         
         // Apply all operations to the sled batch
-        for op in ops {
+        for op in self.ops.drain(..) {
             match op {
                 BatchOp::Put(k, v) => { sled_batch.insert(k, v); }
                 BatchOp::Delete(k) => { sled_batch.remove(k); }
@@ -186,11 +160,11 @@ impl WriteBatch for SledWriteBatch {
         }
         
         // Apply the batch to the database
-        db.apply_batch(sled_batch)
+        self.db.apply_batch(sled_batch)
             .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
         
         // Ensure all changes are persisted to disk
-        db.flush()
+        self.db.flush()
             .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
             
         Ok(())

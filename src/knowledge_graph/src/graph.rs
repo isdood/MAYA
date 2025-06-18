@@ -301,7 +301,7 @@ where
 
     /// Commit the transaction
     pub fn commit(self) -> Result<()> {
-        <S as WriteBatchExt>::commit(Box::new(self.batch))
+        self.batch.commit()
     }
 }
 
