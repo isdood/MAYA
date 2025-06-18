@@ -19,7 +19,7 @@ pub const Button = struct {
         };
     }
 
-    fn render(_widget: *Widget) !void {
+    fn render(widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (c.igButton(self.label.ptr, c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] })) {
             if (self.callback) |cb| {
@@ -63,14 +63,14 @@ pub const Slider = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
+    pub fn render(widget: *Widget) void {
         _ = c.igSliderFloat(
-            _self.label,
-            _self.value,
-            _self.min,
-            _self.max,
-            _self.format,
-            _self.flags,
+            widget.label,
+            widget.value,
+            widget.min,
+            widget.max,
+            widget.format,
+            widget.flags,
         );
     }
 };
@@ -108,15 +108,15 @@ pub const Knob = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
+    pub fn render(widget: *Widget) void {
         _ = c.igVSliderFloat(
-            _self.label,
-            .{ _self.size, _self.size },
-            _self.value,
-            _self.min,
-            _self.max,
+            widget.label,
+            .{ widget.size, widget.size },
+            widget.value,
+            widget.min,
+            widget.max,
             "%.2f",
-            _self.flags,
+            widget.flags,
         );
     }
 };
@@ -146,8 +146,8 @@ pub const Checkbox = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
-        _ = c.igCheckbox(_self.label, _self.value);
+    pub fn render(widget: *Widget) void {
+        _ = c.igCheckbox(widget.label, widget.value);
     }
 };
 
@@ -179,9 +179,9 @@ pub const RadioButton = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
-        if (c.igRadioButton(_self.label, _self.value, _self.button_value)) {
-            _self.value.* = _self.button_value;
+    pub fn render(widget: *Widget) void {
+        if (c.igRadioButton(widget.label, widget.value, widget.button_value)) {
+            widget.value.* = widget.button_value;
         }
     }
 };
@@ -216,11 +216,11 @@ pub const ProgressBar = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
+    pub fn render(widget: *Widget) void {
         c.igProgressBar(
-            _self.value,
-            &_self.size,
-            _self.overlay,
+            widget.value,
+            &widget.size,
+            widget.overlay,
         );
     }
 };
@@ -247,9 +247,9 @@ pub const Tooltip = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
+    pub fn render(widget: *Widget) void {
         if (c.igBeginTooltip()) {
-            c.igText(_self.text);
+            c.igText(widget.text);
             c.igEndTooltip();
         }
     }
@@ -280,10 +280,10 @@ pub const CollapsingHeader = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
-        _self.is_open.* = c.igCollapsingHeader(
-            _self.label,
-            _self.flags,
+    pub fn render(widget: *Widget) void {
+        widget.is_open.* = c.igCollapsingHeader(
+            widget.label,
+            widget.flags,
         );
     }
 };
@@ -303,7 +303,7 @@ pub const Text = struct {
         };
     }
 
-    fn render(_widget: *Widget) !void {
+    fn render(widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (self.color) |color| {
             c.igPushStyleColor(c.ImGuiCol_Text, c.ImVec4{ .x = color[0], .y = color[1], .z = color[2], .w = color[3] });
@@ -342,7 +342,7 @@ pub const Plot = struct {
         };
     }
 
-    fn render(_widget: *Widget) !void {
+    fn render(widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         c.igPlotLines(
             self.label.ptr,
@@ -382,7 +382,7 @@ pub const Window = struct {
         try self.children.append(child);
     }
 
-    fn render(_widget: *Widget) !void {
+    fn render(widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         c.igSetNextWindowPos(c.ImVec2{ .x = self.widget.position[0], .y = self.widget.position[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
         c.igSetNextWindowSize(c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] }, c.ImGuiCond_FirstUseEver);
@@ -415,7 +415,7 @@ pub const Dropdown = struct {
         };
     }
 
-    fn render(_widget: *Widget) !void {
+    fn render(widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (c.igBeginCombo(self.label.ptr, self.items[self.selected_index.*].ptr)) {
             for (self.items, 0..) |item, i| {
@@ -464,8 +464,8 @@ pub const ColorPicker = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
-        _ = c.igColorEdit4(_self.label, &_self.color[0], _self.flags);
+    pub fn render(widget: *Widget) void {
+        _ = c.igColorEdit4(widget.label, &widget.color[0], widget.flags);
     }
 };
 
@@ -504,8 +504,8 @@ pub const InputText = struct {
         };
     }
 
-    pub fn render(_self: *Self) void {
-        _ = c.igInputText(_self.label, _self.buffer, _self.buffer_size, _self.flags, null, null);
+    pub fn render(widget: *Widget) void {
+        _ = c.igInputText(widget.label, widget.buffer, widget.buffer_size, widget.flags, null, null);
     }
 };
 
@@ -520,6 +520,7 @@ pub const Separator = struct {
         };
     }
 
+    fn render(widget: *Widget) !void {
     fn render(_widget: *Widget) !void {
         _ = _widget;
         c.igSeparator();
