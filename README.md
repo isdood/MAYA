@@ -38,6 +38,22 @@ If anyone would like a breakdown of how to navigate this space properly, feel fr
    ./target/release/maya
    ```
 
+### Building with Zig
+
+All Zig build commands must be run from the root directory containing `build.zig`. If you're in a subdirectory, either:
+- Change to the root directory first: `cd /path/to/MAYA`
+- Or use the full path to build.zig: `zig build -f /path/to/MAYA/build.zig`
+
+Common Zig build commands:
+```bash
+zig build        # Build the project
+zig build test   # Run tests
+zig build visual # Run visual tests
+zig build wasm   # Build WebAssembly version
+```
+
+For more details about the build system, see [BUILD.md](BUILD.md).
+
 ## 💾 Storage Requirements
 
 MAYA now uses [Sled](https://github.com/spacejam/sled) as its default storage backend, providing:

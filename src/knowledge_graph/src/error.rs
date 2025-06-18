@@ -39,6 +39,9 @@ pub enum KnowledgeGraphError {
     /// Query error
     QueryError(String),
     
+    /// Key not found in storage
+    KeyNotFound(String),
+    
     /// Transaction error
     TransactionError(String),
     
@@ -62,6 +65,7 @@ impl fmt::Display for KnowledgeGraphError {
             Self::DuplicateEdge(id) => write!(f, "Duplicate edge: {}", id),
             Self::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
             Self::QueryError(msg) => write!(f, "Query error: {}", msg),
+            KnowledgeGraphError::KeyNotFound(key) => write!(f, "Key not found: {}", key),
             Self::TransactionError(msg) => write!(f, "Transaction error: {}", msg),
             Self::SledError(e) => write!(f, "Sled error: {}", e),
             Self::Other(msg) => write!(f, "Error: {}", msg),
@@ -76,6 +80,9 @@ impl StdError for KnowledgeGraphError {
             KnowledgeGraphError::BincodeError(_) => None,
             Self::IoError(e) => Some(e),
             Self::SledError(e) => Some(e),
+            KnowledgeGraphError::QueryError(_) |
+            KnowledgeGraphError::KeyNotFound(_) |
+            KnowledgeGraphError::TransactionError(_) => None,
             _ => None,
         }
     }

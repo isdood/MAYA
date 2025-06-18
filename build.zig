@@ -23,11 +23,43 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // 🧠 Neural Pattern Recognition Modules
+    const pattern_recognition_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/pattern_recognition.zig" },
+        .imports = &.{
+            .{ .name = "starweave", .module = starweave_mod },
+        },
+    });
+
+    const quantum_processor_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/quantum_processor.zig" },
+        .imports = &.{
+            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+        },
+    });
+
+    const visual_processor_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/visual_processor.zig" },
+        .imports = &.{
+            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+        },
+    });
+
+    const neural_processor_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/neural_processor.zig" },
+        .imports = &.{
+            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+            .{ .name = "quantum_processor", .module = quantum_processor_mod },
+            .{ .name = "visual_processor", .module = visual_processor_mod },
+        },
+    });
+
     const neural_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/neural/bridge.zig" },
         .imports = &.{
             .{ .name = "starweave", .module = starweave_mod },
             .{ .name = "glimmer", .module = glimmer_mod },
+            .{ .name = "neural_processor", .module = neural_processor_mod },
         },
     });
 
@@ -51,6 +83,10 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("glimmer", glimmer_mod);
     exe.root_module.addImport("neural", neural_mod);
     exe.root_module.addImport("colors", colors_mod);
+    exe.root_module.addImport("pattern_recognition", pattern_recognition_mod);
+    exe.root_module.addImport("quantum_processor", quantum_processor_mod);
+    exe.root_module.addImport("visual_processor", visual_processor_mod);
+    exe.root_module.addImport("neural_processor", neural_processor_mod);
 
     // 🎨 System Library Integration
     exe.linkSystemLibrary("glfw");
@@ -72,6 +108,10 @@ pub fn build(b: *std.Build) void {
 
     wasm.root_module.addImport("starweave", starweave_mod);
     wasm.root_module.addImport("glimmer", glimmer_mod);
+    wasm.root_module.addImport("pattern_recognition", pattern_recognition_mod);
+    wasm.root_module.addImport("quantum_processor", quantum_processor_mod);
+    wasm.root_module.addImport("visual_processor", visual_processor_mod);
+    wasm.root_module.addImport("neural_processor", neural_processor_mod);
 
     // 🧪 Quantum Test Configuration
     const test_step = b.step("test", "🧪 Run MAYA quantum tests");
@@ -85,6 +125,10 @@ pub fn build(b: *std.Build) void {
     main_tests.root_module.addImport("glimmer", glimmer_mod);
     main_tests.root_module.addImport("neural", neural_mod);
     main_tests.root_module.addImport("colors", colors_mod);
+    main_tests.root_module.addImport("pattern_recognition", pattern_recognition_mod);
+    main_tests.root_module.addImport("quantum_processor", quantum_processor_mod);
+    main_tests.root_module.addImport("visual_processor", visual_processor_mod);
+    main_tests.root_module.addImport("neural_processor", neural_processor_mod);
 
     const run_main_tests = b.addRunArtifact(main_tests);
     test_step.dependOn(&run_main_tests.step);

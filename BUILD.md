@@ -11,6 +11,11 @@
 - 🎨 Visual Flow: \`zig build visual\`
 - 🌐 WASM Bridge: \`zig build wasm\`
 
+## 📍 Important Note
+All build commands must be run from the root directory containing \`build.zig\`. If you're in a subdirectory, either:
+- Change to the root directory first: \`cd /path/to/MAYA\`
+- Or use the full path to build.zig: \`zig build -f /path/to/MAYA/build.zig\`
+
 ## 🔮 Quantum Modules
 - 🌌 STARWEAVE Protocol (universe core)
 - ✨ GLIMMER Patterns (visual quantum)
