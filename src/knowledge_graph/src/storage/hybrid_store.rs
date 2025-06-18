@@ -6,7 +6,27 @@ use std::collections::HashMap;
 use std::time::{Instant, Duration};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
-use crate::storage::{Storage, WriteBatch, WriteBatchExt, Result, KnowledgeGraphError};
+use crate::storage::{Storage, WriteBatch, WriteBatchExt, Result, KnowledgeGraphError, PrefetchExt};
+
+/// Adapter to convert PrefetchingIterator's Item type to match Storage's iterator
+struct PrefetchingIteratorAdapter<I>(I);
+
+impl<I, K, V> Iterator for PrefetchingIteratorAdapter<I>
+where
+    I: Iterator<Item = Result<(K, V)>>,
+    K: 'static,
+    V: 'static,
+{
+    type Item = (K, V);
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.0.next() {
+            Some(Ok(item)) => Some(item),
+            Some(Err(_)) => None, // Skip errors
+            None => None,
+        }
+    }
+}
 use crate::storage::sled_store::SledStore;
 use crate::storage::cached_store::CachedStore;
 
@@ -345,10 +365,27 @@ impl WriteBatchExt for HybridStore {
     }
     
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
-        // For now, just forward to the primary storage
-        // In a more advanced implementation, we might want to check the routing table
-        // and potentially fetch some items from the cache
-        self.primary.iter_prefix(prefix)
+        // Use prefetching for better performance on sequential scans
+        let config = PrefetchConfig {
+            prefetch_size: 64,         // Prefetch 64 items ahead
+            max_buffers: 4,            // Keep up to 4 prefetch buffers
+            buffer_size: 256,          // 256 items per buffer
+            prefetch_timeout_ms: 50,   // 50ms timeout
+        };
+        
+        // Create a prefetching iterator
+        match self.iter_prefix_prefetch(prefix, config) {
+            Ok(iter) => {
+                // Convert the PrefetchingIterator into a Box<dyn Iterator>
+                let adapter = PrefetchingIteratorAdapter(iter);
+                Box::new(adapter)
+            },
+            Err(e) => {
+                // Fall back to non-prefetching iterator if prefetching fails
+                log::warn!("Failed to create prefetching iterator: {}. Falling back to standard iterator", e);
+                self.primary.iter_prefix(prefix)
+            }
+        }
     }
     
     fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {

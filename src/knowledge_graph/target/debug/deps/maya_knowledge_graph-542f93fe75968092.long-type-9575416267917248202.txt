@@ -1,0 +1,1 @@
+std::result::Result<hybrid_store::HybridStore, error::KnowledgeGraphError>

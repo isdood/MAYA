@@ -94,22 +94,6 @@ impl Storage for SledStore {
     }
 }
 
-impl SledStore {
-    /// Open or create a new Sled database at the given path
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let db = sled::open(path)?;
-        info!("Opened Sled database");
-        Ok(Self {
-            db: Arc::new(db),
-        })
-    }
-
-    /// Get a reference to the underlying Sled database
-    pub fn inner(&self) -> &Db {
-        &self.db
-    }
-}
-
 // Implement WriteBatchExt for SledStore
 impl WriteBatchExt for SledStore {
     type BatchType<'a> = SledWriteBatch where Self: 'a;

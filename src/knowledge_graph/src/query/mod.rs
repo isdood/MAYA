@@ -230,4 +230,61 @@ mod tests {
         
         Ok(())
     }
+
+    #[test]
+    fn test_label_index_integration() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let store = SledStore::open(dir.path())?;
+        let graph = KnowledgeGraph::with_storage(store);
+
+        // Add nodes with different labels
+        let node_a1 = Node::new("Alpha");
+        let node_a2 = Node::new("Alpha");
+        let node_b1 = Node::new("Beta");
+        let node_b2 = Node::new("Beta");
+        let node_c = Node::new("Gamma");
+
+        graph.add_node(node_a1.clone())?;
+        graph.add_node(node_a2.clone())?;
+        graph.add_node(node_b1.clone())?;
+        graph.add_node(node_b2.clone())?;
+        graph.add_node(node_c.clone())?;
+
+        // Query by label using QueryBuilder
+        let result_alpha = QueryBuilder::new(&graph)
+            .with_label("Alpha")
+            .execute()?;
+        assert_eq!(result_alpha.nodes.len(), 2);
+        assert!(result_alpha.nodes.iter().all(|n| n.label == "Alpha"));
+
+        let result_beta = QueryBuilder::new(&graph)
+            .with_label("Beta")
+            .execute()?;
+        assert_eq!(result_beta.nodes.len(), 2);
+        assert!(result_beta.nodes.iter().all(|n| n.label == "Beta"));
+
+        let result_gamma = QueryBuilder::new(&graph)
+            .with_label("Gamma")
+            .execute()?;
+        assert_eq!(result_gamma.nodes.len(), 1);
+        assert_eq!(result_gamma.nodes[0].label, "Gamma");
+
+        // Optionally, check the label index directly
+        use crate::graph::get_node_ids_by_label;
+        let alpha_ids = get_node_ids_by_label(&graph.storage, "Alpha")?;
+        assert!(alpha_ids.contains(&node_a1.id));
+        assert!(alpha_ids.contains(&node_a2.id));
+        assert_eq!(alpha_ids.len(), 2);
+
+        let beta_ids = get_node_ids_by_label(&graph.storage, "Beta")?;
+        assert!(beta_ids.contains(&node_b1.id));
+        assert!(beta_ids.contains(&node_b2.id));
+        assert_eq!(beta_ids.len(), 2);
+
+        let gamma_ids = get_node_ids_by_label(&graph.storage, "Gamma")?;
+        assert!(gamma_ids.contains(&node_c.id));
+        assert_eq!(gamma_ids.len(), 1);
+
+        Ok(())
+    }
 }

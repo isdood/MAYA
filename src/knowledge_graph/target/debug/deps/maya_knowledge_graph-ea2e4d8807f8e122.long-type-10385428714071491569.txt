@@ -1,0 +1,3 @@
+PrefetchingIterator<HybridStore, Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)>>, Vec<u8>>
+Box<PrefetchingIterator<HybridStore, Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)>>, Vec<u8>>>
+Box<(dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a)>

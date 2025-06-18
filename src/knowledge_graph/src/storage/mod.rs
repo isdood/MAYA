@@ -82,11 +82,15 @@
 pub mod sled_store;
 pub mod cached_store;
 pub mod hybrid_store;
-pub use hybrid_store::{HybridStore, HybridConfig};
+pub mod prefetch;
+
+// Re-export prefetch types
+pub use prefetch::{PrefetchConfig, PrefetchExt, PrefetchingIterator};
 
 // Re-export public types
 pub use sled_store::SledStore;
 pub use cached_store::CachedStore;
+pub use hybrid_store::{HybridStore, HybridConfig};
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -108,6 +112,8 @@ impl From<Box<bincode::ErrorKind>> for KnowledgeGraphError {
 pub type Result<T> = std::result::Result<T, KnowledgeGraphError>;
 
 /// Trait for key-value storage operations
+/// A storage backend that supports prefetching
+#[async_trait::async_trait]
 pub trait Storage: Send + Sync + 'static {
     /// The batch type for this storage backend
     type Batch<'a>: WriteBatch + 'a where Self: 'a;

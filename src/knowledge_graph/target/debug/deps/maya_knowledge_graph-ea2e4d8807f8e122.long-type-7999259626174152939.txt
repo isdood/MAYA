@@ -1,0 +1,3 @@
+(dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a)
+Unique<(dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a)>
+Box<(dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a)>
