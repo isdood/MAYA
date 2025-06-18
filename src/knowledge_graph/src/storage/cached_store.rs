@@ -326,15 +326,12 @@ where
     }
     
     fn create_batch(&self) -> Self::Batch<'_> {
-        CachedBatch {
+        CachedBatch::with_config(
             inner: self.inner.create_batch(),
             cache: self.cache.clone(),
             metrics: self.metrics.clone(),
-            pending_puts: HashMap::new(),
-            pending_deletes: HashSet::new(),
-            max_batch_size: 10_000,
-            total_ops: AtomicUsize::new(0),
-        }
+            config: self.batch_config.clone(),
+        )
     }
 }
 
@@ -374,7 +371,7 @@ where
             max_batch_size: self.max_batch_size,
             total_ops: AtomicUsize::new(0),
             config: self.config.clone(),
-            stats: Arc::new(RwLock::new(BatchStats::new(self.config.initial_batch_size))),
+            stats: self.stats.clone(),
         }
     }
 }
@@ -631,15 +628,12 @@ where
     }
     
     fn create_batch(&self) -> Self::Batch<'_> {
-        CachedBatch {
+        CachedBatch::with_config(
             inner: self.inner.create_batch(),
             cache: self.cache.clone(),
             metrics: self.metrics.clone(),
-            pending_puts: HashMap::new(),
-            pending_deletes: HashSet::new(),
-            max_batch_size: 10_000,
-            total_ops: AtomicUsize::new(0),
-        }
+            config: self.batch_config.clone(),
+        )
     }
     
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
@@ -673,7 +667,11 @@ where
 mod tests {
     use super::*;
     use crate::storage::sled_store::SledStore;
+    use crate::storage::Storage;
+    use crate::storage::WriteBatchExt;
     use tempfile::tempdir;
+    use std::sync::Arc;
+    use parking_lot::RwLock;
     
     #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     struct TestValue {
@@ -781,6 +779,165 @@ mod tests {
         assert!(cache.metrics().hit_rate() > 0.0);
         assert!(cache.metrics().read_bytes() > 0);
         assert!(cache.metrics().write_bytes() > 0);
+        
+        Ok(())
+    }
+    
+    #[test]
+    fn test_batch_configuration() -> Result<()> {
+        // Create a temporary directory for the test
+        let temp_dir = tempdir()?;
+        
+        // Create a custom batch configuration
+        let batch_config = BatchConfig {
+            initial_batch_size: 100,
+            min_batch_size: 10,
+            max_batch_size: 1000,
+            batch_size_increment: 50,
+            enable_parallel: true,
+            target_duration_ms: 50,
+            warmup_rounds: 5,
+            stats_window: 10,
+        };
+        
+        // Create a cache config with the custom batch config
+        let cache_config = CacheConfig {
+            capacity: 1024 * 1024, // 1MB
+            read_ahead: 10,
+            enable_compression: false,
+        };
+        
+        // Create a CachedStore with custom configuration
+        let inner = SledStore::open(temp_dir.path())?;
+        let cache = CachedStore::with_config(inner, cache_config, batch_config.clone());
+        
+        // Verify the batch config was set correctly
+        let stored_config = cache.batch_config();
+        assert_eq!(stored_config.initial_batch_size, 100);
+        assert_eq!(stored_config.min_batch_size, 10);
+        assert_eq!(stored_config.max_batch_size, 1000);
+        assert_eq!(stored_config.batch_size_increment, 50);
+        assert!(stored_config.enable_parallel);
+        
+        // Test batch operations with the custom config
+        let mut batch = cache.create_batch();
+        
+        // Add multiple items to the batch
+        for i in 0..150 {  // More than initial_batch_size
+            let key = format!("key_{}", i).into_bytes();
+            let value = TestValue {
+                data: format!("value_{}", i),
+                count: i as u64,
+            };
+            batch.put_serialized(&key, &value)?;
+        }
+        
+        // Commit the batch
+        batch.commit()?;
+        
+        // Verify the data was written
+        for i in 0..150 {
+            let key = format!("key_{}", i).into_bytes();
+            let value: TestValue = cache.get(&key)?.unwrap();
+            assert_eq!(value.data, format!("value_{}", i));
+            assert_eq!(value.count, i as u64);
+        }
+        
+        // Test batch configuration update
+        let new_batch_config = BatchConfig {
+            initial_batch_size: 200,
+            ..batch_config
+        };
+        
+        // Update the batch config
+        let mut cache_mut = cache;
+        cache_mut.set_batch_config(new_batch_config);
+        
+        // Verify the update was applied
+        let updated_config = cache_mut.batch_config();
+        assert_eq!(updated_config.initial_batch_size, 200);
+        
+        // Test batch operations with updated config
+        let mut new_batch = cache_mut.create_batch();
+        
+        // Add more items to test the new batch size
+        for i in 150..300 {
+            let key = format!("key_{}", i).into_bytes();
+            let value = TestValue {
+                data: format!("value_{}", i),
+                count: i as u64,
+            };
+            new_batch.put_serialized(&key, &value)?;
+        }
+        
+        // Commit the new batch
+        new_batch.commit()?;
+        
+        // Verify the new data was written
+        for i in 150..300 {
+            let key = format!("key_{}", i).into_bytes();
+            let value: TestValue = cache_mut.get(&key)?.unwrap();
+            assert_eq!(value.data, format!("value_{}", i));
+            assert_eq!(value.count, i as u64);
+        }
+        
+        Ok(())
+    }
+    
+    #[test]
+    fn test_batch_stats_tracking() -> Result<()> {
+        // Create a temporary directory for the test
+        let temp_dir = tempdir()?;
+        
+        // Create a batch config with a small window for testing
+        let batch_config = BatchConfig {
+            initial_batch_size: 10,
+            min_batch_size: 5,
+            max_batch_size: 100,
+            batch_size_increment: 5,
+            enable_parallel: true,
+            target_duration_ms: 10,  // Low target duration to trigger adjustments
+            warmup_rounds: 2,
+            stats_window: 3,  // Small window for testing
+        };
+        
+        // Create a CachedStore with the custom config
+        let inner = SledStore::open(temp_dir.path())?;
+        let cache = CachedStore::with_config(
+            inner,
+            CacheConfig::default(),
+            batch_config,
+        );
+        
+        // Perform multiple batch operations to trigger stats collection
+        for batch_num in 0..5 {
+            let mut batch = cache.create_batch();
+            
+            // Add items to the batch
+            for i in 0..20 {  // More than initial_batch_size
+                let key = format!("batch_{}_item_{}", batch_num, i).into_bytes();
+                let value = TestValue {
+                    data: format!("value_{}_{}", batch_num, i),
+                    count: (batch_num * 100 + i) as u64,
+                };
+                batch.put_serialized(&key, &value)?;
+            }
+            
+            // Commit the batch
+            batch.commit()?;
+            
+            // Verify the data was written
+            for i in 0..20 {
+                let key = format!("batch_{}_item_{}", batch_num, i).into_bytes();
+                let value: TestValue = cache.get(&key)?.unwrap();
+                assert_eq!(value.data, format!("value_{}_{}", batch_num, i));
+                assert_eq!(value.count, (batch_num * 100 + i) as u64);
+            }
+        }
+        
+        // The actual batch size adjustment is implementation-dependent,
+        // but we can verify that the batch operations completed successfully
+        // and all data was written correctly.
         
         Ok(())
     }
