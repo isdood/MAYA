@@ -132,19 +132,28 @@ impl HybridStore {
     /// Determine which backend to use for a read operation
     fn route_read(&self, key: &[u8]) -> bool {
         // Check if we have a specific routing for this key
-        if let Some(cached) = self.key_routing.read().get(key) {
-            return *cached;
+        if let Ok(key_routing) = self.key_routing.read() {
+            if let Some(cached) = key_routing.get(key) {
+                return *cached;
+            }
         }
 
         // Use adaptive routing based on read ratio
-        let stats = self.stats.read();
-        if stats.total_operations() < self.config.min_operations_for_adaptive {
-            // Not enough data, use initial threshold
-            return self.config.initial_read_ratio_threshold > 0.5;
+        match self.stats.read() {
+            Ok(stats) => {
+                if stats.total_operations() < self.config.min_operations_for_adaptive {
+                    // Not enough data, use initial threshold
+                    self.config.initial_read_ratio_threshold > 0.5
+                } else {
+                    // If read ratio is high, prefer cache
+                    stats.read_ratio() > self.config.initial_read_ratio_threshold
+                }
+            }
+            Err(_) => {
+                // On error, fall back to initial threshold
+                self.config.initial_read_ratio_threshold > 0.5
+            }
         }
-
-        // If read ratio is high, prefer cache
-        stats.read_ratio() > self.config.initial_read_ratio_threshold
     }
 
     fn should_use_cache(&self, is_read: bool) -> bool {
@@ -220,7 +229,7 @@ impl HybridStore {
 }
 
 impl Storage for HybridStore {
-    type Batch<'a> = HybridBatch where Self: 'a;
+    type Batch<'a> = HybridBatch<<SledStore as Storage>::Batch<'a>, <CachedStore<SledStore> as Storage>::Batch<'a>> where Self: 'a;
     
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         // Use prefetching for better performance on sequential scans
@@ -247,15 +256,11 @@ impl Storage for HybridStore {
     }
     
     fn create_batch(&self) -> Self::Batch<'_> {
-        let primary_batch = Box::new(self.primary.create_batch());
-        let cache_batch = Box::new(self.cache.create_batch());
-        let key_routing = Arc::clone(&self.key_routing);
-        
-        HybridBatch {
-            primary_batch,
-            cache_batch,
-            key_routing,
-        }
+        HybridBatch::new(
+            self.primary.create_batch(),
+            self.cache.create_batch(),
+            Arc::clone(&self.key_routing),
+        )
     }
     
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
@@ -307,24 +312,16 @@ impl Storage for HybridStore {
 
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
         self.update_stats(false, || {
-            // First serialize the value
-            let value = bincode::serialize(value)
-                .map_err(|e| KnowledgeGraphError::StorageError(e.to_string()))?;
+            // Update primary first
+            self.primary.put(key, value)?;
             
-            // Write to primary storage first
-            self.primary.put_serialized(key, &value)?;
-            
-            // If we should use cache, write to it as well
+            // Then update cache and routing if needed
             if self.should_use_cache(false) {
-                if let Err(e) = self.cache.put_serialized(key, &value) {
-                    log::warn!("Failed to write to cache: {}", e);
+                if let Err(e) = self.cache.put(key, value) {
+                    log::warn!("Failed to update cache: {}", e);
                 } else if let Ok(mut key_routing) = self.key_routing.write() {
-                    // Update key routing if cache write was successful
                     key_routing.insert(key.to_vec(), true);
                 }
-            } else if let Ok(mut key_routing) = self.key_routing.write() {
-                // Mark that this key should bypass the cache
-                key_routing.insert(key.to_vec(), false);
             }
             
             Ok(())
@@ -412,12 +409,12 @@ impl Storage for HybridStore {
 }
 
 impl WriteBatchExt for HybridStore {
-    type BatchType<'a> = HybridBatch where Self: 'a;
+    type BatchType<'a> = HybridBatch<<SledStore as Storage>::Batch<'a>, <CachedStore<SledStore> as Storage>::Batch<'a>> where Self: 'a;
     
     fn create_batch(&self) -> Self::BatchType<'_> {
         HybridBatch::new(
-            Box::new(self.primary.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
-            Box::new(self.cache.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
+            self.primary.create_batch(),
+            self.cache.create_batch(),
             self.key_routing.clone(),
         )
     }
@@ -447,17 +444,25 @@ impl WriteBatchExt for HybridStore {
 
 /// Batch implementation for HybridStore
 #[derive(Debug)]
-pub struct HybridBatch {
-    primary_batch: Box<dyn WriteBatch + Send + Sync>,
-    cache_batch: Box<dyn WriteBatch + Send + Sync>,
+pub struct HybridBatch<PB, CB> 
+where
+    PB: WriteBatch + Send + 'static,
+    CB: WriteBatch + Send + 'static,
+{
+    primary_batch: PB,
+    cache_batch: CB,
     key_routing: Arc<RwLock<HashMap<Vec<u8>, bool>>>,
 }
 
-impl HybridBatch {
+impl<PB, CB> HybridBatch<PB, CB> 
+where
+    PB: WriteBatch + Send + 'static,
+    CB: WriteBatch + Send + 'static,
+{
     /// Create a new HybridBatch
     pub fn new(
-        primary_batch: Box<dyn WriteBatch + Send + Sync>,
-        cache_batch: Box<dyn WriteBatch + Send + Sync>,
+        primary_batch: PB,
+        cache_batch: CB,
         key_routing: Arc<RwLock<HashMap<Vec<u8>, bool>>>,
     ) -> Self {
         Self {
@@ -468,7 +473,11 @@ impl HybridBatch {
     }
 }
 
-impl WriteBatch for HybridBatch {
+impl<PB, CB> WriteBatch for HybridBatch<PB, CB> 
+where
+    PB: WriteBatch + Send + 'static,
+    CB: WriteBatch + Send + 'static,
+{
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         // Update primary first
         self.primary_batch.put_serialized(key, value)?;
@@ -496,12 +505,17 @@ impl WriteBatch for HybridBatch {
         self.cache_batch.clear();
     }
     
-    fn commit(mut self) -> Result<()> {
+    fn commit(self) -> Result<()> {
+        // Helper function to commit a boxed batch
+        fn commit_boxed<B: WriteBatch>(mut batch: B) -> Result<()> {
+            batch.commit()
+        }
+        
         // Commit primary batch first
-        let primary_result = self.primary_batch.commit();
+        let primary_result = commit_boxed(*Box::new(self.primary_batch));
         
         // Then commit cache batch
-        let cache_result = self.cache_batch.commit();
+        let cache_result = commit_boxed(*Box::new(self.cache_batch));
         
         // Return primary result (more critical)
         primary_result?;
@@ -520,7 +534,11 @@ impl WriteBatch for HybridBatch {
 }
 
 // Implement GenericWriteBatch for HybridBatch
-impl GenericWriteBatch for HybridBatch {
+impl<PB, CB> GenericWriteBatch for HybridBatch<PB, CB> 
+where
+    PB: WriteBatch + Send + 'static,
+    CB: WriteBatch + Send + 'static,
+{
     type Error = crate::error::KnowledgeGraphError;
     
     fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> std::result::Result<(), Self::Error> {

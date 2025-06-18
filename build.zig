@@ -2,7 +2,7 @@
 //! ✨ Version: 2025.6.18
 //! 🎨 Pattern: 1.0.0
 //! ⚡ Seed: 
-//! 📅 Woven: 2025-06-18 20:35:30
+//! 📅 Woven: 2025-06-18 20:53:56
 //! 👤 Weaver: isdood
 
 const std = @import("std");
@@ -12,57 +12,57 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // 🎨 STARWEAVE Module Definitions
-    const starweave_mod = b.addModule("starweave", .{
-        .source_file = std.Build.FileSource.relative("src/starweave/protocol.zig"),
+    const starweave_mod = b.createModule(.{
+        .root_source_file = b.pathFromRoot("src/starweave/protocol.zig"),
     });
 
-    const glimmer_mod = b.addModule("glimmer", .{
-        .source_file = std.Build.FileSource.relative("src/glimmer/patterns.zig"),
-        .dependencies = &[_]std.Build.ModuleDependency{
+    const glimmer_mod = b.createModule(.{
+        .root_source_file = b.pathFromRoot("src/glimmer/patterns.zig"),
+        .imports = &.{
             .{ .name = "starweave", .module = starweave_mod },
         },
     });
 
-    const neural_mod = b.addModule("neural", .{
-        .source_file = std.Build.FileSource.relative("src/neural/bridge.zig"),
-        .dependencies = &[_]std.Build.ModuleDependency{
+    const neural_mod = b.createModule(.{
+        .root_source_file = b.pathFromRoot("src/neural/bridge.zig"),
+        .imports = &.{
             .{ .name = "starweave", .module = starweave_mod },
             .{ .name = "glimmer", .module = glimmer_mod },
         },
     });
 
-    const colors_mod = b.addModule("colors", .{
-        .source_file = std.Build.FileSource.relative("src/glimmer/colors.zig"),
-        .dependencies = &[_]std.Build.ModuleDependency{
+    const colors_mod = b.createModule(.{
+        .root_source_file = b.pathFromRoot("src/glimmer/colors.zig"),
+        .imports = &.{
             .{ .name = "glimmer", .module = glimmer_mod },
         },
     });
 
     // 🌟 Main MAYA Executable
-    const maya = b.addExecutable(.{
+    const exe = b.addExecutable(.{
         .name = "maya",
-        .root_source_file = std.Build.FileSource.relative("src/main.zig"),
+        .root_source_file = b.pathFromRoot("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
     // 🌌 Add STARWEAVE modules
-    maya.addModule("starweave", starweave_mod);
-    maya.addModule("glimmer", glimmer_mod);
-    maya.addModule("neural", neural_mod);
-    maya.addModule("colors", colors_mod);
+    exe.root_module.addImport("starweave", starweave_mod);
+    exe.root_module.addImport("glimmer", glimmer_mod);
+    exe.root_module.addImport("neural", neural_mod);
+    exe.root_module.addImport("colors", colors_mod);
 
     // 🎨 System Library Integration
-    maya.linkSystemLibrary("glfw");
-    maya.linkSystemLibrary("vulkan");
-    maya.linkSystemLibrary("freetype");
-    maya.linkSystemLibrary("harfbuzz");
-    maya.linkLibC();
+    exe.root_module.linkSystemLibrary("glfw");
+    exe.root_module.linkSystemLibrary("vulkan");
+    exe.root_module.linkSystemLibrary("freetype");
+    exe.root_module.linkSystemLibrary("harfbuzz");
+    exe.linkLibC();
 
     // 🌐 WASM Configuration
     const wasm = b.addExecutable(.{
         .name = "maya-wasm",
-        .root_source_file = std.Build.FileSource.relative("src/wasm.zig"),
+        .root_source_file = b.pathFromRoot("src/wasm.zig"),
         .target = b.standardTargetOptions(.{
             .default_target = .{
                 .cpu_arch = .wasm32,
@@ -72,33 +72,28 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    wasm.addModule("starweave", starweave_mod);
-    wasm.addModule("glimmer", glimmer_mod);
+    wasm.root_module.addImport("starweave", starweave_mod);
+    wasm.root_module.addImport("glimmer", glimmer_mod);
 
     // 🧪 Quantum Test Configuration
-    const test_exe = b.addTest(.{
-        .root_source_file = std.Build.FileSource.relative("src/test/main.zig"),
+    const test_step = b.step("test", "🧪 Run MAYA quantum tests");
+    const main_tests = b.addTest(.{
+        .root_source_file = b.pathFromRoot("src/test/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
-    test_exe.addModule("starweave", starweave_mod);
-    test_exe.addModule("glimmer", glimmer_mod);
-    test_exe.addModule("neural", neural_mod);
-    test_exe.addModule("colors", colors_mod);
+    main_tests.root_module.addImport("starweave", starweave_mod);
+    main_tests.root_module.addImport("glimmer", glimmer_mod);
+    main_tests.root_module.addImport("neural", neural_mod);
+    main_tests.root_module.addImport("colors", colors_mod);
 
-    const test_step = b.step("test", "🧪 Run MAYA quantum tests");
-    test_step.dependOn(&test_exe.step);
+    const run_main_tests = b.addRunArtifact(main_tests);
+    test_step.dependOn(&run_main_tests.step);
 
     // ⚡ Install Steps
-    const install_maya = b.addInstallArtifact(maya, .{});
-    const install_wasm = b.addInstallArtifact(wasm, .{});
-
-    const build_step = b.step("maya", "🌟 Build MAYA core");
-    build_step.dependOn(&install_maya.step);
-
-    const wasm_step = b.step("wasm", "🌐 Build MAYA WASM");
-    wasm_step.dependOn(&install_wasm.step);
+    b.installArtifact(exe);
+    b.installArtifact(wasm);
 
     // 🎨 GLIMMER Visual Tests
     const visual_step = b.step("visual", "🎨 Run GLIMMER pattern tests");

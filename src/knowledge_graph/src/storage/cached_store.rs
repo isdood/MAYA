@@ -230,77 +230,73 @@ where
     type Batch<'a> = CachedBatch<S::Batch<'a>> where Self: 'a;
     
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
-        // Try to get from cache first
-        {
-            let cache = self.cache.read();
-            if let Some(cached) = cache.get(key) {
-                self.metrics.record_hit(std::mem::size_of_val(cached));
-                return Ok(Some(cached.clone()));
-            }
+        // Check cache first
+        if let Some(cached_bytes) = self.cache.read().unwrap().get(&key.to_vec()) {
+            // Deserialize the cached bytes into the target type
+            let value: T = bincode::deserialize(cached_bytes)?;
+            self.metrics.record_hit(cached_bytes.len());
+            return Ok(Some(value));
         }
         
-        // Cache miss, get from inner storage
+        // Cache miss, get from storage
         self.metrics.record_miss();
-        let value = self.inner.get(key)?;
         
-        // Cache the result if found
-        if let Some(ref value) = value {
-            let bytes = bincode::serialize(value)?;
-            self.metrics.record_write(bytes.len());
-            let mut cache = self.cache.write();
-            cache.put(key.to_vec(), value.clone());
-            
-            // Update read-ahead keys
-            self.update_read_ahead_keys(key);
+        // Get the value from the inner storage
+        if let Some(value) = self.inner.get(key)? {
+            // Serialize the value for caching
+            let bytes = bincode::serialize(&value)?;
+            // Cache the serialized bytes for future use
+            self.cache.write().unwrap().put(key.to_vec(), bytes);
+            Ok(Some(value))
+        } else {
+            Ok(None)
         }
-        
-        Ok(value)
     }
 
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
-        // Update cache
+        // Serialize the value
         let bytes = bincode::serialize(value)?;
-        self.metrics.record_write(bytes.len());
         
-        let value = bincode::deserialize(&bytes)?;
-        let mut cache = self.cache.write();
-        cache.put(key.to_vec(), value);
+        // Update the cache with the serialized bytes
+        {
+            let mut cache = self.cache.write().unwrap();
+            cache.put(key.to_vec(), bytes.clone());
+            self.metrics.record_write(bytes.len());
+        }
         
-        // Write to storage
-        self.inner.put(key, value)
+        // Write to the underlying storage
+        self.inner.put_serialized(key, &bytes)
     }
 
     fn delete(&self, key: &[u8]) -> Result<()> {
-        // Invalidate cache
-        let mut cache = self.cache.write();
-        cache.pop(key);
+        // Invalidate the cache
+        {
+            let mut cache = self.cache.write().unwrap();
+            cache.pop(&key.to_vec());
+        }
         
-        // Delete from storage
+        // Delete from the underlying storage
         self.inner.delete(key)
     }
 
     fn exists(&self, key: &[u8]) -> Result<bool> {
         // Check cache first
         {
-            let cache = self.cache.read();
-            if cache.contains(key) {
+            let cache = self.cache.read().unwrap();
+            if cache.contains(&key.to_vec()) {
                 return Ok(true);
             }
         }
         
-        // Check storage
+        // Check storage if not in cache
         self.inner.exists(key)
     }
     
     fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
         // Try to get from cache first
-        {
-            let cache = self.cache.read();
-            if let Some(cached) = cache.get(key) {
-                let bytes = bincode::serialize(cached)?;
-                self.metrics.record_hit(bytes.len());
-                return Ok(Some(bytes));
-            }
+        if let Some(cached_bytes) = self.cache.read().unwrap().get(&key.to_vec()) {
+            self.metrics.record_hit(cached_bytes.len());
+            return Ok(Some(cached_bytes.clone()));
         }
         
         // Cache miss, get from storage
@@ -316,7 +312,6 @@ where
         CachedBatch {
             inner: self.inner.create_batch(),
             cache: self.cache.clone(),
-            pending_ops: RwLock::new(Vec::new()),
             metrics: self.metrics.clone(),
             pending_puts: HashMap::new(),
             pending_deletes: HashSet::new(),
@@ -425,15 +420,36 @@ where
         self
     }
     
+    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+    
     fn commit(mut self) -> Result<()> {
         // Apply any remaining pending operations
-        self.apply_pending_ops()?;
+        if let Err(e) = self.apply_pending_ops() {
+            // Clear pending operations on error to prevent partial updates
+            self.pending_puts.clear();
+            self.pending_deletes.clear();
+            return Err(e);
+        }
         
         // Commit the inner batch
-        self.inner.commit()?;
+        if let Err(e) = self.inner.commit() {
+            // Clear pending operations on error to prevent partial updates
+            self.pending_puts.clear();
+            self.pending_deletes.clear();
+            return Err(e);
+        }
         
         // Update the cache with all operations
-        let mut cache = self.cache.write();
+        let mut cache = match self.cache.write() {
+            Ok(cache) => cache,
+            Err(poisoned) => {
+                // If the lock is poisoned, log the error and continue with the poisoned lock
+                log::error!("Cache lock was poisoned, attempting to recover");
+                poisoned.into_inner()
+            }
+        };
         
         // Process puts and deletes in parallel when there are many
         let total_ops = self.total_ops.load(Ordering::Relaxed);
@@ -469,7 +485,13 @@ where
         
         // Update metrics
         let total_bytes: usize = self.pending_puts.values().map(|v| v.len()).sum();
-        self.metrics.record_write(total_bytes);
+        if total_bytes > 0 {
+            self.metrics.record_write(total_bytes);
+        }
+        
+        // Clear pending operations to free memory
+        self.pending_puts.clear();
+        self.pending_deletes.clear();
         
         Ok(())
     }
@@ -499,9 +521,7 @@ impl<B: WriteBatch> CachedBatch<B> {
 impl<S> WriteBatchExt for CachedStore<S>
 where
     S: Storage + WriteBatchExt + 'static,
-    for<'a> <S as Storage>::Batch<'a>: WriteBatch + Clone + 'static,
-    for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
-    for<'a> <<S as Storage>::Batch<'a> as WriteBatch>::Batch: 'static,
+    S::Batch<'static>: Clone + 'static,
 {
     type Batch<'a> = CachedBatch<S::Batch<'a>> where Self: 'a;
     
@@ -511,7 +531,7 @@ where
     
     fn create_batch(&self) -> Self::Batch<'_> {
         CachedBatch {
-            inner: self.inner.batch(),
+            inner: self.inner.create_batch(),
             cache: self.cache.clone(),
             metrics: self.metrics.clone(),
             pending_puts: HashMap::new(),
@@ -522,40 +542,29 @@ where
     }
     
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
-        let mut batch = self.create_batch();
-        batch.put_serialized(key, value)?;
-        batch.commit()
+        // Serialize the value
+        let bytes = bincode::serialize(value)?;
+        
+        // Update the cache
+        {
+            let mut cache = self.cache.write().unwrap();
+            cache.put(key.to_vec(), bytes.clone());
+            self.metrics.record_write(bytes.len());
+        }
+        
+        // Write to the underlying storage
+        self.inner.put_serialized(key, &bytes)
     }
     
     fn delete_serialized(&self, key: &[u8]) -> Result<()> {
-        let mut batch = self.create_batch();
-        batch.delete_serialized(key)?;
-        batch.commit()
-    }
-    
-    fn iter_prefix(&self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + '_> {
-        self.inner.iter_prefix(prefix)
-    }
-    
-    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        // First check the cache
-        if let Some(cached) = self.cache.read().peek(key).cloned() {
-            self.metrics.record_hit(cached.len());
-            return Ok(Some(cached));
+        // Invalidate the cache
+        {
+            let mut cache = self.cache.write().unwrap();
+            cache.pop(&key.to_vec());
         }
         
-        // Cache miss, check the underlying storage
-        self.metrics.record_miss();
-        match self.inner.get_raw(key) {
-            Ok(Some(value)) => {
-                // Update cache for next time
-                let bytes = value.clone();
-                self.cache.write().put(key.to_vec(), bytes.clone());
-                Ok(Some(bytes))
-            },
-            Ok(None) => Ok(None),
-            Err(e) => Err(e),
-        }
+        // Delete from the underlying storage
+        self.inner.delete_serialized(key)
     }
 }
 

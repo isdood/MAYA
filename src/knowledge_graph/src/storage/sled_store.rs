@@ -99,7 +99,11 @@ impl WriteBatchExt for SledStore {
     type Batch<'a> = SledWriteBatch where Self: 'a;
 
     fn create_batch(&self) -> Self::Batch<'_> {
-        SledWriteBatch::with_options(self.db.clone(), 10_000, true)
+        SledWriteBatch::with_options(Arc::clone(&self.db), 10_000, true)
+    }
+    
+    fn batch(&self) -> Self::Batch<'_> {
+        self.create_batch()
     }
 }
 
