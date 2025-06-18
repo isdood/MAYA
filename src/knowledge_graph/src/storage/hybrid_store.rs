@@ -151,7 +151,10 @@ impl HybridStore {
         // If we don't have enough data yet, use the initial strategy
         let stats = match self.stats.read() {
             Ok(stats) => stats,
-            Err(_) => return is_read && self.config.initial_read_ratio_threshold > 0.0,
+            Err(e) => {
+                log::warn!("Failed to acquire read lock: {}", e);
+                return is_read && self.config.initial_read_ratio_threshold > 0.0;
+            }
         };
         
         let total_ops = stats.total_operations();
@@ -257,39 +260,47 @@ impl Storage for HybridStore {
     
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
         self.update_stats(true, || {
-            if self.route_read(key) {
-                // Try cache first
+            // Check if we should use the cache for this key
+            let use_cache = self.should_use_cache(true);
+            let key_routing = self.key_routing.read().map_err(|e| {
+                KnowledgeGraphError::StorageError(format!("Failed to acquire read lock: {}", e))
+            })?;
+            let should_use_cache = *key_routing.get(key).unwrap_or(&use_cache);
+            
+            // Try to get from cache if we should use it
+            if should_use_cache {
                 match self.cache.get(key) {
                     Ok(Some(value)) => {
                         // Cache hit
-                        self.key_routing.write().insert(key.to_vec(), true);
-                        Ok(Some(value))
-                    },
-                    Ok(None) => {
-                        // Cache miss, try primary
-                        match self.primary.get(key) {
-                            Ok(Some(value)) => {
-                                // Update cache for next time
-                                if let Err(e) = self.cache.put(key, &value) {
-                                    log::warn!("Failed to update cache: {}", e);
-                                }
-                                self.key_routing.write().insert(key.to_vec(), true);
-                                Ok(Some(value))
-                            },
-                            Ok(None) => Ok(None),
-                            Err(e) => Err(e.into())
+                        if let Ok(mut key_routing) = self.key_routing.write() {
+                            key_routing.insert(key.to_vec(), true);
                         }
-                    },
+                        return Ok(Some(value));
+                    }
+                    Ok(None) => {
+                        // Cache miss, fall through to primary
+                    }
                     Err(e) => {
-                        // Fallback to primary on cache error
                         log::warn!("Cache error: {}, falling back to primary", e);
-                        self.primary.get(key).map_err(Into::into)
-                    },
+                    }
                 }
-            } else {
-                // Read from primary only
-                self.key_routing.write().insert(key.to_vec(), false);
-                self.primary.get(key).map_err(Into::into)
+            }
+            
+            // Try primary storage
+            match self.primary.get(key) {
+                Ok(Some(value)) => {
+                    // Update cache for next time
+                    if use_cache {
+                        if let Err(e) = self.cache.put(key, &value) {
+                            log::warn!("Failed to update cache: {}", e);
+                        } else if let Ok(mut key_routing) = self.key_routing.write() {
+                            key_routing.insert(key.to_vec(), true);
+                        }
+                    }
+                    Ok(Some(value))
+                }
+                Ok(None) => Ok(None),
+                Err(e) => Err(e),
             }
         })
     }
@@ -307,13 +318,13 @@ impl Storage for HybridStore {
             if self.should_use_cache(false) {
                 if let Err(e) = self.cache.put_serialized(key, &value) {
                     log::warn!("Failed to write to cache: {}", e);
-                } else {
+                } else if let Ok(mut key_routing) = self.key_routing.write() {
                     // Update key routing if cache write was successful
-                    self.key_routing.write().insert(key.to_vec(), true);
+                    key_routing.insert(key.to_vec(), true);
                 }
-            } else {
+            } else if let Ok(mut key_routing) = self.key_routing.write() {
                 // Mark that this key should bypass the cache
-                self.key_routing.write().insert(key.to_vec(), false);
+                key_routing.insert(key.to_vec(), false);
             }
             
             Ok(())
@@ -485,17 +496,12 @@ impl WriteBatch for HybridBatch {
         self.cache_batch.clear();
     }
     
-    fn commit(self) -> Result<()> {
-        // Convert the trait objects to concrete types
-        let primary_result = {
-            let mut primary = self.primary_batch;
-            primary.commit()
-        };
+    fn commit(mut self) -> Result<()> {
+        // Commit primary batch first
+        let primary_result = self.primary_batch.commit();
         
-        let cache_result = {
-            let mut cache = self.cache_batch;
-            cache.commit()
-        };
+        // Then commit cache batch
+        let cache_result = self.cache_batch.commit();
         
         // Return primary result (more critical)
         primary_result?;

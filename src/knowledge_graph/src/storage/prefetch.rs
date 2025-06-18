@@ -68,6 +68,8 @@ enum PrefetchMessage<K, V> {
     Prefetch,
     /// Shut down the worker thread
     Shutdown,
+    /// A batch of prefetched items
+    Batch(Vec<(K, V)>),
 }
 
 /// A prefetching iterator that reads ahead in a background thread
@@ -102,6 +104,11 @@ where
             if let Err(e) = self.fill_buffer() {
                 return Some(Err(e));
             }
+            
+            // If still empty after filling, we're done
+            if self.buffer.is_empty() {
+                return None;
+            }
         }
         
         // Return the next item from the buffer
@@ -119,22 +126,19 @@ where
     V: Send + 'static + Clone,
 {
     /// Create a new prefetching iterator
-    pub fn new<I>(iterator: I, config: PrefetchConfig) -> Result<Self> 
+    pub fn new(
+        iterator: I,
+        config: PrefetchConfig,
+    ) -> Result<Self> 
     where
         I: Iterator<Item = (K, V)> + Send + 'static,
     {
-        let (tx, rx) = bounded(config.max_buffers);
+        let (tx, rx) = crossbeam_channel::bounded(1); // Single item channel for results
+        let (control_tx, control_rx) = crossbeam_channel::bounded(1); // Control channel for commands
         let notifier = PrefetchNotifier::new();
-        
-        // Spawn worker thread
-        let worker_tx = tx.clone();
-        let worker_notifier = notifier.clone();
         
         // Create the buffer with some initial capacity
         let buffer = VecDeque::with_capacity(config.buffer_size * 2);
-        
-        // Create a channel for the worker to communicate back
-        let (result_tx, result_rx) = crossbeam_channel::bounded(1);
         
         // Spawn the worker thread
         let worker_thread = thread::spawn(move || {
@@ -142,7 +146,7 @@ where
             let mut batch = Vec::with_capacity(config.buffer_size);
             
             // Process messages from the main thread
-            while let Ok(msg) = rx.recv() {
+            while let Ok(msg) = control_rx.recv() {
                 match msg {
                     PrefetchMessage::Prefetch => {
                         // Prefetch the next batch
@@ -156,34 +160,26 @@ where
                         }
                         
                         if !batch.is_empty() {
-                            // Clone each item individually to avoid requiring Clone on Vec<(K, V)>
-                            let batch_clone: Vec<(K, V)> = batch.iter()
-                                .map(|(k, v)| (k.clone(), v.clone()))
-                                .collect();
-                                
-                            if let Err(e) = result_tx.send(Some(batch_clone)) {
+                            // Send the batch through the result channel
+                            if let Err(e) = tx.send(Some(batch.clone())) {
                                 error!("Failed to send prefetched batch: {}", e);
                                 break;
                             }
                             worker_notifier.notify();
                         } else {
-                            // No more items
-                            if let Err(e) = result_tx.send(None) {
-                                error!("Failed to send end of stream: {}", e);
-                            }
+                            // No more items, signal end of stream
+                            let _ = tx.send(None);
                             break;
                         }
                     }
                     PrefetchMessage::Shutdown => break,
+                    _ => {}
                 }
             }
-            
-            // Signal end of stream
-            let _ = result_tx.send(None);
         });
         
         // Request initial prefetch
-        if let Err(e) = tx.send(PrefetchMessage::Prefetch) {
+        if let Err(e) = control_tx.send(PrefetchMessage::Prefetch) {
             error!("Failed to send initial prefetch request: {}", e);
             return Err(KnowledgeGraphError::StorageError(
                 "Failed to initialize prefetching".to_string()
@@ -192,7 +188,7 @@ where
         
         Ok(Self {
             rx,
-            tx,
+            tx: control_tx,
             buffer,
             config,
             worker_thread: Some(worker_thread),
@@ -203,25 +199,27 @@ where
     
     /// Fill the buffer with more items
     fn fill_buffer(&mut self) -> Result<()> {
-        // Request more items
+        // Request the next batch
         if let Err(e) = self.tx.send(PrefetchMessage::Prefetch) {
             return Err(KnowledgeGraphError::StorageError(
                 format!("Failed to request prefetch: {}", e)
             ));
         }
         
-        // Wait for items with timeout
-        if self.notifier.wait_timeout(Duration::from_millis(self.config.prefetch_timeout_ms)) {
-            // Try to receive items
-            match self.rx.recv() {
-                Ok(Some(batch)) => {
-                    self.buffer.extend(batch);
-                }
-                _ => {}
+        // Wait for the next batch
+        match self.rx.recv() {
+            Ok(Some(batch)) => {
+                self.buffer.extend(batch);
+                Ok(())
             }
+            Ok(None) => {
+                // End of stream
+                Ok(())
+            }
+            Err(e) => Err(KnowledgeGraphError::StorageError(
+                format!("Failed to receive prefetched batch: {}", e)
+            )),
         }
-        
-        Ok(())
     }
 }
 

@@ -1,0 +1,104 @@
+//! 🌌 STARWEAVE Universe Integration
+//! ✨ Version: 2025.6.18
+//! 🎨 Pattern: 1.0.0
+//! ⚡ Seed: 
+//! 📅 Woven: 2025-06-18 20:32:05
+//! 👤 Weaver: isdood
+
+const std = @import("std");
+
+// 🌠 STARWEAVE Package Definitions
+const Package = std.Build.Module;
+const CompileStep = std.Build.CompileStep;
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    // 🎨 STARWEAVE Module Definitions
+    const starweave_mod = b.createModule(.{
+        .source_file = .{ .path = "src/starweave/protocol.zig" },
+    });
+
+    const glimmer_mod = b.createModule(.{
+        .source_file = .{ .path = "src/glimmer/patterns.zig" },
+        .dependencies = &.{
+            .{ .name = "starweave", .module = starweave_mod },
+        },
+    });
+
+    const neural_mod = b.createModule(.{
+        .source_file = .{ .path = "src/neural/bridge.zig" },
+        .dependencies = &.{
+            .{ .name = "starweave", .module = starweave_mod },
+            .{ .name = "glimmer", .module = glimmer_mod },
+        },
+    });
+
+    const colors_mod = b.createModule(.{
+        .source_file = .{ .path = "src/glimmer/colors.zig" },
+        .dependencies = &.{
+            .{ .name = "glimmer", .module = glimmer_mod },
+        },
+    });
+
+    // 🌟 Main MAYA Executable
+    const maya = b.addExecutable(.{
+        .name = "maya",
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    maya.addModule("starweave", starweave_mod);
+    maya.addModule("glimmer", glimmer_mod);
+    maya.addModule("neural", neural_mod);
+    maya.addModule("colors", colors_mod);
+
+    // 🌌 System Libraries
+    maya.linkSystemLibrary("glfw");
+    maya.linkSystemLibrary("vulkan");
+    maya.linkSystemLibrary("freetype");
+    maya.linkSystemLibrary("harfbuzz");
+    maya.linkLibC();
+
+    // 🌐 WASM Configuration
+    const wasm = b.addExecutable(.{
+        .name = "maya",
+        .root_source_file = .{ .path = "src/wasm.zig" },
+        .target = b.standardTargetOptions(.{
+            .default_target = .{
+                .cpu_arch = .wasm32,
+                .os_tag = .freestanding,
+            },
+        }),
+        .optimize = optimize,
+    });
+
+    wasm.addModule("starweave", starweave_mod);
+    wasm.addModule("glimmer", glimmer_mod);
+
+    // 🧪 Test Configuration
+    const main_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/test/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    main_tests.addModule("starweave", starweave_mod);
+    main_tests.addModule("glimmer", glimmer_mod);
+
+    const test_step = b.step("test", "Run MAYA quantum tests");
+    test_step.dependOn(&main_tests.step);
+
+    // ⚡ Install Steps
+    b.installArtifact(maya);
+    b.installArtifact(wasm);
+
+    // 🎨 GLIMMER Visual Test
+    const visual_test = b.step("visual", "Run GLIMMER pattern tests");
+    const visual_cmd = b.addSystemCommand(&.{
+        "./scripts/test_glimmer_patterns.sh",
+    });
+    visual_test.dependOn(&visual_cmd.step);
+}
