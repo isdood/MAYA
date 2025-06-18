@@ -177,3 +177,21 @@ const glimmer_pkg = std.build.Pkg{
     .name = "glimmer",
     .source = .{ .path = "src/glimmer/patterns.zig" },
 };
+
+// 🌌 STARWEAVE Quantum Integration
+// Version: 
+// Pattern: 
+// Quantum Seed: 
+
+const starweave_pkg = std.build.Pkg{
+    .name = "starweave",
+    .source = .{ .path = "src/starweave/protocol.zig" },
+};
+
+const glimmer_pkg = std.build.Pkg{
+    .name = "glimmer",
+    .source = .{ .path = "src/glimmer/patterns.zig" },
+    .dependencies = &[_]std.build.Pkg{
+        starweave_pkg,
+    },
+};

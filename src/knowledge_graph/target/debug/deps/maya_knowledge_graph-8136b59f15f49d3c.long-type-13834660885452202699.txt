@@ -1,0 +1,1 @@
+std::result::Result<std::sync::RwLockWriteGuard<'_, OperationStats>, PoisonError<std::sync::RwLockWriteGuard<'_, OperationStats>>>

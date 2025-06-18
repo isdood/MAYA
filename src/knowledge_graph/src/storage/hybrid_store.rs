@@ -1,12 +1,19 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
+use std::path::Path;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use parking_lot::RwLock;
 use serde::{Serialize, de::DeserializeOwned};
-use std::path::Path;
-use std::collections::HashMap;
-use std::time::{Instant, Duration};
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-use crate::storage::{Storage, WriteBatch, WriteBatchExt, Result, KnowledgeGraphError, PrefetchExt};
+
+use crate::error::KnowledgeGraphError;
+use crate::storage::{
+    GenericWriteBatch, PrefetchExt, Result, Storage, WriteBatch, WriteBatchExt,
+    prefetch::{PrefetchConfig, PrefetchingIterator},
+};
+
+// Re-export PrefetchConfig for public use
+pub use crate::storage::prefetch::PrefetchConfig;
 
 /// Adapter to convert PrefetchingIterator's Item type to match Storage's iterator
 struct PrefetchingIteratorAdapter<I>(I);
@@ -140,6 +147,28 @@ impl HybridStore {
         stats.read_ratio() > self.config.initial_read_ratio_threshold
     }
 
+    fn should_use_cache(&self, is_read: bool) -> bool {
+        // If we don't have enough data yet, use the initial strategy
+        let stats = match self.stats.read() {
+            Ok(stats) => stats,
+            Err(_) => return is_read && self.config.initial_read_ratio_threshold > 0.0,
+        };
+        
+        let total_ops = stats.total_operations();
+        if total_ops < self.config.min_operations_for_adaptive {
+            return is_read && self.config.initial_read_ratio_threshold > 0.0;
+        }
+        
+        // If we have enough data, use the adaptive strategy
+        let ratio = stats.read_ratio();
+        if is_read {
+            ratio > self.config.initial_read_ratio_threshold
+        } else {
+            // For writes, we want to ensure we're not overwhelming the cache
+            ratio > self.config.initial_read_ratio_threshold * 0.8
+        }
+    }
+
     /// Update operation statistics
     fn update_stats<F, R>(&self, is_read: bool, f: F) -> R
     where
@@ -147,15 +176,16 @@ impl HybridStore {
     {
         let start = Instant::now();
         let result = f();
-        let latency = start.elapsed();
-
-        let mut stats = self.stats.write();
+        let elapsed = start.elapsed();
+        
+        // Update stats
+        let mut stats = self.stats.write().unwrap();
         if is_read {
-            stats.add_read(latency);
+            stats.add_read(elapsed);
         } else {
-            stats.add_write(latency);
+            stats.add_write(elapsed);
         }
-
+        
         // Periodically rebalance
         let op_count = self.operation_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
         if op_count % self.config.rebalance_interval == 0 {
@@ -266,29 +296,14 @@ impl Storage for HybridStore {
 
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
         self.update_stats(false, || {
-            // Write to both stores
-            self.primary.put(key, value)?;
-            
-            // Update cache asynchronously
-            let cache = self.cache.clone();
-            let key = key.to_vec();
             let value = bincode::serialize(value)
-                .map_err(|e| KnowledgeGraphError::SerializationError(e.to_string()))?;
+                .map_err(|e| KnowledgeGraphError::SerializationError(e.into()))?;
             
-            // Spawn a blocking task to update the cache
-            std::thread::spawn(move || {
-                if let Err(e) = cache.put_serialized(&key, &value) {
-                    log::warn!("Failed to update cache: {}", e);
-                }
-            });
+            let use_cache = self.should_use_cache(false);
             
-            // Update key routing
-            self.key_routing.write().insert(key, true);
-            
-            Ok(())
-        })
-    }
-
+            if use_cache {
+                if let Err(e) = self.cache.put(key, &value) {
+                    log::warn!("Failed to write to cache: {}", e);
     fn delete(&self, key: &[u8]) -> Result<()> {
         self.update_stats(false, || {
             // Delete from primary
@@ -456,18 +471,24 @@ impl WriteBatch for HybridBatch {
     
     fn commit(self) -> Result<()> {
         // Commit primary batch first
-        let primary_result = self.primary_batch.commit();
+        let primary_result = {
+            let batch = Box::into_raw(Box::new(self.primary_batch));
+            let result = unsafe { (*batch).commit() };
+            let _ = unsafe { Box::from_raw(batch) }; // Drop the box
+            result
+        };
         
-        // Commit cache batch, but don't fail if it fails
-        let cache_result = self.cache_batch.commit();
+        // Then commit cache batch
+        let cache_result = {
+            let batch = Box::into_raw(Box::new(self.cache_batch));
+            let result = unsafe { (*batch).commit() };
+            let _ = unsafe { Box::from_raw(batch) }; // Drop the box
+            result
+        };
         
-        // Return primary error if it failed
+        // Return primary result (more critical)
         primary_result?;
-        
-        // Log cache error if it failed
-        if let Err(e) = cache_result {
-            log::warn!("Failed to commit cache batch: {}", e);
-        }
+        cache_result?;
         
         Ok(())
     }
@@ -483,14 +504,14 @@ impl WriteBatch for HybridBatch {
 
 // Implement GenericWriteBatch for HybridBatch
 impl GenericWriteBatch for HybridBatch {
-    type Error = KnowledgeGraphError;
+    type Error = crate::error::KnowledgeGraphError;
     
-    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<(), Self::Error> {
-        let bytes = bincode::serialize(value).map_err(|e| KnowledgeGraphError::BincodeError(e.to_string()))?;
+    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> std::result::Result<(), Self::Error> {
+        let bytes = bincode::serialize(value).map_err(|e| crate::error::KnowledgeGraphError::BincodeError(e.to_string()))?;
         self.put_serialized(key, &bytes)
     }
     
-    fn delete(&mut self, key: &[u8]) -> Result<(), Self::Error> {
+    fn delete(&mut self, key: &[u8]) -> std::result::Result<(), Self::Error> {
         self.delete_serialized(key)
     }
     
@@ -498,7 +519,7 @@ impl GenericWriteBatch for HybridBatch {
         WriteBatch::clear(self)
     }
     
-    fn commit(self) -> Result<(), Self::Error> {
+    fn commit(self) -> std::result::Result<(), Self::Error> {
         WriteBatch::commit(self)
     }
 }

@@ -68,30 +68,29 @@ enum PrefetchMessage<K, V> {
     Prefetch,
     /// Shut down the worker thread
     Shutdown,
-    /// A batch of prefetched items
-    Batch(Vec<(K, V)>),
 }
 
 /// A prefetching iterator that reads ahead in a background thread
-pub struct PrefetchingIterator<K, V> {
+pub struct PrefetchingIterator<K, V, I> {
     // Channel for receiving prefetched items
-    rx: Receiver<PrefetchMessage<K, V>>,
+    rx: crossbeam_channel::Receiver<Option<Vec<(K, V)>>>,
     // Channel for sending requests to the worker
-    tx: Sender<PrefetchMessage<K, V>>,
+    tx: crossbeam_channel::Sender<PrefetchMessage>,
     // Current buffer of prefetched items
     buffer: VecDeque<(K, V)>,
     // Configuration
     config: PrefetchConfig,
     // Worker thread handle
-    worker_thread: Option<JoinHandle<()>>,
+    worker_thread: Option<thread::JoinHandle<()>>,
     // Notification mechanism
     notifier: PrefetchNotifier,
     // Marker for Send + Sync
-    _marker: std::marker::PhantomData<*const ()>,
+    _marker: std::marker::PhantomData<I>,
 }
 
-impl<K, V> Iterator for PrefetchingIterator<K, V> 
+impl<I, K, V> Iterator for PrefetchingIterator<I, K, V> 
 where
+    I: Iterator<Item = (K, V)> + Send + 'static,
     K: Send + 'static + Clone,
     V: Send + 'static + Clone,
 {
@@ -139,15 +138,18 @@ where
         // Create the buffer with some initial capacity
         let buffer = VecDeque::with_capacity(config.buffer_size * 2);
         
+        // Create a channel for the worker to communicate back
+        let (result_tx, result_rx) = crossbeam_channel::bounded(1);
+        
         // Spawn the worker thread
         let worker_thread = thread::spawn(move || {
             let mut iterator = iterator;
             let mut batch = Vec::with_capacity(config.buffer_size);
             
-            loop {
-                // Wait for a prefetch request or shutdown
-                match rx.recv() {
-                    Ok(PrefetchMessage::Prefetch) => {
+            // Process messages from the main thread
+            while let Ok(msg) = rx.recv() {
+                match msg {
+                    PrefetchMessage::Prefetch => {
                         // Prefetch the next batch
                         batch.clear();
                         for _ in 0..config.buffer_size {
@@ -164,20 +166,25 @@ where
                                 .map(|(k, v)| (k.clone(), v.clone()))
                                 .collect();
                                 
-                            if let Err(e) = worker_tx.send(PrefetchMessage::Batch(batch_clone)) {
+                            if let Err(e) = result_tx.send(Some(batch_clone)) {
                                 error!("Failed to send prefetched batch: {}", e);
                                 break;
                             }
                             worker_notifier.notify();
                         } else {
                             // No more items
+                            if let Err(e) = result_tx.send(None) {
+                                error!("Failed to send end of stream: {}", e);
+                            }
                             break;
                         }
                     }
-                    Ok(PrefetchMessage::Shutdown) => break,
-                    Err(_) => continue,
+                    PrefetchMessage::Shutdown => break,
                 }
             }
+            
+            // Signal end of stream
+            let _ = result_tx.send(None);
         });
         
         // Request initial prefetch
@@ -212,7 +219,7 @@ where
         if self.notifier.wait_timeout(Duration::from_millis(self.config.prefetch_timeout_ms)) {
             // Try to receive items
             match self.rx.recv() {
-                Ok(PrefetchMessage::Batch(batch)) => {
+                Ok(Some(batch)) => {
                     self.buffer.extend(batch);
                 }
                 _ => {}
