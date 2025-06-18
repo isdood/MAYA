@@ -69,11 +69,11 @@ pub fn build(b: *std.Build) void {
 
     // Add include paths
     exe.addIncludePath(.{ .cwd_relative = "/usr/include" });
-    exe.addIncludePath("vendor/cimgui");
+    exe.addIncludePath(.{ .cwd_relative = "vendor/cimgui" });
     exe.addIncludePath(.{ .cwd_relative = "/usr/include/freetype2" });
-    exe.addIncludePath("vendor/cimgui");
+    exe.addIncludePath(.{ .cwd_relative = "vendor/cimgui" });
     exe.addIncludePath(.{ .cwd_relative = "/usr/include/harfbuzz" });
-    exe.addIncludePath("vendor/cimgui");
+    exe.addIncludePath(.{ .cwd_relative = "vendor/cimgui" });
 
     // Add compile definitions
     exe.root_module.addImport("VK_USE_PLATFORM_XLIB_KHR", b.addModule("VK_USE_PLATFORM_XLIB_KHR", .{
@@ -167,3 +167,13 @@ pub fn build(b: *std.Build) void {
     wasm_step.dependOn(&wasm.step);
     wasm_step.dependOn(&wasm_install.step);
 }
+// STARWEAVE Integration
+const starweave_pkg = std.build.Pkg{
+    .name = "starweave",
+    .source = .{ .path = "src/starweave/protocol.zig" },
+};
+
+const glimmer_pkg = std.build.Pkg{
+    .name = "glimmer",
+    .source = .{ .path = "src/glimmer/patterns.zig" },
+};

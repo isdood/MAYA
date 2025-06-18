@@ -400,40 +400,7 @@ impl WriteBatchExt for HybridStore {
         Ok(())
     }
     
-    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
-        // Use prefetching for better performance on sequential scans
-        let config = PrefetchConfig {
-            prefetch_size: 64,         // Prefetch 64 items ahead
-            max_buffers: 4,            // Keep up to 4 prefetch buffers
-            buffer_size: 256,          // 256 items per buffer
-            prefetch_timeout_ms: 50,   // 50ms timeout
-        };
-        
-        // Create a prefetching iterator
-        match self.iter_prefix_prefetch(prefix, config) {
-            Ok(iter) => {
-                // Convert the PrefetchingIterator into a Box<dyn Iterator>
-                let adapter = PrefetchingIteratorAdapter(iter);
-                Box::new(adapter)
-            },
-            Err(e) => {
-                // Fall back to non-prefetching iterator if prefetching fails
-                log::warn!("Failed to create prefetching iterator: {}. Falling back to standard iterator", e);
-                self.primary.iter_prefix(prefix)
-            }
-        }
-    }
-    
-    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        if self.route_read(key) {
-            match self.cache.get_raw(key) {
-                Ok(Some(value)) => return Ok(Some(value)),
-                Ok(None) => {}
-                Err(e) => log::warn!("Cache error in get_raw: {}", e),
-            }
-        }
-        self.primary.get_raw(key)
-    }
+
 }
 
 /// Batch implementation for HybridStore
@@ -458,13 +425,14 @@ impl HybridBatch {
         }
     }
 }
+}
 
 impl WriteBatch for HybridBatch {
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        // Write to both batches
+        // Update primary first
         self.primary_batch.put_serialized(key, value)?;
         
-        // Update cache batch and routing
+        // Then update cache batch and routing
         self.cache_batch.put_serialized(key, value)?;
         self.key_routing.write().insert(key.to_vec(), true);
         
@@ -488,13 +456,18 @@ impl WriteBatch for HybridBatch {
     }
     
     fn commit(self) -> Result<()> {
-        // Commit primary first
-        self.primary_batch.commit()?;
+        // Commit primary batch first
+        let primary_result = self.primary_batch.commit();
         
-        // Then commit cache
-        if let Err(e) = self.cache_batch.commit() {
+        // Commit cache batch, but don't fail if it fails
+        let cache_result = self.cache_batch.commit();
+        
+        // Return primary error if it failed
+        primary_result?;
+        
+        // Log cache error if it failed
+        if let Err(e) = cache_result {
             log::warn!("Failed to commit cache batch: {}", e);
-            // Don't fail the whole operation if cache update fails
         }
         
         Ok(())
@@ -509,17 +482,48 @@ impl WriteBatch for HybridBatch {
     }
 }
 
+// Implement GenericWriteBatch for HybridBatch
+impl GenericWriteBatch for HybridBatch {
+    type Error = KnowledgeGraphError;
+    
+    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<(), Self::Error> {
+        let bytes = bincode::serialize(value).map_err(|e| KnowledgeGraphError::BincodeError(e.to_string()))?;
+        self.put_serialized(key, &bytes)
+    }
+    
+    fn delete(&mut self, key: &[u8]) -> Result<(), Self::Error> {
+        self.delete_serialized(key)
+    }
+    
+    fn clear(&mut self) {
+        WriteBatch::clear(self)
+    }
+    
+    fn commit(self) -> Result<(), Self::Error> {
+        WriteBatch::commit(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
-
+    use crate::storage::{GenericWriteBatch, Storage};
+    use crate::storage::sled_store::SledStore;
+    use crate::storage::cached_store::CachedStore;
+    
     #[test]
     fn test_hybrid_store_basic() {
         let temp_dir = tempdir().unwrap();
         let primary = SledStore::open(temp_dir.path()).unwrap();
         let cache = CachedStore::new(primary.clone());
-        let hybrid = HybridStore::new(primary, cache);
+        
+        // Create a new HybridStore with the primary and cache
+        let hybrid = HybridStore::with_config(
+            primary,
+            cache,
+            HybridConfig::default(),
+        ).unwrap();
 
         // Test basic operations
         hybrid.put(b"key1", &42u64).unwrap();
@@ -530,7 +534,7 @@ mod tests {
         assert_eq!(hybrid.get::<u64>(b"key1").unwrap(), None);
         
         // Test batch operations
-        let mut batch = hybrid.batch();
+        let mut batch = hybrid.create_batch();
         batch.put(b"batch1", &100u64).unwrap();
         batch.put(b"batch2", &200u64).unwrap();
         batch.commit().unwrap();
