@@ -80,65 +80,136 @@
 
 // Make modules public for benchmarks
 pub mod sled_store;
-// Temporarily disable RocksDB for benchmarking
-// pub mod rocksdb_store;
 pub mod cached_store;
+pub mod hybrid_store;
+pub use hybrid_store::{HybridStore, HybridConfig};
 
 // Re-export public types
 pub use sled_store::SledStore;
-pub use cached_store::{CachedStore, CachedBatch, CacheConfig, CacheMetrics};
+pub use cached_store::CachedStore;
+pub use hybrid_store::{HybridStore, HybridConfig, HybridBatch};
 
 use serde::{Serialize, de::DeserializeOwned};
-use std::path::Path;
-use crate::error::Result;
+use thiserror::Error;
+use std::fmt;
 
-/// Trait defining the storage operations for the knowledge graph
+impl From<sled::Error> for KnowledgeGraphError {
+    fn from(err: sled::Error) -> Self {
+        KnowledgeGraphError::StorageError(err.to_string())
+    }
+}
+
+impl From<std::io::Error> for KnowledgeGraphError {
+    fn from(err: std::io::Error) -> Self {
+        KnowledgeGraphError::StorageError(err.to_string())
+    }
+}
+
+impl From<bincode::Error> for KnowledgeGraphError {
+    fn from(err: bincode::Error) -> Self {
+        KnowledgeGraphError::BincodeError(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for KnowledgeGraphError {
+    fn from(err: serde_json::Error) -> Self {
+        KnowledgeGraphError::JsonError(err)
+    }
+}
+
+use std::fmt;
+
+#[derive(Debug, thiserror::Error)]
+pub enum KnowledgeGraphError {
+    #[error("Storage error: {0}")]
+    StorageError(String),
+    
+    #[error("I/O error: {0}")]
+    IoError(#[from] std::io::Error),
+    
+    #[error("JSON serialization error: {0}")]
+    JsonError(#[from] serde_json::Error),
+    
+    #[error("Sled error: {0}")]
+    SledError(#[from] sled::Error),
+    
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+    
+    #[error("Bincode error: {0}")]
+    BincodeError(#[from] bincode::Error),
+    
+    #[error("Key not found")]
+    KeyNotFound,
+    
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
+}
+
+impl From<Box<bincode::ErrorKind>> for KnowledgeGraphError {
+    fn from(err: Box<bincode::ErrorKind>) -> Self {
+        KnowledgeGraphError::BincodeError(bincode::Error::from(err))
+    }
+}
+
+impl From<futures_io::Error> for KnowledgeGraphError {
+    fn from(err: futures_io::Error) -> Self {
+        KnowledgeGraphError::IoError(err.into())
+    }
+}
+
+impl From<error::KnowledgeGraphError> for KnowledgeGraphError {
+    fn from(err: error::KnowledgeGraphError) -> Self {
+        match err {
+            error::KnowledgeGraphError::StorageError(s) => KnowledgeGraphError::StorageError(s),
+            error::KnowledgeGraphError::IoError(e) => KnowledgeGraphError::IoError(e),
+            error::KnowledgeGraphError::JsonError(e) => KnowledgeGraphError::JsonError(e),
+            error::KnowledgeGraphError::SledError(e) => KnowledgeGraphError::SledError(e),
+            error::KnowledgeGraphError::SerializationError(s) => KnowledgeGraphError::SerializationError(s),
+            error::KnowledgeGraphError::BincodeError(s) => KnowledgeGraphError::BincodeError(bincode::Error::new(s.into())),
+            error::KnowledgeGraphError::KeyNotFound => KnowledgeGraphError::KeyNotFound,
+            error::KnowledgeGraphError::InvalidArgument(s) => KnowledgeGraphError::InvalidArgument(s),
+        }
+    }
+}
+
+pub type Result<T> = std::result::Result<T, KnowledgeGraphError>;
+
+/// Trait for key-value storage operations
 pub trait Storage: Send + Sync + 'static {
-    /// The batch type for this storage backend
-    type Batch<'a>: WriteBatch + 'static where Self: 'a;
-    
-    /// Create or open a database at the given path
-    fn open<P: AsRef<Path>>(path: P) -> Result<Self> where Self: Sized;
-    
     /// Get a value by key
     fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>>;
     
-    /// Insert or update a key-value pair
+    /// Insert or update a value
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()>;
     
-    /// Delete a key-value pair
+    /// Delete a value by key
     fn delete(&self, key: &[u8]) -> Result<()>;
     
-    /// Check if a key exists
+    /// Check if a key exists in the storage
     fn exists(&self, key: &[u8]) -> Result<bool>;
     
-    /// Get an iterator over all key-value pairs with a given prefix
-    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
+    /// Get raw bytes from storage without deserialization
+    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>>;
+}
+
+/// Extension trait for storage backends that support batch operations
+pub trait WriteBatchExt: Storage {
+    type Batch: WriteBatch;
     
-    /// Create a batch of operations
-    fn batch(&self) -> Self::Batch<'_>;
+    /// Create a new write batch
+    fn batch(&self) -> Self::Batch;
 }
 
 /// Trait for batch operations
-pub trait WriteBatch: std::fmt::Debug + Send + 'static {
-    /// Add a key-value pair to the batch
-    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
+pub trait WriteBatch {
+    /// Add a put operation to the batch
+    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()>;
     
     /// Add a delete operation to the batch
     fn delete(&mut self, key: &[u8]) -> Result<()>;
     
-    /// Add a serialized key-value pair to the batch
-    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
-    
-    /// Clear all operations in the batch
-    fn clear(&mut self) {}
-    
-    /// Get a reference to the batch as Any for downcasting
-    fn as_any(&self) -> &dyn std::any::Any {
-        unimplemented!("as_any must be implemented for WriteBatch")
-    }
-    
-    /// Commit the batch to storage
+    /// Commit the batch
     fn commit(self) -> Result<()>;
 }
 

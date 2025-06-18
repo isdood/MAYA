@@ -521,8 +521,7 @@ pub const Separator = struct {
     }
 
     fn render(widget: *Widget) !void {
-    fn render(_widget: *Widget) !void {
-        _ = _widget;
+        _ = widget;
         c.igSeparator();
     }
 };

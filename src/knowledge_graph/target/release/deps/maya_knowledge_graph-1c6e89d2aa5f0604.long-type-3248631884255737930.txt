@@ -1,0 +1,1 @@
+storage::KnowledgeGraphError: From<serde_json::Error>

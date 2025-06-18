@@ -10,6 +10,7 @@ use crate::error::Result;
 use super::{Storage, WriteBatch, WriteBatchExt, serialize, deserialize};
 
 /// Sled storage implementation
+#[derive(Clone, Debug)]
 pub struct SledStore {
     db: Arc<Db>,
 }
@@ -61,7 +62,14 @@ impl Storage for SledStore {
     }
 
     fn exists(&self, key: &[u8]) -> Result<bool> {
-        Ok(self.db.contains_key(key)?)
+        self.db.contains_key(key).map_err(Into::into)
+    }
+    
+    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        match self.db.get(key)? {
+            Some(ivec) => Ok(Some(ivec.to_vec())),
+            None => Ok(None),
+        }
     }
 
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {

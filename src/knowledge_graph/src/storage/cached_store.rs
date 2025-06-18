@@ -292,9 +292,29 @@ where
     }
     
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
-        // For now, just forward to the inner storage
-        // TODO: Consider caching iteration results
         self.inner.iter_prefix(prefix)
+    }
+    
+    /// Get raw bytes from the cache or underlying storage without deserialization
+    fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        // First check the cache
+        if let Some(cached) = self.cache.read().peek(key).cloned() {
+            self.metrics.record_hit(cached.len());
+            return Ok(Some(cached));
+        }
+        
+        // Cache miss, check the underlying storage
+        self.metrics.record_miss();
+        match self.inner.get_raw(key) {
+            Ok(Some(value)) => {
+                // Update cache for next time
+                let bytes = value.clone();
+                self.cache.write().put(key.to_vec(), bytes.clone());
+                Ok(Some(bytes))
+            },
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
     
     fn batch(&self) -> Self::Batch<'_> {

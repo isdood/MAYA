@@ -607,17 +607,15 @@ pub const Layout = struct {
     }
 
     pub fn render(self: *Self) void {
-        const style = c.igGetStyle();
         const window_pos = c.igGetWindowPos();
-        const window_size = c.igGetWindowSize();
-        var current_pos = [2]f32{
+        const current_pos = [2]f32{
             window_pos.x + self.padding.left,
             window_pos.y + self.padding.top,
         };
 
         // Calculate available space
-        const available_width = window_size.x - self.padding.left - self.padding.right;
-        const available_height = window_size.y - self.padding.top - self.padding.bottom;
+        const available_width = self.size[0] - self.padding.left - self.padding.right;
+        const available_height = self.size[1] - self.padding.top - self.padding.bottom;
 
         // Calculate total size of children
         var total_size: [2]f32 = .{ 0, 0 };
@@ -743,14 +741,13 @@ pub const GridLayout = struct {
 
     pub fn render(self: *Self) void {
         const window_pos = c.igGetWindowPos();
-        const window_size = c.igGetWindowSize();
-        var current_pos = [2]f32{
+        const current_pos = [2]f32{
             window_pos.x + self.padding.left,
             window_pos.y + self.padding.top,
         };
 
         // Calculate cell size
-        const available_width = window_size.x - self.padding.left - self.padding.right;
+        const available_width = self.size[0] - self.padding.left - self.padding.right;
         const cell_width = (available_width - (self.spacing[0] * @as(f32, @floatFromInt(self.columns - 1)))) / @as(f32, @floatFromInt(self.columns));
 
         var row: usize = 0;
@@ -816,8 +813,7 @@ pub const ScrollLayout = struct {
 
     pub fn render(self: *Self) void {
         const window_pos = c.igGetWindowPos();
-        const window_size = c.igGetWindowSize();
-        var current_pos = [2]f32{
+        const current_pos = [2]f32{
             window_pos.x + self.padding.left,
             window_pos.y + self.padding.top,
         };
@@ -846,7 +842,7 @@ pub const ScrollLayout = struct {
         // Begin scrolling region
         if (c.igBeginChild(
             self.widget.id,
-            .{ .x = self.size[0], .y = self.size[1] },
+            .{ self.size[0], self.size[1] },
             true,
             self.flags,
         )) {
@@ -920,15 +916,14 @@ pub const FlexLayout = struct {
 
     pub fn render(self: *Self) void {
         const window_pos = c.igGetWindowPos();
-        const window_size = c.igGetWindowSize();
-        var current_pos = [2]f32{
+        const current_pos = [2]f32{
             window_pos.x + self.padding.left,
             window_pos.y + self.padding.top,
         };
 
         // Calculate available space
-        const available_width = window_size.x - self.padding.left - self.padding.right;
-        const available_height = window_size.y - self.padding.top - self.padding.bottom;
+        const available_width = self.size[0] - self.padding.left - self.padding.right;
+        const available_height = self.size[1] - self.padding.top - self.padding.bottom;
 
         // Calculate total flex grow and fixed size
         var total_flex_grow: f32 = 0;
@@ -1018,18 +1013,17 @@ pub const StackLayout = struct {
 
     pub fn render(self: *Self) void {
         const window_pos = c.igGetWindowPos();
-        const window_size = c.igGetWindowSize();
-        const center_pos = [2]f32{
-            window_pos.x + self.padding.left + (window_size.x - self.padding.left - self.padding.right) / 2,
-            window_pos.y + self.padding.top + (window_size.y - self.padding.top - self.padding.bottom) / 2,
+        const current_pos = [2]f32{
+            window_pos.x + self.padding.left + (self.size[0] - self.padding.left - self.padding.right) / 2,
+            window_pos.y + self.padding.top + (self.size[1] - self.padding.top - self.padding.bottom) / 2,
         };
 
         // Position and render children
         for (self.children.items) |child| {
             // Center the child widget
             child.pos = .{
-                center_pos[0] - child.size[0] / 2,
-                center_pos[1] - child.size[1] / 2,
+                current_pos[0] - child.size[0] / 2,
+                current_pos[1] - child.size[1] / 2,
             };
             child.render();
         }
@@ -1077,15 +1071,14 @@ pub const SplitLayout = struct {
 
     pub fn render(self: *Self) void {
         const window_pos = c.igGetWindowPos();
-        const window_size = c.igGetWindowSize();
-        var current_pos = [2]f32{
+        const current_pos = [2]f32{
             window_pos.x + self.padding.left,
             window_pos.y + self.padding.top,
         };
 
         // Calculate available space
-        const available_width = window_size.x - self.padding.left - self.padding.right;
-        const available_height = window_size.y - self.padding.top - self.padding.bottom;
+        const available_width = self.size[0] - self.padding.left - self.padding.right;
+        const available_height = self.size[1] - self.padding.top - self.padding.bottom;
 
         // Calculate split sizes
         const first_size = if (self.direction == .Horizontal)

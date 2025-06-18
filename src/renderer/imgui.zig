@@ -338,17 +338,17 @@ pub const ImGuiRenderer = struct {
     }
 
     // Begin ImGui frame
-    pub fn beginFrame(self: *Self) void {
+    pub fn beginFrame(_self: *Self) void {
         _ = c.ImGui_ImplVulkan_NewFrame();
         _ = c.ImGui_ImplGlfw_NewFrame();
         c.igNewFrame();
     }
 
     // End ImGui frame and render
-    pub fn endFrame(self: *Self, command_buffer: vk.VkCommandBuffer) void {
+    pub fn endFrame(_self: *Self, _command_buffer: vk.VkCommandBuffer) void {
         c.igRender();
         const draw_data = c.igGetDrawData();
-        _ = c.ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
+        _ = c.ImGui_ImplVulkan_RenderDrawData(draw_data, _command_buffer);
     }
 
     // Cleanup ImGui resources
