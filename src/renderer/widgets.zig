@@ -615,4 +615,278 @@ pub const TreeNode = struct {
             c.igTreePop();
         }
     }
+};
+
+pub const MenuBar = struct {
+    const Self = @This();
+
+    widget: Widget,
+    menus: std.ArrayList(*Menu),
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(id: []const u8, position: [2]f32, size: [2]f32, flags: c.ImGuiWindowFlags) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .menus = std.ArrayList(*Menu).init(std.heap.page_allocator),
+            .flags = flags,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        for (self.menus.items) |menu| {
+            menu.deinit();
+        }
+        self.menus.deinit();
+    }
+
+    pub fn addMenu(self: *Self, menu: *Menu) !void {
+        try self.menus.append(menu);
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        if (c.igBeginMainMenuBar()) {
+            for (self.menus.items) |menu| {
+                try menu.render();
+            }
+            c.igEndMainMenuBar();
+        }
+    }
+};
+
+pub const Menu = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    items: std.ArrayList(*MenuItem),
+    enabled: bool,
+
+    pub fn init(id: []const u8, label: []const u8, position: [2]f32, size: [2]f32) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .items = std.ArrayList(*MenuItem).init(std.heap.page_allocator),
+            .enabled = true,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        for (self.items.items) |item| {
+            item.deinit();
+        }
+        self.items.deinit();
+    }
+
+    pub fn addItem(self: *Self, item: *MenuItem) !void {
+        try self.items.append(item);
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        if (c.igBeginMenu(self.label.ptr, self.enabled)) {
+            for (self.items.items) |item| {
+                try item.render();
+            }
+            c.igEndMenu();
+        }
+    }
+};
+
+pub const MenuItem = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    shortcut: ?[]const u8,
+    selected: *bool,
+    enabled: bool,
+    callback: ?*const fn () void,
+
+    pub fn init(id: []const u8, label: []const u8, shortcut: ?[]const u8, selected: *bool, position: [2]f32, size: [2]f32, enabled: bool, callback: ?*const fn () void) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .shortcut = shortcut,
+            .selected = selected,
+            .enabled = enabled,
+            .callback = callback,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        _ = self;
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        if (c.igMenuItem(self.label.ptr, if (self.shortcut) |s| s.ptr else null, self.selected, self.enabled)) {
+            if (self.callback) |cb| {
+                cb();
+            }
+        }
+    }
+};
+
+pub const ContextMenu = struct {
+    const Self = @This();
+
+    widget: Widget,
+    items: std.ArrayList(*MenuItem),
+    mouse_pos: [2]f32,
+
+    pub fn init(id: []const u8, position: [2]f32, size: [2]f32) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .items = std.ArrayList(*MenuItem).init(std.heap.page_allocator),
+            .mouse_pos = position,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        for (self.items.items) |item| {
+            item.deinit();
+        }
+        self.items.deinit();
+    }
+
+    pub fn addItem(self: *Self, item: *MenuItem) !void {
+        try self.items.append(item);
+    }
+
+    pub fn setMousePosition(self: *Self, pos: [2]f32) void {
+        self.mouse_pos = pos;
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        c.igSetNextWindowPos(c.ImVec2{ .x = self.mouse_pos[0], .y = self.mouse_pos[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
+        
+        if (c.igBeginPopupContextWindow(null, c.ImGuiPopupFlags_MouseButtonRight)) {
+            for (self.items.items) |item| {
+                try item.render();
+            }
+            c.igEndPopup();
+        }
+    }
+};
+
+pub const Popup = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    content: std.ArrayList(*Widget),
+    is_open: bool,
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(id: []const u8, label: []const u8, position: [2]f32, size: [2]f32, flags: c.ImGuiWindowFlags) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .content = std.ArrayList(*Widget).init(std.heap.page_allocator),
+            .is_open = false,
+            .flags = flags,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.content.deinit();
+    }
+
+    pub fn addContent(self: *Self, widget: *Widget) !void {
+        try self.content.append(widget);
+    }
+
+    pub fn open(self: *Self) void {
+        self.is_open = true;
+    }
+
+    pub fn close(self: *Self) void {
+        self.is_open = false;
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        if (self.is_open) {
+            c.igSetNextWindowPos(c.ImVec2{ .x = self.widget.position[0], .y = self.widget.position[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
+            c.igSetNextWindowSize(c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] }, c.ImGuiCond_FirstUseEver);
+            
+            if (c.igBeginPopupModal(self.label.ptr, &self.is_open, self.flags)) {
+                for (self.content.items) |content| {
+                    try content.render();
+                }
+                c.igEndPopup();
+            }
+        }
+    }
+};
+
+pub const Toast = struct {
+    const Self = @This();
+
+    widget: Widget,
+    message: []const u8,
+    duration: f32,
+    type: ToastType,
+    is_visible: bool,
+    start_time: f32,
+
+    pub const ToastType = enum {
+        Info,
+        Success,
+        Warning,
+        Error,
+    };
+
+    pub fn init(id: []const u8, message: []const u8, position: [2]f32, size: [2]f32, duration: f32, type: ToastType) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .message = message,
+            .duration = duration,
+            .type = type,
+            .is_visible = false,
+            .start_time = 0.0,
+        };
+    }
+
+    pub fn show(self: *Self, current_time: f32) void {
+        self.is_visible = true;
+        self.start_time = current_time;
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        if (self.is_visible) {
+            const current_time = c.igGetTime();
+            const elapsed = current_time - self.start_time;
+            
+            if (elapsed < self.duration) {
+                const alpha = 1.0 - (elapsed / self.duration);
+                const color = switch (self.type) {
+                    .Info => .{ 0.0, 0.5, 1.0, alpha },
+                    .Success => .{ 0.0, 0.8, 0.0, alpha },
+                    .Warning => .{ 1.0, 0.8, 0.0, alpha },
+                    .Error => .{ 1.0, 0.0, 0.0, alpha },
+                };
+
+                c.igPushStyleColor(c.ImGuiCol_WindowBg, c.ImVec4{ .x = color[0], .y = color[1], .z = color[2], .w = color[3] });
+                c.igSetNextWindowPos(c.ImVec2{ .x = self.widget.position[0], .y = self.widget.position[1] }, c.ImGuiCond_Always, c.ImVec2{ .x = 0, .y = 0 });
+                
+                if (c.igBegin("##toast", null, c.ImGuiWindowFlags_NoDecoration | c.ImGuiWindowFlags_AlwaysAutoResize | c.ImGuiWindowFlags_NoSavedSettings | c.ImGuiWindowFlags_NoFocusOnAppearing | c.ImGuiWindowFlags_NoNav)) {
+                    c.igText(self.message.ptr);
+                }
+                c.igEnd();
+                c.igPopStyleColor(1);
+            } else {
+                self.is_visible = false;
+            }
+        }
+    }
 }; 

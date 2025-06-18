@@ -10,6 +10,13 @@ pub const WidgetsExample = struct {
 
     renderer: *ImGuiRenderer,
     window: widgets.Window,
+    menu_bar: widgets.MenuBar,
+    file_menu: widgets.Menu,
+    edit_menu: widgets.Menu,
+    view_menu: widgets.Menu,
+    context_menu: widgets.ContextMenu,
+    popup: widgets.Popup,
+    toast: widgets.Toast,
     button: widgets.Button,
     slider: widgets.Slider,
     checkbox: widgets.Checkbox,
@@ -42,6 +49,9 @@ pub const WidgetsExample = struct {
     selected_tab: usize,
     current_path: [1024]u8,
     selected_file: [1024]u8,
+    file_menu_selected: bool,
+    edit_menu_selected: bool,
+    view_menu_selected: bool,
 
     pub fn init(renderer: *ImGuiRenderer) !Self {
         var self = Self{
@@ -53,6 +63,13 @@ pub const WidgetsExample = struct {
                 .{ 800, 1000 },
                 c.ImGuiWindowFlags_None,
             ),
+            .menu_bar = undefined,
+            .file_menu = undefined,
+            .edit_menu = undefined,
+            .view_menu = undefined,
+            .context_menu = undefined,
+            .popup = undefined,
+            .toast = undefined,
             .button = undefined,
             .slider = undefined,
             .checkbox = undefined,
@@ -85,6 +102,9 @@ pub const WidgetsExample = struct {
             .selected_tab = 0,
             .current_path = undefined,
             .selected_file = undefined,
+            .file_menu_selected = false,
+            .edit_menu_selected = false,
+            .view_menu_selected = false,
         };
 
         // Initialize plot values with a sine wave
@@ -280,7 +300,133 @@ pub const WidgetsExample = struct {
             c.ImGuiTreeNodeFlags_None,
         );
 
+        // Initialize menu bar
+        self.menu_bar = widgets.MenuBar.init(
+            "example_menu_bar",
+            .{ 0, 0 },
+            .{ 800, 30 },
+            c.ImGuiWindowFlags_None,
+        );
+
+        // Initialize menus
+        self.file_menu = widgets.Menu.init(
+            "example_file_menu",
+            "File",
+            .{ 0, 0 },
+            .{ 100, 30 },
+        );
+
+        self.edit_menu = widgets.Menu.init(
+            "example_edit_menu",
+            "Edit",
+            .{ 0, 0 },
+            .{ 100, 30 },
+        );
+
+        self.view_menu = widgets.Menu.init(
+            "example_view_menu",
+            "View",
+            .{ 0, 0 },
+            .{ 100, 30 },
+        );
+
+        // Add menu items
+        const new_file_item = widgets.MenuItem.init(
+            "new_file",
+            "New",
+            "Ctrl+N",
+            &self.file_menu_selected,
+            .{ 0, 0 },
+            .{ 100, 30 },
+            true,
+            newFileCallback,
+        );
+
+        const open_file_item = widgets.MenuItem.init(
+            "open_file",
+            "Open",
+            "Ctrl+O",
+            &self.file_menu_selected,
+            .{ 0, 0 },
+            .{ 100, 30 },
+            true,
+            openFileCallback,
+        );
+
+        const save_file_item = widgets.MenuItem.init(
+            "save_file",
+            "Save",
+            "Ctrl+S",
+            &self.file_menu_selected,
+            .{ 0, 0 },
+            .{ 100, 30 },
+            true,
+            saveFileCallback,
+        );
+
+        try self.file_menu.addItem(&new_file_item);
+        try self.file_menu.addItem(&open_file_item);
+        try self.file_menu.addItem(&save_file_item);
+
+        // Add menus to menu bar
+        try self.menu_bar.addMenu(&self.file_menu);
+        try self.menu_bar.addMenu(&self.edit_menu);
+        try self.menu_bar.addMenu(&self.view_menu);
+
+        // Initialize context menu
+        self.context_menu = widgets.ContextMenu.init(
+            "example_context_menu",
+            .{ 0, 0 },
+            .{ 200, 30 },
+        );
+
+        const context_item = widgets.MenuItem.init(
+            "context_item",
+            "Context Action",
+            null,
+            &self.file_menu_selected,
+            .{ 0, 0 },
+            .{ 200, 30 },
+            true,
+            contextMenuCallback,
+        );
+
+        try self.context_menu.addItem(&context_item);
+
+        // Initialize popup
+        self.popup = widgets.Popup.init(
+            "example_popup",
+            "Example Popup",
+            .{ 400, 300 },
+            .{ 300, 200 },
+            c.ImGuiWindowFlags_None,
+        );
+
+        const popup_text = widgets.Text.init(
+            "popup_text",
+            "This is a popup window!",
+            .{ 10, 10 },
+            .{ 280, 30 },
+            .{ 1.0, 1.0, 1.0, 1.0 },
+        );
+
+        try self.popup.addContent(&popup_text.widget);
+
+        // Initialize toast
+        self.toast = widgets.Toast.init(
+            "example_toast",
+            "Operation completed successfully!",
+            .{ 10, 50 },
+            .{ 300, 50 },
+            3.0,
+            .Success,
+        );
+
         // Add widgets to window
+        try self.window.addChild(&self.menu_bar.widget);
+        try self.window.addChild(&self.context_menu.widget);
+        try self.window.addChild(&self.popup.widget);
+        try self.window.addChild(&self.toast.widget);
         try self.window.addChild(&self.button.widget);
         try self.window.addChild(&self.slider.widget);
         try self.window.addChild(&self.checkbox.widget);
@@ -308,6 +454,13 @@ pub const WidgetsExample = struct {
 
     pub fn deinit(self: *Self) void {
         self.window.deinit();
+        self.menu_bar.deinit();
+        self.file_menu.deinit();
+        self.edit_menu.deinit();
+        self.view_menu.deinit();
+        self.context_menu.deinit();
+        self.popup.deinit();
+        self.toast.deinit();
         self.collapsing_header.deinit();
         self.tree_node.deinit();
     }
@@ -327,6 +480,11 @@ pub const WidgetsExample = struct {
         for (self.table_data, 0..) |*row, i| {
             row[1] = @sin(@as(f32, @floatFromInt(i + self.frame_count)) * 0.1);
             row[2] = @cos(@as(f32, @floatFromInt(i + self.frame_count)) * 0.1);
+        }
+
+        // Update toast visibility based on some condition
+        if (self.frame_count % 300 == 0) { // Show toast every 5 seconds
+            self.toast.show(c.igGetTime());
         }
     }
 };
@@ -373,4 +531,20 @@ fn fileDialogCallback(file_path: []const u8) void {
 
 fn tabBarCallback(tab_index: usize) void {
     std.log.info("Tab selected: {}", .{tab_index});
+}
+
+fn newFileCallback() void {
+    std.log.info("New file action triggered", .{});
+}
+
+fn openFileCallback() void {
+    std.log.info("Open file action triggered", .{});
+}
+
+fn saveFileCallback() void {
+    std.log.info("Save file action triggered", .{});
+}
+
+fn contextMenuCallback() void {
+    std.log.info("Context menu action triggered", .{});
 } 

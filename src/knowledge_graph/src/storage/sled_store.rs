@@ -31,7 +31,7 @@ impl SledStore {
 }
 
 impl Storage for SledStore {
-    type Batch = SledWriteBatch;
+    type Batch<'a> = SledWriteBatch where Self: 'a;
 
     fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
         SledStore::open(path)
@@ -84,49 +84,49 @@ impl Storage for SledStore {
         Box::new(filtered)
     }
 
-    fn batch(&self) -> Self::Batch {
+    fn batch(&self) -> Self::Batch<'_> {
         SledWriteBatch::new(Arc::clone(&self.db))
     }
 }
 
+// Implement WriteBatchExt for SledStore
 impl WriteBatchExt for SledStore {
-    type Batch = SledWriteBatch;
+    type Batch<'a> = SledWriteBatch where Self: 'a;
 
-    fn batch(&self) -> Self::Batch {
-        SledWriteBatch::new(self.db.clone())
+    // Use fully qualified syntax to disambiguate between Storage and WriteBatchExt batch methods
+    fn batch(&self) -> Self::Batch<'_> {
+        <Self as Storage>::batch(self)
     }
-
+    
     fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
         if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
             let db = batch.db.clone();
             
-            // Execute the transaction
-            let result = db.transaction(|tx| {
-                for op in &batch.ops {
-                    match op {
-                        BatchOp::Put(key, value) => {
-                            tx.insert(key, value)?;
-                        }
-                        BatchOp::Delete(key) => {
-                            tx.remove(key)?;
-                        }
-                    }
-                }
-                Ok::<_, sled::transaction::ConflictableTransactionError<sled::transaction::TransactionError>>(())
-            });
+            // Create a new sled batch
+            let mut sled_batch = sled::Batch::default();
             
-            match result {
-                Ok(_) => {
-                    // Ensure all changes are persisted to disk
-                    db.flush()?;
-                    Ok(())
+            // Apply all operations to the sled batch
+            for op in &batch.ops {
+                match op {
+                    BatchOp::Put(k, v) => { sled_batch.insert(k.clone(), v.clone()); }
+                    BatchOp::Delete(k) => { sled_batch.remove(k); }
                 }
-                Err(e) => Err(crate::error::KnowledgeGraphError::TransactionError(e.to_string()))
             }
+            
+            // Apply the batch to the database
+            db.apply_batch(sled_batch)
+                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+                
+            // Ensure all changes are persisted to disk
+            db.flush()
+                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+                
+            Ok(())
         } else {
-            Err(crate::error::KnowledgeGraphError::InvalidOperation("Invalid batch type".to_string()))
+            Err(crate::error::KnowledgeGraphError::from("Failed to downcast batch to SledWriteBatch"))
         }
     }
+}
 }
 
 /// Sled write batch wrapper
@@ -148,52 +148,22 @@ enum BatchOp {
 unsafe impl Send for BatchOp {}
 unsafe impl Sync for BatchOp {}
 
-impl WriteBatchExt for SledWriteBatch {
-    type Batch = SledWriteBatch;
-    
-    fn batch(&self) -> Self::Batch {
-        SledWriteBatch::new(Arc::clone(&self.db))
-    }
-    
-    fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
-        if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
-            let db = Arc::clone(&batch.db);
-            let ops = batch.ops.clone();
-            
-            // Create a new sled batch
-            let mut sled_batch = sled::Batch::default();
-            
-            // Apply all operations to the sled batch
-            for op in ops {
-                match op {
-                    BatchOp::Put(k, v) => sled_batch.insert(k, v),
-                    BatchOp::Delete(k) => sled_batch.remove(k),
-                }
-            }
-            
-            // Apply the batch to the database
-            db.apply_batch(sled_batch)
-                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
-            Ok(())
-        } else {
-            Err(crate::error::KnowledgeGraphError::from("Failed to downcast batch to SledWriteBatch"))
-        }
-    }
-}
+// SledWriteBatch implements WriteBatch, not WriteBatchExt
+// The WriteBatchExt implementation is only for SledStore
 
 impl WriteBatch for SledWriteBatch {
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.put(IVec::from(key), IVec::from(value));
+        self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
         Ok(())
     }
     
     fn delete(&mut self, key: &[u8]) -> Result<()> {
-        self.delete(IVec::from(key));
+        self.ops.push(BatchOp::Delete(IVec::from(key)));
         Ok(())
     }
     
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.put(IVec::from(key), IVec::from(value));
+        self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
         Ok(())
     }
     
@@ -215,15 +185,20 @@ impl WriteBatch for SledWriteBatch {
         // Apply all operations to the sled batch
         for op in ops {
             match op {
-                BatchOp::Put(k, v) => sled_batch.insert(k, v),
-                BatchOp::Delete(k) => sled_batch.remove(k),
-            Ok(_) => {
-                // Ensure all changes are persisted to disk
-                db.flush()?;
-                Ok(())
+                BatchOp::Put(k, v) => { sled_batch.insert(k, v); }
+                BatchOp::Delete(k) => { sled_batch.remove(k); }
             }
-            Err(e) => Err(crate::error::KnowledgeGraphError::TransactionError(e.to_string()))
         }
+        
+        // Apply the batch to the database
+        db.apply_batch(sled_batch)
+            .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+        
+        // Ensure all changes are persisted to disk
+        db.flush()
+            .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+            
+        Ok(())
     }
 }
 
