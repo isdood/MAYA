@@ -97,7 +97,7 @@ impl Default for CacheConfig {
 pub struct CachedStore<S> {
     inner: S,
     cache: Arc<RwLock<LruCache<Vec<u8>, Vec<u8>>>>,
-    metrics: CacheMetrics,
+    metrics: Arc<CacheMetrics>,
     config: CacheConfig,
     // For read-ahead functionality
     last_keys: RwLock<VecDeque<Vec<u8>>>,

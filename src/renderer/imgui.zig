@@ -11,6 +11,91 @@ const glfw = @import("glfw");
 const Window = @import("window.zig").Window;
 const VulkanRenderer = @import("vulkan.zig").VulkanRenderer;
 
+pub const ImGuiStyle = struct {
+    colors: struct {
+        text: [4]f32 = .{ 1.0, 1.0, 1.0, 1.0 },
+        text_disabled: [4]f32 = .{ 0.5, 0.5, 0.5, 1.0 },
+        window_bg: [4]f32 = .{ 0.06, 0.06, 0.06, 0.94 },
+        child_bg: [4]f32 = .{ 0.0, 0.0, 0.0, 0.0 },
+        popup_bg: [4]f32 = .{ 0.08, 0.08, 0.08, 0.94 },
+        border: [4]f32 = .{ 0.43, 0.43, 0.50, 0.50 },
+        border_shadow: [4]f32 = .{ 0.0, 0.0, 0.0, 0.0 },
+        frame_bg: [4]f32 = .{ 0.16, 0.29, 0.48, 0.54 },
+        frame_bg_hovered: [4]f32 = .{ 0.26, 0.59, 0.98, 0.40 },
+        frame_bg_active: [4]f32 = .{ 0.26, 0.59, 0.98, 0.67 },
+        title_bg: [4]f32 = .{ 0.04, 0.04, 0.04, 1.00 },
+        title_bg_active: [4]f32 = .{ 0.16, 0.29, 0.48, 1.00 },
+        title_bg_collapsed: [4]f32 = .{ 0.0, 0.0, 0.0, 0.51 },
+        menu_bar_bg: [4]f32 = .{ 0.14, 0.14, 0.14, 1.00 },
+        scrollbar_bg: [4]f32 = .{ 0.02, 0.02, 0.02, 0.53 },
+        scrollbar_grab: [4]f32 = .{ 0.31, 0.31, 0.31, 1.00 },
+        scrollbar_grab_hovered: [4]f32 = .{ 0.41, 0.41, 0.41, 1.00 },
+        scrollbar_grab_active: [4]f32 = .{ 0.51, 0.51, 0.51, 1.00 },
+        check_mark: [4]f32 = .{ 0.26, 0.59, 0.98, 1.00 },
+        slider_grab: [4]f32 = .{ 0.24, 0.52, 0.88, 1.00 },
+        slider_grab_active: [4]f32 = .{ 0.26, 0.59, 0.98, 1.00 },
+        button: [4]f32 = .{ 0.26, 0.59, 0.98, 0.40 },
+        button_hovered: [4]f32 = .{ 0.26, 0.59, 0.98, 0.67 },
+        button_active: [4]f32 = .{ 0.06, 0.53, 0.98, 1.00 },
+        header: [4]f32 = .{ 0.26, 0.59, 0.98, 0.31 },
+        header_hovered: [4]f32 = .{ 0.26, 0.59, 0.98, 0.80 },
+        header_active: [4]f32 = .{ 0.26, 0.59, 0.98, 1.00 },
+        separator: [4]f32 = .{ 0.43, 0.43, 0.50, 0.50 },
+        separator_hovered: [4]f32 = .{ 0.41, 0.42, 0.44, 1.00 },
+        separator_active: [4]f32 = .{ 0.26, 0.59, 0.98, 1.00 },
+        resize_grip: [4]f32 = .{ 0.26, 0.59, 0.98, 0.20 },
+        resize_grip_hovered: [4]f32 = .{ 0.26, 0.59, 0.98, 0.67 },
+        resize_grip_active: [4]f32 = .{ 0.26, 0.59, 0.98, 1.00 },
+        tab: [4]f32 = .{ 0.18, 0.35, 0.58, 0.86 },
+        tab_hovered: [4]f32 = .{ 0.26, 0.59, 0.98, 0.80 },
+        tab_active: [4]f32 = .{ 0.20, 0.41, 0.68, 1.00 },
+        tab_unfocused: [4]f32 = .{ 0.07, 0.10, 0.15, 0.97 },
+        tab_unfocused_active: [4]f32 = .{ 0.14, 0.26, 0.42, 1.00 },
+        plot_lines: [4]f32 = .{ 0.61, 0.61, 0.61, 1.00 },
+        plot_lines_hovered: [4]f32 = .{ 1.00, 0.43, 0.35, 1.00 },
+        plot_histogram: [4]f32 = .{ 0.90, 0.70, 0.00, 1.00 },
+        plot_histogram_hovered: [4]f32 = .{ 1.00, 0.60, 0.00, 1.00 },
+        text_selected_bg: [4]f32 = .{ 0.26, 0.59, 0.98, 0.35 },
+        drag_drop_target: [4]f32 = .{ 1.00, 1.00, 0.00, 0.90 },
+        nav_highlight: [4]f32 = .{ 0.26, 0.59, 0.98, 1.00 },
+        nav_windowing_highlight: [4]f32 = .{ 1.00, 1.00, 1.00, 0.70 },
+        nav_windowing_dim_bg: [4]f32 = .{ 0.80, 0.80, 0.80, 0.20 },
+        modal_window_dim_bg: [4]f32 = .{ 0.80, 0.80, 0.80, 0.35 },
+    },
+    spacing: f32 = 8.0,
+    window_padding: [2]f32 = .{ 8.0, 8.0 },
+    window_rounding: f32 = 0.0,
+    window_border_size: f32 = 1.0,
+    window_min_size: [2]f32 = .{ 32.0, 32.0 },
+    window_title_align: [2]f32 = .{ 0.0, 0.5 },
+    child_rounding: f32 = 0.0,
+    child_border_size: f32 = 1.0,
+    popup_rounding: f32 = 0.0,
+    popup_border_size: f32 = 1.0,
+    frame_padding: [2]f32 = .{ 4.0, 3.0 },
+    frame_rounding: f32 = 0.0,
+    frame_border_size: f32 = 0.0,
+    item_spacing: [2]f32 = .{ 8.0, 4.0 },
+    item_inner_spacing: [2]f32 = .{ 4.0, 4.0 },
+    indent_spacing: f32 = 21.0,
+    columns_min_spacing: f32 = 6.0,
+    scrollbar_size: f32 = 14.0,
+    scrollbar_rounding: f32 = 9.0,
+    grab_min_size: f32 = 10.0,
+    grab_rounding: f32 = 0.0,
+    tab_rounding: f32 = 4.0,
+    tab_border_size: f32 = 0.0,
+    button_text_align: [2]f32 = .{ 0.5, 0.5 },
+    selectable_text_align: [2]f32 = .{ 0.0, 0.0 },
+    display_window_padding: [2]f32 = .{ 19.0, 19.0 },
+    display_safe_area_padding: [2]f32 = .{ 3.0, 3.0 },
+    mouse_cursor_scale: f32 = 1.0,
+    anti_aliased_lines: bool = true,
+    anti_aliased_fill: bool = true,
+    curve_tessellation_tol: f32 = 1.25,
+    circle_segment_max_error: f32 = 1.60,
+};
+
 pub const ImGuiRenderer = struct {
     const Self = @This();
 
@@ -33,9 +118,12 @@ pub const ImGuiRenderer = struct {
     allocator: std.mem.Allocator,
     logger: std.log.Logger,
 
+    style: ImGuiStyle,
+    widgets: std.ArrayList(Widget),
+
     // Initialize ImGui with Vulkan
-    pub fn init(renderer: *VulkanRenderer, window: *Window) !*Self {
-        var self = try renderer.allocator.create(Self);
+    pub fn init(renderer: *VulkanRenderer, window: *Window, allocator: std.mem.Allocator) !*Self {
+        var self = try allocator.create(Self);
         self.* = Self{
             .descriptor_pool = undefined,
             .render_pass = undefined,
@@ -52,8 +140,10 @@ pub const ImGuiRenderer = struct {
             .index_buffer_memory = undefined,
             .vertex_count = 0,
             .index_count = 0,
-            .allocator = renderer.allocator,
+            .allocator = allocator,
             .logger = std.log.scoped(.imgui),
+            .style = ImGuiStyle{},
+            .widgets = std.ArrayList(Widget).init(allocator),
         };
 
         // Initialize ImGui context
@@ -240,6 +330,9 @@ pub const ImGuiRenderer = struct {
 
         _ = c.ImGui_ImplVulkan_DestroyFontUploadObjects();
 
+        // Apply custom style
+        self.applyStyle();
+
         self.logger.info("ImGui initialized successfully", .{});
         return self;
     }
@@ -277,6 +370,74 @@ pub const ImGuiRenderer = struct {
         vk.vkDestroyBuffer(device, self.index_buffer, null);
         vk.vkFreeMemory(device, self.index_buffer_memory, null);
 
+        self.widgets.deinit();
         self.allocator.destroy(self);
+    }
+
+    fn applyStyle(self: *Self) void {
+        const style = c.igGetStyle();
+        
+        // Apply colors
+        for (self.style.colors) |color, i| {
+            style.*.Colors[i] = c.ImVec4{ .x = color[0], .y = color[1], .z = color[2], .w = color[3] };
+        }
+
+        // Apply other style properties
+        style.*.Spacing = self.style.spacing;
+        style.*.WindowPadding = c.ImVec2{ .x = self.style.window_padding[0], .y = self.style.window_padding[1] };
+        style.*.WindowRounding = self.style.window_rounding;
+        style.*.WindowBorderSize = self.style.window_border_size;
+        style.*.WindowMinSize = c.ImVec2{ .x = self.style.window_min_size[0], .y = self.style.window_min_size[1] };
+        style.*.WindowTitleAlign = c.ImVec2{ .x = self.style.window_title_align[0], .y = self.style.window_title_align[1] };
+        // ... apply other style properties ...
+    }
+
+    pub fn addWidget(self: *Self, widget: Widget) !void {
+        try self.widgets.append(widget);
+    }
+
+    pub fn render(self: *Self) !void {
+        c.igNewFrame();
+        c.ImGui_ImplVulkan_NewFrame();
+        c.ImGui_ImplGlfw_NewFrame();
+
+        // Render all widgets
+        for (self.widgets.items) |*widget| {
+            try widget.render();
+        }
+
+        c.igRender();
+    }
+};
+
+pub const Widget = struct {
+    const Self = @This();
+
+    id: []const u8,
+    position: [2]f32,
+    size: [2]f32,
+    visible: bool,
+    render_fn: *const fn (*Self) anyerror!void,
+
+    pub fn init(id: []const u8, position: [2]f32, size: [2]f32, render_fn: *const fn (*Self) anyerror!void) Self {
+        return Self{
+            .id = id,
+            .position = position,
+            .size = size,
+            .visible = true,
+            .render_fn = render_fn,
+        };
+    }
+
+    pub fn render(self: *Self) !void {
+        if (!self.visible) return;
+
+        c.igSetNextWindowPos(c.ImVec2{ .x = self.position[0], .y = self.position[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
+        c.igSetNextWindowSize(c.ImVec2{ .x = self.size[0], .y = self.size[1] }, c.ImGuiCond_FirstUseEver);
+
+        if (c.igBegin(self.id.ptr, null, c.ImGuiWindowFlags_None)) {
+            try self.render_fn(self);
+        }
+        c.igEnd();
     }
 }; 
