@@ -1,0 +1,95 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/knowledge_graph/**'
+      - 'benchmark/**'
+      - '.github/workflows/benchmarks.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/knowledge_graph/**'
+      - 'benchmark/**'
+      - '.github/workflows/benchmarks.yml'
+  workflow_dispatch:
+
+# Cancel in-progress runs when new commits are pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libssl-dev \
+            pkg-config \
+            libclang-dev \
+            llvm-dev \
+            libclang-12-dev \
+            clang
+      
+      - name: Cache Cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: Run benchmarks
+        run: |
+          cd benchmark
+          python3 run_benchmarks.py
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: |
+            performance_reports/benchmark_results.json
+            performance_reports/performance_report.md
+      
+      - name: Compare with previous results
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'criterion'
+          output-file-path: performance_reports/benchmark_results.json
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          auto-push: true
+          comment-on-alert: true
+          alert-threshold: '200%'  # Alert if performance regresses by more than 200%
+          comment-always: true
+          save-data-file: true
+          data-file-path: gh-pages/benchmarks/data.js
+          external-data-json-path: performance_reports/benchmark_results.json
+          # Only alert on significant changes
+          fail-on-alert: false
+          # Don't fail the build on benchmark failures
+          fail-on-error: false
+          # Don't post a comment if there are no significant changes
+          alert-comment-cc-users: ''
+          # Don't post to GitHub statuses
+          auto-push-benchmark: false

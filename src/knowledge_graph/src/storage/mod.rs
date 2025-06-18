@@ -78,9 +78,13 @@
 //! }
 //! ```
 
-mod sled_store;
+// Make modules public for benchmarks
+pub mod sled_store;
+// Temporarily disable RocksDB for benchmarking
+// pub mod rocksdb_store;
 mod cached_store;
 
+// Re-export public types
 pub use sled_store::SledStore;
 pub use cached_store::{CachedStore, CachedBatch};
 
