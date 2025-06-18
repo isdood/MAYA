@@ -183,16 +183,17 @@ impl WriteBatchExt for SledWriteBatch {
 
 impl WriteBatch for SledWriteBatch {
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.put_serialized(key, value)
+        self.put(IVec::from(key), IVec::from(value));
+        Ok(())
     }
     
     fn delete(&mut self, key: &[u8]) -> Result<()> {
-        self.ops.push(BatchOp::Delete(IVec::from(key)));
+        self.delete(IVec::from(key));
         Ok(())
     }
     
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
+        self.put(IVec::from(key), IVec::from(value));
         Ok(())
     }
     
@@ -205,25 +206,17 @@ impl WriteBatch for SledWriteBatch {
     }
     
     fn commit(self: Box<Self>) -> Result<()> {
-        let batch = *self;
-        let db = batch.db;
+        let db = Arc::clone(&self.db);
+        let ops = self.ops;
         
-        // Execute the transaction
-        let result = db.transaction(|tx| {
-            for op in &batch.ops {
-                match op {
-                    BatchOp::Put(key, value) => {
-                        tx.insert(key, value)?;
-                    }
-                    BatchOp::Delete(key) => {
-                        tx.remove(key)?;
-                    }
-                }
-            }
-            Ok::<_, sled::transaction::ConflictableTransactionError<sled::transaction::TransactionError>>(())
-        });
+        // Create a new sled batch
+        let mut sled_batch = sled::Batch::default();
         
-        match result {
+        // Apply all operations to the sled batch
+        for op in ops {
+            match op {
+                BatchOp::Put(k, v) => sled_batch.insert(k, v),
+                BatchOp::Delete(k) => sled_batch.remove(k),
             Ok(_) => {
                 // Ensure all changes are persisted to disk
                 db.flush()?;

@@ -195,4 +195,424 @@ pub const Window = struct {
         }
         c.igEnd();
     }
+};
+
+pub const Dropdown = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    items: []const []const u8,
+    selected_index: *usize,
+    callback: ?*const fn (usize) void,
+
+    pub fn init(id: []const u8, label: []const u8, items: []const []const u8, selected_index: *usize, position: [2]f32, size: [2]f32, callback: ?*const fn (usize) void) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .items = items,
+            .selected_index = selected_index,
+            .callback = callback,
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        if (c.igBeginCombo(self.label.ptr, self.items[self.selected_index.*].ptr)) {
+            for (self.items, 0..) |item, i| {
+                const is_selected = i == self.selected_index.*;
+                if (c.igSelectable(item.ptr, is_selected)) {
+                    self.selected_index.* = i;
+                    if (self.callback) |cb| {
+                        cb(i);
+                    }
+                }
+                if (is_selected) {
+                    c.igSetItemDefaultFocus();
+                }
+            }
+            c.igEndCombo();
+        }
+    }
+};
+
+pub const ColorPicker = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    color: *[4]f32,
+    flags: c.ImGuiColorEditFlags,
+    callback: ?*const fn ([4]f32) void,
+
+    pub fn init(id: []const u8, label: []const u8, color: *[4]f32, position: [2]f32, size: [2]f32, flags: c.ImGuiColorEditFlags, callback: ?*const fn ([4]f32) void) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .color = color,
+            .flags = flags,
+            .callback = callback,
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        if (c.igColorEdit4(self.label.ptr, &self.color[0], self.flags)) {
+            if (self.callback) |cb| {
+                cb(self.color.*);
+            }
+        }
+    }
+};
+
+pub const InputText = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    buffer: []u8,
+    flags: c.ImGuiInputTextFlags,
+    callback: ?*const fn ([]const u8) void,
+
+    pub fn init(id: []const u8, label: []const u8, buffer: []u8, position: [2]f32, size: [2]f32, flags: c.ImGuiInputTextFlags, callback: ?*const fn ([]const u8) void) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .buffer = buffer,
+            .flags = flags,
+            .callback = callback,
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        if (c.igInputText(self.label.ptr, self.buffer.ptr, self.buffer.len, self.flags, null, null)) {
+            if (self.callback) |cb| {
+                cb(self.buffer);
+            }
+        }
+    }
+};
+
+pub const ProgressBar = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    progress: *f32,
+    overlay_text: ?[]const u8,
+    size: [2]f32,
+
+    pub fn init(id: []const u8, label: []const u8, progress: *f32, position: [2]f32, size: [2]f32, overlay_text: ?[]const u8) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .progress = progress,
+            .overlay_text = overlay_text,
+            .size = size,
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        c.igProgressBar(
+            self.progress.*,
+            c.ImVec2{ .x = self.size[0], .y = self.size[1] },
+            if (self.overlay_text) |text| text.ptr else null,
+        );
+    }
+};
+
+pub const Tooltip = struct {
+    const Self = @This();
+
+    widget: Widget,
+    text: []const u8,
+    delay: f32,
+
+    pub fn init(id: []const u8, text: []const u8, position: [2]f32, size: [2]f32, delay: f32) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .text = text,
+            .delay = delay,
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        c.igSetTooltip(self.text.ptr);
+    }
+};
+
+pub const Separator = struct {
+    const Self = @This();
+
+    widget: Widget,
+
+    pub fn init(id: []const u8, position: [2]f32, size: [2]f32) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        _ = widget;
+        c.igSeparator();
+    }
+};
+
+pub const CollapsingHeader = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    flags: c.ImGuiTreeNodeFlags,
+    children: std.ArrayList(*Widget),
+
+    pub fn init(id: []const u8, label: []const u8, position: [2]f32, size: [2]f32, flags: c.ImGuiTreeNodeFlags) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .flags = flags,
+            .children = std.ArrayList(*Widget).init(std.heap.page_allocator),
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.children.deinit();
+    }
+
+    pub fn addChild(self: *Self, child: *Widget) !void {
+        try self.children.append(child);
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        if (c.igCollapsingHeader(self.label.ptr, self.flags)) {
+            for (self.children.items) |child| {
+                try child.render();
+            }
+        }
+    }
+};
+
+pub const Table = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    columns: []const []const u8,
+    flags: c.ImGuiTableFlags,
+    row_callback: ?*const fn (usize) void,
+    cell_callback: ?*const fn (usize, usize) void,
+
+    pub fn init(id: []const u8, label: []const u8, columns: []const []const u8, position: [2]f32, size: [2]f32, flags: c.ImGuiTableFlags, row_callback: ?*const fn (usize) void, cell_callback: ?*const fn (usize, usize) void) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .columns = columns,
+            .flags = flags,
+            .row_callback = row_callback,
+            .cell_callback = cell_callback,
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        if (c.igBeginTable(self.label.ptr, @intCast(self.columns.len), self.flags)) {
+            // Setup columns
+            for (self.columns) |column| {
+                c.igTableSetupColumn(column.ptr, c.ImGuiTableColumnFlags_None, 0.0);
+            }
+            c.igTableHeadersRow();
+
+            // Render rows
+            var row: usize = 0;
+            while (row < 10) : (row += 1) { // Example: 10 rows
+                c.igTableNextRow(c.ImGuiTableRowFlags_None, 0.0);
+                
+                if (self.row_callback) |cb| {
+                    cb(row);
+                }
+
+                // Render cells
+                for (self.columns, 0..) |_, col| {
+                    c.igTableNextColumn();
+                    if (self.cell_callback) |cb| {
+                        cb(row, col);
+                    }
+                }
+            }
+            c.igEndTable();
+        }
+    }
+};
+
+pub const DragDrop = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    payload_type: []const u8,
+    data: []const u8,
+    callback: ?*const fn ([]const u8) void,
+
+    pub fn init(id: []const u8, label: []const u8, payload_type: []const u8, data: []const u8, position: [2]f32, size: [2]f32, callback: ?*const fn ([]const u8) void) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .payload_type = payload_type,
+            .data = data,
+            .callback = callback,
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        // Source
+        if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
+            c.igSetDragDropPayload(self.payload_type.ptr, self.data.ptr, self.data.len, c.ImGuiCond_Once);
+            c.igText(self.label.ptr);
+            c.igEndDragDropSource();
+        }
+
+        // Target
+        if (c.igBeginDragDropTarget()) {
+            if (c.igAcceptDragDropPayload(self.payload_type.ptr, c.ImGuiDragDropFlags_None)) |payload| {
+                if (self.callback) |cb| {
+                    const data = payload.data[0..payload.data_size];
+                    cb(data);
+                }
+            }
+            c.igEndDragDropTarget();
+        }
+    }
+};
+
+pub const FileDialog = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    current_path: []u8,
+    selected_file: []u8,
+    file_filter: []const u8,
+    callback: ?*const fn ([]const u8) void,
+    is_open: bool,
+
+    pub fn init(id: []const u8, label: []const u8, current_path: []u8, selected_file: []u8, file_filter: []const u8, position: [2]f32, size: [2]f32, callback: ?*const fn ([]const u8) void) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .current_path = current_path,
+            .selected_file = selected_file,
+            .file_filter = file_filter,
+            .callback = callback,
+            .is_open = false,
+        };
+    }
+
+    pub fn open(self: *Self) void {
+        self.is_open = true;
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        if (self.is_open) {
+            if (c.igBegin(self.label.ptr, &self.is_open, c.ImGuiWindowFlags_None)) {
+                // Current path display
+                c.igText("Current Path: %s", self.current_path.ptr);
+                
+                // File filter
+                c.igText("Filter: %s", self.file_filter.ptr);
+                
+                // File list (simplified example)
+                if (c.igButton("Select File", c.ImVec2{ .x = 100, .y = 30 })) {
+                    if (self.callback) |cb| {
+                        cb(self.selected_file);
+                    }
+                    self.is_open = false;
+                }
+            }
+            c.igEnd();
+        }
+    }
+};
+
+pub const TabBar = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    tabs: []const []const u8,
+    selected_tab: *usize,
+    flags: c.ImGuiTabBarFlags,
+    callback: ?*const fn (usize) void,
+
+    pub fn init(id: []const u8, label: []const u8, tabs: []const []const u8, selected_tab: *usize, position: [2]f32, size: [2]f32, flags: c.ImGuiTabBarFlags, callback: ?*const fn (usize) void) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .tabs = tabs,
+            .selected_tab = selected_tab,
+            .flags = flags,
+            .callback = callback,
+        };
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        if (c.igBeginTabBar(self.label.ptr, self.flags)) {
+            for (self.tabs, 0..) |tab, i| {
+                if (c.igBeginTabItem(tab.ptr)) {
+                    self.selected_tab.* = i;
+                    if (self.callback) |cb| {
+                        cb(i);
+                    }
+                    c.igEndTabItem();
+                }
+            }
+            c.igEndTabBar();
+        }
+    }
+};
+
+pub const TreeNode = struct {
+    const Self = @This();
+
+    widget: Widget,
+    label: []const u8,
+    flags: c.ImGuiTreeNodeFlags,
+    children: std.ArrayList(*Widget),
+
+    pub fn init(id: []const u8, label: []const u8, position: [2]f32, size: [2]f32, flags: c.ImGuiTreeNodeFlags) Self {
+        return Self{
+            .widget = Widget.init(id, position, size, render),
+            .label = label,
+            .flags = flags,
+            .children = std.ArrayList(*Widget).init(std.heap.page_allocator),
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.children.deinit();
+    }
+
+    pub fn addChild(self: *Self, child: *Widget) !void {
+        try self.children.append(child);
+    }
+
+    fn render(widget: *Widget) !void {
+        const self = @fieldParentPtr(Self, "widget", widget);
+        
+        if (c.igTreeNodeEx(self.label.ptr, self.flags)) {
+            for (self.children.items) |child| {
+                try child.render();
+            }
+            c.igTreePop();
+        }
+    }
 }; 

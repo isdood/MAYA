@@ -101,7 +101,7 @@ pub trait Storage: Send + Sync + 'static {
     fn open<P: AsRef<Path>>(path: P) -> Result<Self> where Self: Sized;
     
     /// Get a value by key
-    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>>;
+    fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>>;
     
     /// Insert or update a key-value pair
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()>;

@@ -218,16 +218,15 @@ where
         // Cache miss, get from storage
         self.metrics.record_miss();
         if let Some(value) = self.inner.get(key)? {
-            // Serialize the value to store in cache
-            if let Ok(serialized) = bincode::serialize(&value) {
-                self.metrics.record_write(serialized.len());
-                
-                // Update cache
-                self.cache.write().put(key.to_vec(), serialized);
-                
-                // Update read-ahead keys
-                self.update_read_ahead_keys(key);
-            }
+            // Store the raw bytes in the cache
+            let bytes = bincode::serialize(&value).map_err(|e| Error::new(e))?;
+            self.metrics.record_write(bytes.len());
+            
+            // Update cache
+            self.cache.write().put(key.to_vec(), bytes);
+            
+            // Update read-ahead keys
+            self.update_read_ahead_keys(key);
             
             Ok(Some(value))
         } else {
@@ -278,6 +277,9 @@ where
         CachedBatch {
             inner: <S as Storage>::batch(&self.inner),
             cache: self.cache.clone(),
+            metrics: self.metrics.clone(),
+            pending_puts: HashMap::new(),
+            pending_deletes: HashSet::new(),
         }
     }
 }
