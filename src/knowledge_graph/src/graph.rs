@@ -106,8 +106,9 @@ pub struct KnowledgeGraph<S: Storage> {
 
 impl<S> KnowledgeGraph<S> 
 where
-    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
-    <S as Storage>::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt,
+    for<'a> <S as Storage>::Batch<'a>: WriteBatch + 'static,
+    for<'a> <S as WriteBatchExt>::Batch<'a>: WriteBatch + 'static,
     for<'a> &'a S: 'a,
 {
     /// Create or open a knowledge graph at the given path

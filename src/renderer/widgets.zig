@@ -889,4 +889,211 @@ pub const Toast = struct {
             }
         }
     }
+};
+
+pub const Toolbar = struct {
+    const Self = @This();
+
+    widget: Widget,
+    items: std.ArrayList(*Widget),
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .items = std.ArrayList(*Widget).init(std.heap.page_allocator),
+            .flags = flags,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.items.deinit();
+    }
+
+    pub fn addItem(self: *Self, item: *Widget) !void {
+        try self.items.append(item);
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginChild(self.widget.id, .{ self.widget.size[0], self.widget.size[1] }, true, self.flags)) {
+            for (self.items.items) |item| {
+                item.render();
+                c.igSameLine(0, 4);
+            }
+        }
+        c.igEndChild();
+    }
+};
+
+pub const StatusBar = struct {
+    const Self = @This();
+
+    widget: Widget,
+    items: std.ArrayList(*Widget),
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .items = std.ArrayList(*Widget).init(std.heap.page_allocator),
+            .flags = flags,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.items.deinit();
+    }
+
+    pub fn addItem(self: *Self, item: *Widget) !void {
+        try self.items.append(item);
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igBeginChild(self.widget.id, .{ self.widget.size[0], self.widget.size[1] }, true, self.flags)) {
+            for (self.items.items) |item| {
+                item.render();
+                c.igSameLine(0, 4);
+            }
+        }
+        c.igEndChild();
+    }
+};
+
+pub const Tooltip = struct {
+    const Self = @This();
+
+    widget: Widget,
+    text: [*:0]const u8,
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        text: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .text = text,
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        if (c.igIsItemHovered(c.ImGuiHoveredFlags_None)) {
+            c.igBeginTooltip();
+            c.igText(self.text);
+            c.igEndTooltip();
+        }
+    }
+};
+
+pub const Separator = struct {
+    const Self = @This();
+
+    widget: Widget,
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        c.igSeparator();
+    }
+};
+
+pub const Spacing = struct {
+    const Self = @This();
+
+    widget: Widget,
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        c.igSpacing();
+    }
+};
+
+pub const Dummy = struct {
+    const Self = @This();
+
+    widget: Widget,
+    flags: c.ImGuiWindowFlags,
+
+    pub fn init(
+        id: [*:0]const u8,
+        pos: [2]f32,
+        size: [2]f32,
+        flags: c.ImGuiWindowFlags,
+    ) Self {
+        return Self{
+            .widget = Widget.init(
+                id,
+                pos,
+                size,
+                flags,
+            ),
+            .flags = flags,
+        };
+    }
+
+    pub fn render(self: *Self) void {
+        c.igDummy(.{ self.widget.size[0], self.widget.size[1] });
+    }
 }; 

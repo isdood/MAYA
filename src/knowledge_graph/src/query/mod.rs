@@ -24,8 +24,9 @@ pub struct QueryResult {
 /// Builder for constructing graph queries
 pub struct QueryBuilder<'a, S>
 where
-    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
-    <S as Storage>::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt,
+    for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
+    for<'b> <S as WriteBatchExt>::Batch<'b>: WriteBatch + 'static,
     for<'b> &'b S: 'b,
 {
     graph: &'a KnowledgeGraph<S>,
@@ -38,9 +39,9 @@ where
 
 impl<'a, S> QueryBuilder<'a, S>
 where
-    S: Storage<Batch = <S as WriteBatchExt>::Batch> + WriteBatchExt,
-    <S as Storage>::Batch: WriteBatch + 'static,
-    <S as WriteBatchExt>::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt,
+    for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
+    for<'b> <S as WriteBatchExt>::Batch<'b>: WriteBatch + 'static,
     for<'b> &'b S: 'b,
 {
     /// Create a new query builder
@@ -151,8 +152,9 @@ where
 
 impl<S> QueryExt<S> for KnowledgeGraph<S>
 where
-    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
-    <S as Storage>::Batch: WriteBatch + 'static,
+    S: Storage + WriteBatchExt,
+    for<'a> <S as Storage>::Batch<'a>: WriteBatch + 'static,
+    for<'a> <S as WriteBatchExt>::Batch<'a>: WriteBatch + 'static,
     for<'a> &'a S: 'a,
 {
     fn query(&self) -> QueryBuilder<S> {

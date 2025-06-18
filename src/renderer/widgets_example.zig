@@ -10,6 +10,8 @@ pub const WidgetsExample = struct {
 
     renderer: *ImGuiRenderer,
     window: widgets.Window,
+    toolbar: widgets.Toolbar,
+    status_bar: widgets.StatusBar,
     menu_bar: widgets.MenuBar,
     file_menu: widgets.Menu,
     edit_menu: widgets.Menu,
@@ -52,6 +54,8 @@ pub const WidgetsExample = struct {
     file_menu_selected: bool,
     edit_menu_selected: bool,
     view_menu_selected: bool,
+    toolbar_selected: bool,
+    status_text: [256]u8,
 
     pub fn init(renderer: *ImGuiRenderer) !Self {
         var self = Self{
@@ -63,6 +67,8 @@ pub const WidgetsExample = struct {
                 .{ 800, 1000 },
                 c.ImGuiWindowFlags_None,
             ),
+            .toolbar = undefined,
+            .status_bar = undefined,
             .menu_bar = undefined,
             .file_menu = undefined,
             .edit_menu = undefined,
@@ -105,6 +111,8 @@ pub const WidgetsExample = struct {
             .file_menu_selected = false,
             .edit_menu_selected = false,
             .view_menu_selected = false,
+            .toolbar_selected = false,
+            .status_text = undefined,
         };
 
         // Initialize plot values with a sine wave
@@ -422,6 +430,65 @@ pub const WidgetsExample = struct {
             .Success,
         );
 
+        // Initialize toolbar
+        self.toolbar = widgets.Toolbar.init(
+            "example_toolbar",
+            .{ 0, 0 },
+            .{ 800, 40 },
+            c.ImGuiWindowFlags_None,
+        );
+
+        // Add toolbar items
+        const new_button = widgets.Button.init(
+            "toolbar_new",
+            "New",
+            .{ 0, 0 },
+            .{ 60, 30 },
+            true,
+            newFileCallback,
+        );
+
+        const open_button = widgets.Button.init(
+            "toolbar_open",
+            "Open",
+            .{ 0, 0 },
+            .{ 60, 30 },
+            true,
+            openFileCallback,
+        );
+
+        const save_button = widgets.Button.init(
+            "toolbar_save",
+            "Save",
+            .{ 0, 0 },
+            .{ 60, 30 },
+            true,
+            saveFileCallback,
+        );
+
+        try self.toolbar.addItem(&new_button.widget);
+        try self.toolbar.addItem(&open_button.widget);
+        try self.toolbar.addItem(&save_button.widget);
+
+        // Initialize status bar
+        self.status_bar = widgets.StatusBar.init(
+            "example_status_bar",
+            .{ 0, 960 },
+            .{ 800, 40 },
+            c.ImGuiWindowFlags_None,
+        );
+
+        // Add status bar items
+        const status_text = widgets.Text.init(
+            "status_text",
+            "Ready",
+            .{ 10, 10 },
+            .{ 200, 20 },
+            .{ 1.0, 1.0, 1.0, 1.0 },
+        );
+
+        try self.status_bar.addItem(&status_text.widget);
+
         // Add widgets to window
         try self.window.addChild(&self.menu_bar.widget);
         try self.window.addChild(&self.context_menu.widget);
@@ -445,6 +512,8 @@ pub const WidgetsExample = struct {
         try self.window.addChild(&self.file_dialog.widget);
         try self.window.addChild(&self.tab_bar.widget);
         try self.window.addChild(&self.tree_node.widget);
+        try self.window.addChild(&self.toolbar.widget);
+        try self.window.addChild(&self.status_bar.widget);
 
         // Add window to renderer
         try renderer.addWidget(&self.window.widget);
@@ -463,6 +532,8 @@ pub const WidgetsExample = struct {
         self.toast.deinit();
         self.collapsing_header.deinit();
         self.tree_node.deinit();
+        self.toolbar.deinit();
+        self.status_bar.deinit();
     }
 
     pub fn update(self: *Self) !void {
@@ -486,6 +557,14 @@ pub const WidgetsExample = struct {
         if (self.frame_count % 300 == 0) { // Show toast every 5 seconds
             self.toast.show(c.igGetTime());
         }
+
+        // Update status text
+        const status = try std.fmt.bufPrint(
+            &self.status_text,
+            "Frame: {d}, Time: {d:.2}s",
+            .{ self.frame_count, c.igGetTime() },
+        );
+        _ = status;
     }
 };
 

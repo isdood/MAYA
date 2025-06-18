@@ -93,7 +93,7 @@ impl Storage for SledStore {
 impl WriteBatchExt for SledStore {
     type Batch<'a> = SledWriteBatch where Self: 'a;
 
-    // Use fully qualified syntax to disambiguate between Storage and WriteBatchExt batch methods
+    // Use fully qualified syntax to explicitly use the Storage trait's batch method
     fn batch(&self) -> Self::Batch<'_> {
         <Self as Storage>::batch(self)
     }
@@ -126,7 +126,6 @@ impl WriteBatchExt for SledStore {
             Err(crate::error::KnowledgeGraphError::from("Failed to downcast batch to SledWriteBatch"))
         }
     }
-}
 }
 
 /// Sled write batch wrapper
