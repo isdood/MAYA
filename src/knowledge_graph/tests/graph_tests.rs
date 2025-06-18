@@ -165,14 +165,14 @@ fn test_transaction() -> Result<()> {
     assert!(graph.get_node(node2.id)?.is_some());
     assert!(graph.get_edge(edge.id)?.is_some());
     
-    // Test rollback on error
-    let result: Result<_, maya_knowledge_graph::error::KnowledgeGraphError> = graph.transaction(|tx| {
+    // Test transaction rollback on error
+    let result: std::result::Result<_, maya_knowledge_graph::error::KnowledgeGraphError> = graph.transaction(|tx| {
         let bad_node = create_test_node("Bad Node", "Test Node", 0);
         tx.add_node(&bad_node)?;
         // Use a serialization error for testing
         use serde::de::Error as _;
         let json_err = serde_json::Error::custom("Test error");
-        Err(maya_knowledge_graph::error::KnowledgeGraphError::SerializationError(json_err))
+        Err::<(), _>(maya_knowledge_graph::error::KnowledgeGraphError::SerializationError(json_err))
     });
     
     assert!(result.is_err());
