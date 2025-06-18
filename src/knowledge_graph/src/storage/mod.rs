@@ -39,14 +39,23 @@ pub trait Storage: Send + Sync + 'static {
 }
 
 /// Trait for batch operations
-pub trait WriteBatch: Send + 'static + std::fmt::Debug {
-    /// Convert to Any for downcasting
-    fn as_any(&self) -> &dyn Any;
-    /// Add a put operation to the batch with pre-serialized value
-    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
+pub trait WriteBatch: std::fmt::Debug + Send + 'static {
+    /// Add a key-value pair to the batch
+    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
     
     /// Add a delete operation to the batch
     fn delete(&mut self, key: &[u8]) -> Result<()>;
+    
+    /// Add a serialized key-value pair to the batch
+    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
+    
+    /// Clear all operations in the batch
+    fn clear(&mut self) {}
+    
+    /// Get a reference to the batch as Any for downcasting
+    fn as_any(&self) -> &dyn std::any::Any {
+        unimplemented!("as_any must be implemented for WriteBatch")
+    }
     
     /// Commit the batch
     fn commit(self: Box<Self>) -> Result<()>;

@@ -148,12 +148,16 @@ enum BatchOp {
 
 impl WriteBatch for SledWriteBatch {
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
-        Ok(())
+        self.put_serialized(key, value)
     }
     
     fn delete(&mut self, key: &[u8]) -> Result<()> {
         self.ops.push(BatchOp::Delete(IVec::from(key)));
+        Ok(())
+    }
+    
+    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
+        self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
         Ok(())
     }
     
@@ -170,14 +174,14 @@ impl WriteBatch for SledWriteBatch {
         let db = batch.db;
         
         // Execute the transaction
-        let result: std::result::Result<_, sled::transaction::TransactionError> = db.transaction(|tx| {
+        let result = db.transaction(|tx| {
             for op in &batch.ops {
                 match op {
                     BatchOp::Put(key, value) => {
-                        tx.insert(key.as_ref(), value.as_ref())?;
+                        tx.insert(key, value)?;
                     }
                     BatchOp::Delete(key) => {
-                        tx.remove(key.as_ref())?;
+                        tx.remove(key)?;
                     }
                 }
             }
