@@ -1,52 +1,44 @@
 # Storage Engine Benchmark Results
 
 ## Test Environment
-- **Date**: 2025-06-18
+- **Date**: 2025-06-18 13:25:49
 - **CPU**: AMD Ryzen 9 9950X 16-Core Processor (32 vCPUs)
 - **Memory**: 60GB total, 42GB available
 - **Storage**: NVMe SSD (1.9TB total, 57% used)
 - **Rust Version**: rustc 1.86.0 (05f9846f8 2025-03-31)
 - **Criterion Version**: 0.4.0
 
-## Benchmark Configuration
-- **Sample Size**: 10
-- **Measurement Time**: 5 seconds per benchmark
-- **Warm-up Time**: 1 second
-- **Storage Backend**: Sled
-
 ## Results Summary
 
-### 1. Single Write (1KB)
-- **Throughput**: [MB/s]
-- **Operations per second**: [ops/s]
-- **Latency (mean)**: [µs/op]
-- **Latency (p99)**: [µs/op]
-
-### 2. Single Read (1KB)
-- **Throughput**: [MB/s]
-- **Operations per second**: [ops/s]
-- **Latency (mean)**: [µs/op]
-- **Latency (p99)**: [µs/op]
-
-### 3. Batch Write (100 items, 512B each)
-- **Total Throughput**: [MB/s]
-- **Items per second**: [items/s]
-- **Latency per batch (mean)**: [ms/batch]
-
-### 4. Iteration (1000 items with prefix)
-- **Items per second**: [items/s]
-- **Total time for 1000 items**: [ms]
+| Benchmark | Mean Time | Throughput | 95% CI | Std Dev |
+|-----------|-----------|------------|---------|----------|
+| Single Write (1KB) | 2.28 µs | 449.19 MB/s | 2.26 µs - 2.30 µs | 27.45 ns |
+| Single Read (1KB) | 7.42 µs | 138.08 MB/s | 7.36 µs - 7.48 µs | 98.07 ns |
+| Batch Write (100 items, 512B each) | 1.41 ms | 36.22 MB/s | 1.39 ms - 1.44 ms | 49.62 µs |
+| Iterate (1000 items) | 383.49 ms | 0.17 MB/s | 371.00 ms - 398.24 ms | 23.39 ms |
 
 ## Detailed Results
 
-```json
-[Raw benchmark results will be inserted here]
-```
+### Single Write (1KB)
+- **Mean Time**: Time to write a single 1KB value
+- **Throughput**: Data write speed
+
+### Single Read (1KB)
+- **Mean Time**: Time to read a single 1KB value
+- **Throughput**: Data read speed
+
+### Batch Write (100 items, 512B each)
+- **Mean Time**: Time to write 100 items in a batch
+- **Throughput**: Total data write speed for the batch
+
+### Iteration (1000 items)
+- **Mean Time**: Time to iterate over 1000 items with a common prefix
+- **Throughput**: Items processed per second
 
 ## Analysis
 
 ### Performance Characteristics
-[Analysis of the results will go here]
+- [Analysis of the results will go here]
 
 ### Potential Bottlenecks
 1. [Bottleneck 1]
