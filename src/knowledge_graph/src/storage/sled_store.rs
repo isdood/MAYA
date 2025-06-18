@@ -190,12 +190,6 @@ impl WriteBatch for SledWriteBatch {
         let db = batch.db.clone();
         let ops = batch.ops;
         
-        // Convert Vec<u8> to &[u8] for sled operations
-        let ops: Vec<_> = ops.into_iter().map(|op| match op {
-            BatchOp::Put(k, v) => BatchOp::Put(k, v),
-            BatchOp::Delete(k) => BatchOp::Delete(k),
-        }).collect();
-        
         // Execute the transaction
         let result = db.transaction(|tx| {
             for op in &ops {
@@ -213,20 +207,13 @@ impl WriteBatch for SledWriteBatch {
         
         match result {
             Ok(_) => {
-                db.flush()?;
-                Ok(())
-            }
-            Err(e) => Err(KnowledgeGraphError::TransactionError(e.to_string()))
-        }
-    }
-        match result {
-            Ok(_) => {
                 // Ensure all changes are persisted to disk
                 db.flush()?;
                 Ok(())
             }
-            Err(e) => Err(crate::error::KnowledgeGraphError::TransactionError(format!("{:?}", e)))
+            Err(e) => Err(crate::error::KnowledgeGraphError::TransactionError(e.to_string()))
         }
+    }
     }
 }
 
