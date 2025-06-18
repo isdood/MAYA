@@ -2,8 +2,11 @@
 
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::atomic::{AtomicU64, Ordering};
-use serde::{Serialize, de::DeserializeOwned};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::error::Error;
+use std::fmt;
+use rayon::prelude::*;
+use serde::{Serialize, Deserialize};
 use bincode;
 use lru::LruCache;
 use parking_lot::RwLock;
@@ -234,29 +237,38 @@ where
     }
     
     fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>> {
-        // Check cache first
-        {
+        // Fast path: check cache with minimal lock duration
+        let cached = {
             let cache = self.cache.read();
-            if let Some(cached) = cache.peek(key) {
-                self.metrics.record_hit(cached.len());
-                return deserialize(cached).map(Some);
-            }
+            cache.peek(key).cloned()
+        };
+        
+        if let Some(cached_bytes) = cached {
+            self.metrics.record_hit(cached_bytes.len());
+            return deserialize(&cached_bytes).map(Some);
         }
         
         // Cache miss, get from storage
         self.metrics.record_miss();
+        
+        // Get the value from the underlying storage
         if let Some(value) = self.inner.get(key).map_err(|e| KnowledgeGraphError::StorageError(e.to_string()))? {
-            // Store the raw bytes in the cache
+            // Serialize the value for caching
             let bytes = bincode::serialize(&value).map_err(|e| KnowledgeGraphError::BincodeError(e.to_string()))?;
+            
+            // Update cache metrics
             self.metrics.record_write(bytes.len());
             
-            // Update cache
-            self.cache.write().put(key.to_vec(), bytes);
+            // Update cache with the serialized value
+            self.cache.write().put(key.to_vec(), bytes.clone());
             
-            // Update read-ahead keys
-            self.update_read_ahead_keys(key);
+            // Trigger read-ahead in the background if enabled
+            if self.config.read_ahead {
+                self.update_read_ahead_keys(key);
+            }
             
-            Ok(Some(value))
+            // Deserialize and return the value
+            deserialize(&bytes).map(Some)
         } else {
             Ok(None)
         }
@@ -308,6 +320,8 @@ where
             metrics: self.metrics.clone(),
             pending_puts: HashMap::new(),
             pending_deletes: HashSet::new(),
+            max_batch_size: 10_000,
+            total_ops: AtomicUsize::new(0),
         }
     }
 }
@@ -328,6 +342,8 @@ pub struct CachedBatch<B> {
     metrics: Arc<CacheMetrics>,
     pending_puts: HashMap<Vec<u8>, Vec<u8>>,
     pending_deletes: HashSet<Vec<u8>>,
+    max_batch_size: usize,
+    total_ops: AtomicUsize,
 }
 
 impl<B> Clone for CachedBatch<B>
@@ -341,6 +357,8 @@ where
             metrics: self.metrics.clone(),
             pending_puts: self.pending_puts.clone(),
             pending_deletes: self.pending_deletes.clone(),
+            max_batch_size: self.max_batch_size,
+            total_ops: AtomicUsize::new(0),
         }
     }
 }
@@ -351,8 +369,19 @@ where
     B: std::any::Any,
 {
     fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
+        // Check if we need to flush pending operations
+        if self.pending_puts.len() + self.pending_deletes.len() >= self.max_batch_size {
+            self.apply_pending_ops()?;
+        }
+        
+        self.inner.put_serialized(key, value)?;
         self.pending_puts.insert(key.to_vec(), value.to_vec());
-        self.inner.put(key, value)
+        self.pending_deletes.remove(key);
+        
+        // Increment operation count
+        self.total_ops.fetch_add(1, Ordering::Relaxed);
+        
+        Ok(())
     }
     
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
@@ -364,9 +393,19 @@ where
     }
     
     fn delete(&mut self, key: &[u8]) -> Result<()> {
+        // Check if we need to flush pending operations
+        if self.pending_puts.len() + self.pending_deletes.len() >= self.max_batch_size {
+            self.apply_pending_ops()?;
+        }
+        
+        self.inner.delete(key)?;
         self.pending_puts.remove(key);
         self.pending_deletes.insert(key.to_vec());
-        self.inner.delete(key)
+        
+        // Increment operation count
+        self.total_ops.fetch_add(1, Ordering::Relaxed);
+        
+        Ok(())
     }
     
     fn clear(&mut self) {
@@ -379,28 +418,85 @@ where
         self
     }
     
-    fn commit(self) -> Result<()> {
-        // Commit the inner batch first
+    fn commit(mut self) -> Result<()> {
+        // Apply any remaining pending operations
+        self.apply_pending_ops()?;
+        
+        // Commit the inner batch
         self.inner.commit()?;
         
-        // Then update cache with pending operations
+        // Update the cache with all operations
         let mut cache = self.cache.write();
         
-        // Calculate bytes written before moving self.pending_puts
-        let bytes_written: usize = self.pending_puts.values().map(|v| v.len()).sum();
+        // Process puts and deletes in parallel when there are many
+        let total_ops = self.total_ops.load(Ordering::Relaxed);
         
-        // Apply all pending puts
-        for (key, value) in self.pending_puts.into_iter() {
-            cache.put(key, value);
-        }
-        
-        // Apply all pending deletes
-        for key in self.pending_deletes.into_iter() {
-            cache.pop(&key);
+        if total_ops > 1000 {
+            // Process puts in parallel
+            let puts = std::mem::take(&mut self.pending_puts);
+            let puts: Vec<_> = puts.into_par_iter().collect();
+            
+            // Process deletes in parallel
+            let deletes = std::mem::take(&mut self.pending_deletes);
+            let deletes: Vec<_> = deletes.into_par_iter().collect();
+            
+            // Apply all puts to cache
+            for (key, value) in puts {
+                cache.put(key, value);
+            }
+            
+            // Apply all deletes to cache
+            for key in deletes {
+                cache.pop(&key);
+            }
+        } else {
+            // Process puts and deletes sequentially for small batches
+            for (key, value) in self.pending_puts.drain() {
+                cache.put(key, value);
+            }
+            
+            for key in self.pending_deletes.drain() {
+                cache.pop(&key);
+            }
         }
         
         // Update metrics
-        self.metrics.record_write(bytes_written);
+        let total_bytes: usize = self.pending_puts.values().map(|v| v.len()).sum();
+        self.metrics.record_write(total_bytes);
+        
+        Ok(())
+    }
+}
+
+impl<B> CachedBatch<B> {
+    /// Apply pending operations to the inner batch and clear them
+    fn apply_pending_ops(&mut self) -> Result<()> {
+        if self.pending_puts.is_empty() && self.pending_deletes.is_empty() {
+            return Ok(());
+        }
+        
+        // Process puts in parallel when there are many
+        if self.pending_puts.len() > 1000 {
+            let puts = std::mem::take(&mut self.pending_puts);
+            let results: Vec<_> = puts.into_par_iter()
+                .map(|(k, v)| self.inner.put_serialized(&k, &v))
+                .collect();
+            
+            // Check for any errors
+            for result in results {
+                result?;
+            }
+        } else {
+            // Process puts sequentially for small batches
+            for (k, v) in self.pending_puts.drain() {
+                self.inner.put_serialized(&k, &v)?;
+            }
+        }
+        
+        // Process deletes
+        for k in self.pending_deletes.drain() {
+            self.inner.delete(&k)?;
+        }
         
         Ok(())
     }
@@ -422,6 +518,8 @@ where
             metrics: self.metrics.clone(),
             pending_puts: HashMap::new(),
             pending_deletes: HashSet::new(),
+            max_batch_size: 10_000,
+            total_ops: AtomicUsize::new(0),
         }
     }
 }

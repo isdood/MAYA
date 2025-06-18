@@ -2,6 +2,9 @@
 
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::collections::HashMap;
+use rayon::prelude::*;
 use sled::{Db, IVec};
 use serde::{Serialize, de::DeserializeOwned};
 use log::info;
@@ -101,11 +104,15 @@ impl WriteBatchExt for SledStore {
     }
 }
 
-/// Sled write batch wrapper
+/// Sled write batch wrapper with parallel processing support
 #[derive(Debug, Clone)]
 pub struct SledWriteBatch {
     db: Arc<Db>,
     ops: Vec<BatchOp>,
+    /// Maximum number of operations before auto-committing
+    max_batch_size: usize,
+    /// Whether to flush to disk on commit
+    flush_on_commit: bool,
 }
 
 unsafe impl Send for SledWriteBatch {}
@@ -148,35 +155,123 @@ impl WriteBatch for SledWriteBatch {
     }
     
     fn commit(mut self) -> Result<()> {
-        // Create a new sled batch
-        let mut sled_batch = sled::Batch::default();
+        // Early return if no operations
+        if self.ops.is_empty() {
+            return Ok(());
+        }
         
-        // Apply all operations to the sled batch
+        // Process operations in parallel when beneficial
+        if self.ops.len() > 1000 {
+            self.commit_parallel()
+        } else {
+            self.commit_sequential()
+        }
+    }
+    
+    /// Commit operations sequentially
+    fn commit_sequential(mut self) -> Result<()> {
+        let mut batch = sled::Batch::default();
+        let mut batch_size = 0;
+        
         for op in self.ops.drain(..) {
             match op {
-                BatchOp::Put(k, v) => { sled_batch.insert(k, v); }
-                BatchOp::Delete(k) => { sled_batch.remove(k); }
+                BatchOp::Put(k, v) => { 
+                    batch.insert(k, v); 
+                    batch_size += 1;
+                }
+                BatchOp::Delete(k) => { 
+                    batch.remove(k); 
+                    batch_size += 1;
+                }
+            }
+            
+            // Apply batch if it reaches the threshold
+            if batch_size >= self.max_batch_size {
+                self.db.apply_batch(batch)
+                    .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+                batch = sled::Batch::default();
+                batch_size = 0;
             }
         }
         
-        // Apply the batch to the database
-        self.db.apply_batch(sled_batch)
-            .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+        // Apply any remaining operations
+        if batch_size > 0 {
+            self.db.apply_batch(batch)
+                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+        }
         
-        // Ensure all changes are persisted to disk
-        self.db.flush()
-            .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+        // Flush if configured
+        if self.flush_on_commit {
+            self.db.flush()
+                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+        }
+        
+        Ok(())
+    }
+    
+    /// Commit operations in parallel when possible
+    fn commit_parallel(mut self) -> Result<()> {
+        // Group operations by type for parallel processing
+        let (puts, deletes): (Vec<_>, Vec<_>) = self.ops.drain(..).partition(|op| matches!(op, BatchOp::Put(_, _)));
+        
+        // Process puts in parallel
+        let put_results: Result<Vec<()>> = puts.into_par_iter()
+            .map(|op| {
+                if let BatchOp::Put(k, v) = op {
+                    self.db.insert(k, v)
+                        .map(|_| ())
+                        .map_err(|e| e.into())
+                } else {
+                    Ok(())
+                }
+            })
+            .collect();
             
+        // Process deletes in parallel
+        let delete_results: Result<Vec<()>> = deletes.into_par_iter()
+            .map(|op| {
+                if let BatchOp::Delete(k) = op {
+                    self.db.remove(k)
+                        .map(|_| ())
+                        .map_err(|e| e.into())
+                } else {
+                    Ok(())
+                }
+            })
+            .collect();
+            
+        // Check for errors
+        put_results?;
+        delete_results?;
+        
+        // Flush if configured
+        if self.flush_on_commit {
+            self.db.flush()
+                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
+        }
+        
         Ok(())
     }
 }
 
 impl SledWriteBatch {
-    /// Create a new write batch
+    /// Create a new write batch with default settings
     pub fn new(db: Arc<Db>) -> Self {
+        Self::with_options(db, 10_000, true)
+    }
+    
+    /// Create a new write batch with custom options
+    /// 
+    /// # Arguments
+    /// * `db` - The database to write to
+    /// * `max_batch_size` - Maximum number of operations before auto-committing
+    /// * `flush_on_commit` - Whether to flush to disk on commit
+    pub fn with_options(db: Arc<Db>, max_batch_size: usize, flush_on_commit: bool) -> Self {
         Self {
             db,
-            ops: Vec::new(),
+            ops: Vec::with_capacity(max_batch_size.min(1000)), // Pre-allocate some capacity
+            max_batch_size,
+            flush_on_commit,
         }
     }
     

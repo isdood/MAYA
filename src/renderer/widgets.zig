@@ -977,7 +977,7 @@ pub const Toast = struct {
     widget: Widget,
     message: []const u8,
     duration: f32,
-    type: ToastType,
+    toast_type: ToastType,
     is_visible: bool,
     start_time: f32,
 
@@ -988,12 +988,12 @@ pub const Toast = struct {
         Error,
     };
 
-    pub fn init(id: []const u8, message: []const u8, position: [2]f32, size: [2]f32, duration: f32, type: ToastType) Self {
+    pub fn init(id: []const u8, message: []const u8, position: [2]f32, size: [2]f32, duration: f32, toast_type: ToastType) Self {
         return Self{
             .widget = Widget.init(id, position, size, render),
             .message = message,
             .duration = duration,
-            .type = type,
+            .toast_type = toast_type,
             .is_visible = false,
             .start_time = 0.0,
         };
@@ -1013,7 +1013,7 @@ pub const Toast = struct {
             
             if (elapsed < self.duration) {
                 const alpha = 1.0 - (elapsed / self.duration);
-                const color = switch (self.type) {
+                const color = switch (self.toast_type) {
                     .Info => .{ 0.0, 0.5, 1.0, alpha },
                     .Success => .{ 0.0, 0.8, 0.0, alpha },
                     .Warning => .{ 1.0, 0.8, 0.0, alpha },
@@ -1120,34 +1120,6 @@ pub const StatusBar = struct {
             }
         }
         c.igEndChild();
-    }
-};
-
-pub const Separator = struct {
-    const Self = @This();
-
-    widget: Widget,
-    flags: c.ImGuiWindowFlags,
-
-    pub fn init(
-        id: [*:0]const u8,
-        pos: [2]f32,
-        size: [2]f32,
-        flags: c.ImGuiWindowFlags,
-    ) Self {
-        return Self{
-            .widget = Widget.init(
-                id,
-                pos,
-                size,
-                flags,
-            ),
-            .flags = flags,
-        };
-    }
-
-    pub fn render(self: *Self) void {
-        c.igSeparator();
     }
 };
 

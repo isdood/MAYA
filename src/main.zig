@@ -9,6 +9,9 @@ const vk = @cImport({
 });
 const colors = @import("glimmer/colors.zig").GlimmerColors;
 const renderer = @import("renderer/vulkan.zig");
+const ui_renderer = @import("renderer/ui_renderer.zig");
+const layout = @import("renderer/layout.zig");
+const widgets = @import("renderer/widgets.zig");
 const os = std.os;
 const linux = os.linux;
 
@@ -21,6 +24,7 @@ const Window = struct {
     title: []const u8,
     color_scheme: colors.ColorScheme,
     vulkan_renderer: ?renderer.VulkanRenderer,
+    ui_renderer: ?ui_renderer.UIRenderer,
     should_close: bool,
     framebuffer_resized: bool,
 
@@ -51,6 +55,7 @@ const Window = struct {
             .title = title,
             .color_scheme = colors.ColorScheme.dark(),
             .vulkan_renderer = null,
+            .ui_renderer = null,
             .should_close = false,
             .framebuffer_resized = false,
         };
@@ -66,10 +71,28 @@ const Window = struct {
         // Initialize Vulkan renderer
         window.vulkan_renderer = try renderer.VulkanRenderer.init(handle);
 
+        // Initialize UI renderer with default theme
+        const default_theme = layout.ResizeHandleTheme.init();
+        window.ui_renderer = try ui_renderer.UIRenderer.init(
+            window.vulkan_renderer.?,
+            default_theme,
+        );
+
+        // Create example layout
+        const example_layout = try layout.Layout.init(
+            "example_layout",
+            .{ 0, 0 },
+            .{ @floatFromInt(width), @floatFromInt(height) },
+        );
+        try window.ui_renderer.?.addLayout(example_layout);
+
         return window;
     }
 
     pub fn deinit(self: *Window) void {
+        if (self.ui_renderer) |*ui_renderer_| {
+            ui_renderer_.deinit();
+        }
         if (self.vulkan_renderer) |*vulkan_renderer| {
             vulkan_renderer.deinit();
         }
@@ -98,12 +121,8 @@ const Window = struct {
     }
 
     pub fn drawFrame(self: *Window) !void {
-        if (self.vulkan_renderer) |*vulkan_renderer| {
-            if (self.framebuffer_resized) {
-                try vulkan_renderer.recreateSwapChain();
-                self.framebuffer_resized = false;
-            }
-            try vulkan_renderer.drawFrame();
+        if (self.ui_renderer) |*ui_renderer_| {
+            try ui_renderer_.render();
         }
     }
 };

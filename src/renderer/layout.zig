@@ -35,17 +35,17 @@ pub const Padding = struct {
         };
     }
 
-    pub fn horizontal(horizontal: f32) Padding {
+    pub fn horizontal(amount: f32) Padding {
         return .{
-            .left = horizontal,
-            .right = horizontal,
+            .left = amount,
+            .right = amount,
         };
     }
 
-    pub fn vertical(vertical: f32) Padding {
+    pub fn vertical(amount: f32) Padding {
         return .{
-            .top = vertical,
-            .bottom = vertical,
+            .top = amount,
+            .bottom = amount,
         };
     }
 };

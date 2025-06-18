@@ -378,7 +378,7 @@ pub const ImGuiRenderer = struct {
         const style = c.igGetStyle();
         
         // Apply colors
-        for (self.style.colors) |color, i| {
+        for (self.style.colors, 0..) |color, i| {
             style.*.Colors[i] = c.ImVec4{ .x = color[0], .y = color[1], .z = color[2], .w = color[3] };
         }
 
