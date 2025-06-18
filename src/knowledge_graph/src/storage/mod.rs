@@ -1,6 +1,82 @@
-//! Storage module for the knowledge graph
-//! 
-//! Provides a key-value storage abstraction using Sled with JSON serialization.
+//! Storage abstraction layer for the knowledge graph.
+//!
+//! This module defines the [`Storage`] trait and related types that provide a
+//! key-value storage abstraction for the knowledge graph. It includes a default
+//! implementation using [Sled](https://github.com/spacejam/sled), but can be
+//! implemented for other storage backends as needed.
+//!
+//! # Features
+//! - Generic key-value storage interface
+//! - Support for transactions and batch operations
+//! - JSON serialization/deserialization
+//! - Pluggable storage backends
+//! - Thread-safe by design
+//!
+//! # Examples
+//!
+//! ## Using the default Sled backend
+//!
+//! ```no_run
+//! use maya_knowledge_graph::prelude::*;
+//! use maya_knowledge_graph::storage::SledStore;
+//! use tempfile::tempdir;
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a temporary directory for the database
+//! let temp_dir = tempdir()?;
+//!
+//! // Open or create a new Sled-backed storage
+//! let store = SledStore::open(temp_dir.path())?;
+//!
+//! // Store and retrieve a value
+//! store.put_serialized(b"key", &"value")?;
+//! let value: Option<String> = store.get(b"key")?;
+//! assert_eq!(value, Some("value".to_string()));
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Implementing a custom storage backend
+//!
+//! ```no_run
+//! use maya_knowledge_graph::storage::{Storage, WriteBatch};
+//! use std::path::Path;
+//! use std::collections::HashMap;
+//! use std::sync::{Arc, RwLock};
+//! use maya_knowledge_graph::error::Result;
+//!
+//! #[derive(Debug, Default)]
+//! struct MemoryStore {
+//!     data: Arc<RwLock<HashMap<Vec<u8>, Vec<u8>>>>,
+//! }
+//!
+//! #[derive(Debug, Default)]
+//! struct MemoryBatch {
+//!     ops: Vec<BatchOp>,
+//! }
+//!
+//! #[derive(Debug)]
+//! enum BatchOp {
+//!     Put(Vec<u8>, Vec<u8>),
+//!     Delete(Vec<u8>),
+//! }
+//!
+//! impl Storage for MemoryStore {
+//!     type Batch = MemoryBatch;
+//!
+//!     fn open<P: AsRef<Path>>(_path: P) -> Result<Self> {
+//!         Ok(Self::default())
+//!     }
+//!
+//!     // Implement required methods...
+//!     # fn get<T: serde::de::DeserializeOwned>(&self, _key: &[u8]) -> Result<Option<T>> { todo!() }
+//!     # fn put<T: serde::Serialize>(&self, _key: &[u8], _value: &T) -> Result<()> { todo!() }
+//!     # fn delete(&self, _key: &[u8]) -> Result<()> { todo!() }
+//!     # fn exists(&self, _key: &[u8]) -> Result<bool> { todo!() }
+//!     # fn iter_prefix(&self, _prefix: &[u8]) -> std::boxed::Box<dyn Iterator<Item = (std::vec::Vec<u8>, std::vec::Vec<u8>)> + '_> { todo!() }
+//!     # fn batch(&self) -> Self::Batch { todo!() }
+//! }
+//! ```
 
 mod sled_store;
 mod cached_store;

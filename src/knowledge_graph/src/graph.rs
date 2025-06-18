@@ -1,4 +1,52 @@
-//! Main knowledge graph implementation
+//! Core knowledge graph implementation
+//!
+//! This module contains the main [`KnowledgeGraph`] type and related functionality
+//! for creating, querying, and modifying a knowledge graph.
+//!
+//! # Examples
+//!
+//! ```no_run
+//! use maya_knowledge_graph::prelude::*;
+//! use uuid::Uuid;
+//! use tempfile::tempdir;
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a temporary directory for the database
+//! let temp_dir = tempdir()?;
+//! 
+//! // Open or create a new knowledge graph
+//! let graph = KnowledgeGraph::open(temp_dir.path())?;
+//! 
+//! // Create and add nodes
+//! let alice_id = Uuid::new_v4();
+//! let bob_id = Uuid::new_v4();
+//! 
+//! let alice = Node::new("Person")
+//!     .with_id(alice_id)
+//!     .with_property("name", "Alice");
+//! 
+//! let bob = Node::new("Person")
+//!     .with_id(bob_id)
+//!     .with_property("name", "Bob");
+//! 
+//! // Add nodes to the graph
+//! graph.add_node(alice)?;
+//! graph.add_node(bob)?;
+//! 
+//! // Create a relationship
+//! let edge = Edge::new("KNOWS", alice_id, bob_id)
+//!     .with_property("since", 2020);
+//! 
+//! graph.add_edge(&edge)?;
+//! 
+//! // Query the graph
+//! let alice_node = graph.get_node(alice_id)?.expect("Alice not found");
+//! let relationships = graph.query_edges_from(alice_id)?;
+//! 
+//! println!("Node: {:?}", alice_node);
+//! println!("Relationships: {:?}", relationships);
+//! # Ok(())
+//! # }
 
 use std::path::Path;
 use uuid::Uuid;
@@ -10,7 +58,48 @@ use crate::{
     storage::{Storage, WriteBatch, WriteBatchExt},
 };
 
-/// Main knowledge graph structure
+/// A high-performance, thread-safe knowledge graph implementation.
+///
+/// The `KnowledgeGraph` provides methods for creating, reading, updating, and deleting
+/// nodes and edges in a property graph. It supports transactions, batch operations,
+/// and efficient querying of graph data.
+///
+/// # Type Parameters
+/// - `S`: The storage backend implementing the [`Storage`] trait.
+///
+/// # Examples
+///
+/// ```no_run
+/// use maya_knowledge_graph::prelude::*;
+/// use tempfile::tempdir;
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// // Create a temporary directory for the database
+/// let temp_dir = tempdir()?;
+/// 
+/// // Open or create a new knowledge graph
+/// let graph = KnowledgeGraph::open(temp_dir.path())?;
+/// 
+/// // Use the graph...
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Concurrency
+///
+/// The `KnowledgeGraph` is designed to be used concurrently from multiple threads.
+/// It uses interior mutability to allow shared access to the underlying storage.
+/// For batch operations, use the [`transaction`] method to ensure atomicity.
+///
+/// # Error Handling
+///
+/// Most methods return a `Result<T, KnowledgeGraphError>` where `T` is the success type.
+/// Common errors include:
+/// - `NodeNotFound`: A referenced node does not exist
+/// - `DuplicateNode`: Attempted to add a node with an existing ID
+/// - `StorageError`: An error occurred in the underlying storage
+/// - `SerializationError`: Failed to serialize or deserialize data
+#[derive(Debug)]
 pub struct KnowledgeGraph<S: Storage> {
     storage: S,
 }
