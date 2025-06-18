@@ -48,14 +48,17 @@ pub enum KnowledgeGraphError {
 impl fmt::Display for KnowledgeGraphError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SerializationError(e) => write!(f, "Serialization error: {}", e),
             Self::IoError(e) => write!(f, "I/O error: {}", e),
-            Self::SledError(e) => write!(f, "Database error: {}", e),
+            Self::StorageError(msg) => write!(f, "Storage error: {}", msg),
+            Self::SerializationError(e) => write!(f, "Serialization error: {}", e),
+            Self::NodeNotFound(id) => write!(f, "Node not found: {}", id),
+            Self::EdgeNotFound(id) => write!(f, "Edge not found: {}", id),
+            Self::DuplicateNode(id) => write!(f, "Duplicate node: {}", id),
+            Self::DuplicateEdge(id) => write!(f, "Duplicate edge: {}", id),
+            Self::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
+            Self::QueryError(msg) => write!(f, "Query error: {}", msg),
             Self::TransactionError(msg) => write!(f, "Transaction error: {}", msg),
-            Self::NodeNotFound(msg) => write!(f, "Node not found: {}", msg),
-            Self::EdgeNotFound(msg) => write!(f, "Edge not found: {}", msg),
-            Self::DuplicateNode(msg) => write!(f, "Duplicate node: {}", msg),
-            Self::DuplicateEdge(msg) => write!(f, "Duplicate edge: {}", msg),
+            Self::SledError(e) => write!(f, "Sled error: {}", e),
             Self::Other(msg) => write!(f, "Error: {}", msg),
         }
     }
@@ -80,13 +83,13 @@ impl From<JsonError> for KnowledgeGraphError {
 
 impl From<std::io::Error> for KnowledgeGraphError {
     fn from(err: std::io::Error) -> Self {
-        Self::IoError(err)
+        Self::IoError(Arc::new(err))
     }
 }
 
 impl From<sled::Error> for KnowledgeGraphError {
     fn from(err: sled::Error) -> Self {
-        Self::SledError(err)
+        Self::StorageError(err.to_string())
     }
 }
 

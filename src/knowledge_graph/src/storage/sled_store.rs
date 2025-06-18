@@ -95,23 +95,36 @@ impl WriteBatchExt for SledStore {
     
     fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
         if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
-            let batch = batch.clone();
-            let mut tx = batch.db.transaction();
+            let ops = batch.ops.clone();
             
-            for op in &batch.ops {
-                match op {
-                    BatchOp::Put(key, value) => {
-                        tx.insert(key, value.as_slice())?;
-                    }
-                    BatchOp::Delete(key) => {
-                        tx.remove(key)?;
+            // Convert Vec<u8> to &[u8] for sled operations
+            let ops: Vec<_> = ops.iter().map(|op| match op {
+                BatchOp::Put(k, v) => BatchOp::Put(k.as_slice(), v.as_slice()),
+                BatchOp::Delete(k) => BatchOp::Delete(k.as_slice()),
+            }).collect();
+            
+            // Use a transaction to apply all operations atomically
+            let result = batch.db.transaction(|tx| {
+                for op in &ops {
+                    match op {
+                        BatchOp::Put(key, value) => {
+                            tx.insert(key, *value)?;
+                        }
+                        BatchOp::Delete(key) => {
+                            tx.remove(key)?;
+                        }
                     }
                 }
-            }
+                Ok(()) as Result<(), sled::transaction::TransactionError>
+            });
             
-            tx.commit()?;
-            batch.db.flush()?;
-            Ok(())
+            match result {
+                Ok(_) => {
+                    batch.db.flush()?;
+                    Ok(())
+                }
+                Err(e) => Err(crate::error::KnowledgeGraphError::TransactionError(e.to_string()))
+            }
         } else {
             Err(crate::error::KnowledgeGraphError::StorageError(
                 "Invalid batch type".to_string()
@@ -123,22 +136,38 @@ impl WriteBatchExt for SledStore {
 /// Sled write batch wrapper
 #[derive(Debug)]
 pub struct SledWriteBatch {
-    ops: Vec<BatchOp>,
     db: Arc<Db>,
+    ops: Vec<BatchOp<Vec<u8>, Vec<u8>>>,
 }
 
-#[derive(Debug)]
-enum BatchOp {
-    Put(Vec<u8>, Vec<u8>),
-    Delete(Vec<u8>),
+#[derive(Debug, Clone)]
+enum BatchOp<K: AsRef<[u8]>, V: AsRef<[u8]>> {
+    Put(K, V),
+    Delete(K),
+}
+
+// Helper trait to convert between BatchOp types
+trait BatchOpConvert<K1, V1, K2, V2> {
+    fn convert(self) -> BatchOp<K2, V2>;
+}
+
+impl<K1, V1, K2, V2> BatchOpConvert<K1, V1, K2, V2> for BatchOp<K1, V1>
+where
+    K1: AsRef<[u8]>,
+    V1: AsRef<[u8]>,
+    K2: From<K1> + AsRef<[u8]>,
+    V2: From<V1> + AsRef<[u8]>,
+{
+    fn convert(self) -> BatchOp<K2, V2> {
+        match self {
+            BatchOp::Put(k, v) => BatchOp::Put(k.into(), v.into()),
+            BatchOp::Delete(k) => BatchOp::Delete(k.into()),
+        }
+    }
 }
 
 impl WriteBatch for SledWriteBatch {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    
-    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
+    fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         self.ops.push(BatchOp::Put(key.to_vec(), value.to_vec()));
         Ok(())
     }
@@ -148,31 +177,48 @@ impl WriteBatch for SledWriteBatch {
         Ok(())
     }
     
+    fn clear(&mut self) {
+        self.ops.clear();
+    }
+    
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    
     fn commit(self: Box<Self>) -> Result<()> {
-        use sled::transaction::TransactionError;
+        let batch = *self;
+        let db = batch.db.clone();
+        let ops = batch.ops;
         
-        let ops = self.ops;
-        let db = self.db.clone();
+        // Convert Vec<u8> to &[u8] for sled operations
+        let ops: Vec<_> = ops.into_iter().map(|op| match op {
+            BatchOp::Put(k, v) => BatchOp::Put(k, v),
+            BatchOp::Delete(k) => BatchOp::Delete(k),
+        }).collect();
         
-        // Execute the transaction with explicit type annotation
-        type TransactionResult = std::result::Result<(), sled::transaction::TransactionError<()>>;
-        let result: TransactionResult = db.transaction(|tx| {
+        // Execute the transaction
+        let result = db.transaction(|tx| {
             for op in &ops {
                 match op {
                     BatchOp::Put(key, value) => {
-                        // Convert Vec<u8> to &[u8] for the key and value
                         tx.insert(key.as_slice(), value.as_slice())?;
                     }
                     BatchOp::Delete(key) => {
-                        // Convert Vec<u8> to &[u8] for the key
                         tx.remove(key.as_slice())?;
                     }
                 }
             }
-            Ok(())
+            Ok::<_, sled::transaction::TransactionError>(())
         });
         
-        // Convert the transaction error to our error type
+        match result {
+            Ok(_) => {
+                db.flush()?;
+                Ok(())
+            }
+            Err(e) => Err(KnowledgeGraphError::TransactionError(e.to_string()))
+        }
+    }
         match result {
             Ok(_) => {
                 // Ensure all changes are persisted to disk
@@ -188,9 +234,19 @@ impl SledWriteBatch {
     /// Create a new write batch
     pub fn new(db: Arc<Db>) -> Self {
         Self {
-            ops: Vec::new(),
             db,
+            ops: Vec::new(),
         }
+    }
+    
+    /// Add a put operation to the batch
+    pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
+        self.ops.push(BatchOp::Put(key, value));
+    }
+    
+    /// Add a delete operation to the batch
+    pub fn delete(&mut self, key: Vec<u8>) {
+        self.ops.push(BatchOp::Delete(key));
     }
 }
 
