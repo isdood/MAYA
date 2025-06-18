@@ -11,22 +11,96 @@ This is as clearly stated as possible - MAYA can evolve & act in ways unexpected
 
 If anyone would like a breakdown of how to navigate this space properly, feel free to email me at calebjdt@gmail.com 🌟
 
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Rust 1.70+ (for building from source)
+- Sled 0.34+ (storage backend)
+- Zig 0.11+ (for STARWEAVE integration)
+- Fish Shell (for automation scripts)
+
+### Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/isdood/MAYA.git
+   cd MAYA
+   ```
+
+2. **Build the project**:
+   ```bash
+   cargo build --release
+   ```
+
+3. **Run the service**:
+   ```bash
+   ./target/release/maya
+   ```
+
+## 💾 Storage Requirements
+
+MAYA now uses [Sled](https://github.com/spacejam/sled) as its default storage backend, providing:
+
+- **Atomic operations** with ACID transactions
+- **High performance** with lock-free B+ tree implementation
+- **Crash safety** with checksumming and copy-on-write
+- **Compression** for reduced disk usage
+
+### Storage Directory
+By default, MAYA stores its data in:
+- Linux/macOS: `~/.local/share/maya`
+- Windows: `%APPDATA%\MAYA`
+
+You can override this by setting the `MAYA_DATA_DIR` environment variable.
+
 ## 📋 Current Status (2025-06-18)
 
 ### ✅ Recently Completed
-- Migrated storage backend from RocksDB to Sled for improved performance and reliability
-- Implemented comprehensive test suite for storage operations
-- Resolved all compiler warnings and improved code quality
+- **Storage Upgrade**: Migrated from RocksDB to Sled for improved performance and reliability
+- **Testing**: Implemented comprehensive test suite for storage operations
+- **Code Quality**: Resolved all compiler warnings and improved code quality
+- **Documentation**: Updated documentation to reflect recent changes
 
 ### 🔧 In Progress
-- WINDSURF IDE integration
-- Performance benchmarking and optimization
-- Documentation updates for new features
+- **WINDSURF IDE**: Deep integration with the WINDSURF development environment
+- **Performance Optimization**: Benchmarking and fine-tuning the Sled storage backend
+- **Query Engine**: Enhancing query capabilities for complex graph traversals
 
 ### 📃 Next Up
-- Enhanced query capabilities
-- Advanced indexing for improved performance
-- Integration with STARWEAVE ecosystem
+- **Advanced Indexing**: Implementing secondary indexes for improved query performance
+- **STARWEAVE Integration**: Tighter coupling with the STARWEAVE ecosystem
+- **Backup & Recovery**: Implementing robust backup solutions
+
+## 🔄 Migration Guide
+
+If you're upgrading from a version that used RocksDB, follow these steps:
+
+1. **Backup your data**:
+   ```bash
+   cp -r ~/.local/share/maya ~/maya_backup_$(date +%Y%m%d)
+   ```
+
+2. **Export your data** (if you need to maintain compatibility with old versions):
+   ```bash
+   # Using the previous version of MAYA
+   maya export --format=json > maya_backup_$(date +%Y%m%d).json
+   ```
+
+3. **Install the new version** of MAYA
+
+4. **Import your data** (if you exported it):
+   ```bash
+   maya import --file=maya_backup_$(date +%Y%m%d).json
+   ```
+
+### Breaking Changes
+
+- The storage format has changed and is not backward compatible with RocksDB
+- The minimum supported Rust version is now 1.70
+- Some configuration options have been renamed or removed
+
+For detailed migration instructions, see [MIGRATION.md](MIGRATION.md).
 
 ## 🌟 STARWEAVE Universe Integration
 
@@ -149,11 +223,25 @@ In the same way you or I would look around in 3D space, and think "I shouldn't g
 ## 🛠️ Technology Stack
 
 - **Core Language**: [Zig](https://ziglang.org/) (Aligned with BLOOM and STARGUARD architectures)
+- **Storage**: [Sled](https://github.com/spacejam/sled) (High-performance embedded database)
 - **Automation**: [Fish Shell](https://fishshell.com/) (Consistent with ecosystem patterns)
 - **Computing Framework**: Integration with SCRIBBLE
 - **Security Layer**: STARGUARD protection
 - **Metadata Processing**: STARWEB protocols
 - **Visual Enhancement**: GLIMMER patterns
+
+## 📦 Dependencies
+
+### Core Dependencies
+- `sled = "0.34"` - Embedded database
+- `serde = { version = "1.0", features = ["derive"] }` - Serialization
+- `tokio = { version = "1.0", features = ["full"] }` - Async runtime
+- `thiserror = "1.0"` - Error handling
+
+### Development Dependencies
+- `criterion = "0.4"` - Benchmarking
+- `proptest = "1.0"` - Property-based testing
+- `tempfile = "3.3"` - Temporary file handling for tests
 
 ## 🌈 GLIMMER Integration
 
