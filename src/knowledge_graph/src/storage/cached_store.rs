@@ -147,6 +147,15 @@ where
 }
 
 #[derive(Debug, Clone)]
+/// A batch of operations that will be applied atomically to the storage
+/// and updates the cache accordingly.
+/// 
+/// This struct wraps an inner batch and a cache, ensuring that cache invalidation
+/// happens atomically with the batch operations. It implements the `WriteBatch`
+/// trait to provide a consistent interface with other batch types.
+/// 
+/// # Type Parameters
+/// - `B`: The inner batch type that implements `WriteBatch`
 pub struct CachedBatch<B> {
     inner: B,
     cache: Arc<LruCacheWrapper<Vec<u8>, Vec<u8>>>,
