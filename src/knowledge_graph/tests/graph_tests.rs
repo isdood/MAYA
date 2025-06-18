@@ -170,6 +170,7 @@ fn test_transaction() -> Result<()> {
         let bad_node = create_test_node("Bad Node", "Test Node", 0);
         tx.add_node(&bad_node)?;
         // Use a serialization error for testing
+        use serde::de::Error as _;
         let json_err = serde_json::Error::custom("Test error");
         Err(maya_knowledge_graph::error::KnowledgeGraphError::SerializationError(json_err))
     });
@@ -188,7 +189,7 @@ fn test_transaction() -> Result<()> {
 #[test]
 fn test_pagination() -> Result<()> {
     let dir = tempfile::tempdir()?;
-    let graph = KnowledgeGraph::open(dir.path())?;
+    let graph: KnowledgeGraph<SledStore> = KnowledgeGraph::open(dir.path())?;
     
     // Add multiple test nodes
     for i in 0..10 {

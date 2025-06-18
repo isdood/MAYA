@@ -113,16 +113,14 @@ fn test_end_to_end_workflow() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_persistence() -> Result<(), Box<dyn Error>> {
-    // Create and populate a graph
-    let dir = tempfile::tempdir()?;
+    // Test basic graph operations
+    let dir = tempdir()?;
     let path = dir.path();
     
-    {
-        let graph = KnowledgeGraph::open(path)?;
-        let mut node = Node::new("Test");
-        node.properties.push(Property::new("persistent", PropertyValue::Bool(true)));
-        graph.add_node(node)?;
-    }
+    let graph: KnowledgeGraph<SledStore> = KnowledgeGraph::open(path)?;
+    let mut node = Node::new("Test");
+    node.properties.push(Property::new("persistent", PropertyValue::Bool(true)));
+    graph.add_node(node)?;
     
     // Reopen the graph
     let graph = KnowledgeGraph::open(path)?;

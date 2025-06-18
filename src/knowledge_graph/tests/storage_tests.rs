@@ -30,7 +30,7 @@ fn test_sled_store() -> Result<()> {
     
     // Test batch operations
     // Create a batch and add some operations
-    let mut batch = store.batch();
+    let mut batch = <SledStore as Storage>::batch(&store);
     batch.put_serialized(b"batch1", b"value1")?;
     batch.put_serialized(b"batch2", b"value2")?;
     Box::new(batch).commit()?;
@@ -117,7 +117,7 @@ fn test_transaction() -> Result<()> {
     
     // Create a batch of operations
     // Test batch operations with serialization
-    let mut batch = store.batch();
+    let mut batch = <SledStore as Storage>::batch(&store);
     batch.put_serialized(b"key1", &b"value1".to_vec())?;
     batch.put_serialized(b"key2", &b"value2".to_vec())?;
     batch.delete(b"key1")?;
