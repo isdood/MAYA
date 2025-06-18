@@ -312,35 +312,20 @@ impl Storage for HybridStore {
 }
 
 impl WriteBatchExt for HybridStore {
-    type Batch = HybridBatch;
-    
-    fn batch(&self) -> Self::Batch {
-        HybridBatch {
-            primary_batch: self.primary.batch(),
-            cache_batch: self.cache.batch(),
-            key_routing: self.key_routing.clone(),
-        }
-    }
-}
-
-impl WriteBatchExt for HybridStore {
     type BatchType<'a> = HybridBatch where Self: 'a;
 
-    fn batch(&self) -> Self::BatchType<'_> {
+    fn create_batch(&self) -> Self::BatchType<'_> {
         HybridBatch {
-            primary_batch: self.primary.batch(),
-            cache_batch: self.cache.batch(),
+            primary_batch: Box::new(self.primary.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
+            cache_batch: Box::new(self.cache.create_batch()) as Box<dyn WriteBatch + Send + Sync>,
             key_routing: self.key_routing.clone(),
         }
     }
     
-    fn create_batch(&self) -> Self::BatchType<'_> {
-        self.batch()
-    }
-    
-    fn put_serialized(&self, key: &[u8], value: &[u8]) -> Result<()> {
-        self.primary.put_serialized(key, value)?;
-        match self.cache.put_serialized(key, value) {
+    fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
+        let bytes = bincode::serialize(value).map_err(KnowledgeGraphError::from)?;
+        self.primary.put_serialized(key, &bytes)?;
+        match self.cache.put_serialized(key, &bytes) {
             Ok(_) => {}
             Err(e) => log::warn!("Failed to update cache in put_serialized: {}", e),
         }
@@ -378,10 +363,26 @@ impl WriteBatchExt for HybridStore {
 }
 
 /// Batch implementation for HybridStore
+#[derive(Debug)]
 pub struct HybridBatch {
-    primary_batch: <SledStore as WriteBatchExt>::BatchType<'_>,
-    cache_batch: <CachedStore<SledStore> as WriteBatchExt>::BatchType<'_>,
+    primary_batch: Box<dyn WriteBatch + Send + Sync>,
+    cache_batch: Box<dyn WriteBatch + Send + Sync>,
     key_routing: Arc<RwLock<HashMap<Vec<u8>, bool>>>,
+}
+
+impl HybridBatch {
+    /// Create a new HybridBatch
+    pub fn new(
+        primary_batch: Box<dyn WriteBatch + Send + Sync>,
+        cache_batch: Box<dyn WriteBatch + Send + Sync>,
+        key_routing: Arc<RwLock<HashMap<Vec<u8>, bool>>>,
+    ) -> Self {
+        Self {
+            primary_batch,
+            cache_batch,
+            key_routing,
+        }
+    }
 }
 
 impl WriteBatch for HybridBatch {

@@ -189,24 +189,19 @@ pub trait Storage: Send + Sync + 'static {
     fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>>;
 }
 
-/// Extension trait for storage backends that support batch operations
-pub trait WriteBatchExt: Storage {
-    type Batch: WriteBatch;
+/// Trait for generic batch operations
+pub trait GenericWriteBatch {
+    /// Add a put operation to the batch
+    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()>;
     
-    /// Create a new write batch
-    fn batch(&self) -> Self::Batch;
+    /// Add a delete operation to the batch
+    fn delete(&mut self, key: &[u8]) -> Result<()>;
 }
 
 /// Trait for batch operations
 pub trait WriteBatch: std::fmt::Debug + Send + 'static {
-    /// Add a put operation to the batch
-    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()>;
-    
     /// Add a put operation with pre-serialized value to the batch
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
-    
-    /// Add a delete operation to the batch
-    fn delete(&mut self, key: &[u8]) -> Result<()>;
     
     /// Add a delete operation with pre-serialized key to the batch
     fn delete_serialized(&mut self, key: &[u8]) -> Result<()>;
@@ -222,6 +217,18 @@ pub trait WriteBatch: std::fmt::Debug + Send + 'static {
     
     /// Get a mutable reference to the underlying batch as `Any`
     fn as_mut_any(&mut self) -> &mut dyn std::any::Any;
+}
+
+/// Blanket implementation of GenericWriteBatch for any type that implements WriteBatch
+impl<T: WriteBatch> GenericWriteBatch for T {
+    fn put<S: Serialize>(&mut self, key: &[u8], value: &S) -> Result<()> {
+        let bytes = bincode::serialize(value).map_err(KnowledgeGraphError::from)?;
+        self.put_serialized(key, &bytes)
+    }
+    
+    fn delete(&mut self, key: &[u8]) -> Result<()> {
+        self.delete_serialized(key)
+    }
 }
 
 /// Extension trait for batch operations
