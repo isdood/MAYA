@@ -299,36 +299,38 @@ mod tests {
 
     #[test]
     fn test_transaction() -> Result<()> {
-        let dir = tempdir()?;
+        let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
 
         // Test successful transaction
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put(b"key1", &b"value1".to_vec())?;
-        batch.put(b"key2", &b"value2".to_vec())?;
+        let value1 = b"value1".to_vec();
+        let value2 = b"value2".to_vec();
+        
+        batch.put_serialized(b"key1", &value1)?;
+        batch.put_serialized(b"key2", &value2)?;
         Box::new(batch).commit()?;
 
-        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(b"value1".to_vec()));
-        assert_eq!(store.get::<Vec<u8>>(b"key2")?, Some(b"value2".to_vec()));
+        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(value1.clone()));
+        assert_eq!(store.get::<Vec<u8>>(b"key2")?, Some(value2.clone()));
 
         // Test delete in transaction
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put(b"key1", &b"value1".to_vec())?;
+        batch.put_serialized(b"key1", &value1)?;
         batch.delete(b"key1")?;
         Box::new(batch).commit()?;
 
         assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
 
-        // Test transaction with error (duplicate key in the same batch)
+        // Test transaction with duplicate key in the same batch
         let mut batch = <SledStore as Storage>::batch(&store);
-        batch.put(b"key1", &b"value1".to_vec())?;
-        // Second put to the same key will overwrite in sled, which is expected
-        batch.put(b"key1", &b"value2".to_vec())?;
-        let result = Box::new(batch).commit();
-        assert!(result.is_ok()); // This should succeed as sled allows overwrites
+        batch.put_serialized(b"key1", &value1)?;
+        // Second put to the same key will overwrite in sled
+        batch.put_serialized(b"key1", &value2)?;
+        Box::new(batch).commit()?;
 
-        // Verify the value was updated
-        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(b"value2".to_vec()));
+        // Verify the value was updated to the last write
+        assert_eq!(store.get::<Vec<u8>>(b"key1")?, Some(value2));
         
         Ok(())
     }
