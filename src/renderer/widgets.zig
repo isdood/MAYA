@@ -19,7 +19,7 @@ pub const Button = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (c.igButton(self.label.ptr, c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] })) {
             if (self.callback) |cb| {
@@ -63,14 +63,14 @@ pub const Slider = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
+    pub fn render(_self: *Self) void {
         _ = c.igSliderFloat(
-            self.label,
-            self.value,
-            self.min,
-            self.max,
-            self.format,
-            self.flags,
+            _self.label,
+            _self.value,
+            _self.min,
+            _self.max,
+            _self.format,
+            _self.flags,
         );
     }
 };
@@ -108,15 +108,15 @@ pub const Knob = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
+    pub fn render(_self: *Self) void {
         _ = c.igVSliderFloat(
-            self.label,
-            .{ self.size, self.size },
-            self.value,
-            self.min,
-            self.max,
+            _self.label,
+            .{ _self.size, _self.size },
+            _self.value,
+            _self.min,
+            _self.max,
             "%.2f",
-            self.flags,
+            _self.flags,
         );
     }
 };
@@ -146,8 +146,8 @@ pub const Checkbox = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
-        _ = c.igCheckbox(self.label, self.value);
+    pub fn render(_self: *Self) void {
+        _ = c.igCheckbox(_self.label, _self.value);
     }
 };
 
@@ -179,9 +179,9 @@ pub const RadioButton = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
-        if (c.igRadioButton(self.label, self.value, self.button_value)) {
-            self.value.* = self.button_value;
+    pub fn render(_self: *Self) void {
+        if (c.igRadioButton(_self.label, _self.value, _self.button_value)) {
+            _self.value.* = _self.button_value;
         }
     }
 };
@@ -216,11 +216,11 @@ pub const ProgressBar = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
+    pub fn render(_self: *Self) void {
         c.igProgressBar(
-            self.value,
-            &self.size,
-            self.overlay,
+            _self.value,
+            &_self.size,
+            _self.overlay,
         );
     }
 };
@@ -247,9 +247,9 @@ pub const Tooltip = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
+    pub fn render(_self: *Self) void {
         if (c.igBeginTooltip()) {
-            c.igText(self.text);
+            c.igText(_self.text);
             c.igEndTooltip();
         }
     }
@@ -280,10 +280,10 @@ pub const CollapsingHeader = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
-        self.is_open.* = c.igCollapsingHeader(
-            self.label,
-            self.flags,
+    pub fn render(_self: *Self) void {
+        _self.is_open.* = c.igCollapsingHeader(
+            _self.label,
+            _self.flags,
         );
     }
 };
@@ -303,7 +303,7 @@ pub const Text = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (self.color) |color| {
             c.igPushStyleColor(c.ImGuiCol_Text, c.ImVec4{ .x = color[0], .y = color[1], .z = color[2], .w = color[3] });
@@ -342,7 +342,7 @@ pub const Plot = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         c.igPlotLines(
             self.label.ptr,
@@ -382,7 +382,7 @@ pub const Window = struct {
         try self.children.append(child);
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         c.igSetNextWindowPos(c.ImVec2{ .x = self.widget.position[0], .y = self.widget.position[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
         c.igSetNextWindowSize(c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] }, c.ImGuiCond_FirstUseEver);
@@ -415,7 +415,7 @@ pub const Dropdown = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (c.igBeginCombo(self.label.ptr, self.items[self.selected_index.*].ptr)) {
             for (self.items, 0..) |item, i| {
@@ -464,8 +464,8 @@ pub const ColorPicker = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
-        _ = c.igColorEdit4(self.label, &self.color[0], self.flags);
+    pub fn render(_self: *Self) void {
+        _ = c.igColorEdit4(_self.label, &_self.color[0], _self.flags);
     }
 };
 
@@ -504,8 +504,8 @@ pub const InputText = struct {
         };
     }
 
-    pub fn render(self: *Self) void {
-        _ = c.igInputText(self.label, self.buffer, self.buffer_size, self.flags, null, null);
+    pub fn render(_self: *Self) void {
+        _ = c.igInputText(_self.label, _self.buffer, _self.buffer_size, _self.flags, null, null);
     }
 };
 
@@ -520,8 +520,8 @@ pub const Separator = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
-        _ = widget;
+    fn render(_widget: *Widget) !void {
+        _ = _widget;
         c.igSeparator();
     }
 };
@@ -547,7 +547,7 @@ pub const Table = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (c.igBeginTable(self.label.ptr, @intCast(self.columns.len), self.flags)) {
             // Setup columns
@@ -597,7 +597,7 @@ pub const DragDrop = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         // Source
@@ -668,16 +668,16 @@ pub const FileDialog = struct {
         self.is_open = false;
     }
 
-    pub fn render(self: *Self) void {
-        if (self.is_open) {
-            if (c.igBegin(self.label, &self.is_open, self.flags)) {
+    pub fn render(_self: *Self) void {
+        if (_self.is_open) {
+            if (c.igBegin(_self.label, &_self.is_open, _self.flags)) {
                 // TODO: Implement file dialog UI
                 // This would require additional file system functionality
                 if (c.igButton("Select File", .{ 100, 30 })) {
-                    if (self.callback) |cb| {
-                        cb(self.selected_file);
+                    if (_self.callback) |cb| {
+                        cb(_self.selected_file);
                     }
-                    self.close();
+                    _self.close();
                 }
             }
             c.igEnd();
@@ -706,7 +706,7 @@ pub const TabBar = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         if (c.igBeginTabBar(self.label.ptr, self.flags)) {
@@ -749,7 +749,7 @@ pub const TreeNode = struct {
         try self.children.append(child);
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         if (c.igTreeNodeEx(self.label.ptr, self.flags)) {
@@ -787,7 +787,7 @@ pub const MenuBar = struct {
         try self.menus.append(menu);
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         if (c.igBeginMainMenuBar()) {
@@ -827,7 +827,7 @@ pub const Menu = struct {
         try self.items.append(item);
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         if (c.igBeginMenu(self.label.ptr, self.enabled)) {
@@ -864,7 +864,7 @@ pub const MenuItem = struct {
         _ = self;
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         if (c.igMenuItem(self.label.ptr, if (self.shortcut) |s| s.ptr else null, self.selected, self.enabled)) {
@@ -905,7 +905,7 @@ pub const ContextMenu = struct {
         self.mouse_pos = pos;
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         c.igSetNextWindowPos(c.ImVec2{ .x = self.mouse_pos[0], .y = self.mouse_pos[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
@@ -954,7 +954,7 @@ pub const Popup = struct {
         self.is_open = false;
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         if (self.is_open) {
