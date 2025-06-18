@@ -442,11 +442,19 @@ mod tests {
     
     #[test]
     fn test_cached_store() -> Result<()> {
-        let temp_dir = tempdir()?;
+        // Create a unique temporary directory for this test run
+        let test_dir = std::env::temp_dir().join(format!("maya_test_{}", std::process::id()));
+        std::fs::create_dir_all(&test_dir)?;
         
         // Create a new CachedStore with default config
-        let inner = SledStore::open(temp_dir.path())?;
+        let inner = SledStore::open(&test_dir)?;
         let cache = CachedStore::new(inner);
+        
+        // Ensure the temp directory is cleaned up when the test is done
+        let _temp_dir_guard = scopeguard::guard(test_dir.clone(), |dir| {
+            // This will run when the test completes
+            let _ = std::fs::remove_dir_all(dir);
+        });
         
         // Test put and get
         let key = b"test_key";
@@ -470,20 +478,27 @@ mod tests {
         let deleted: Option<TestValue> = cache.get(key)?;
         assert_eq!(deleted, None);
         
-        // Test batch operations
+        // Test batch operations with a serializable type
         {
             let mut batch = <CachedStore<_> as Storage>::batch(&cache);
-            let value1 = b"value1".to_vec();
-            let value2 = b"value2".to_vec();
-            batch.put_serialized(b"key1", &value1)?;
-            batch.put_serialized(b"key2", &value2)?;
-            batch.delete(b"key1")?;
+            
+            // Create test values that implement Serialize/Deserialize
+            let test_value1 = TestValue { data: "batch1".to_string(), count: 1 };
+            let test_value2 = TestValue { data: "batch2".to_string(), count: 2 };
+            
+            // Put serialized values using the module's serialize function
+            let serialized1 = super::super::serialize(&test_value1)?;
+            let serialized2 = super::super::serialize(&test_value2)?;
+            batch.put_serialized(b"batch_key1", &serialized1)?;
+            batch.put_serialized(b"batch_key2", &serialized2)?;
+            batch.delete(b"batch_key1")?;
             batch.commit()?;
         }
         
         // Verify batch operations
-        assert_eq!(cache.get::<Vec<u8>>(b"key1")?, None);
-        assert_eq!(cache.get::<Vec<u8>>(b"key2")?, Some(b"value2".to_vec()));
+        assert_eq!(cache.get::<TestValue>(b"batch_key1")?, None);
+        let batch_val: Option<TestValue> = cache.get(b"batch_key2")?;
+        assert_eq!(batch_val, Some(TestValue { data: "batch2".to_string(), count: 2 }));
         
         // Test cache invalidation
         cache.invalidate(b"key2");
@@ -492,7 +507,7 @@ mod tests {
         cache.clear_cache();
         
         // Test with custom configuration
-        let inner = SledStore::open(temp_dir.path())?;
+        let inner = SledStore::open(&test_dir)?;
         let config = CacheConfig {
             capacity: 100,
             read_ahead: true,

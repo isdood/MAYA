@@ -911,65 +911,58 @@ pub const WidgetsExample = struct {
         self.split_layout.first = &split_left.widget;
         self.split_layout.second = &split_right.widget;
 
-        // Add resizable widgets with different constraints
-        const button1 = widgets.Button.init(
-            "resize_button1",
-            "Resizable 1",
-            buttonCallback,
-            .{ 0, 0 },
+        // Create resizable buttons with different themes
+        const resize_button1 = try widgets.Button.init(
+            "Resize Button 1",
+            .{ 50, 50 },
             .{ 200, 100 },
-            c.ImGuiButtonFlags_None,
         );
-        const button2 = widgets.Button.init(
-            "resize_button2",
-            "Resizable 2",
-            buttonCallback,
-            .{ 0, 0 },
-            .{ 150, 80 },
-            c.ImGuiButtonFlags_None,
+        const resize_button2 = try widgets.Button.init(
+            "Resize Button 2",
+            .{ 50, 170 },
+            .{ 200, 100 },
         );
-        const button3 = widgets.Button.init(
-            "resize_button3",
-            "Resizable 3",
-            buttonCallback,
-            .{ 0, 0 },
-            .{ 180, 120 },
-            c.ImGuiButtonFlags_None,
+        const resize_button3 = try widgets.Button.init(
+            "Resize Button 3",
+            .{ 50, 290 },
+            .{ 200, 100 },
         );
 
-        // Add buttons with different resize constraints
+        // Create custom themes
+        const dark_theme = layout.ResizeHandleTheme.dark();
+        const light_theme = layout.ResizeHandleTheme.light();
+        const custom_theme = layout.ResizeHandleTheme.custom(
+            10, // handle_size
+            2, // border_width
+            4, // corner_radius
+            .{
+                .normal = .{ .x = 0.2, .y = 0.6, .z = 0.8, .w = 0.5 },
+                .hover = .{ .x = 0.3, .y = 0.7, .z = 0.9, .w = 0.7 },
+                .active = .{ .x = 0.4, .y = 0.8, .z = 1.0, .w = 0.8 },
+                .border = .{ .x = 0.1, .y = 0.5, .z = 0.7, .w = 1.0 },
+                .fixed_aspect = .{ .x = 0.0, .y = 0.8, .z = 0.4, .w = 0.8 },
+                .min_aspect = .{ .x = 0.8, .y = 0.4, .z = 0.2, .w = 0.8 },
+                .max_aspect = .{ .x = 0.2, .y = 0.4, .z = 0.8, .w = 0.8 },
+                .ratio_bg = .{ .x = 0.1, .y = 0.3, .z = 0.5, .w = 0.7 },
+                .ratio_text = .{ .x = 0.9, .y = 0.9, .z = 0.9, .w = 1.0 },
+            },
+        );
+
+        // Add buttons to resizable layout with different themes
         try self.resizable_layout.addChild(
-            &button1.widget,
-            layout.ResizeConstraints.init(
-                100, 400,  // min/max width
-                50, 200,   // min/max height
-                null,      // no fixed aspect ratio
-                false,     // don't preserve aspect
-                1.5,       // min aspect ratio (width/height)
-                2.5,       // max aspect ratio (width/height)
-            ),
+            resize_button1,
+            layout.ResizeConstraints.init(100, 400, 50, 200, 1.5, 2.5, false),
+            dark_theme,
         );
         try self.resizable_layout.addChild(
-            &button2.widget,
-            layout.ResizeConstraints.init(
-                100, 300,  // min/max width
-                50, 150,   // min/max height
-                2.0,       // fixed aspect ratio
-                true,      // preserve aspect
-                1.8,       // min aspect ratio (width/height)
-                2.2,       // max aspect ratio (width/height)
-            ),
+            resize_button2,
+            layout.ResizeConstraints.init(100, 300, 50, 150, 2.0, 2.0, true),
+            light_theme,
         );
         try self.resizable_layout.addChild(
-            &button3.widget,
-            layout.ResizeConstraints.init(
-                150, 350,  // min/max width
-                80, 180,   // min/max height
-                null,      // no fixed aspect ratio
-                false,     // don't preserve aspect
-                1.2,       // min aspect ratio (width/height)
-                1.8,       // max aspect ratio (width/height)
-            ),
+            resize_button3,
+            layout.ResizeConstraints.init(150, 350, 80, 180, 1.2, 1.8, false),
+            custom_theme,
         );
 
         // Add layouts to window

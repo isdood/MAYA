@@ -175,6 +175,92 @@ pub const ResizeConstraints = struct {
     }
 };
 
+/// Theme configuration for resize handles
+pub const ResizeHandleTheme = struct {
+    handle_size: f32 = 8,
+    border_width: f32 = 1,
+    corner_radius: f32 = 0,
+    colors: struct {
+        normal: c.ImVec4 = .{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 0.5 },
+        hover: c.ImVec4 = .{ .x = 0.6, .y = 0.6, .z = 0.6, .w = 0.7 },
+        active: c.ImVec4 = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 0.8 },
+        border: c.ImVec4 = .{ .x = 1.0, .y = 1.0, .z = 1.0, .w = 1.0 },
+        fixed_aspect: c.ImVec4 = .{ .x = 0.0, .y = 0.8, .z = 0.0, .w = 0.8 },
+        min_aspect: c.ImVec4 = .{ .x = 1.0, .y = 0.5, .z = 0.0, .w = 0.8 },
+        max_aspect: c.ImVec4 = .{ .x = 0.0, .y = 0.5, .z = 1.0, .w = 0.8 },
+        ratio_bg: c.ImVec4 = .{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 0.5 },
+        ratio_text: c.ImVec4 = .{ .x = 1.0, .y = 1.0, .z = 1.0, .w = 1.0 },
+    },
+    fonts: struct {
+        ratio_size: f32 = 13,
+        tooltip_size: f32 = 14,
+    },
+    animations: struct {
+        hover_scale: f32 = 1.1,
+        transition_speed: f32 = 0.2,
+    },
+
+    pub fn init() ResizeHandleTheme {
+        return ResizeHandleTheme{};
+    }
+
+    pub fn dark() ResizeHandleTheme {
+        return ResizeHandleTheme{
+            .colors = .{
+                .normal = .{ .x = 0.3, .y = 0.3, .z = 0.3, .w = 0.5 },
+                .hover = .{ .x = 0.4, .y = 0.4, .z = 0.4, .w = 0.7 },
+                .active = .{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 0.8 },
+                .border = .{ .x = 0.8, .y = 0.8, .z = 0.8, .w = 1.0 },
+                .fixed_aspect = .{ .x = 0.0, .y = 0.6, .z = 0.0, .w = 0.8 },
+                .min_aspect = .{ .x = 0.8, .y = 0.4, .z = 0.0, .w = 0.8 },
+                .max_aspect = .{ .x = 0.0, .y = 0.4, .z = 0.8, .w = 0.8 },
+                .ratio_bg = .{ .x = 0.1, .y = 0.1, .z = 0.1, .w = 0.7 },
+                .ratio_text = .{ .x = 0.9, .y = 0.9, .z = 0.9, .w = 1.0 },
+            },
+        };
+    }
+
+    pub fn light() ResizeHandleTheme {
+        return ResizeHandleTheme{
+            .colors = .{
+                .normal = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 0.5 },
+                .hover = .{ .x = 0.8, .y = 0.8, .z = 0.8, .w = 0.7 },
+                .active = .{ .x = 0.9, .y = 0.9, .z = 0.9, .w = 0.8 },
+                .border = .{ .x = 0.2, .y = 0.2, .z = 0.2, .w = 1.0 },
+                .fixed_aspect = .{ .x = 0.0, .y = 0.9, .z = 0.0, .w = 0.8 },
+                .min_aspect = .{ .x = 1.0, .y = 0.6, .z = 0.0, .w = 0.8 },
+                .max_aspect = .{ .x = 0.0, .y = 0.6, .z = 1.0, .w = 0.8 },
+                .ratio_bg = .{ .x = 0.9, .y = 0.9, .z = 0.9, .w = 0.7 },
+                .ratio_text = .{ .x = 0.1, .y = 0.1, .z = 0.1, .w = 1.0 },
+            },
+        };
+    }
+
+    pub fn custom(
+        handle_size: f32,
+        border_width: f32,
+        corner_radius: f32,
+        colors: struct {
+            normal: c.ImVec4,
+            hover: c.ImVec4,
+            active: c.ImVec4,
+            border: c.ImVec4,
+            fixed_aspect: c.ImVec4,
+            min_aspect: c.ImVec4,
+            max_aspect: c.ImVec4,
+            ratio_bg: c.ImVec4,
+            ratio_text: c.ImVec4,
+        },
+    ) ResizeHandleTheme {
+        return ResizeHandleTheme{
+            .handle_size = handle_size,
+            .border_width = border_width,
+            .corner_radius = corner_radius,
+            .colors = colors,
+        };
+    }
+};
+
 /// Resize handle for widgets
 pub const ResizeHandle = struct {
     const Self = @This();
@@ -182,14 +268,20 @@ pub const ResizeHandle = struct {
     widget: widgets.Widget,
     target: *widgets.Widget,
     constraints: ResizeConstraints,
+    theme: ResizeHandleTheme,
     is_dragging: bool,
     drag_start: [2]f32,
     start_size: [2]f32,
+    is_at_min_aspect: bool = false,
+    is_at_max_aspect: bool = false,
+    hover_scale: f32 = 1.0,
+    allocator: std.mem.Allocator,
 
     pub fn init(
         id: [*:0]const u8,
         target: *widgets.Widget,
         constraints: ResizeConstraints,
+        theme: ResizeHandleTheme,
         position: [2]f32,
         size: [2]f32,
     ) Self {
@@ -197,35 +289,29 @@ pub const ResizeHandle = struct {
             .widget = widgets.Widget.init(id, position, size),
             .target = target,
             .constraints = constraints,
+            .theme = theme,
             .is_dragging = false,
             .drag_start = .{ 0, 0 },
             .start_size = .{ 0, 0 },
+            .is_at_min_aspect = false,
+            .is_at_max_aspect = false,
+            .hover_scale = 1.0,
+            .allocator = std.heap.page_allocator,
         };
     }
 
     pub fn render(self: *Self) void {
-        const handle_size: f32 = 8;
-        const handle_color = c.ImVec4{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 0.5 };
-
         // Draw resize handle
         const handle_pos = c.ImVec2{
-            .x = self.target.position[0] + self.target.size[0] - handle_size,
-            .y = self.target.position[1] + self.target.size[1] - handle_size,
+            .x = self.target.position[0] + self.target.size[0] - self.theme.handle_size,
+            .y = self.target.position[1] + self.target.size[1] - self.theme.handle_size,
         };
         const handle_rect = c.ImVec4{
             .x = handle_pos.x,
             .y = handle_pos.y,
-            .z = handle_pos.x + handle_size,
-            .w = handle_pos.y + handle_size,
+            .z = handle_pos.x + self.theme.handle_size,
+            .w = handle_pos.y + self.theme.handle_size,
         };
-
-        c.igGetWindowDrawList().addRectFilled(
-            .{ .x = handle_rect.x, .y = handle_rect.y },
-            .{ .x = handle_rect.z, .y = handle_rect.w },
-            c.igColorConvertFloat4ToU32(handle_color),
-            0,
-            0,
-        );
 
         // Handle mouse interaction
         const mouse_pos = c.igGetMousePos();
@@ -233,6 +319,92 @@ pub const ResizeHandle = struct {
             mouse_pos.x <= handle_rect.z and
             mouse_pos.y >= handle_rect.y and
             mouse_pos.y <= handle_rect.w;
+
+        // Update hover scale
+        if (is_hovered) {
+            self.hover_scale = @min(
+                1.0 + self.theme.animations.hover_scale,
+                self.hover_scale + self.theme.animations.transition_speed,
+            );
+        } else {
+            self.hover_scale = @max(1.0, self.hover_scale - self.theme.animations.transition_speed);
+        }
+
+        // Determine handle color based on state and constraints
+        var handle_color = self.theme.colors.normal;
+        if (self.is_dragging) {
+            handle_color = self.theme.colors.active;
+        } else if (is_hovered) {
+            handle_color = self.theme.colors.hover;
+        } else if (self.constraints.aspect_ratio != null and self.constraints.preserve_aspect) {
+            handle_color = self.theme.colors.fixed_aspect;
+        } else if (self.is_at_min_aspect) {
+            handle_color = self.theme.colors.min_aspect;
+        } else if (self.is_at_max_aspect) {
+            handle_color = self.theme.colors.max_aspect;
+        }
+
+        // Calculate scaled handle size
+        const scaled_size = self.theme.handle_size * self.hover_scale;
+        const scaled_rect = c.ImVec4{
+            .x = handle_pos.x - (scaled_size - self.theme.handle_size) / 2,
+            .y = handle_pos.y - (scaled_size - self.theme.handle_size) / 2,
+            .z = handle_pos.x + scaled_size,
+            .w = handle_pos.y + scaled_size,
+        };
+
+        // Draw handle background
+        c.igGetWindowDrawList().addRectFilled(
+            .{ .x = scaled_rect.x, .y = scaled_rect.y },
+            .{ .x = scaled_rect.z, .y = scaled_rect.w },
+            c.igColorConvertFloat4ToU32(handle_color),
+            self.theme.corner_radius,
+            0,
+        );
+
+        // Draw handle border
+        c.igGetWindowDrawList().addRect(
+            .{ .x = scaled_rect.x, .y = scaled_rect.y },
+            .{ .x = scaled_rect.z, .y = scaled_rect.w },
+            c.igColorConvertFloat4ToU32(self.theme.colors.border),
+            self.theme.corner_radius,
+            0,
+            self.theme.border_width,
+        );
+
+        // Draw aspect ratio indicator if constraints are active
+        if (self.constraints.min_aspect_ratio != null or self.constraints.max_aspect_ratio != null) {
+            const current_ratio = self.target.size[0] / self.target.size[1];
+            const ratio_text = try std.fmt.allocPrint(
+                self.allocator,
+                "{d:.1f}:1",
+                .{current_ratio},
+            );
+            defer self.allocator.free(ratio_text);
+
+            const text_pos = c.ImVec2{
+                .x = handle_pos.x - 40,
+                .y = handle_pos.y - 20,
+            };
+
+            // Draw background for ratio text
+            const text_size = c.igCalcTextSize(ratio_text.ptr, null, false, 0);
+            c.igGetWindowDrawList().addRectFilled(
+                .{ .x = text_pos.x - 2, .y = text_pos.y - 2 },
+                .{ .x = text_pos.x + text_size.x + 2, .y = text_pos.y + text_size.y + 2 },
+                c.igColorConvertFloat4ToU32(self.theme.colors.ratio_bg),
+                self.theme.corner_radius,
+                0,
+            );
+
+            // Draw ratio text
+            c.igGetWindowDrawList().addText(
+                .{ .x = text_pos.x, .y = text_pos.y },
+                c.igColorConvertFloat4ToU32(self.theme.colors.ratio_text),
+                ratio_text.ptr,
+                null,
+            );
+        }
 
         if (is_hovered) {
             c.igSetMouseCursor(c.ImGuiMouseCursor_ResizeNWSE);
@@ -252,8 +424,34 @@ pub const ResizeHandle = struct {
                     self.start_size[0] + delta_x,
                     self.start_size[1] + delta_y,
                 };
+
+                // Store previous aspect ratio state
+                const prev_min_aspect = self.is_at_min_aspect;
+                const prev_max_aspect = self.is_at_max_aspect;
+
+                // Apply constraints and update aspect ratio state
                 self.constraints.apply(&new_size);
+                const current_ratio = new_size[0] / new_size[1];
+                self.is_at_min_aspect = if (self.constraints.min_aspect_ratio) |min_ratio|
+                    @abs(current_ratio - min_ratio) < 0.01
+                else
+                    false;
+                self.is_at_max_aspect = if (self.constraints.max_aspect_ratio) |max_ratio|
+                    @abs(current_ratio - max_ratio) < 0.01
+                else
+                    false;
+
+                // Update target size
                 self.target.size = new_size;
+
+                // Show tooltip when aspect ratio state changes
+                if (self.is_at_min_aspect != prev_min_aspect or self.is_at_max_aspect != prev_max_aspect) {
+                    if (self.is_at_min_aspect) {
+                        c.igSetTooltip("Minimum aspect ratio reached");
+                    } else if (self.is_at_max_aspect) {
+                        c.igSetTooltip("Maximum aspect ratio reached");
+                    }
+                }
             } else {
                 self.is_dragging = false;
             }
