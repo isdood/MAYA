@@ -20,7 +20,7 @@ pub const Button = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         if (c.igButton(self.label.ptr, c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] })) {
             if (self.callback) |cb| {
                 cb();
@@ -304,7 +304,7 @@ pub const Text = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         if (self.color) |color| {
             c.igPushStyleColor(c.ImGuiCol_Text, c.ImVec4{ .x = color[0], .y = color[1], .z = color[2], .w = color[3] });
         }
@@ -343,7 +343,7 @@ pub const Plot = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         c.igPlotLines(
             self.label.ptr,
             self.values.ptr,
@@ -383,7 +383,7 @@ pub const Window = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         c.igSetNextWindowPos(c.ImVec2{ .x = self.widget.position[0], .y = self.widget.position[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
         c.igSetNextWindowSize(c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] }, c.ImGuiCond_FirstUseEver);
 
@@ -416,7 +416,7 @@ pub const Dropdown = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         if (c.igBeginCombo(self.label.ptr, self.items[self.selected_index.*].ptr)) {
             for (self.items, 0..) |item, i| {
                 const is_selected = i == self.selected_index.*;
@@ -548,7 +548,7 @@ pub const Table = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         if (c.igBeginTable(self.label.ptr, @intCast(self.columns.len), self.flags)) {
             // Setup columns
             for (self.columns) |column| {
@@ -598,7 +598,7 @@ pub const DragDrop = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         // Source
         if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
@@ -707,7 +707,7 @@ pub const TabBar = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         if (c.igBeginTabBar(self.label.ptr, self.flags)) {
             for (self.tabs, 0..) |tab, i| {
@@ -750,7 +750,7 @@ pub const TreeNode = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         if (c.igTreeNodeEx(self.label.ptr, self.flags)) {
             for (self.children.items) |child| {
@@ -788,7 +788,7 @@ pub const MenuBar = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         if (c.igBeginMainMenuBar()) {
             for (self.menus.items) |menu| {
@@ -828,7 +828,7 @@ pub const Menu = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         if (c.igBeginMenu(self.label.ptr, self.enabled)) {
             for (self.items.items) |item| {
@@ -865,7 +865,7 @@ pub const MenuItem = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         if (c.igMenuItem(self.label.ptr, if (self.shortcut) |s| s.ptr else null, self.selected, self.enabled)) {
             if (self.callback) |cb| {
@@ -906,7 +906,7 @@ pub const ContextMenu = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         c.igSetNextWindowPos(c.ImVec2{ .x = self.mouse_pos[0], .y = self.mouse_pos[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
         
@@ -955,7 +955,7 @@ pub const Popup = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         if (self.is_open) {
             c.igSetNextWindowPos(c.ImVec2{ .x = self.widget.position[0], .y = self.widget.position[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
@@ -1005,7 +1005,7 @@ pub const Toast = struct {
     }
 
     fn render(widget: *Widget) !void {
-        const self = @fieldParentPtr(Self, "widget", widget);
+        const self = @fieldParentPtr(Self, "widget");
         
         if (self.is_visible) {
             const current_time = c.igGetTime();

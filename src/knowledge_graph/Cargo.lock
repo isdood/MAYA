@@ -637,6 +637,8 @@ dependencies = [
  "parking_lot 0.12.4",
  "pretty_assertions",
  "rand",
+ "rand_chacha",
+ "rayon",
  "scopeguard",
  "serde",
  "serde_json",

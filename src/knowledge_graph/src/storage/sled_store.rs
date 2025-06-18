@@ -2,9 +2,6 @@
 
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::collections::HashMap;
-use rayon::prelude::*;
 use sled::{Db, IVec};
 use serde::{Serialize, de::DeserializeOwned};
 use log::info;
@@ -97,10 +94,7 @@ impl WriteBatchExt for SledStore {
     type BatchType<'a> = SledWriteBatch where Self: 'a;
 
     fn create_batch(&self) -> Self::BatchType<'_> {
-        SledWriteBatch {
-            db: self.db.clone(),
-            ops: Vec::new(),
-        }
+        SledWriteBatch::with_options(self.db.clone(), 10_000, true)
     }
 }
 
@@ -160,16 +154,6 @@ impl WriteBatch for SledWriteBatch {
             return Ok(());
         }
         
-        // Process operations in parallel when beneficial
-        if self.ops.len() > 1000 {
-            self.commit_parallel()
-        } else {
-            self.commit_sequential()
-        }
-    }
-    
-    /// Commit operations sequentially
-    fn commit_sequential(mut self) -> Result<()> {
         let mut batch = sled::Batch::default();
         let mut batch_size = 0;
         
@@ -209,49 +193,7 @@ impl WriteBatch for SledWriteBatch {
         Ok(())
     }
     
-    /// Commit operations in parallel when possible
-    fn commit_parallel(mut self) -> Result<()> {
-        // Group operations by type for parallel processing
-        let (puts, deletes): (Vec<_>, Vec<_>) = self.ops.drain(..).partition(|op| matches!(op, BatchOp::Put(_, _)));
-        
-        // Process puts in parallel
-        let put_results: Result<Vec<()>> = puts.into_par_iter()
-            .map(|op| {
-                if let BatchOp::Put(k, v) = op {
-                    self.db.insert(k, v)
-                        .map(|_| ())
-                        .map_err(|e| e.into())
-                } else {
-                    Ok(())
-                }
-            })
-            .collect();
-            
-        // Process deletes in parallel
-        let delete_results: Result<Vec<()>> = deletes.into_par_iter()
-            .map(|op| {
-                if let BatchOp::Delete(k) = op {
-                    self.db.remove(k)
-                        .map(|_| ())
-                        .map_err(|e| e.into())
-                } else {
-                    Ok(())
-                }
-            })
-            .collect();
-            
-        // Check for errors
-        put_results?;
-        delete_results?;
-        
-        // Flush if configured
-        if self.flush_on_commit {
-            self.db.flush()
-                .map_err(|e| crate::error::KnowledgeGraphError::from(e))?;
-        }
-        
-        Ok(())
-    }
+
 }
 
 impl SledWriteBatch {

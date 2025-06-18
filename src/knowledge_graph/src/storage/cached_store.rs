@@ -3,19 +3,16 @@
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::error::Error;
 use std::fmt;
 use rayon::prelude::*;
-use serde::{Serialize, Deserialize};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use bincode;
 use lru::LruCache;
 use parking_lot::RwLock;
-
-use std::fmt;
-use std::error::Error as StdError;
-
-use crate::error::{Result, KnowledgeGraphError};
-use super::{Storage, WriteBatch, WriteBatchExt, serialize, deserialize};
+use crate::error::Result;
+use crate::storage::{Storage, WriteBatch, WriteBatchExt, serialize, deserialize};
+use crate::error::KnowledgeGraphError;
 
 // Helper error type for CachedStore
 #[derive(Debug)]
@@ -27,7 +24,7 @@ impl fmt::Display for CachedStoreError {
     }
 }
 
-impl StdError for CachedStoreError {}
+impl std::error::Error for CachedStoreError {}
 
 impl From<String> for CachedStoreError {
     fn from(err: String) -> Self {
@@ -237,7 +234,7 @@ where
     }
     
     fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>> {
-        // Fast path: check cache with minimal lock duration
+        // Try to get from cache first
         let cached = {
             let cache = self.cache.read();
             cache.peek(key).cloned()
@@ -248,29 +245,16 @@ where
             return deserialize(&cached_bytes).map(Some);
         }
         
-        // Cache miss, get from storage
-        self.metrics.record_miss();
-        
-        // Get the value from the underlying storage
-        if let Some(value) = self.inner.get(key).map_err(|e| KnowledgeGraphError::StorageError(e.to_string()))? {
-            // Serialize the value for caching
-            let bytes = bincode::serialize(&value).map_err(|e| KnowledgeGraphError::BincodeError(e.to_string()))?;
-            
-            // Update cache metrics
-            self.metrics.record_write(bytes.len());
-            
-            // Update cache with the serialized value
-            self.cache.write().put(key.to_vec(), bytes.clone());
-            
-            // Trigger read-ahead in the background if enabled
-            if self.config.read_ahead {
-                self.update_read_ahead_keys(key);
+        // Cache miss, get from inner storage
+        match self.inner.get::<T>(key).map_err(|e| KnowledgeGraphError::StorageError(e.to_string()))? {
+            Some(value) => {
+                // Cache the value for future use
+                let bytes = bincode::serialize(&value).map_err(|e| KnowledgeGraphError::BincodeError(e.to_string()))?;
+                self.cache.write().put(key.to_vec(), bytes.clone());
+                self.metrics.record_write(bytes.len());
+                Ok(Some(value))
             }
-            
-            // Deserialize and return the value
-            deserialize(&bytes).map(Some)
-        } else {
-            Ok(None)
+            None => Ok(None),
         }
     }
     
@@ -468,29 +452,16 @@ where
     }
 }
 
-impl<B> CachedBatch<B> {
+impl<B: WriteBatch> CachedBatch<B> {
     /// Apply pending operations to the inner batch and clear them
     fn apply_pending_ops(&mut self) -> Result<()> {
         if self.pending_puts.is_empty() && self.pending_deletes.is_empty() {
             return Ok(());
         }
         
-        // Process puts in parallel when there are many
-        if self.pending_puts.len() > 1000 {
-            let puts = std::mem::take(&mut self.pending_puts);
-            let results: Vec<_> = puts.into_par_iter()
-                .map(|(k, v)| self.inner.put_serialized(&k, &v))
-                .collect();
-            
-            // Check for any errors
-            for result in results {
-                result?;
-            }
-        } else {
-            // Process puts sequentially for small batches
-            for (k, v) in self.pending_puts.drain() {
-                self.inner.put_serialized(&k, &v)?;
-            }
+        // Process puts
+        for (k, v) in self.pending_puts.drain() {
+            self.inner.put_serialized(&k, &v)?;
         }
         
         // Process deletes
