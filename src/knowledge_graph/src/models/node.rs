@@ -2,7 +2,6 @@
 
 use super::*;
 use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
 
 /// A node in the knowledge graph
 #[derive(Debug, Clone, Serialize, Deserialize)]

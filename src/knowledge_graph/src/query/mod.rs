@@ -163,6 +163,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "test-utils")]
     use tempfile::tempdir;
     use crate::storage::SledStore;
 

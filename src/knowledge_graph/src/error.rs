@@ -114,11 +114,6 @@ impl From<&str> for KnowledgeGraphError {
 /// Type alias for Result<T, KnowledgeGraphError>
 pub type Result<T> = std::result::Result<T, KnowledgeGraphError>;
 
-// Helper for formatting errors
-pub(crate) fn format_error<T: std::error::Error>(error: T) -> KnowledgeGraphError {
-    KnowledgeGraphError::Other(error.to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -3,13 +3,10 @@
 use maya_knowledge_graph::{
     KnowledgeGraph, Node, Edge, Property, PropertyValue,
     storage::SledStore,
-    error::KnowledgeGraphError,
     query::QueryExt,
 };
 use tempfile::tempdir;
 use std::error::Error;
-use uuid::Uuid;
-use serde_json::Error as JsonError;
 
 fn create_test_node(label: &str, name: &str, age: i32) -> Node {
     let mut node = Node::new(label);
@@ -45,14 +42,21 @@ fn test_end_to_end_workflow() -> Result<(), Box<dyn Error>> {
     })?;
     
     // Add relationships
-    let mut knows = Edge::new("KNOWS", alice.id, bob.id);
-    knows.properties.push(Property::new("since", PropertyValue::String("2020".to_string())));
+    let mut alice_knows_bob = Edge::new("KNOWS", alice.id, bob.id);
+    alice_knows_bob.properties.push(Property::new("since", PropertyValue::String("2020".to_string())));
     
-    let mut works_at = Edge::new("WORKS_AT", alice.id, office.id);
-    works_at.properties.push(Property::new("since", PropertyValue::String("2021".to_string())));
+    // Alice works at the office
+    let mut alice_works_at = Edge::new("WORKS_AT", alice.id, office.id);
+    alice_works_at.properties.push(Property::new("since", PropertyValue::String("2021".to_string())));
     
-    graph.add_edge(&knows)?;
-    graph.add_edge(&works_at)?;
+    // Bob also works at the office
+    let mut bob_works_at = Edge::new("WORKS_AT", bob.id, office.id);
+    bob_works_at.properties.push(Property::new("since", PropertyValue::String("2020".to_string())));
+    
+    // Add all edges
+    graph.add_edge(&alice_knows_bob)?;
+    graph.add_edge(&alice_works_at)?;
+    graph.add_edge(&bob_works_at)?;
     
     // Query 1: Find all people Alice knows
     let alice_friends = graph.query()
@@ -84,44 +88,24 @@ fn test_end_to_end_workflow() -> Result<(), Box<dyn Error>> {
         .with_label("Person")
         .execute()?;
     
-    println!("Found {} people in the graph", people.nodes.len());
-    
     // For each person, check who they know and if those people work somewhere
     for person in &people.nodes {
-        println!("Checking person: {:?} (ID: {})", 
-            person.properties.iter().find(|p| p.key == "name").map(|p| &p.value).unwrap_or(&PropertyValue::Null),
-            person.id
-        );
-        
         // Get all edges where this person is the source
         let edges = graph.query_edges_from(person.id)?;
-        println!("  Found {} edges from this person", edges.len());
         
         // Check if this person knows someone who works somewhere
         for edge in &edges {
-            println!("    Edge: {} -> {} (label: {})", edge.source, edge.target, edge.label);
-            
             if edge.label == "KNOWS" {
-                println!("      Found KNOWS edge to person {}", edge.target);
-                
                 // Check if the target person (edge.target) has a WORKS_AT edge
                 let works_edges = graph.query_edges_from(edge.target)?;
-                println!("      Found {} edges from target person {}", works_edges.len(), edge.target);
-                
-                for we in &works_edges {
-                    println!("        Edge: {} -> {} (label: {})", we.source, we.target, we.label);
-                }
                 
                 if works_edges.iter().any(|e| e.label == "WORKS_AT") {
-                    println!("      This person knows someone who works!");
                     people_who_know_workers.push(person.clone());
                     break;
                 }
             }
         }
     }
-    
-    println!("People who know someone who works: {}", people_who_know_workers.len());
     
     // Alice knows Bob, who works at the office
     assert_eq!(people_who_know_workers.len(), 1, "Expected 1 person who knows someone who works, found {}", people_who_know_workers.len());

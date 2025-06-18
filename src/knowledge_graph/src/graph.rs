@@ -173,18 +173,16 @@ where
 /// A transaction for atomic operations
 pub struct Transaction<'a, S> 
 where
-    S: Storage + WriteBatchExt,
+    S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
     <S as Storage>::Batch: WriteBatch + 'static,
-    <S as WriteBatchExt>::Batch: WriteBatch + 'static,
 {
-    storage: &'a S,
-    batch: Option<Box<dyn WriteBatch>>,
+    batch: S::Batch,
+    _marker: std::marker::PhantomData<&'a S>,
 }
 
 impl<'a, S> Transaction<'a, S> 
 where
     S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
-    <S as Storage>::Batch: WriteBatch + 'static,
 {
     fn new(storage: &'a S) -> Self {
         let batch = <S as Storage>::batch(storage);
@@ -233,5 +231,4 @@ fn edge_key(id: Uuid) -> Vec<u8> {
     key
 }
 
-// Re-export serialization functions
-use crate::storage::{serialize, deserialize};
+// Serialization functions are used through the Storage trait

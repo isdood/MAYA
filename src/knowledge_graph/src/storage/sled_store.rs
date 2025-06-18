@@ -99,7 +99,6 @@ impl WriteBatchExt for SledStore {
 
     fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
         if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
-            let batch = batch.clone();
             let db = batch.db.clone();
             
             // Execute the transaction
@@ -220,7 +219,9 @@ impl SledWriteBatch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "test-utils")]
     use tempfile::tempdir;
+    #[cfg(feature = "test-utils")]
     use serde_json::json;
 
     #[test]

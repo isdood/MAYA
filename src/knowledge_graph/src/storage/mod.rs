@@ -8,7 +8,6 @@ pub use sled_store::SledStore;
 
 use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
-use std::any::Any;
 use crate::error::Result;
 
 /// Trait defining the storage operations for the knowledge graph
