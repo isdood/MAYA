@@ -8,7 +8,7 @@ const c = @cImport({
     @cInclude("imgui_impl_vulkan.h");
 });
 const glfw = @import("glfw");
-const Window = @import("window.zig").Window;
+// const Window = @import("window.zig").Window;
 const VulkanRenderer = @import("vulkan.zig").VulkanRenderer;
 
 pub const ImGuiStyle = struct {
