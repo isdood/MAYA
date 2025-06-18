@@ -395,6 +395,27 @@ chmod +x scripts/*.py
 - Rust 1.70+ (for knowledge graph components)
 - Sled 0.34.7+ (embedded database)
 
+## 🚀 Performance Benchmarks
+
+To run performance benchmarks:
+
+```bash
+# Install criterion for benchmarking
+cargo install cargo-criterion
+
+# Run all benchmarks
+./scripts/run_benchmarks.sh
+```
+
+Benchmark results will be saved in `performance_reports/` with timestamps.
+
+### Key Metrics
+- **Throughput**: Operations per second
+- **Latency**: Time per operation
+- **Memory Usage**: Peak memory consumption
+
+For detailed analysis, see the [benchmarks documentation](benches/README.md).
+
 > Note: Installation instructions will be added as development progresses. Will include integration steps for each STARWEAVE component.
 
 ## 🔒 Proprietary Software

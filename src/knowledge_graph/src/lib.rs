@@ -57,12 +57,11 @@ pub mod prelude {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "test-utils")]
-    use tempfile::tempdir;
+    use tempfile;
 
     #[test]
     fn test_basic_graph_operations() -> Result<()> {
-        let dir = tempdir()?;
+        let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
         let graph = KnowledgeGraph::with_storage(store);
 

@@ -8,6 +8,7 @@ license = "MIT"
 
 [dependencies]
 sled = { version = "0.34.7", features = ["compression"] }
+tempfile = "3.3"
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 thiserror = "1.0"
@@ -15,19 +16,19 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 log = "0.4"
 pretty_assertions = "1.0"
-tempfile = { version = "3.3", optional = true }
 rand = "0.8"
 futures = "0.3"
 anyhow = "1.0"
+lru = "0.10.0"
 
 [dev-dependencies]
 serial_test = "2.0"
 criterion = { version = "0.4", features = ["html_reports"] }
 pretty_assertions = "1.3"
+tempfile = "3.3"
 
 [features]
 default = []
-test-utils = ["tempfile"]
 
 [lib]
 name = "maya_knowledge_graph"
@@ -47,4 +48,5 @@ path = "tests/storage_tests.rs"
 
 [[bench]]
 name = "storage_benchmark"
+path = "benches/storage_benchmark.rs"
 harness = false

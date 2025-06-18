@@ -10,6 +10,9 @@ mkdir -p "$OUTPUT_DIR"
 echo "🚀 Running storage benchmarks..."
 cd src/knowledge_graph
 
+# Install criterion if not already installed
+cargo install cargo-criterion 2>/dev/null || true
+
 # Run benchmarks and save output
 cargo bench --bench storage_benchmark -- --verbose > "../../$OUTPUT_DIR/benchmark_output.txt" 2>&1
 

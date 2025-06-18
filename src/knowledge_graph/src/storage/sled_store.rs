@@ -2,7 +2,6 @@
 
 use std::path::Path;
 use std::sync::Arc;
-
 use sled::{Db, IVec};
 use serde::{Serialize, de::DeserializeOwned};
 use log::info;
@@ -219,12 +218,11 @@ impl SledWriteBatch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "test-utils")]
-    use tempfile::tempdir;
+    use tempfile;
 
     #[test]
     fn test_put_and_get() -> Result<()> {
-        let dir = tempdir()?;
+        let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
         
         // Test put and get
@@ -245,7 +243,7 @@ mod tests {
 
     #[test]
     fn test_delete() -> Result<()> {
-        let dir = tempdir()?;
+        let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
         
         // Add a value
@@ -268,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_iter_prefix() -> Result<()> {
-        let dir = tempdir()?;
+        let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
         
         // Insert some test data

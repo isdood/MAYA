@@ -163,13 +163,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "test-utils")]
-    use tempfile::tempdir;
+    use tempfile;
     use crate::storage::SledStore;
 
     #[test]
     fn test_query_builder() -> Result<()> {
-        let dir = tempdir()?;
+        let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
         let graph = KnowledgeGraph::with_storage(store);
         
