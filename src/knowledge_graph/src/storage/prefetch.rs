@@ -85,31 +85,26 @@ pub struct PrefetchingIterator<K, V, I> {
     // Notification mechanism
     notifier: PrefetchNotifier,
     // Marker for Send + Sync
-    _marker: std::marker::PhantomData<I>,
+    _marker: std::marker::PhantomData<fn() -> I>,
 }
 
-impl<I, K, V> Iterator for PrefetchingIterator<I, K, V> 
+impl<K, V, I> Iterator for PrefetchingIterator<K, V, I> 
 where
-    I: Iterator<Item = (K, V)> + Send + 'static,
     K: Send + 'static + Clone,
     V: Send + 'static + Clone,
+    I: Iterator<Item = (K, V)> + Send + 'static,
 {
     type Item = Result<(K, V)>;
     
     fn next(&mut self) -> Option<Self::Item> {
-        // If buffer is empty, try to get more items
+        // If buffer is empty, try to fill it
         if self.buffer.is_empty() {
             if let Err(e) = self.fill_buffer() {
                 return Some(Err(e));
             }
-            
-            // If still empty after filling, we're done
-            if self.buffer.is_empty() {
-                return None;
-            }
         }
         
-        // Return the next item if available
+        // Return the next item from the buffer
         self.buffer.pop_front().map(Ok)
     }
 }

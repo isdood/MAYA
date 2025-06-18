@@ -296,14 +296,30 @@ impl Storage for HybridStore {
 
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
         self.update_stats(false, || {
+            // First serialize the value
             let value = bincode::serialize(value)
-                .map_err(|e| KnowledgeGraphError::SerializationError(e.into()))?;
+                .map_err(|e| KnowledgeGraphError::StorageError(e.to_string()))?;
             
-            let use_cache = self.should_use_cache(false);
+            // Write to primary storage first
+            self.primary.put_serialized(key, &value)?;
             
-            if use_cache {
-                if let Err(e) = self.cache.put(key, &value) {
+            // If we should use cache, write to it as well
+            if self.should_use_cache(false) {
+                if let Err(e) = self.cache.put_serialized(key, &value) {
                     log::warn!("Failed to write to cache: {}", e);
+                } else {
+                    // Update key routing if cache write was successful
+                    self.key_routing.write().insert(key.to_vec(), true);
+                }
+            } else {
+                // Mark that this key should bypass the cache
+                self.key_routing.write().insert(key.to_vec(), false);
+            }
+            
+            Ok(())
+        })
+    }
+    
     fn delete(&self, key: &[u8]) -> Result<()> {
         self.update_stats(false, || {
             // Delete from primary
@@ -470,20 +486,15 @@ impl WriteBatch for HybridBatch {
     }
     
     fn commit(self) -> Result<()> {
-        // Commit primary batch first
+        // Convert the trait objects to concrete types
         let primary_result = {
-            let batch = Box::into_raw(Box::new(self.primary_batch));
-            let result = unsafe { (*batch).commit() };
-            let _ = unsafe { Box::from_raw(batch) }; // Drop the box
-            result
+            let mut primary = self.primary_batch;
+            primary.commit()
         };
         
-        // Then commit cache batch
         let cache_result = {
-            let batch = Box::into_raw(Box::new(self.cache_batch));
-            let result = unsafe { (*batch).commit() };
-            let _ = unsafe { Box::from_raw(batch) }; // Drop the box
-            result
+            let mut cache = self.cache_batch;
+            cache.commit()
         };
         
         // Return primary result (more critical)
