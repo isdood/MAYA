@@ -176,45 +176,40 @@ where
     S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
     <S as Storage>::Batch: WriteBatch + 'static,
 {
-    batch: S::Batch,
+    batch: <S as Storage>::Batch,
     _marker: std::marker::PhantomData<&'a S>,
 }
 
 impl<'a, S> Transaction<'a, S> 
 where
     S: Storage + WriteBatchExt<Batch = <S as Storage>::Batch>,
+    <S as Storage>::Batch: WriteBatch + 'static,
 {
     fn new(storage: &'a S) -> Self {
         let batch = <S as Storage>::batch(storage);
         Self {
-            storage,
-            batch: Some(Box::new(batch) as Box<dyn WriteBatch>),
+            batch,
+            _marker: std::marker::PhantomData,
         }
     }
 
     /// Add a node within the transaction
     pub fn add_node(&mut self, node: &Node) -> Result<()> {
         let node_key = node_key(node.id);
-        let value = serde_json::to_vec(node)
-            .map_err(KnowledgeGraphError::SerializationError)?;
-        self.batch.as_mut().unwrap().put_serialized(&node_key, &value)
+        let value = serde_json::to_vec(node)?;
+        self.batch.put_serialized(&node_key, &value)
     }
 
     /// Add an edge within the transaction
     pub fn add_edge(&mut self, edge: &Edge) -> Result<()> {
         let edge_key = edge_key(edge.id);
-        let value = serde_json::to_vec(edge)
-            .map_err(KnowledgeGraphError::SerializationError)?;
-        self.batch.as_mut().unwrap().put_serialized(&edge_key, &value)
+        let value = serde_json::to_vec(edge)?;
+        self.batch.put_serialized(&edge_key, &value)
     }
 
     /// Commit the transaction
     pub fn commit(self) -> Result<()> {
-        if let Some(batch) = self.batch {
-            batch.commit()
-        } else {
-            Err(KnowledgeGraphError::Other("Transaction already committed".to_string()))
-        }
+        <S as WriteBatchExt>::commit(Box::new(self.batch))
     }
 }
 

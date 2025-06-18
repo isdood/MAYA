@@ -221,8 +221,6 @@ mod tests {
     use super::*;
     #[cfg(feature = "test-utils")]
     use tempfile::tempdir;
-    #[cfg(feature = "test-utils")]
-    use serde_json::json;
 
     #[test]
     fn test_put_and_get() -> Result<()> {

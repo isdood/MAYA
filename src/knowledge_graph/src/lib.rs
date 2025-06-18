@@ -57,6 +57,7 @@ pub mod prelude {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "test-utils")]
     use tempfile::tempdir;
 
     #[test]
