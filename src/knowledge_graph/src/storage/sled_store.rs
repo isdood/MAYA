@@ -90,45 +90,39 @@ impl WriteBatchExt for SledStore {
     type Batch = SledWriteBatch;
 
     fn batch(&self) -> Self::Batch {
-        SledWriteBatch::new(Arc::clone(&self.db))
+        SledWriteBatch::new(self.db.clone())
     }
-    
+
     fn commit(batch: Box<dyn WriteBatch>) -> Result<()> {
         if let Some(batch) = batch.as_any().downcast_ref::<SledWriteBatch>() {
-            let ops = batch.ops.clone();
+            let batch = batch.clone();
+            let db = batch.db.clone();
             
-            // Convert Vec<u8> to &[u8] for sled operations
-            let ops: Vec<_> = ops.iter().map(|op| match op {
-                BatchOp::Put(k, v) => BatchOp::Put(k.as_slice(), v.as_slice()),
-                BatchOp::Delete(k) => BatchOp::Delete(k.as_slice()),
-            }).collect();
-            
-            // Use a transaction to apply all operations atomically
-            let result = batch.db.transaction(|tx| {
-                for op in &ops {
+            // Execute the transaction
+            let result = db.transaction(|tx| {
+                for op in &batch.ops {
                     match op {
                         BatchOp::Put(key, value) => {
-                            tx.insert(key, *value)?;
+                            tx.insert(key, value)?;
                         }
                         BatchOp::Delete(key) => {
                             tx.remove(key)?;
                         }
                     }
                 }
-                Ok(()) as Result<(), sled::transaction::TransactionError>
+                Ok::<_, sled::transaction::ConflictableTransactionError<sled::transaction::TransactionError>>(())
             });
             
             match result {
                 Ok(_) => {
-                    batch.db.flush()?;
+                    // Ensure all changes are persisted to disk
+                    db.flush()?;
                     Ok(())
                 }
                 Err(e) => Err(crate::error::KnowledgeGraphError::TransactionError(e.to_string()))
             }
         } else {
-            Err(crate::error::KnowledgeGraphError::StorageError(
-                "Invalid batch type".to_string()
-            ))
+            Err(crate::error::KnowledgeGraphError::InvalidOperation("Invalid batch type".to_string()))
         }
     }
 }
@@ -185,7 +179,7 @@ impl WriteBatch for SledWriteBatch {
                     }
                 }
             }
-            Ok::<_, sled::transaction::TransactionError>(())
+            Ok::<_, sled::transaction::ConflictableTransactionError<sled::transaction::TransactionError>>(())
         });
         
         match result {
