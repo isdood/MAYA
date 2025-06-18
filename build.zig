@@ -69,8 +69,11 @@ pub fn build(b: *std.Build) void {
 
     // Add include paths
     exe.addIncludePath(.{ .cwd_relative = "/usr/include" });
+    exe.addIncludePath("vendor/cimgui");
     exe.addIncludePath(.{ .cwd_relative = "/usr/include/freetype2" });
+    exe.addIncludePath("vendor/cimgui");
     exe.addIncludePath(.{ .cwd_relative = "/usr/include/harfbuzz" });
+    exe.addIncludePath("vendor/cimgui");
 
     // Add compile definitions
     exe.root_module.addImport("VK_USE_PLATFORM_XLIB_KHR", b.addModule("VK_USE_PLATFORM_XLIB_KHR", .{

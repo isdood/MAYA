@@ -19,7 +19,7 @@ pub const Button = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (c.igButton(self.label.ptr, c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] })) {
             if (self.callback) |cb| {
@@ -63,7 +63,7 @@ pub const Slider = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         _ = c.igSliderFloat(
             widget.label,
             widget.value,
@@ -108,7 +108,7 @@ pub const Knob = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         _ = c.igVSliderFloat(
             widget.label,
             .{ widget.size, widget.size },
@@ -146,7 +146,7 @@ pub const Checkbox = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         _ = c.igCheckbox(widget.label, widget.value);
     }
 };
@@ -179,7 +179,7 @@ pub const RadioButton = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         if (c.igRadioButton(widget.label, widget.value, widget.button_value)) {
             widget.value.* = widget.button_value;
         }
@@ -216,7 +216,7 @@ pub const ProgressBar = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         c.igProgressBar(
             widget.value,
             &widget.size,
@@ -247,7 +247,7 @@ pub const Tooltip = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         if (c.igBeginTooltip()) {
             c.igText(widget.text);
             c.igEndTooltip();
@@ -280,7 +280,7 @@ pub const CollapsingHeader = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         widget.is_open.* = c.igCollapsingHeader(
             widget.label,
             widget.flags,
@@ -303,7 +303,7 @@ pub const Text = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (self.color) |color| {
             c.igPushStyleColor(c.ImGuiCol_Text, c.ImVec4{ .x = color[0], .y = color[1], .z = color[2], .w = color[3] });
@@ -342,7 +342,7 @@ pub const Plot = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         c.igPlotLines(
             self.label.ptr,
@@ -382,7 +382,7 @@ pub const Window = struct {
         try self.children.append(child);
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         c.igSetNextWindowPos(c.ImVec2{ .x = self.widget.position[0], .y = self.widget.position[1] }, c.ImGuiCond_FirstUseEver, c.ImVec2{ .x = 0, .y = 0 });
         c.igSetNextWindowSize(c.ImVec2{ .x = self.widget.size[0], .y = self.widget.size[1] }, c.ImGuiCond_FirstUseEver);
@@ -415,7 +415,7 @@ pub const Dropdown = struct {
         };
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         if (c.igBeginCombo(self.label.ptr, self.items[self.selected_index.*].ptr)) {
             for (self.items, 0..) |item, i| {
@@ -464,7 +464,7 @@ pub const ColorPicker = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         _ = c.igColorEdit4(widget.label, &widget.color[0], widget.flags);
     }
 };
@@ -504,7 +504,7 @@ pub const InputText = struct {
         };
     }
 
-    pub fn render(widget: *Widget) void {
+    pub fn render(_widget: *Widget) void {
         _ = c.igInputText(widget.label, widget.buffer, widget.buffer_size, widget.flags, null, null);
     }
 };
@@ -1004,7 +1004,7 @@ pub const Toast = struct {
         self.start_time = current_time;
     }
 
-    fn render(widget: *Widget) !void {
+    fn render(_widget: *Widget) !void {
         const self = @as(*Self, @fieldParentPtr(Self, "widget"));
         
         if (self.is_visible) {

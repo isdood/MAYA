@@ -189,6 +189,42 @@ impl HybridStore {
 impl Storage for HybridStore {
     type Batch<'a> = HybridBatch where Self: 'a;
     
+    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+        // Use prefetching for better performance on sequential scans
+        let config = PrefetchConfig {
+            prefetch_size: 64,         // Prefetch 64 items ahead
+            max_buffers: 4,            // Keep up to 4 prefetch buffers
+            buffer_size: 256,          // 256 items per buffer
+            prefetch_timeout_ms: 50,   // 50ms timeout
+        };
+        
+        // Create a prefetching iterator
+        match self.iter_prefix_prefetch(prefix, config) {
+            Ok(iter) => {
+                // Convert the PrefetchingIterator into a Box<dyn Iterator>
+                let adapter = PrefetchingIteratorAdapter(iter);
+                Box::new(adapter)
+            },
+            Err(e) => {
+                // Fall back to non-prefetching iterator if prefetching fails
+                log::warn!("Failed to create prefetching iterator: {}. Falling back to standard iterator", e);
+                self.primary.iter_prefix(prefix)
+            }
+        }
+    }
+    
+    fn create_batch(&self) -> Self::Batch<'_> {
+        let primary_batch = Box::new(self.primary.create_batch());
+        let cache_batch = Box::new(self.cache.create_batch());
+        let key_routing = Arc::clone(&self.key_routing);
+        
+        HybridBatch {
+            primary_batch,
+            cache_batch,
+            key_routing,
+        }
+    }
+    
     fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
         self.update_stats(true, || {
             if self.route_read(key) {
