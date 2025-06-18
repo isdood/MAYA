@@ -17,16 +17,18 @@ fn test_sled_store() -> Result<()> {
     let val1: Option<Vec<u8>> = store.get(b"key1")?;
     assert_eq!(val1, Some(b"value1".to_vec()));
     
-    store.delete(b"key1")?;
-    let val1: Option<Vec<u8>> = store.get(b"key1")?;
+    store.put_serialized(b"key1", b"value1")?;
+    store.delete(b"key1").unwrap();
+    let val1: Option<Vec<u8>> = store.get::<Vec<u8>>(b"key1")?;
     assert_eq!(val1, None);
     
     // Test delete
-    store.delete(b"key1")?;
-    assert_eq!(store.get(b"key1")?, None);
+    store.put_serialized(b"key1", b"value1")?;
+    store.delete(b"key1").unwrap();
+    assert_eq!(store.get::<Vec<u8>>(b"key1")?, None);
     
     // Test non-existent key
-    assert_eq!(store.get(b"nonexistent")?, None);
+    assert_eq!(store.get::<Vec<u8>>(b"nonexistent")?, None);
     
     // Test batch operations
     // Create a batch and add some operations
@@ -35,12 +37,12 @@ fn test_sled_store() -> Result<()> {
     batch.put_serialized(b"batch2", b"value2")?;
     Box::new(batch).commit()?;
     
-    assert_eq!(store.get(b"batch1")?, Some(b"value1".to_vec()));
-    assert_eq!(store.get(b"batch2")?, Some(b"value2".to_vec()));
+    assert_eq!(store.get::<Vec<u8>>(b"batch1")?, Some(b"value1".to_vec()));
+    assert_eq!(store.get::<Vec<u8>>(b"batch2")?, Some(b"value2".to_vec()));
     
     // Test get for each key
-    let val1 = store.get(b"batch1")?;
-    let val2 = store.get(b"batch2")?;
+    let val1 = store.get::<Vec<u8>>(b"batch1")?;
+    let val2 = store.get::<Vec<u8>>(b"batch2")?;
     
     assert_eq!(val1, Some(b"value1".to_vec()));
     assert_eq!(val2, Some(b"value2".to_vec()));

@@ -145,7 +145,7 @@ fn test_query_with_property() -> Result<()> {
 #[test]
 fn test_transaction() -> Result<()> {
     let dir = tempfile::tempdir()?;
-    let graph = KnowledgeGraph::open(dir.path())?;
+    let graph: KnowledgeGraph<SledStore> = KnowledgeGraph::open(dir.path())?;
     
     // Create some test data with proper parameters
     let node1 = create_test_node("Test", "Node 1", 30);

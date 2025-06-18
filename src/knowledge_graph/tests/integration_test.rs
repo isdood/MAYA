@@ -123,7 +123,7 @@ fn test_persistence() -> Result<(), Box<dyn Error>> {
     graph.add_node(node)?;
     
     // Reopen the graph
-    let graph = KnowledgeGraph::open(path)?;
+    let graph: KnowledgeGraph<SledStore> = KnowledgeGraph::open(path)?;
     
     // The node should still be there
     let nodes = graph.query()
