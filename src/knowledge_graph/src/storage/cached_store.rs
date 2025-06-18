@@ -3,6 +3,9 @@
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use parking_lot::RwLock;
+use rayon::prelude::*;
+use crate::storage::batch_optimizer::{BatchConfig, BatchStats};
 use std::fmt;
 use bincode;
 use rayon::prelude::*;
@@ -124,30 +127,32 @@ pub struct CachedStore<S> {
     inner: S,
     cache: Arc<RwLock<LruCache<Vec<u8>, Vec<u8>>>>,
     metrics: Arc<CacheMetrics>,
+    read_ahead_keys: Arc<RwLock<VecDeque<Vec<u8>>>>,
+    read_ahead_window: usize,
     config: CacheConfig,
-    // For read-ahead functionality
-    last_keys: RwLock<VecDeque<Vec<u8>>>,
+    batch_config: BatchConfig,
 }
 
 impl<S> CachedStore<S> {
     /// Create a new cached storage wrapper with default configuration
     pub fn new(inner: S) -> Self {
         let config = CacheConfig::default();
-        let cache = Arc::new(RwLock::new(LruCache::new(
-            std::num::NonZeroUsize::new(config.capacity.max(1)).unwrap(),
-        )));
+        let batch_config = BatchConfig::default();
+        let cache = LruCache::new(config.capacity);
         
         Self {
             inner,
-            cache,
+            cache: Arc::new(RwLock::new(cache)),
             metrics: Arc::new(CacheMetrics::default()),
+            read_ahead_keys: Arc::new(RwLock::new(VecDeque::with_capacity(1000))),
+            read_ahead_window: 10,
             config,
-            last_keys: RwLock::new(VecDeque::with_capacity(100)),
+            batch_config,
         }
     }
     
     /// Create a new cached storage wrapper with custom configuration
-    pub fn with_config(inner: S, config: CacheConfig) -> Self {
+    pub fn with_config(inner: S, config: CacheConfig, batch_config: BatchConfig) -> Self {
         // Ensure capacity is at least 1 to create a valid NonZeroUsize
         let capacity = std::num::NonZeroUsize::new(config.capacity.max(1)).unwrap();
         let cache = Arc::new(RwLock::new(LruCache::new(capacity)));
@@ -155,10 +160,12 @@ impl<S> CachedStore<S> {
         
         Self {
             inner,
-            cache,
-            metrics,
+            cache: cache.clone(),
+            metrics: metrics.clone(),
+            read_ahead_keys: Arc::new(RwLock::new(VecDeque::with_capacity(config.read_ahead_window * 2))),
+            read_ahead_window: config.read_ahead_window,
             config,
-            last_keys: RwLock::new(VecDeque::with_capacity(100)),
+            batch_config,
         }
     }
     
@@ -170,6 +177,16 @@ impl<S> CachedStore<S> {
     /// Get a mutable reference to the inner storage
     pub fn inner_mut(&mut self) -> &mut S {
         &mut self.inner
+    }
+    
+    /// Get the current batch configuration
+    pub fn batch_config(&self) -> &BatchConfig {
+        &self.batch_config
+    }
+    
+    /// Update the batch configuration
+    pub fn set_batch_config(&mut self, config: BatchConfig) {
+        self.batch_config = config;
     }
     
     /// Invalidate the cache for a specific key
@@ -352,8 +369,9 @@ where
             metrics: self.metrics.clone(),
             pending_puts: self.pending_puts.clone(),
             pending_deletes: self.pending_deletes.clone(),
-            max_batch_size: self.max_batch_size,
+            config: self.config.clone(),
             total_ops: AtomicUsize::new(0),
+            stats: Arc::new(RwLock::new(BatchStats::new(self.config.initial_batch_size))),
         }
     }
 }
@@ -453,32 +471,33 @@ where
         
         // Process puts and deletes in parallel when there are many
         let total_ops = self.total_ops.load(Ordering::Relaxed);
+        let enable_parallel = self.config.enable_parallel;
         
-        if total_ops > 1000 {
-            // Process puts in parallel
-            let puts = std::mem::take(&mut self.pending_puts);
+        // Always use batch processing for cache updates
+        let puts = std::mem::take(&mut self.pending_puts);
+        let deletes = std::mem::take(&mut self.pending_deletes);
+        
+        if enable_parallel && total_ops > 1000 {
+            // Process puts and deletes in parallel
             let puts: Vec<_> = puts.into_par_iter().collect();
-            
-            // Process deletes in parallel
-            let deletes = std::mem::take(&mut self.pending_deletes);
             let deletes: Vec<_> = deletes.into_par_iter().collect();
             
-            // Apply all puts to cache
+            // Apply all puts to cache in parallel
+            puts.into_par_iter().for_each(|(key, value)| {
+                cache.put(key, value);
+            });
+            
+            // Apply all deletes to cache in parallel
+            deletes.into_par_iter().for_each(|key| {
+                cache.pop(&key);
+            });
+        } else {
+            // Process puts and deletes sequentially
             for (key, value) in puts {
                 cache.put(key, value);
             }
             
-            // Apply all deletes to cache
             for key in deletes {
-                cache.pop(&key);
-            }
-        } else {
-            // Process puts and deletes sequentially for small batches
-            for (key, value) in self.pending_puts.drain() {
-                cache.put(key, value);
-            }
-            
-            for key in self.pending_deletes.drain() {
                 cache.pop(&key);
             }
         }
@@ -489,7 +508,7 @@ where
             self.metrics.record_write(total_bytes);
         }
         
-        // Clear pending operations to free memory
+        // Clear pending operations to free memory (should be empty already)
         self.pending_puts.clear();
         self.pending_deletes.clear();
         
@@ -504,15 +523,63 @@ impl<B: WriteBatch> CachedBatch<B> {
             return Ok(());
         }
         
-        // Process puts
-        for (k, v) in self.pending_puts.drain() {
-            self.inner.put_serialized(&k, &v)?;
+        let start_time = std::time::Instant::now();
+        let batch_size = self.stats.read().batch_size();
+        let enable_parallel = self.config.enable_parallel;
+        
+        // Process puts in batches
+        let puts: Vec<_> = self.pending_puts.drain().collect();
+        if !puts.is_empty() {
+            if enable_parallel && puts.len() > batch_size {
+                // Process puts in parallel chunks
+                puts.par_chunks(batch_size)
+                    .try_for_each(|chunk| {
+                        let mut inner_batch = self.inner.create_batch();
+                        for (k, v) in chunk {
+                            inner_batch.put_serialized(k, v)?;
+                        }
+                        inner_batch.commit()
+                    })?;
+            } else {
+                // Process puts sequentially in chunks
+                for chunk in puts.chunks(batch_size) {
+                    let mut inner_batch = self.inner.create_batch();
+                    for (k, v) in chunk {
+                        inner_batch.put_serialized(k, v)?;
+                    }
+                    inner_batch.commit()?;
+                }
+            }
         }
         
-        // Process deletes
-        for k in self.pending_deletes.drain() {
-            self.inner.delete(&k)?;
+        // Process deletes in batches
+        let deletes: Vec<_> = self.pending_deletes.drain().collect();
+        if !deletes.is_empty() {
+            if enable_parallel && deletes.len() > batch_size {
+                // Process deletes in parallel chunks
+                deletes.par_chunks(batch_size)
+                    .try_for_each(|chunk| {
+                        let mut inner_batch = self.inner.create_batch();
+                        for k in chunk {
+                            inner_batch.delete_serialized(k)?;
+                        }
+                        inner_batch.commit()
+                    })?;
+            } else {
+                // Process deletes sequentially in chunks
+                for chunk in deletes.chunks(batch_size) {
+                    let mut inner_batch = self.inner.create_batch();
+                    for k in chunk {
+                        inner_batch.delete_serialized(k)?;
+                    }
+                    inner_batch.commit()?;
+                }
+            }
         }
+        
+        // Update statistics
+        let duration = start_time.elapsed();
+        self.stats.write().record_batch(puts.len() + deletes.len(), duration);
         
         Ok(())
     }
