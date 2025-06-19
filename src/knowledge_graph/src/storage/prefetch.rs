@@ -265,18 +265,26 @@ where
 /// Extension trait for adding prefetching to Storage iterators
 pub trait PrefetchExt: Storage {
     /// Create a prefetching iterator for a key prefix
+    /// 
+    /// This is an alias for `iter_prefix_prefetch` for backward compatibility.
     fn prefetch(
-        &self,
+        &self, 
         prefix: &[u8], 
         config: PrefetchConfig
     ) -> Result<PrefetchingIterator<Vec<u8>, Vec<u8>, std::vec::IntoIter<(Vec<u8>, Vec<u8>)>>> {
-        // Create a standard iterator first
-        let iterator = self.iter_prefix(prefix);
+        self.iter_prefix_prefetch(prefix, config)
+    }
+    
+    /// Create a prefetching iterator for a key prefix
+    fn iter_prefix_prefetch(
+        &self,
+        prefix: &[u8],
+        config: PrefetchConfig
+    ) -> Result<PrefetchingIterator<Vec<u8>, Vec<u8>, std::vec::IntoIter<(Vec<u8>, Vec<u8>)>>> {
+        // Create a standard iterator first and collect it into a Vec to ensure 'static lifetime
+        let items: Vec<(Vec<u8>, Vec<u8>)> = self.iter_prefix(prefix).collect();
         
-        // Convert the iterator to a Vec to ensure it's 'static
-        let items: Vec<(Vec<u8>, Vec<u8>)> = iterator.collect();
-        
-        // Create a new iterator from the collected items
+        // Create a new owned iterator from the collected items
         let iterator = items.into_iter();
         
         // Create the prefetching iterator

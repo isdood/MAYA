@@ -35,7 +35,9 @@ impl SledStore {
 impl Storage for SledStore {
     type Batch<'a> = SledWriteBatch where Self: 'a;
     
-    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
+    fn get<T>(&self, key: &[u8]) -> Result<Option<T>> 
+    where
+        T: DeserializeOwned + Serialize {
         match self.db.get(key)? {
             Some(bytes) => {
                 let value = deserialize(&bytes)?;
@@ -67,6 +69,7 @@ impl Storage for SledStore {
     }
     
     fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        // Implementation of get_raw
         match self.db.get(key)? {
             Some(ivec) => Ok(Some(ivec.to_vec())),
             None => Ok(None),
@@ -102,12 +105,8 @@ impl Storage for SledStore {
 impl WriteBatchExt for SledStore {
     type Batch<'a> = SledWriteBatch where Self: 'a;
 
-    fn create_batch(&self) -> Self::Batch<'_> {
+    fn create_write_batch(&self) -> Self::Batch<'_> {
         SledWriteBatch::with_options(Arc::clone(&self.db), 10_000, true)
-    }
-    
-    fn batch(&self) -> Self::Batch<'_> {
-        self.create_batch()
     }
 }
 
@@ -356,10 +355,10 @@ mod tests {
         assert_eq!(stored2.as_deref(), Some(value2.as_slice()));
 
         // Test delete in transaction
-        let mut batch = <SledStore as Storage>::batch(&store);
+        let mut batch = store.batch();
         batch.put_serialized(b"key1", value1)?;
-        batch.delete(b"key1");  // Delete the key
-        Box::new(batch).commit()?;
+        batch.delete(b"key1");  // Delete the key - returns ()
+        batch.commit()?;
 
         // Verify the key was deleted
         assert!(store.get::<Vec<u8>>(b"key1")?.is_none());

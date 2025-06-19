@@ -362,7 +362,7 @@ fn remove_node_from_label_index<S: Storage>(storage: &S, label: &str, node_id: U
 }
 
 /// Get all node IDs for a given label
-fn get_node_ids_by_label<S: Storage>(storage: &S, label: &str) -> Result<Vec<Uuid>> {
+pub(crate) fn get_node_ids_by_label<S: Storage>(storage: &S, label: &str) -> Result<Vec<Uuid>> {
     let key = label_index_key(label);
     Ok(storage.get(&key)?.unwrap_or_default())
 }

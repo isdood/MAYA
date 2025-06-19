@@ -87,6 +87,10 @@ pub mod prefetch;
 // Re-export prefetch types
 pub use prefetch::{PrefetchConfig, PrefetchExt, PrefetchingIterator};
 
+// Re-export batch operation types
+pub use crate::storage::WriteBatchExt;
+pub use crate::storage::WriteBatch;
+
 // Re-export public types
 pub use sled_store::SledStore;
 pub use cached_store::CachedStore;
@@ -114,7 +118,12 @@ pub trait Storage: Send + Sync + 'static {
     type Batch<'a>: WriteBatch + 'a where Self: 'a;
     
     /// Get a value by key
-    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>>;
+    /// 
+    /// The type T must implement both DeserializeOwned and Serialize to support
+    /// caching of deserialized values in storage backends that implement caching.
+    fn get<T>(&self, key: &[u8]) -> Result<Option<T>> 
+    where
+        T: DeserializeOwned + Serialize;
     
     /// Put a key-value pair
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()>;
@@ -182,17 +191,27 @@ impl<T: WriteBatch> GenericWriteBatch for T {
 
 /// Extension trait for batch operations
 pub trait WriteBatchExt: Storage {
+    /// Create a new batch
+    fn batch(&self) -> Self::Batch<'_> {
+        self.create_write_batch()
+    }
+
+    /// Create a new write batch (low-level, prefer `batch()`)
+    fn create_write_batch(&self) -> Self::Batch<'_> {
+        Storage::create_batch(self)
+    }
+    
     /// Put a serializable value into the batch
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
         let bytes = serialize(value)?;
-        let mut batch = self.create_batch();
+        let mut batch = self.batch();
         batch.put_serialized(key, &bytes)?;
         batch.commit()
     }
     
     /// Delete a key from the batch
     fn delete_serialized(&self, key: &[u8]) -> Result<()> {
-        let mut batch = self.create_batch();
+        let mut batch = self.batch();
         batch.delete_serialized(key)?;
         batch.commit()
     }

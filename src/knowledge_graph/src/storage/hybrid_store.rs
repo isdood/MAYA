@@ -1,7 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::path::Path;
-use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, hash_map::DefaultHasher};
 use std::hash::{Hash, Hasher};
 use parking_lot::RwLock;
 use serde::{Serialize, de::DeserializeOwned};
@@ -132,39 +132,25 @@ impl HybridStore {
     /// Determine which backend to use for a read operation
     fn route_read(&self, key: &[u8]) -> bool {
         // Check if we have a specific routing for this key
-        if let Ok(key_routing) = self.key_routing.read() {
-            if let Some(cached) = key_routing.get(key) {
-                return *cached;
-            }
+        let key_routing = self.key_routing.read();
+        if let Some(cached) = key_routing.get(key) {
+            return *cached;
         }
 
         // Use adaptive routing based on read ratio
-        match self.stats.read() {
-            Ok(stats) => {
-                if stats.total_operations() < self.config.min_operations_for_adaptive {
-                    // Not enough data, use initial threshold
-                    self.config.initial_read_ratio_threshold > 0.5
-                } else {
-                    // If read ratio is high, prefer cache
-                    stats.read_ratio() > self.config.initial_read_ratio_threshold
-                }
-            }
-            Err(_) => {
-                // On error, fall back to initial threshold
-                self.config.initial_read_ratio_threshold > 0.5
-            }
+        let stats = self.stats.read();
+        if stats.total_operations() < self.config.min_operations_for_adaptive {
+            // Not enough data, use initial threshold
+            self.config.initial_read_ratio_threshold > 0.5
+        } else {
+            // If read ratio is high, prefer cache
+            stats.read_ratio() > self.config.initial_read_ratio_threshold
         }
     }
 
     fn should_use_cache(&self, is_read: bool) -> bool {
-        // If we don't have enough data yet, use the initial strategy
-        let stats = match self.stats.read() {
-            Ok(stats) => stats,
-            Err(e) => {
-                log::warn!("Failed to acquire read lock: {}", e);
-                return is_read && self.config.initial_read_ratio_threshold > 0.0;
-            }
-        };
+        // Get the stats with the parking_lot read lock
+        let stats = self.stats.read();
         
         let total_ops = stats.total_operations();
         if total_ops < self.config.min_operations_for_adaptive {
@@ -190,8 +176,8 @@ impl HybridStore {
         let result = f();
         let elapsed = start.elapsed();
         
-        // Update stats
-        let mut stats = self.stats.write().unwrap();
+        // Update stats with parking_lot write lock
+        let mut stats = self.stats.write();
         if is_read {
             stats.add_read(elapsed);
         } else {
@@ -244,9 +230,8 @@ impl Storage for HybridStore {
                 log::warn!("Failed to update cache: {}", e);
             } else {
                 // Update routing to prefer cache for this key
-                if let Ok(mut key_routing) = self.key_routing.write() {
-                    key_routing.insert(key.to_vec(), true);
-                }
+                let mut key_routing = self.key_routing.write();
+                key_routing.insert(key.to_vec(), true);
             }
         }
         
@@ -289,19 +274,16 @@ impl Storage for HybridStore {
         self.update_stats(true, || {
             // Check if we should use the cache for this key
             let use_cache = self.should_use_cache(true);
-            let key_routing = self.key_routing.read().map_err(|e| {
-                KnowledgeGraphError::StorageError(format!("Failed to acquire read lock: {}", e))
-            })?;
+            let key_routing = self.key_routing.read();
             let should_use_cache = *key_routing.get(key).unwrap_or(&use_cache);
             
             // Try to get from cache if we should use it
             if should_use_cache {
                 match self.cache.get(key) {
                     Ok(Some(value)) => {
-                        // Cache hit
-                        if let Ok(mut key_routing) = self.key_routing.write() {
-                            key_routing.insert(key.to_vec(), true);
-                        }
+                        // Cache hit - update routing to prefer cache for this key
+                        let mut key_routing = self.key_routing.write();
+                        key_routing.insert(key.to_vec(), true);
                         return Ok(Some(value));
                     }
                     Ok(None) => {
@@ -320,7 +302,8 @@ impl Storage for HybridStore {
                     if use_cache {
                         if let Err(e) = self.cache.put(key, &value) {
                             log::warn!("Failed to update cache: {}", e);
-                        } else if let Ok(mut key_routing) = self.key_routing.write() {
+                        } else {
+                            let mut key_routing = self.key_routing.write();
                             key_routing.insert(key.to_vec(), true);
                         }
                     }
