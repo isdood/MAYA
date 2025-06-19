@@ -6,6 +6,11 @@ use rustyline::{Config, Editor};
 use std::error::Error;
 use std::result::Result as StdResult;
 
+mod commands {
+    pub mod memory;
+}
+use commands::memory::MemoryCommand;
+
 /// Runs the console interface
 pub fn run(llm: &mut impl LLM) -> StdResult<(), Box<dyn Error>> {
     // Create a new editor with command history
@@ -45,6 +50,22 @@ pub fn run(llm: &mut impl LLM) -> StdResult<(), Box<dyn Error>> {
                         }
                         continue;
                     }
+                    
+                    // Handle memory commands
+                    input if input.starts_with("memory ") => {
+                        let args: Vec<&str> = input[7..].split_whitespace().collect();
+                        match MemoryCommand::parse(&args) {
+                            Ok(cmd) => {
+                                let result = cmd.execute(llm.memory_bank_mut());
+                                println!("\n{}", result);
+                            }
+                            Err(e) => {
+                                println!("Error: {}", e);
+                                println!("Type 'memory help' for usage information.");
+                            }
+                        }
+                        continue;
+                    }
                     input => {
                         // Process the input with the LLM
                         let response = llm.generate_response(input, &[]);
@@ -78,10 +99,11 @@ pub fn run(llm: &mut impl LLM) -> StdResult<(), Box<dyn Error>> {
 /// Displays help information
 fn show_help() {
     println!("\nMAYA LLM Console Commands:");
-    println!("  help      - Show this help message");
-    println!("  clear     - Clear the screen");
-    println!("  history   - Show command history");
-    println!("  exit/quit - Exit the program");
+    println!("  help              - Show this help message");
+    println!("  clear             - Clear the screen");
+    println!("  history           - Show command history");
+    println!("  memory <command>  - Manage memories (see 'memory help' for details)");
+    println!("  exit/quit         - Exit the program");
     println!("\nEnter any other text to chat with MAYA!");
 }
 

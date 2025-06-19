@@ -95,15 +95,15 @@ pub const CrystalProcessor = struct {
     }
 
     /// Calculate crystal coherence
-    fn calculateCrystalCoherence(_self: *CrystalProcessor, _pattern_data: []const u8) f64 {
-        const base_coherence = @as(f64, _pattern_data.len) / 100.0;
+    fn calculateCrystalCoherence(_: *CrystalProcessor, pattern_data: []const u8) f64 {
+        const base_coherence = @as(f64, pattern_data.len) / 100.0;
         return @min(1.0, base_coherence);
     }
 
     /// Calculate crystal entanglement
-    fn calculateCrystalEntanglement(_self: *CrystalProcessor, _pattern_data: []const u8) f64 {
+    fn calculateCrystalEntanglement(_: *CrystalProcessor, pattern_data: []const u8) f64 {
         var complexity: usize = 0;
-        for (_pattern_data) |byte| {
+        for (pattern_data) |byte| {
             complexity += @popCount(byte);
         }
         return @min(1.0, @as(f64, complexity) / 100.0);
@@ -116,7 +116,7 @@ pub const CrystalProcessor = struct {
     }
 
     /// Generate unique pattern ID
-    fn generatePatternId(_self: *CrystalProcessor) []const u8 {
+    fn generatePatternId(_: *CrystalProcessor) []const u8 {
         // Simple pattern ID generation based on timestamp
         const timestamp = std.time.timestamp();
         var buffer: [32]u8 = undefined;

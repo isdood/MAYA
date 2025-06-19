@@ -157,14 +157,19 @@ mod tests {
         let mut context = ResponseContext::default();
         context.add_previous_message("Hello, world!");
         
-        // Create a memory bank with some memories
+        // Test memory bank persistence
         let mut memory_bank = MemoryBank::new();
-        memory_bank.add_memory(
-            "User's name is Alice", 
-            MemoryType::UserDetail, 
-            0.9, 
-            Some(vec![("key".to_string(), "value".to_string())].into_iter().collect())
+        let _memory_id = memory_bank.remember(
+            "User's name is Alice",
+            MemoryType::UserDetail,
+            0.9,  // importance
+            0.8,  // confidence
+            Some(vec![("key".to_string(), "value".to_string())].into_iter().collect()),
         );
+        
+        // Test recall
+        let results = memory_bank.recall_memories("Alice");
+        assert!(!results.is_empty(), "Should find the memory about Alice");
         
         // Add some settings
         let mut settings = HashMap::new();
@@ -191,9 +196,15 @@ mod tests {
         assert_eq!(loaded.settings.get("version"), Some(&"1.0.0".to_string()));
         
         // Verify memory content
-        let memories = loaded.memory_bank.recall("Alice");
+        let memories = loaded.memory_bank.recall_memories("Alice");
         assert!(!memories.is_empty(), "Should find memory about Alice");
-        assert_eq!(memories[0].content, "User's name is Alice");
-        assert_eq!(memories[0].metadata.get("key"), Some(&"value".to_string()));
+        
+        // Get the memory by ID to check metadata
+        if let Some(memory) = loaded.memory_bank.get_memory(0) {
+            assert_eq!(memory.content, "User's name is Alice");
+            assert_eq!(memory.metadata.get("key"), Some(&"value".to_string()));
+        } else {
+            panic!("Memory not found by ID");
+        }
     }
 }

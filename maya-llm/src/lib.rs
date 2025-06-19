@@ -11,10 +11,10 @@ pub mod pattern;
 pub mod response;
 pub mod persistence;
 pub mod memory;
+pub use memory::{Memory, MemoryBank, MemoryType, MemoryRelationship, MemoryLink};
 
 use pattern::PatternMatcher;
 use response::ResponseContext;
-use memory::{MemoryBank, MemoryType};
 use persistence::PersistenceError;
 
 /// Core trait defining the LLM interface
@@ -27,6 +27,9 @@ pub trait LLM {
     
     /// Get the model's name
     fn name(&self) -> &str;
+    
+    /// Get a mutable reference to the memory bank
+    fn memory_bank_mut(&mut self) -> &mut MemoryBank;
 }
 
 /// A simple implementation of the LLM trait using pattern matching
@@ -156,6 +159,10 @@ impl LLM for BasicLLM {
     
     fn name(&self) -> &str {
         &self.name
+    }
+    
+    fn memory_bank_mut(&mut self) -> &mut MemoryBank {
+        &mut self.memory
     }
 }
 
@@ -405,26 +412,6 @@ impl BasicLLM {
         &mut self.context
     }
     
-    /// Store a new memory
-    pub fn remember<T: Into<String>>(
-        &mut self,
-        content: T,
-        memory_type: MemoryType,
-        importance: f32,
-        metadata: Option<HashMap<String, String>>,
-    ) {
-        self.memory.add_memory(content, memory_type, importance, metadata);
-    }
-    
-    /// Recall relevant memories based on a query
-    pub fn recall_memories<T: AsRef<str>>(&self, query: T) -> Vec<String> {
-        self.memory
-            .recall(query)
-            .into_iter()
-            .map(|m| m.content.clone())
-            .collect()
-    }
-    
     /// Get a reference to the memory bank
     pub fn memory_bank(&self) -> &MemoryBank {
         &self.memory
@@ -433,6 +420,44 @@ impl BasicLLM {
     /// Get a mutable reference to the memory bank
     pub fn memory_bank_mut(&mut self) -> &mut MemoryBank {
         &mut self.memory
+    }
+    
+    /// Store a new memory and return its ID
+    pub fn remember<T: Into<String>>(
+        &mut self,
+        content: T,
+        memory_type: MemoryType,
+        importance: f32,
+        metadata: Option<HashMap<String, String>>,
+    ) -> usize {
+        self.memory.remember(
+            content,
+            memory_type,
+            importance,
+            0.8, // Default confidence
+            metadata,
+        )
+    }
+    
+    /// Recall relevant memories based on a query
+    pub fn recall_memories<T: AsRef<str>>(&self, query: T) -> Vec<String> {
+        self.memory.recall_memories(query.as_ref())
+    }
+    
+    /// Add a relationship between two memories
+    pub fn relate_memories(
+        &mut self,
+        source_id: usize,
+        target_id: usize,
+        relationship: MemoryRelationship,
+        strength: f32,
+    ) -> bool {
+        if let Some(memory) = self.memory.get_memory_mut(source_id) {
+            memory.add_relationship(target_id, relationship, strength);
+            true
+        } else {
+            false
+        }
     }
     
     /// Set the data directory for persistent storage

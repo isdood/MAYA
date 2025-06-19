@@ -76,14 +76,14 @@ pub const VisualProcessor = struct {
     }
 
     /// Calculate visual contrast
-    fn calculateContrast(_self: *VisualProcessor, _pattern_data: []const u8) f64 {
+    fn calculateContrast(_: *VisualProcessor, pattern_data: []const u8) f64 {
         // Simple contrast calculation based on byte value differences
         var total_diff: usize = 0;
         var count: usize = 0;
 
         var i: usize = 1;
-        while (i < _pattern_data.len) : (i += 1) {
-            const diff = @abs(@as(i32, _pattern_data[i]) - @as(i32, _pattern_data[i - 1]));
+        while (i < pattern_data.len) : (i += 1) {
+            const diff = @abs(@as(i32, pattern_data[i]) - @as(i32, pattern_data[i - 1]));
             total_diff += @as(usize, diff);
             count += 1;
         }
@@ -93,16 +93,16 @@ pub const VisualProcessor = struct {
     }
 
     /// Calculate visual noise
-    fn calculateNoise(_self: *VisualProcessor, _pattern_data: []const u8) f64 {
+    fn calculateNoise(_: *VisualProcessor, pattern_data: []const u8) f64 {
         // Simple noise calculation based on local variations
         var noise: f64 = 0.0;
         var count: usize = 0;
 
         var i: usize = 2;
-        while (i < _pattern_data.len) : (i += 1) {
-            const center = @as(f64, _pattern_data[i - 1]);
-            const left = @as(f64, _pattern_data[i - 2]);
-            const right = @as(f64, _pattern_data[i]);
+        while (i < pattern_data.len) : (i += 1) {
+            const center = @as(f64, pattern_data[i - 1]);
+            const left = @as(f64, pattern_data[i - 2]);
+            const right = @as(f64, pattern_data[i]);
             const local_noise = @abs(center - (left + right) / 2.0);
             noise += local_noise;
             count += 1;

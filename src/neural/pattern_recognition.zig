@@ -160,18 +160,18 @@ pub const PatternRecognition = struct {
     }
 
     /// Calculate pattern confidence
-    fn calculateConfidence(_self: *PatternRecognition, _quantum_state: ?QuantumState, _visual_state: ?VisualState) f64 {
+    fn calculateConfidence(_: *PatternRecognition, quantum_state: ?QuantumState, visual_state: ?VisualState) f64 {
         var confidence: f64 = 0.0;
         var factors: usize = 0;
 
         // Consider quantum state if available
-        if (_quantum_state) |qs| {
+        if (quantum_state) |qs| {
             confidence += qs.coherence;
             factors += 1;
         }
 
         // Consider visual state if available
-        if (_visual_state) |vs| {
+        if (visual_state) |vs| {
             confidence += vs.brightness;
             factors += 1;
         }
@@ -181,12 +181,12 @@ pub const PatternRecognition = struct {
     }
 
     /// Determine pattern type based on available states
-    fn determinePatternType(_self: *PatternRecognition, _quantum_state: ?QuantumState, _visual_state: ?VisualState) PatternType {
-        if (_quantum_state != null and _visual_state != null) {
+    fn determinePatternType(_: *PatternRecognition, quantum_state: ?QuantumState, visual_state: ?VisualState) PatternType {
+        if (quantum_state != null and visual_state != null) {
             return .Universal;
-        } else if (_quantum_state != null) {
+        } else if (quantum_state != null) {
             return .Quantum;
-        } else if (_visual_state != null) {
+        } else if (visual_state != null) {
             return .Visual;
         } else {
             return .Neural;
@@ -194,7 +194,7 @@ pub const PatternRecognition = struct {
     }
 
     /// Create pattern metadata
-    fn createMetadata(_self: *PatternRecognition) !PatternMetadata {
+    fn createMetadata(_: *PatternRecognition) !PatternMetadata {
         const now = std.time.milliTimestamp();
         return PatternMetadata{
             .created_at = now,

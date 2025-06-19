@@ -72,26 +72,26 @@ pub const NeuralProcessor = struct {
     }
 
     /// Calculate pattern confidence
-    fn calculateConfidence(_self: *NeuralProcessor, _quantum_state: pattern_recognition.QuantumState, _visual_state: pattern_recognition.VisualState) f64 {
+    fn calculateConfidence(_: *NeuralProcessor, quantum_state: pattern_recognition.QuantumState, visual_state: pattern_recognition.VisualState) f64 {
         // Weight quantum and visual components
         const quantum_weight = 0.6;
         const visual_weight = 0.4;
 
         // Calculate quantum confidence
-        const quantum_confidence = (_quantum_state.coherence + (1.0 - _quantum_state.noise)) / 2.0;
+        const quantum_confidence = (quantum_state.coherence + (1.0 - quantum_state.noise)) / 2.0;
 
         // Calculate visual confidence
-        const visual_confidence = (_visual_state.contrast + (1.0 - _visual_state.noise)) / 2.0;
+        const visual_confidence = (visual_state.contrast + (1.0 - visual_state.noise)) / 2.0;
 
         // Combine confidences
         return quantum_weight * quantum_confidence + visual_weight * visual_confidence;
     }
 
     /// Determine pattern type
-    fn determinePatternType(_self: *NeuralProcessor, _quantum_state: pattern_recognition.QuantumState, _visual_state: pattern_recognition.VisualState) pattern_recognition.PatternType {
+    fn determinePatternType(_: *NeuralProcessor, quantum_state: pattern_recognition.QuantumState, visual_state: pattern_recognition.VisualState) pattern_recognition.PatternType {
         // Determine dominant characteristics
-        const quantum_dominant = _quantum_state.coherence > 0.8 and _quantum_state.entanglement > 0.6;
-        const visual_dominant = _visual_state.contrast > 0.8 and _visual_state.resolution > 512;
+        const quantum_dominant = quantum_state.coherence > 0.8 and quantum_state.entanglement > 0.6;
+        const visual_dominant = visual_state.contrast > 0.8 and visual_state.resolution > 512;
 
         if (quantum_dominant and visual_dominant) {
             return pattern_recognition.PatternType.Universal;
@@ -105,16 +105,16 @@ pub const NeuralProcessor = struct {
     }
 
     /// Create pattern metadata
-    fn createMetadata(_self: *NeuralProcessor, _quantum_state: pattern_recognition.QuantumState, _visual_state: pattern_recognition.VisualState) !pattern_recognition.PatternMetadata {
+    fn createMetadata(_: *NeuralProcessor, quantum_state: pattern_recognition.QuantumState, visual_state: pattern_recognition.VisualState) !pattern_recognition.PatternMetadata {
         return pattern_recognition.PatternMetadata{
-            .quantum = _quantum_state,
-            .visual = _visual_state,
+            .quantum = quantum_state,
+            .visual = visual_state,
             .timestamp = std.time.timestamp(),
         };
     }
 
     /// Generate unique pattern ID
-    fn generatePatternId(_self: *NeuralProcessor) []const u8 {
+    fn generatePatternId(_: *NeuralProcessor) []const u8 {
         // Simple pattern ID generation based on timestamp
         const timestamp = std.time.timestamp();
         var buffer: [32]u8 = undefined;
