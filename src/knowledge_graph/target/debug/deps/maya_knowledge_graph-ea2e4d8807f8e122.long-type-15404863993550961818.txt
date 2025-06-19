@@ -1,0 +1,1 @@
+for<'a> <S as storage::Storage>::Batch<'a>: WriteBatch

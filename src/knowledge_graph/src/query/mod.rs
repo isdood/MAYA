@@ -3,15 +3,11 @@
 //! Provides a fluent API for querying the knowledge graph.
 
 use std::marker::PhantomData;
+use super::graph::{self, KnowledgeGraph};
+use crate::error::Result;
+use crate::graph::models::{Node, Edge};
+use crate::storage::{Storage, WriteBatch, WriteBatchExt};
 use serde_json::Value;
-
-use crate::{
-    error::Result,
-    models::{Node, Edge},
-    storage::{Storage, WriteBatch, WriteBatchExt},
-    KnowledgeGraph,
-    graph::get_node_ids_by_label,
-};
 
 /// Result of a query execution
 #[derive(Debug)]
@@ -27,7 +23,6 @@ pub struct QueryBuilder<'a, S>
 where
     S: Storage + WriteBatchExt,
     for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
-    for<'b> <S as WriteBatchExt>::BatchType<'b>: WriteBatch + 'static,
     for<'b> &'b S: 'b,
 {
     graph: &'a KnowledgeGraph<S>,
@@ -42,7 +37,6 @@ impl<'a, S> QueryBuilder<'a, S>
 where
     S: Storage + WriteBatchExt,
     for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
-    for<'b> <S as WriteBatchExt>::BatchType<'b>: WriteBatch + 'static,
     for<'b> &'b S: 'b,
 {
     /// Create a new query builder
@@ -97,8 +91,8 @@ where
             // Try to detect if the filter is a label filter
             // This is a heuristic: if with_label/with_node_type was called, it is always the first filter
             if let Some(label) = self.extract_label_filter() {
-                // Use label index
-                let node_ids = get_node_ids_by_label(&self.graph.storage, &label)?;
+                // Use the helper function from the graph module
+                let node_ids = graph::get_node_ids_by_label(&self.graph, &label)?;
                 let mut result_nodes = Vec::new();
                 for node_id in node_ids {
                     if let Some(node) = self.graph.get_node(node_id)? {
@@ -170,7 +164,6 @@ pub trait QueryExt<S>
 where
     S: Storage + WriteBatchExt,
     for<'a> <S as Storage>::Batch<'a>: WriteBatch + 'static,
-    for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
     for<'a> &'a S: 'a,
 {
     /// Start building a query
@@ -181,7 +174,6 @@ impl<S> QueryExt<S> for KnowledgeGraph<S>
 where
     S: Storage + WriteBatchExt,
     for<'a> <S as Storage>::Batch<'a>: WriteBatch + 'static,
-    for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
     for<'a> &'a S: 'a,
 {
     fn query(&self) -> QueryBuilder<S> {
@@ -199,7 +191,7 @@ mod tests {
     fn test_query_builder() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
-        let graph = KnowledgeGraph::with_storage(store);
+        let graph = KnowledgeGraph::new(store);
         
         // Add test data
         let node1 = Node::new("type1".into());
@@ -235,7 +227,7 @@ mod tests {
     fn test_label_index_integration() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
-        let graph = KnowledgeGraph::with_storage(store);
+        let graph = KnowledgeGraph::new(store);
 
         // Add nodes with different labels
         let node_a1 = Node::new("Alpha");
@@ -271,17 +263,17 @@ mod tests {
 
         // Optionally, check the label index directly
         use crate::graph::get_node_ids_by_label;
-        let alpha_ids = get_node_ids_by_label(&graph.storage, "Alpha")?;
+        let alpha_ids = get_node_ids_by_label(graph.storage(), "Alpha")?;
         assert!(alpha_ids.contains(&node_a1.id));
         assert!(alpha_ids.contains(&node_a2.id));
         assert_eq!(alpha_ids.len(), 2);
 
-        let beta_ids = get_node_ids_by_label(&graph.storage, "Beta")?;
+        let beta_ids = get_node_ids_by_label(graph.storage(), "Beta")?;
         assert!(beta_ids.contains(&node_b1.id));
         assert!(beta_ids.contains(&node_b2.id));
         assert_eq!(beta_ids.len(), 2);
 
-        let gamma_ids = get_node_ids_by_label(&graph.storage, "Gamma")?;
+        let gamma_ids = get_node_ids_by_label(graph.storage(), "Gamma")?;
         assert!(gamma_ids.contains(&node_c.id));
         assert_eq!(gamma_ids.len(), 1);
 

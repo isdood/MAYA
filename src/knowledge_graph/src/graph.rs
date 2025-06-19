@@ -108,12 +108,17 @@ impl<S> KnowledgeGraph<S>
 where
     S: Storage + WriteBatchExt,
     for<'a> <S as Storage>::Batch<'a>: WriteBatch + 'static,
-    for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
     for<'a> &'a S: 'a,
 {
     /// Create a new knowledge graph with a custom storage backend
     pub fn new(storage: S) -> Self {
         Self { storage }
+    }
+    
+    /// Get a reference to the underlying storage (for testing)
+    #[cfg(test)]
+    pub fn storage(&self) -> &S {
+        &self.storage
     }
 
     /// Add a node to the graph
@@ -128,13 +133,12 @@ where
         }
         
         // Add node to storage using batch for atomicity
-        let batch = <S as Storage>::batch(&self.storage);
+        let mut batch = self.storage.batch();
         let value = serde_json::to_vec(&node)
             .map_err(KnowledgeGraphError::SerializationError)?;
         
-        let mut batch = batch;
         batch.put_serialized(&key, &value)?;
-        Box::new(batch).commit()?;
+        batch.commit()?;
         
         // Update label index
         add_node_to_label_index(&self.storage, &node.label, node.id)?;
@@ -178,15 +182,16 @@ where
         }
         
         // Add edge to storage using batch for atomicity
-        let batch = <S as Storage>::batch(&self.storage);
+        let mut batch = self.storage.batch();
+        
+        // Store the edge
         let key = edge_key(edge.id);
         let value = serde_json::to_vec(edge)
             .map_err(KnowledgeGraphError::SerializationError)?;
             
-        let mut batch = batch;
         batch.put_serialized(&key, &value)?;
         
-        // Add edge to source node's outgoing edges
+        // Update source node's outgoing edges
         let source_edges_key = format!("node_edges:{}:outgoing", edge.source).into_bytes();
         let mut source_edges: Vec<Uuid> = self.storage.get(&source_edges_key)?.unwrap_or_default();
         source_edges.push(edge.id);
@@ -195,7 +200,7 @@ where
             
         batch.put_serialized(&source_edges_key, &source_edges_value)?;
         
-        // Add edge to target node's incoming edges
+        // Update target node's incoming edges
         let target_edges_key = format!("node_edges:{}:incoming", edge.target).into_bytes();
         let mut target_edges: Vec<Uuid> = self.storage.get(&target_edges_key)?.unwrap_or_default();
         target_edges.push(edge.id);
@@ -205,7 +210,7 @@ where
         batch.put_serialized(&target_edges_key, &target_edges_value)?;
         
         // Commit the batch
-        Box::new(batch).commit()
+        batch.commit()
     }
 
     /// Get an edge by ID
@@ -257,11 +262,10 @@ where
 }
 
 /// A transaction for atomic operations
-pub struct Transaction<'a, S> 
+pub struct Transaction<'a, S>
 where
     S: Storage + WriteBatchExt,
     for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
-    for<'b> <S as WriteBatchExt>::BatchType<'b>: WriteBatch + 'static,
 {
     batch: <S as Storage>::Batch<'a>,
     _marker: std::marker::PhantomData<&'a S>,
@@ -271,10 +275,9 @@ impl<'a, S> Transaction<'a, S>
 where
     S: Storage + WriteBatchExt,
     for<'b> <S as Storage>::Batch<'b>: WriteBatch + 'static,
-    for<'b> <S as WriteBatchExt>::BatchType<'b>: WriteBatch + 'static,
 {
     fn new(storage: &'a S) -> Self {
-        let batch = <S as Storage>::batch(storage);
+        let batch = storage.batch();
         Self {
             batch,
             _marker: std::marker::PhantomData,

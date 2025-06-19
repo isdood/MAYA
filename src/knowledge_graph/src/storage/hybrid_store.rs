@@ -339,19 +339,19 @@ impl Storage for HybridStore {
             // Delete from primary
             self.primary.delete(key)?;
             
-            // Invalidate cache asynchronously
+            // Clone the key before moving it into the closure
+            let key_vec = key.to_vec();
             let cache = self.cache.clone();
-            let key = key.to_vec();
             
             // Spawn a blocking task to invalidate the cache
             std::thread::spawn(move || {
-                if let Err(e) = cache.delete_serialized(&key) {
+                if let Err(e) = cache.delete_serialized(&key_vec) {
                     log::warn!("Failed to invalidate cache: {}", e);
                 }
             });
             
-            // Update key routing
-            self.key_routing.write().remove(&key);
+            // Update key routing with the original key
+            self.key_routing.write().remove(key);
             
             Ok(())
         })
@@ -382,6 +382,10 @@ impl Storage for HybridStore {
                     Ok(Some(value)) => {
                         // Cache hit
                         self.key_routing.write().insert(key.to_vec(), true);
+                        // Update cache synchronously
+                        if let Err(e) = self.cache.put_raw(key, &value) {
+                            log::warn!("Failed to update cache: {}", e);
+                        }
                         Ok(Some(value))
                     },
                     Ok(None) => {
@@ -414,6 +418,8 @@ impl Storage for HybridStore {
     }
 }
 
+// Remove duplicate Storage implementation - using the one above
+
 impl WriteBatchExt for HybridStore {
     type Batch<'a> = HybridBatch<<SledStore as Storage>::Batch<'a>, <CachedStore<SledStore> as Storage>::Batch<'a>> where Self: 'a;
     
@@ -421,31 +427,17 @@ impl WriteBatchExt for HybridStore {
         HybridBatch::new(
             self.primary.create_batch(),
             self.cache.create_batch(),
-            self.key_routing.clone(),
+            Arc::clone(&self.key_routing),
         )
     }
     
     fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
-        let bytes = bincode::serialize(value).map_err(KnowledgeGraphError::from)?;
-        self.primary.put_serialized(key, &bytes)?;
-        match self.cache.put_serialized(key, &bytes) {
-            Ok(_) => {}
-            Err(e) => log::warn!("Failed to update cache in put_serialized: {}", e),
-        }
-        self.key_routing.write().insert(key.to_vec(), true);
-        Ok(())
+        self.put(key, value)
     }
     
     fn delete_serialized(&self, key: &[u8]) -> Result<()> {
-        self.primary.delete_serialized(key)?;
-        if let Err(e) = self.cache.delete_serialized(key) {
-            log::warn!("Failed to delete from cache in delete_serialized: {}", e);
-        }
-        self.key_routing.write().remove(key);
-        Ok(())
+        self.delete(key)
     }
-    
-
 }
 
 /// Batch implementation for HybridStore
@@ -458,6 +450,7 @@ where
     primary_batch: PB,
     cache_batch: CB,
     key_routing: Arc<RwLock<HashMap<Vec<u8>, bool>>>,
+    keys_to_update: Vec<Vec<u8>>,
 }
 
 impl<PB, CB> HybridBatch<PB, CB> 
@@ -475,7 +468,76 @@ where
             primary_batch,
             cache_batch,
             key_routing,
+            keys_to_update: Vec::new(),
         }
+    }
+}
+
+impl<PB, CB> WriteBatch for HybridBatch<PB, CB>
+where
+    PB: WriteBatch + Send + 'static,
+    CB: WriteBatch + Send + 'static,
+{
+    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
+        // Add to primary batch
+        self.primary_batch.put_serialized(key, value)?;
+        
+        // Add to cache batch
+        if let Err(e) = self.cache_batch.put_serialized(key, value) {
+            log::warn!("Failed to add to cache batch: {}", e);
+        }
+        
+        // Track the key for routing
+        self.keys_to_update.push(key.to_vec());
+        
+        Ok(())
+    }
+    
+    fn delete_serialized(&mut self, key: &[u8]) -> Result<()> {
+        // Delete from primary batch
+        self.primary_batch.delete_serialized(key)?;
+        
+        // Delete from cache batch
+        if let Err(e) = self.cache_batch.delete_serialized(key) {
+            log::warn!("Failed to delete from cache batch: {}", e);
+        }
+        
+        // Track the key for routing
+        self.keys_to_update.push(key.to_vec());
+        
+        Ok(())
+    }
+    
+    fn clear(&mut self) {
+        self.primary_batch.clear();
+        self.cache_batch.clear();
+        self.keys_to_update.clear();
+    }
+    
+    fn commit(self) -> Result<()> {
+        // Commit primary batch first
+        self.primary_batch.commit()?;
+        
+        // Then commit cache batch
+        if let Err(e) = self.cache_batch.commit() {
+            log::warn!("Failed to commit cache batch: {}", e);
+        }
+        
+        // Update routing for all modified keys
+        let mut key_routing = self.key_routing.write();
+        for key in self.keys_to_update {
+            key_routing.insert(key, true);
+        }
+        
+        Ok(())
+    }
+    
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    
+    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
 
