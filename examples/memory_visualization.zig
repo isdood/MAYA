@@ -1,5 +1,10 @@
 const std = @import("std");
 const glimmer = @import("glimmer");
+const MemoryGraph = glimmer.visualization.MemoryGraph;
+const MemoryNode = glimmer.visualization.MemoryNode;
+const MemoryEdge = glimmer.visualization.MemoryEdge;
+const MemoryType = glimmer.visualization.MemoryType;
+const MemoryRelationship = glimmer.visualization.MemoryRelationship;
 
 pub fn main() !void {
     // Initialize memory
@@ -8,156 +13,96 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     // Create a new memory graph
-    var graph = glimmer.visualization.MemoryGraph.init(allocator);
+    var graph = MemoryGraph.init(allocator);
     defer graph.deinit();
     
     // Set graph dimensions
-    graph.width = 120;
+    graph.width = 100;
     graph.height = 40;
 
-    // Add memory nodes with different types and positions
-    const user_node: u32 = 1;
-    _ = try graph.addNode(.{
-        .id = user_node,
-        .content = "User: Alice",
-        .memory_type = .UserDetail,
-        .importance = 1.0,
-        .x = 20.0,
-        .y = 10.0,
-    });
+    // Create a simple graph with a few nodes and edges
+    const nodes = [_]struct {
+        id: u32,
+        content: []const u8,
+        mem_type: MemoryType,
+        x: f32,
+        y: f32,
+    } {
+        .{ .id = 1, .content = "Alice", .mem_type = .UserDetail, .x = 20.0, .y = 10.0 },
+        .{ .id = 2, .content = "Likes: Programming", .mem_type = .Preference, .x = 10.0, .y = 5.0 },
+        .{ .id = 3, .content = "Project: MAYA", .mem_type = .Project, .x = 30.0, .y = 5.0 },
+        .{ .id = 4, .content = "Task: Memory Viz", .mem_type = .Task, .x = 20.0, .y = 20.0 },
+    };
 
-    const pref_nodes = try allocator.alloc(usize, 5);
-    defer allocator.free(pref_nodes);
-    
-    // Add preference nodes in a circle around the user
-    for (0..5, 0..) |i, idx| {
-        const angle = std.math.pi * 2 * @as(f32, @floatFromInt(i)) / 5.0;
-        const node_id = @as(u32, @intCast(i + 10));
-        _ = try graph.addNode(.{
-            .id = node_id,
-            .content = switch (i) {
-                0 => "Likes: Programming",
-                1 => "Likes: AI/ML",
-                2 => "Project: MAYA",
-                3 => "Skill: Zig",
-                else => "Skill: Rust",
-            },
-            .memory_type = .Preference,
-            .importance = 0.7 + @as(f32, @floatFromInt(i)) * 0.05,
-            .x = 20.0 + 15.0 * @cos(angle),
-            .y = 10.0 + 8.0 * @sin(angle),
-        });
-        pref_nodes[idx] = node_id;
-        
-        // Connect preferences to user
-        try graph.addEdge(.{
-            .source = user_node,
-            .target = node_id,
-            .relationship = .RelatedTo,
-            .strength = 0.7 + @as(f32, @floatFromInt(i)) * 0.05,
-        });
+    // Add nodes
+    for (nodes) |node_data| {
+        const node = MemoryNode{
+            .id = node_data.id,
+            .content = node_data.content,
+            .memory_type = node_data.mem_type,
+            .importance = 0.8,
+            .x = node_data.x,
+            .y = node_data.y,
+            .vx = 0,
+            .vy = 0,
+        };
+        try graph.nodes.put(node_data.id, node);
     }
 
-    // Add task nodes
-    const task1: u32 = 20;
-    _ = try graph.addNode(.{
-        .id = task1,
-        .content = "Task: Implement memory visualization",
-        .memory_type = .Task,
-        .importance = 0.9,
-        .x = 60.0,
-        .y = 10.0,
-    });
+    // Add edges
+    const edges = [_]struct { source: u32, target: u32, rel: MemoryRelationship } {
+        .{ .source = 1, .target = 2, .rel = .RelatedTo },
+        .{ .source = 1, .target = 3, .rel = .RelatedTo },
+        .{ .source = 1, .target = 4, .rel = .LeadsTo },
+        .{ .source = 2, .target = 4, .rel = .Causes },
+    };
 
-    const task2: u32 = 21;
-    _ = try graph.addNode(.{
-        .id = task2,
-        .content = "Task: Add interactive controls",
-        .memory_type = .Task,
-        .importance = 0.8,
-        .x = 80.0,
-        .y = 15.0,
-    });
-
-    // Connect tasks
-    try graph.addEdge(.{
-        .source = task1,
-        .target = task2,
-        .relationship = .ParentOf,
-        .strength = 0.8,
-    });
-
-    // Connect tasks to relevant preferences
-    try graph.addEdge(.{
-        .source = pref_nodes[0],  // Programming
-        .target = task1,
-        .relationship = .RelatedTo,
-        .strength = 0.9,
-    });
+    for (edges) |edge_data| {
+        const edge = MemoryEdge{
+            .source = edge_data.source,
+            .target = edge_data.target,
+            .relationship = edge_data.rel,
+            .strength = 0.5,
+        };
+        try graph.edges.append(edge);
+    }
 
     // Set up terminal for raw mode (non-blocking input)
-    const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
     
-    // Main animation loop
+    // Animation loop
     var frame: u32 = 0;
     while (true) {
-        frame += 1;
-        
         // Clear screen and move cursor to top-left
         try stdout.writeAll("\x1b[2J\x1b[H");
         
-        // Update graph layout
+        // Update title and frame counter
+        try stdout.writer().print("MAYA Memory Visualization (Frame: {})\n\n", .{frame});
+        
+        // Update node positions with force-directed layout
         graph.updateLayout();
         
-        // Add some animation to the nodes
-        if (frame % 10 == 0) {
-            if (graph.nodes.getPtr(task1)) |node| {
-                node.x += 5.0 * @sin(@as(f32, @floatFromInt(frame)) * 0.1);
+        // Add some subtle animation
+        if (frame % 20 == 0) {
+            // Make a node move slightly
+            if (graph.nodes.getPtr(4)) |node| { // Task node
+                node.x += 0.5 * @sin(@as(f32, @floatFromInt(frame)) * 0.1);
             }
         }
         
         // Render the graph
-        try stdout.print("MAYA Memory Visualization (Frame: {})\n\n", .{frame});
-        try graph.render(stdout);
+        try graph.render(stdout.writer());
         
-        // Instructions
-        try stdout.writeAll("\n\nPress 'q' to quit, 'r' to reset layout\n");
+        // Print simple controls
+        try stdout.writeAll("\n\nPress 'q' to quit\n");
+        
+        // Check for user input
+        frame += 1;
+        std.time.sleep(50_000_000); // 50ms delay (20 FPS)
         
         // Non-blocking input check
-        if (stdin.readByte() catch null) |char| {
-            if (char == 'q') break;
-            if (char == 'r') {
-                // Reset node positions
-                if (graph.nodes.getPtr(user_node)) |node| {
-                    node.x = 20.0;
-                    node.y = 10.0;
-                }
-                for (pref_nodes, 0..) |node_id, i| {
-                    if (graph.nodes.getPtr(node_id)) |node| {
-                        const angle = std.math.pi * 2 * @as(f32, @floatFromInt(i)) / 5.0;
-                        node.x = 20.0 + 15.0 * @cos(angle);
-                        node.y = 10.0 + 8.0 * @sin(angle);
-                    }
-                }
-                if (graph.nodes.getPtr(task1)) |node| {
-                    node.x = 60.0;
-                    node.y = 10.0;
-                }
-                if (graph.nodes.getPtr(task2)) |node| {
-                    node.x = 80.0;
-                    node.y = 15.0;
-                }
-            }
-        }
-        
-        // Small delay to control animation speed
-        std.time.sleep(50 * std.time.ns_per_ms);
+        var buffer: [1]u8 = undefined;
+        const read = std.io.getStdIn().read(&buffer) catch 0;
+        if (read > 0 and buffer[0] == 'q') break;
     }
 }
-
-// Add these test relationships to the MemoryRelationship enum for the example
-const MemoryRelationship = enum {
-    HasPreference,
-    CreatedTask,
-};

@@ -5,6 +5,40 @@ const std = @import("std");
 const mem = std.mem;
 const Allocator = mem.Allocator;
 
+// ANSI color codes for terminal output
+const Color = struct {
+    pub const Reset = "\x1b[0m";
+    pub const Red = "\x1b[31m";
+    pub const Green = "\x1b[32m";
+    pub const Yellow = "\x1b[33m";
+    pub const Blue = "\x1b[34m";
+    pub const Magenta = "\x1b[35m";
+    pub const Cyan = "\x1b[36m";
+    pub const White = "\x1b[37m";
+    pub const BrightRed = "\x1b[91m";
+    pub const BrightGreen = "\x1b[92m";
+    pub const BrightYellow = "\x1b[93m";
+    pub const BrightBlue = "\x1b[94m";
+    pub const BrightMagenta = "\x1b[95m";
+    pub const BrightCyan = "\x1b[96m";
+    pub const BrightWhite = "\x1b[97m";
+};
+
+// Unicode box drawing characters
+const Box = struct {
+    pub const Horizontal = '─';
+    pub const Vertical = '│';
+    pub const TopLeft = '┌';
+    pub const TopRight = '┐';
+    pub const BottomLeft = '└';
+    pub const BottomRight = '┘';
+    pub const Cross = '┼';
+    pub const VerticalRight = '├';
+    pub const VerticalLeft = '┤';
+    pub const HorizontalDown = '┬';
+    pub const HorizontalUp = '┴';
+};
+
 /// Represents a node in the memory graph
 pub const MemoryNode = struct {
     id: u64,
@@ -75,9 +109,48 @@ pub const MemoryGraph = struct {
     }
 
     /// Render the graph to a string for terminal display
+    // Get the color for a memory type
+    fn getMemoryTypeColor(self: *const MemoryGraph, mem_type: MemoryType) []const u8 {
+        return switch (mem_type) {
+            .Fact => Color.BrightCyan,
+            .Preference => Color.BrightGreen,
+            .Task => Color.BrightYellow,
+            .UserDetail => Color.BrightMagenta,
+            .Experience => Color.BrightBlue,
+            .Goal => Color.BrightRed,
+            .Idea => Color.BrightWhite,
+            .Project => Color.BrightBlue,
+            .Relationship => Color.BrightMagenta,
+            .Event => Color.BrightYellow,
+            .Knowledge => Color.BrightCyan,
+            .Skill => Color.BrightGreen,
+            else => Color.White,
+        };
+    }
+
+    // Get the symbol for a memory type
+    fn getMemoryTypeSymbol(self: *const MemoryGraph, mem_type: MemoryType) u21 {
+        return switch (mem_type) {
+            .Fact => '■',
+            .Preference => '♥',
+            .Task => '✓',
+            .UserDetail => '☺',
+            .Experience => '★',
+            .Goal => '⚑',
+            .Idea => '💡',
+            .Project => '📁',
+            .Relationship => '↔',
+            .Event => '⌛',
+            .Knowledge => '📚',
+            .Skill => '⚡',
+            else => '•',
+        };
+    }
+
     pub fn render(self: *const MemoryGraph, writer: anytype) !void {
-        // Create a 2D grid for rendering
-        var grid = try std.ArrayList(std.ArrayList(u8)).initCapacity(self.allocator, self.height);
+        // Create a 2D grid for rendering with color support
+        const Cell = struct { char: u21 = ' ', fg: ?[]const u8 = null };
+        var grid = try std.ArrayList(std.ArrayList(Cell)).initCapacity(self.allocator, self.height);
         defer {
             for (grid.items) |*row| row.deinit();
             grid.deinit();
@@ -85,8 +158,10 @@ pub const MemoryGraph = struct {
 
         // Initialize empty grid
         for (0..self.height) |_| {
-            var row = try std.ArrayList(u8).initCapacity(self.allocator, self.width);
-            try row.appendNTimes(' ', self.width);
+            var row = try std.ArrayList(Cell).initCapacity(self.allocator, self.width);
+            for (0..self.width) |_| {
+                try row.append(Cell{ .char = ' ' });
+            }
             try grid.append(row);
         }
 
@@ -119,13 +194,40 @@ pub const MemoryGraph = struct {
                     const x_inc = @as(f32, @floatFromInt(x1 - x0)) / @as(f32, @floatFromInt(steps));
                     const y_inc = @as(f32, @floatFromInt(y1 - y0)) / @as(f32, @floatFromInt(steps));
                     
-                    for (0..steps + 1) |_| {
+                    // Choose line style based on relationship type
+                    const line_char: u21 = switch (edge.relationship) {
+                        .RelatedTo => Box.Horizontal,
+                        .ParentOf => '─',
+                        .ChildOf => '─',
+                        .SimilarTo => '~',
+                        .LeadsTo => '→',
+                        .DependsOn => '⟶',
+                        .PartOf => '⊂',
+                        .HasPart => '⊃',
+                        .Causes => '⇒',
+                        .CausedBy => '⇐',
+                        .OccurredBefore => '⟲',
+                        .OccurredAfter => '⟳',
+                        else => '─',
+                    };
+
+                    for (0..steps + 1) |i| {
                         const xi = @as(i32, @intFromFloat(x));
                         const yi = @as(i32, @intFromFloat(y));
                         
                         if (xi >= 0 and yi >= 0 and 
                             xi < self.width and yi < self.height) {
-                            grid.items[@intCast(yi)].items[@intCast(xi)] = '-';
+                            // Only draw line if the cell is empty or already has a line character
+                            const cell = &grid.items[@intCast(yi)].items[@intCast(xi)];
+                            if (cell.char == ' ' or cell.char == line_char or 
+                                cell.char == Box.Horizontal or cell.char == '~' or 
+                                cell.char == '→' or cell.char == '⟶' or 
+                                cell.char == '⊂' or cell.char == '⊃' or
+                                cell.char == '⇒' or cell.char == '⇐' or
+                                cell.char == '⟲' or cell.char == '⟳') {
+                                cell.char = line_char;
+                                cell.fg = Color.White; // Default line color
+                            }
                         }
                         
                         x += x_inc;
@@ -143,15 +245,52 @@ pub const MemoryGraph = struct {
             const y = @as(u32, @intFromFloat(node.y));
             
             if (x < self.width and y < self.height) {
-                // Simple node representation (just the first character of the content)
-                grid.items[y].items[x] = if (node.content.len > 0) node.content[0] else '*';
+                const cell = &grid.items[y].items[x];
+                cell.char = self.getMemoryTypeSymbol(node.memory_type);
+                cell.fg = self.getMemoryTypeColor(node.memory_type);
+                
+                // Add label if there's space
+                if (x + 1 < self.width and node.content.len > 0) {
+                    const label = node.content;
+                    const max_len = @min(self.width - x - 1, label.len);
+                    for (label[0..max_len], 0..) |char, i| {
+                        if (x + 1 + i < self.width) {
+                            grid.items[y].items[x + 1 + i] = .{
+                                .char = char,
+                                .fg = self.getMemoryTypeColor(node.memory_type),
+                            };
+                        }
+                    }
+                }
             }
         }
 
-        // Render the grid
+        // Output the grid with colors
         for (grid.items) |row| {
-            try writer.writeAll(row.items);
-            try writer.writeAll("\n");
+            var current_fg: ?[]const u8 = null;
+            
+            for (row.items) |cell| {
+                // Only change color if needed
+                if (current_fg != cell.fg) {
+                    if (cell.fg) |fg| {
+                        try writer.writeAll(fg);
+                    } else {
+                        try writer.writeAll(Color.Reset);
+                    }
+                    current_fg = cell.fg;
+                }
+                
+                // Write the character
+                var utf8_buf: [4]u8 = undefined;
+                const utf8_len = std.unicode.utf8Encode(cell.char, &utf8_buf) catch 0;
+                try writer.writeAll(utf8_buf[0..utf8_len]);
+            }
+            
+            // Reset color at the end of the line
+            if (current_fg != null) {
+                try writer.writeAll(Color.Reset);
+            }
+            try writer.writeByte('\n');
         }
     }
 };
