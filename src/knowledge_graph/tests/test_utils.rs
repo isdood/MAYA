@@ -39,7 +39,8 @@ pub fn create_test_edge(label: &str, source: Uuid, target: Uuid) -> Edge {
 /// Create a test graph with sample data
 pub fn create_test_graph() -> (TestGraph, Vec<Node>, Vec<Edge>) {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
-    let graph = KnowledgeGraph::open(temp_dir.path()).expect("Failed to create graph");
+    let store = SledStore::open(temp_dir.path()).expect("Failed to create store");
+    let graph = KnowledgeGraph::new(store);
     
     // Create some test nodes
     let node1 = create_test_node("Person");

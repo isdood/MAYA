@@ -137,7 +137,7 @@ mod tests {
     fn test_basic_graph_operations() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let store = SledStore::open(dir.path())?;
-        let graph = KnowledgeGraph::with_storage(store);
+        let graph = KnowledgeGraph::new(store);
 
         // Create and add a node
         let mut node = Node::new("TestNode");
