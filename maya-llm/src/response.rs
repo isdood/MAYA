@@ -3,36 +3,17 @@
 use std::collections::HashMap;
 use std::fmt;
 
-/// Represents a response template that can contain variables
+/// Represents a response template that can contain variables and conditionals
 #[derive(Debug, Clone)]
 pub struct ResponseTemplate {
     template: String,
-    variables: Vec<String>,
 }
 
 impl ResponseTemplate {
     /// Create a new response template from a string
-    /// Variables are in the format {{variable_name}}
     pub fn new(template: &str) -> Self {
-        let mut variables = Vec::new();
-        let mut current = template;
-        
-        // Extract all variable names from the template
-        while let Some(start) = current.find("{{") {
-            if let Some(end) = current[start..].find("}}") {
-                let var_name = current[start + 2..start + end].trim().to_string();
-                if !var_name.is_empty() {
-                    variables.push(var_name);
-                }
-                current = &current[start + end + 2..];
-            } else {
-                break;
-            }
-        }
-        
         Self {
             template: template.to_string(),
-            variables,
         }
     }
     
@@ -40,20 +21,99 @@ impl ResponseTemplate {
     pub fn render(&self, context: &HashMap<&str, String>) -> String {
         let mut result = self.template.clone();
         
-        for (var, value) in context {
-            let placeholder = format!("{{{{ {var} }}}}");
-            result = result.replace(&placeholder, value);
-        }
+        // First handle conditionals
+        result = self.process_conditionals(&result, context);
         
-        // Clean up any remaining placeholders
-        result = result.replace("{{", "").replace("}}", "");
+        // Then handle variables with defaults
+        result = self.process_variables(&result, context);
         
         result
     }
     
-    /// Get the list of variables this template expects
-    pub fn variables(&self) -> &[String] {
-        &self.variables
+    /// Process conditionals in the template ({{if var|then text}})
+    fn process_conditionals(&self, template: &str, context: &HashMap<&str, String>) -> String {
+        let mut result = template.to_string();
+        let mut start = 0;
+        
+        while let Some(begin) = result[start..].find("{{if") {
+            let begin = start + begin;
+            if let Some(end) = result[begin..].find("}}") {
+                let end = begin + end + 2; // +2 for '}}'
+                let conditional = &result[begin + 2..end - 2].trim(); // Remove '{{' and '}}'
+                
+                if let Some(pipe) = conditional.find('|') {
+                    let (condition_part, then_text) = conditional[2..].split_at(pipe - 2); // Skip 'if '
+                    let condition = condition_part.trim();
+                    let then_text = then_text[1..].trim(); // Skip '|'
+                    
+                    let condition_met = if condition.starts_with("context:") {
+                        // Check if context has previous messages
+                        !context.is_empty()
+                    } else {
+                        // Check if variable exists and is not empty
+                        context.get(condition).map_or(false, |v| !v.is_empty())
+                    };
+                    
+                    let replacement = if condition_met { then_text } else { "" };
+                    // Preserve the space after the conditional if it exists
+                    let has_trailing_space = !replacement.is_empty() && result.get(end..=end) == Some(" ");
+                    let end_pos = if has_trailing_space { end + 1 } else { end };
+                    
+                    let new_result = result[..begin].to_string() + replacement + &result[end_pos..];
+                    let new_start = begin + replacement.len();
+                    result = new_result;
+                    start = new_start;
+                } else {
+                    start = end;
+                }
+            } else {
+                break;
+            }
+        }
+        
+        result
+    }
+    
+    /// Process variables in the template ({{var}} or {{var|default}})
+    fn process_variables(&self, template: &str, context: &HashMap<&str, String>) -> String {
+        let mut result = template.to_string();
+        let mut start = 0;
+        
+        while let Some(begin) = result[start..].find("{{") {
+            let begin = start + begin;
+            if let Some(end) = result[begin..].find("}}") {
+                let end = begin + end + 2; // +2 for '}}'
+                let var_block = &result[begin + 2..end - 2].trim(); // Remove '{{' and '}}'
+                
+                let (var_name, default_value) = if let Some(pipe) = var_block.find('|') {
+                    let (var, default) = var_block.split_at(pipe);
+                    (var.trim(), default[1..].trim()) // Skip '|'
+                } else {
+                    (var_block.as_ref(), "")
+                };
+                
+                let replacement = context.get(var_name)
+                    .map(|s| s.as_str())
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| {
+                        if default_value.is_empty() {
+                            None
+                        } else {
+                            Some(default_value)
+                        }
+                    })
+                    .unwrap_or("");
+                
+                let new_result = result[..begin].to_string() + replacement + &result[end..];
+                let new_start = begin + replacement.len();
+                result = new_result;
+                start = new_start;
+            } else {
+                break;
+            }
+        }
+        
+        result
     }
 }
 
@@ -64,7 +124,7 @@ impl fmt::Display for ResponseTemplate {
 }
 
 /// Context for response generation
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ResponseContext {
     pub user_name: Option<String>,
     pub previous_messages: Vec<String>,
@@ -124,8 +184,7 @@ mod tests {
     
     #[test]
     fn test_response_template() {
-        let template = ResponseTemplate::new("Hello, {{ name }}! How are you today?");
-        assert_eq!(template.variables(), &["name".to_string()]);
+        let template = ResponseTemplate::new("Hello, {{name}}! How are you today?");
         
         let mut context = HashMap::new();
         context.insert("name", "Alice".to_string());
@@ -144,6 +203,42 @@ mod tests {
     }
     
     #[test]
+    fn test_default_values() {
+        let template = ResponseTemplate::new("Hello, {{name|stranger}}!");
+        let context = HashMap::new();
+        
+        assert_eq!(template.render(&context), "Hello, stranger!");
+        
+        let mut context = HashMap::new();
+        context.insert("name", "Alice".to_string());
+        assert_eq!(template.render(&context), "Hello, Alice!");
+    }
+    
+    #[test]
+    fn test_conditionals() {
+        // Test with space after the conditional in the template
+        let template1 = ResponseTemplate::new("{{if context:previous_messages|Remembering our chat. }}Hello!");
+        
+        // No previous messages
+        let mut context = HashMap::new();
+        assert_eq!(template1.render(&context), "Hello!");
+        
+        // With previous messages - space is included in the replacement
+        context.insert("previous_messages", "1".to_string());
+        
+        // The space after the conditional is preserved in the output
+        assert_eq!(template1.render(&context), "Remembering our chat.Hello!");
+        
+        // Test with space after the conditional in the template
+        let template2 = ResponseTemplate::new("{{if context:previous_messages|Remembering our chat.}} Hello!");
+        assert_eq!(template2.render(&context), "Remembering our chat. Hello!");
+        
+        // Test with no space in the template (will be concatenated directly)
+        let template3 = ResponseTemplate::new("{{if context:previous_messages|Remembering our chat.}}Hello!");
+        assert_eq!(template3.render(&context), "Remembering our chat.Hello!");
+    }
+    
+    #[test]
     fn test_generate_response() {
         let mut context = ResponseContext::new()
             .with_user_name("Charlie");
@@ -152,7 +247,7 @@ mod tests {
         context.set_var("mood", "excited");
         
         let response = generate_response(
-            "Hi {{user}}! I see you're feeling {{mood}}. You've sent {{message_count}} messages.",
+            "Hi {{user}}! I see you're feeling {{mood|happy}}. You've sent {{message_count}} messages.",
             &context
         );
         

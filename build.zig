@@ -96,9 +96,16 @@ pub fn build(b: *std.Build) void {
     exe.linkLibC();
 
     // 🌐 WASM Configuration
-    const maya_wasm = b.addExecutable("maya-wasm", "src/wasm.zig");
-    maya_wasm.setTarget(.{ .arch = .wasm32, .os_tag = .freestanding });
-    maya_wasm.no_entry = true;
+    const maya_wasm = b.addExecutable(.{
+        .name = "maya-wasm",
+        .root_source_file = .{ .cwd_relative = "src/wasm.zig" },
+        .target = b.resolveTargetQuery(.{
+            .cpu_arch = .wasm32,
+            .os_tag = .freestanding,
+        }),
+        .optimize = optimize,
+    });
+// [GLIMMER DEBUG]     maya_wasm.setEntryPoint = null; // [DEBUG PATCH by GLIMMER]
 
     maya_wasm.root_module.addImport("starweave", starweave_mod);
     maya_wasm.root_module.addImport("glimmer", glimmer_mod);

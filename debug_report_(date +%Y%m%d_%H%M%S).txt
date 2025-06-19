@@ -1,0 +1,17 @@
+MAYA Debug Report
+==================
+Timestamp: Thu 19 Jun 2025 08:09:46 AM EDT UTC
+
+Build Error Output:
+/home/shimmer/MAYA/build.zig:108:14: error: no field or member function named 'setEntryPoint' in 'Build.Step.Compile'
+    maya_wasm.setEntryPoint(null);
+    ~~~~~~~~~^~~~~~~~~~~~~~
+/usr/lib/zig/std/Build/Step/Compile.zig:1:1: note: struct declared here
+const builtin = @import("builtin");
+^~~~~
+/home/shimmer/MAYA/build.zig:108:14: note: method invocation only supports up to one level of implicit pointer dereferencing
+/home/shimmer/MAYA/build.zig:108:14: note: use '.*' to dereference pointer
+referenced by:
+    runBuild__anon_24782: /usr/lib/zig/std/Build.zig:2427:33
+    main: /usr/lib/zig/compiler/build_runner.zig:339:29
+    5 reference(s) hidden; use '-freference-trace=7' to see all references
