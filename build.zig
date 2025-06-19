@@ -96,22 +96,16 @@ pub fn build(b: *std.Build) void {
     exe.linkLibC();
 
     // 🌐 WASM Configuration
-    const wasm = b.addExecutable(.{
-        .name = "maya-wasm",
-        .root_source_file = .{ .cwd_relative = "src/wasm.zig" },
-        .target = b.resolveTargetQuery(.{
-            .cpu_arch = .wasm32,
-            .os_tag = .freestanding,
-        }),
-        .optimize = optimize,
-    });
+    const maya_wasm = b.addExecutable("maya-wasm", "src/wasm.zig");
+    maya_wasm.setTarget(.{ .arch = .wasm32, .os_tag = .freestanding });
+    maya_wasm.no_entry = true;
 
-    wasm.root_module.addImport("starweave", starweave_mod);
-    wasm.root_module.addImport("glimmer", glimmer_mod);
-    wasm.root_module.addImport("pattern_recognition", pattern_recognition_mod);
-    wasm.root_module.addImport("quantum_processor", quantum_processor_mod);
-    wasm.root_module.addImport("visual_processor", visual_processor_mod);
-    wasm.root_module.addImport("neural_processor", neural_processor_mod);
+    maya_wasm.root_module.addImport("starweave", starweave_mod);
+    maya_wasm.root_module.addImport("glimmer", glimmer_mod);
+    maya_wasm.root_module.addImport("pattern_recognition", pattern_recognition_mod);
+    maya_wasm.root_module.addImport("quantum_processor", quantum_processor_mod);
+    maya_wasm.root_module.addImport("visual_processor", visual_processor_mod);
+    maya_wasm.root_module.addImport("neural_processor", neural_processor_mod);
 
     // 🧪 Quantum Test Configuration
     const test_step = b.step("test", "🧪 Run MAYA quantum tests");
@@ -135,7 +129,7 @@ pub fn build(b: *std.Build) void {
 
     // ⚡ Install Steps
     b.installArtifact(exe);
-    b.installArtifact(wasm);
+    b.installArtifact(maya_wasm);
 
     // 🎨 GLIMMER Visual Tests
     const visual_step = b.step("visual", "🎨 Run GLIMMER pattern tests");

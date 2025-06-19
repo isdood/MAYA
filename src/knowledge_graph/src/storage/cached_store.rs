@@ -1,12 +1,9 @@
 //! Cached storage implementation for the knowledge graph
 
 use std::sync::Arc;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicU64, Ordering};
 use parking_lot::RwLock;
-use rayon::prelude::*;
-use crate::storage::batch_optimizer::{BatchConfig, BatchStats};
-use std::fmt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use lru::LruCache;

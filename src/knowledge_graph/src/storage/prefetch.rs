@@ -1,16 +1,14 @@
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex, Condvar};
-use std::thread::{self, JoinHandle};
-use std::sync::atomic::{AtomicBool, Ordering};
-use super::{Result, Storage, KnowledgeGraphError};
+use std::fmt::Debug;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+
 use crossbeam_channel::{bounded, Sender, Receiver};
 use log::{debug, error, info, warn};
 use parking_lot::{Mutex, Condvar};
-use std::collections::VecDeque;
-use std::fmt::Debug;
-use std::sync::Arc;
-use std::thread::{self, JoinHandle};
-use std::time::Duration;
+
+use super::{Result, Storage, KnowledgeGraphError};
 
 // Simple notification mechanism for prefetch thread
 #[derive(Clone)]

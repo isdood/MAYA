@@ -103,9 +103,7 @@ impl Storage for SledStore {
 
 // Implement WriteBatchExt for SledStore
 impl WriteBatchExt for SledStore {
-    type Batch<'a> = SledWriteBatch where Self: 'a;
-
-    fn create_write_batch(&self) -> Self::Batch<'_> {
+    fn create_write_batch(&self) -> SledWriteBatch {
         SledWriteBatch::with_options(Arc::clone(&self.db), 10_000, true)
     }
 }
@@ -137,18 +135,9 @@ unsafe impl Sync for BatchOp {}
 // The WriteBatchExt implementation is only for SledStore
 
 impl WriteBatch for SledWriteBatch {
-    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()> {
-        let bytes = bincode::serialize(value).map_err(KnowledgeGraphError::from)?;
-        self.put_serialized(key, &bytes)
-    }
-    
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         self.ops.push(BatchOp::Put(IVec::from(key), IVec::from(value)));
         Ok(())
-    }
-    
-    fn delete(&mut self, key: &[u8]) -> Result<()> {
-        self.delete_serialized(key)
     }
     
     fn delete_serialized(&mut self, key: &[u8]) -> Result<()> {

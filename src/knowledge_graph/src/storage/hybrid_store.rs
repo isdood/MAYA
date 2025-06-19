@@ -9,7 +9,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use crate::error::KnowledgeGraphError;
 use crate::storage::{
     GenericWriteBatch, PrefetchExt, Result, Storage, WriteBatch, WriteBatchExt,
-    prefetch::{PrefetchConfig, PrefetchingIterator},
+    prefetch::PrefetchingIterator,
 };
 
 // Re-export PrefetchConfig for public use
@@ -266,7 +266,7 @@ impl Storage for HybridStore {
         HybridBatch::new(
             self.primary.create_batch(),
             self.cache.create_batch(),
-            Arc::clone(&self.key_routing),
+            self.key_routing.clone(),
         )
     }
     

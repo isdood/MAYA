@@ -87,10 +87,6 @@ pub mod prefetch;
 // Re-export prefetch types
 pub use prefetch::{PrefetchConfig, PrefetchExt, PrefetchingIterator};
 
-// Re-export batch operation types
-pub use crate::storage::WriteBatchExt;
-pub use crate::storage::WriteBatch;
-
 // Re-export public types
 pub use sled_store::SledStore;
 pub use cached_store::CachedStore;

@@ -50,10 +50,9 @@
 
 use std::path::Path;
 use uuid::Uuid;
-use log::info;
 
 use crate::{
-    error::{Result, KnowledgeGraphError},
+    error::Result,
     models::{Node, Edge},
     storage::{Storage, WriteBatch, WriteBatchExt},
 };

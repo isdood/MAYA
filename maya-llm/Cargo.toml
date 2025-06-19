@@ -1,0 +1,24 @@
+[package]
+name = "maya-llm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Core dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+
+# Console interface
+rustyline = { version = "16.0.0", features = ["with-dirs"] }
+
+# Logging
+log = "0.4"
+simplelog = "0.12"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+# Testing
+tempfile = "3.2"

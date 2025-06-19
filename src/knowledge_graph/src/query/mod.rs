@@ -5,7 +5,7 @@
 use std::marker::PhantomData;
 use super::graph::{self, KnowledgeGraph};
 use crate::error::Result;
-use crate::graph::models::{Node, Edge};
+use crate::models::{Node, Edge};
 use crate::storage::{Storage, WriteBatch, WriteBatchExt};
 use serde_json::Value;
 
