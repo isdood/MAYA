@@ -4,7 +4,7 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const pattern_recognition = @import("pattern_recognition.zig");
+const pattern_recognition = @import("pattern_recognition");
 
 /// Crystal computing configuration
 pub const CrystalConfig = struct {
@@ -43,7 +43,7 @@ pub const CrystalProcessor = struct {
     state: CrystalState,
 
     pub fn init(allocator: std.mem.Allocator) !*CrystalProcessor {
-        var processor = try allocator.create(CrystalProcessor);
+        const processor = try allocator.create(CrystalProcessor);
         processor.* = CrystalProcessor{
             .config = CrystalConfig{},
             .allocator = allocator,
@@ -95,31 +95,28 @@ pub const CrystalProcessor = struct {
     }
 
     /// Calculate crystal coherence
-    fn calculateCrystalCoherence(self: *CrystalProcessor, pattern_data: []const u8) f64 {
-        // Simple coherence calculation based on pattern structure
-        const base_coherence = @intToFloat(f64, pattern_data.len) / 100.0;
+    fn calculateCrystalCoherence(_self: *CrystalProcessor, _pattern_data: []const u8) f64 {
+        const base_coherence = @as(f64, _pattern_data.len) / 100.0;
         return @min(1.0, base_coherence);
     }
 
     /// Calculate crystal entanglement
-    fn calculateCrystalEntanglement(self: *CrystalProcessor, pattern_data: []const u8) f64 {
-        // Simple entanglement calculation based on pattern complexity
+    fn calculateCrystalEntanglement(_self: *CrystalProcessor, _pattern_data: []const u8) f64 {
         var complexity: usize = 0;
-        for (pattern_data) |byte| {
+        for (_pattern_data) |byte| {
             complexity += @popCount(byte);
         }
-        return @min(1.0, @intToFloat(f64, complexity) / 100.0);
+        return @min(1.0, @as(f64, complexity) / 100.0);
     }
 
     /// Calculate crystal depth
     fn calculateCrystalDepth(self: *CrystalProcessor, pattern_data: []const u8) usize {
-        // Simple depth calculation based on pattern size
-        const base_depth = @floatToInt(usize, std.math.log2(@intToFloat(f64, pattern_data.len)));
+        const base_depth = @as(usize, std.math.log2(@as(f64, pattern_data.len)));
         return @min(self.config.crystal_depth, base_depth);
     }
 
     /// Generate unique pattern ID
-    fn generatePatternId(self: *CrystalProcessor) []const u8 {
+    fn generatePatternId(_self: *CrystalProcessor) []const u8 {
         // Simple pattern ID generation based on timestamp
         const timestamp = std.time.timestamp();
         var buffer: [32]u8 = undefined;

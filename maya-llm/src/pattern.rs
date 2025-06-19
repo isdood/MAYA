@@ -130,7 +130,7 @@ impl Pattern {
 }
 
 /// Manages a collection of patterns with learning capabilities
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct PatternMatcher {
     /// The collection of patterns
     pub patterns: Vec<Pattern>,

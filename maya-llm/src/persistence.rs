@@ -11,6 +11,8 @@ use std::cell::RefCell;
 
 use crate::pattern::PatternMatcher;
 use crate::response::ResponseContext;
+use crate::memory::{MemoryBank, Memory};
+use std::collections::HashMap;
 
 /// Represents the complete state of the LLM that needs to be persisted
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,6 +23,10 @@ pub struct PersistentState {
     pub context: ResponseContext,
     /// The model's name
     pub model_name: String,
+    /// The memory bank with all stored memories
+    pub memory_bank: MemoryBank,
+    /// Configuration settings
+    pub settings: HashMap<String, String>,
 }
 
 /// A wrapper around the LLM state that can be easily serialized/deserialized
@@ -29,6 +35,8 @@ pub struct SerializableLLM {
     pub pattern_matcher: PatternMatcher,
     pub context: ResponseContext,
     pub model_name: String,
+    pub memory_bank: MemoryBank,
+    pub settings: HashMap<String, String>,
 }
 
 /// Error type for persistence operations
@@ -36,6 +44,7 @@ pub struct SerializableLLM {
 pub enum PersistenceError {
     IoError(io::Error),
     SerializationError(serde_json::Error),
+    DeserializationError(serde_json::Error),
 }
 
 impl fmt::Display for PersistenceError {
@@ -43,6 +52,7 @@ impl fmt::Display for PersistenceError {
         match self {
             PersistenceError::IoError(e) => write!(f, "IO error: {}", e),
             PersistenceError::SerializationError(e) => write!(f, "Serialization error: {}", e),
+            PersistenceError::DeserializationError(e) => write!(f, "Deserialization error: {}", e),
         }
     }
 }
@@ -64,90 +74,130 @@ impl From<serde_json::Error> for PersistenceError {
 /// Saves the current state to a file
 pub fn save_state<P: AsRef<Path>>(
     path: P,
-    pattern_matcher: &Rc<RefCell<PatternMatcher>>,
+    pattern_matcher: &PatternMatcher,
     context: &ResponseContext,
+    memory_bank: &MemoryBank,
     model_name: &str,
+    settings: Option<HashMap<String, String>>,
 ) -> Result<(), PersistenceError> {
-    // Create a new PatternMatcher with the same data
-    let pattern_matcher_data = pattern_matcher.borrow();
-    let mut new_pattern_matcher = PatternMatcher::new()
-        .with_learning_rate(pattern_matcher_data.learning_rate)
-        .with_max_patterns(pattern_matcher_data.max_patterns);
-        
-    // Clone all patterns
-    for pattern in &pattern_matcher_data.patterns {
-        new_pattern_matcher.add_pattern(&pattern.text, &pattern.response);
-    }
-    
     let state = PersistentState {
-        pattern_matcher: new_pattern_matcher,
+        pattern_matcher: pattern_matcher.clone(),
         context: context.clone(),
+        memory_bank: memory_bank.clone(),
         model_name: model_name.to_string(),
+        settings: settings.unwrap_or_default(),
     };
 
-    let json = serde_json::to_string_pretty(&state)?;
+    // Create a temporary file for atomic write
+    let path_ref = path.as_ref();
+    let temp_path = path_ref.with_extension("tmp");
     
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(path)?;
+    // Write to temp file first
+    let mut file = std::fs::File::create(&temp_path).map_err(PersistenceError::IoError)?;
+    serde_json::to_writer_pretty(&mut file, &state).map_err(PersistenceError::SerializationError)?;
+    file.sync_all().map_err(PersistenceError::IoError)?;
     
-    file.write_all(json.as_bytes())?;
-    file.sync_all()?;
+    // Atomically rename the temp file to the target file
+    std::fs::rename(&temp_path, path_ref).map_err(PersistenceError::IoError)?;
+    
+    // Ensure directory entries are updated
+    if let Some(parent) = path_ref.parent() {
+        let _ = std::fs::File::open(parent)?.sync_all().map_err(PersistenceError::IoError)?;
+    }
     
     Ok(())
 }
 
 /// Loads the state from a file
 pub fn load_state<P: AsRef<Path>>(path: P) -> Result<SerializableLLM, PersistenceError> {
-    let mut file = File::open(path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+    // Try to open the file
+    let mut file = File::open(&path).map_err(|e| {
+        PersistenceError::IoError(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Failed to open state file: {}", e),
+        ))
+    })?;
     
-    let state: PersistentState = serde_json::from_str(&contents)?;
+    // Read the file contents
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).map_err(|e| {
+        PersistenceError::IoError(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Failed to read state file: {}", e),
+        ))
+    })?;
+    
+    // Deserialize the state
+    let state: PersistentState = serde_json::from_str(&contents)
+        .map_err(|e| PersistenceError::DeserializationError(e))?;
     
     Ok(SerializableLLM {
         pattern_matcher: state.pattern_matcher,
         context: state.context,
+        memory_bank: state.memory_bank,
         model_name: state.model_name,
+        settings: state.settings,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use tempfile::tempdir;
+    use chrono::Utc;
+    use crate::memory::{Memory, MemoryType};
     
     #[test]
     fn test_save_and_load_state() {
-        // Create a temporary directory for testing
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test_state.json");
+        let temp_dir = tempdir().unwrap();
+        let file_path = temp_dir.path().join("test_state.json");
         
-        // Create test data
+        // Create a pattern matcher with some patterns
         let mut pattern_matcher = PatternMatcher::new();
-        pattern_matcher.add_pattern("test", "test response");
-        let context = ResponseContext::new();
-        let model_name = "test_model".to_string();
+        pattern_matcher.add_pattern("hello", "Hi there!");
+        pattern_matcher.add_pattern("how are you", "I'm doing well, thanks!");
         
-        // Wrap the pattern matcher in Rc<RefCell<>> for the test
-        let pattern_matcher_rc = Rc::new(RefCell::new(pattern_matcher));
+        // Create a context with some previous messages
+        let mut context = ResponseContext::default();
+        context.add_previous_message("Hello, world!");
         
-        // Test saving
-        save_state(&file_path, &pattern_matcher_rc, &context, &model_name).unwrap();
+        // Create a memory bank with some memories
+        let mut memory_bank = MemoryBank::new();
+        memory_bank.add_memory(
+            "User's name is Alice", 
+            MemoryType::UserDetail, 
+            0.9, 
+            Some(vec![("key".to_string(), "value".to_string())].into_iter().collect())
+        );
         
-        // Verify file exists
-        assert!(file_path.exists());
+        // Add some settings
+        let mut settings = HashMap::new();
+        settings.insert("version".to_string(), "1.0.0".to_string());
         
-        // Test loading
-        let loaded = load_state(&file_path).unwrap();
+        // Save state
+        save_state(
+            &file_path, 
+            &pattern_matcher, 
+            &context, 
+            &memory_bank,
+            "test-model",
+            Some(settings.clone())
+        ).expect("Failed to save state");
+            
+        // Load state
+        let loaded = load_state(&file_path).expect("Failed to load state");
         
         // Verify loaded data
-        assert_eq!(loaded.model_name, model_name);
-        assert_eq!(loaded.context, context);
-        // Check the pattern count
-        assert_eq!(loaded.pattern_matcher.get_patterns().len(), 1);
+        assert_eq!(loaded.model_name, "test-model");
+        assert_eq!(loaded.context.previous_messages[0], "Hello, world!");
+        assert!(!loaded.pattern_matcher.patterns.is_empty());
+        assert_eq!(loaded.memory_bank.len(), 1);
+        assert_eq!(loaded.settings.get("version"), Some(&"1.0.0".to_string()));
+        
+        // Verify memory content
+        let memories = loaded.memory_bank.recall("Alice");
+        assert!(!memories.is_empty(), "Should find memory about Alice");
+        assert_eq!(memories[0].content, "User's name is Alice");
+        assert_eq!(memories[0].metadata.get("key"), Some(&"value".to_string()));
     }
 }

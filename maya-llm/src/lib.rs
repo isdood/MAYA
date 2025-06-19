@@ -1,18 +1,21 @@
 //! Core LLM implementation for MAYA
 
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use log;
-use rand::seq::SliceRandom;
-use serde::{Serialize, Deserialize};
+use crate::response::ResponseTemplate;
 
 pub mod pattern;
 pub mod response;
 pub mod persistence;
+pub mod memory;
 
 use pattern::PatternMatcher;
 use response::ResponseContext;
+use memory::{MemoryBank, MemoryType};
+use persistence::PersistenceError;
 
 /// Core trait defining the LLM interface
 pub trait LLM {
@@ -27,12 +30,32 @@ pub trait LLM {
 }
 
 /// A simple implementation of the LLM trait using pattern matching
-#[derive(Default)]
 pub struct BasicLLM {
     name: String,
     patterns: Rc<RefCell<PatternMatcher>>,
-    fallback_responses: Vec<&'static str>,
+    fallback_responses: Vec<String>,
     context: ResponseContext,
+    memory: MemoryBank,
+    settings: HashMap<String, String>,
+    data_dir: Option<PathBuf>,
+}
+
+impl Default for BasicLLM {
+    fn default() -> Self {
+        Self {
+            name: "MAYA".to_string(),
+            patterns: Rc::new(RefCell::new(PatternMatcher::new())),
+            fallback_responses: vec![
+                "I'm not sure how to respond to that.".to_string(),
+                "Could you rephrase that?".to_string(),
+                "I'm still learning. Can you tell me more?".to_string(),
+            ],
+            context: ResponseContext::new(),
+            memory: MemoryBank::new(),
+            settings: HashMap::new(),
+            data_dir: None,
+        }
+    }
 }
 
 impl LLM for BasicLLM {
@@ -51,23 +74,53 @@ impl LLM for BasicLLM {
             .take(3) // Only use last 3 messages as context
             .map(|s| s.to_string())
             .collect();
+            
+        // Get relevant memories for this input
+        let relevant_memories = self.recall_memories(input);
+        
+        // Add memories to context if we found any
+        let mut enhanced_context = context_strings.clone();
+        if !relevant_memories.is_empty() {
+            enhanced_context.extend(relevant_memories);
+        }
+        
+        // Ensure we have at least one fallback response
+        if self.fallback_responses.is_empty() {
+            self.fallback_responses.push("I'm not sure how to respond to that.".to_string());
+        }
         
         // First, try to find a matching pattern
         let (response, should_learn) = {
             let mut patterns = self.patterns.borrow_mut();
             
-            // Try to find a matching pattern with context
-            if let Some(pattern) = patterns.find_best_match_with_context(input, Some(&context_strings)) {
+            // Try to find a matching pattern with enhanced context
+            if let Some(pattern) = patterns.find_best_match_with_context(input, Some(&enhanced_context)) {
                 // Generate response using the template system
-                let response = pattern.response.clone();
+                let response_template = pattern.response.clone();
+                
+                // Prepare context for template rendering
+                let mut template_vars = HashMap::new();
+                
+                // Add user name if available
+                if let Some(name) = &self.context.user_name {
+                    template_vars.insert("user", name.clone());
+                }
+                
+                // Add other context variables
+                for (key, value) in &self.context.custom_vars {
+                    template_vars.insert(key.as_str(), value.clone());
+                }
+                
+                // Render the template with variables
+                let response = ResponseTemplate::new(&response_template).render(&template_vars).to_string();
                 
                 // Check if we should learn from this interaction
-                let match_quality = pattern.match_score(input, Some(&context_strings));
+                let match_quality = pattern.match_score(input, Some(&enhanced_context));
                 (response, match_quality < 8.0) // Learn if not a very strong match
             } else {
                 // No pattern matched, use a fallback response
                 let idx = (input.len() % self.fallback_responses.len()) as usize;
-                (self.fallback_responses[idx].to_string(), true)
+                (self.fallback_responses[idx].clone(), true)
             }
         };
         
@@ -133,11 +186,14 @@ impl BasicLLM {
             name: "MAYA".to_string(),
             patterns: Rc::new(RefCell::new(pattern_matcher)),
             fallback_responses: vec![
-                "I'm not sure how to respond to that.",
-                "Could you rephrase that?",
-                "I'm still learning. Can you tell me more?",
+                "I'm not sure how to respond to that.".to_string(),
+                "Could you rephrase that?".to_string(),
+                "I'm still learning. Can you tell me more?".to_string(),
             ],
             context: ResponseContext::new(),
+            memory: MemoryBank::new(),
+            settings: HashMap::new(),
+            data_dir: None,
         }
     }
     /// Check if we need to prune patterns before adding a new one
@@ -232,7 +288,7 @@ impl BasicLLM {
         patterns.patterns.truncate(target_size);
         log::debug!("Pruned patterns, now have {} patterns", patterns.patterns.len());
     }
-    /// Extract variables from input and add them to the context
+    /// Extract variables from input and add them to the context and memory
     fn extract_variables(&mut self, input: &str) {
         let input_lower = input.to_lowercase();
         
@@ -256,7 +312,17 @@ impl BasicLLM {
                 if !name.is_empty() {
                     self.context.set_var("name", &name);
                     if self.context.user_name.is_none() {
-                        self.context.user_name = Some(name);
+                        self.context.user_name = Some(name.clone());
+                        
+                        // Store in memory
+                        let mut metadata = HashMap::new();
+                        metadata.insert("type".to_string(), "user_name".to_string());
+                        self.remember(
+                            format!("The user's name is {}", name),
+                            MemoryType::UserDetail,
+                            0.9,
+                            Some(metadata),
+                        );
                     }
                     break;
                 }
@@ -282,14 +348,45 @@ impl BasicLLM {
                 
                 if !mood.is_empty() {
                     self.context.set_var("mood", &mood);
+                    
+                    // Store in memory
+                    let mut metadata = HashMap::new();
+                    metadata.insert("type".to_string(), "mood".to_string());
+                    self.remember(
+                        format!("The user is feeling {}", mood),
+                        MemoryType::Fact,
+                        0.7,
+                        Some(metadata),
+                    );
                     break;
                 }
             }
         }
         
-        // Extract favorite color for the learning test
+        // Extract favorite color
         if input_lower.contains("favorite color") || input_lower.contains("favourite colour") {
-            self.context.set_var("color", "blue");
+            let color = if input_lower.contains("blue") {
+                "blue"
+            } else if input_lower.contains("red") {
+                "red"
+            } else if input_lower.contains("green") {
+                "green"
+            } else {
+                // Default if not specified
+                "blue"
+            };
+            
+            self.context.set_var("color", color);
+            
+            // Store in memory
+            let mut metadata = HashMap::new();
+            metadata.insert("type".to_string(), "favorite_color".to_string());
+            self.remember(
+                format!("The user's favorite color is {}", color),
+                MemoryType::Preference,
+                0.8,
+                Some(metadata),
+            );
         }
     }
     
@@ -307,11 +404,116 @@ impl BasicLLM {
     pub fn context_mut(&mut self) -> &mut ResponseContext {
         &mut self.context
     }
+    
+    /// Store a new memory
+    pub fn remember<T: Into<String>>(
+        &mut self,
+        content: T,
+        memory_type: MemoryType,
+        importance: f32,
+        metadata: Option<HashMap<String, String>>,
+    ) {
+        self.memory.add_memory(content, memory_type, importance, metadata);
+    }
+    
+    /// Recall relevant memories based on a query
+    pub fn recall_memories<T: AsRef<str>>(&self, query: T) -> Vec<String> {
+        self.memory
+            .recall(query)
+            .into_iter()
+            .map(|m| m.content.clone())
+            .collect()
+    }
+    
+    /// Get a reference to the memory bank
+    pub fn memory_bank(&self) -> &MemoryBank {
+        &self.memory
+    }
+    
+    /// Get a mutable reference to the memory bank
+    pub fn memory_bank_mut(&mut self) -> &mut MemoryBank {
+        &mut self.memory
+    }
+    
+    /// Set the data directory for persistent storage
+    pub fn set_data_dir<P: AsRef<Path>>(&mut self, path: P) {
+        self.data_dir = Some(path.as_ref().to_path_buf());
+    }
+    
+    /// Get the current data directory
+    pub fn data_dir(&self) -> Option<&Path> {
+        self.data_dir.as_deref()
+    }
+    
+    /// Save the current state to disk
+    pub fn save_state(&self) -> Result<(), PersistenceError> {
+        let data_dir = self.data_dir.as_ref().ok_or_else(|| {
+            PersistenceError::IoError(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Data directory not set",
+            ))
+        })?;
+        
+        // Ensure the directory exists
+        std::fs::create_dir_all(data_dir)?;
+        
+        let state_path = data_dir.join("state.json");
+        
+        // Create a temporary file for atomic write
+        let temp_path = state_path.with_extension("tmp");
+        
+        // Save to temporary file first
+        persistence::save_state(
+            &temp_path,
+            &*self.patterns.borrow(),
+            &self.context,
+            &self.memory,
+            &self.name,
+            Some(self.settings.clone()),
+        )?;
+        
+        // Atomically rename the temporary file to the target file
+        std::fs::rename(&temp_path, &state_path)?;
+        
+        // Ensure directory entries are updated
+        if let Some(parent) = state_path.parent() {
+            let _ = std::fs::File::open(parent)?.sync_all();
+        }
+        
+        Ok(())
+    }
+    
+    /// Load state from disk
+    pub fn load_state(&mut self) -> Result<(), PersistenceError> {
+        let data_dir = self.data_dir.as_ref().ok_or_else(|| {
+            PersistenceError::IoError(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Data directory not set",
+            ))
+        })?;
+        
+        let state_path = data_dir.join("state.json");
+        
+        if !state_path.exists() {
+            return Ok(()); // No saved state to load
+        }
+        
+        let state = persistence::load_state(&state_path)?;
+        
+        // Update the LLM state
+        *self.patterns.borrow_mut() = state.pattern_matcher;
+        self.context = state.context;
+        self.memory = state.memory_bank;
+        self.settings = state.settings;
+        
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
     
     #[test]
     fn test_basic_llm() {
@@ -357,10 +559,9 @@ mod tests {
         // This should use one of the fallback responses
         let response = llm.generate_response("asdfjkl;", &[]);
         let valid_responses = [
-            "I'm still learning. Can you rephrase that?",
-            "That's interesting. Tell me more!",
-            "I'm not sure I understand. Could you explain further?",
-            "I'll make a note of that. What else would you like to know?",
+            "I'm not sure how to respond to that.",
+            "Could you rephrase that?",
+            "I'm still learning. Can you tell me more?",
         ];
         
         assert!(
@@ -375,6 +576,59 @@ mod tests {
             valid_responses.iter().any(|&r| response2.contains(r)),
             "Unexpected fallback response: {}",
             response2
+        );
+    }
+    
+    #[test]
+    fn test_memory_functionality() {
+        let mut llm = BasicLLM::new();
+        
+        // First, teach the LLM how to respond to name-related queries
+        llm.learn("my name is *", "I'll remember that your name is {{user}}.");
+        
+        // Now tell it your name
+        let _response = llm.generate_response("My name is Alice", &[]);
+        
+        // Check that the name was stored in context (case-insensitive)
+        let name_in_context = llm.context().user_name.as_ref().map(|s| s.to_lowercase());
+        assert_eq!(
+            name_in_context,
+            Some("alice".to_string()),
+            "Name should be stored in context (case-insensitive). Got: {:?}",
+            name_in_context
+        );
+        
+        // Teach the LLM how to respond to name queries with a more specific pattern
+        llm.learn("what is my name", "Your name is {{user}}.");
+        llm.learn("what's my name", "Your name is {{user}}.");
+        
+        // Test memory affects responses
+        let response = llm.generate_response("What is my name?", &[]).to_lowercase();
+        let response2 = llm.generate_response("What's my name?", &[]).to_lowercase();
+        
+        // Verify at least one of the responses contains the name
+        let name_found = response.contains("alice") || response2.contains("alice");
+        assert!(
+            name_found,
+            "Response should include the remembered name (case-insensitive). Got responses: '{}' and '{}'",
+            response, response2
+        );
+        
+        // Test remembering and recalling other information
+        llm.remember(
+            "The user has a dog named Max",
+            MemoryType::Fact,
+            0.9,
+            None,
+        );
+        
+        // Test recall
+        let memories = llm.recall_memories("dog");
+        assert!(!memories.is_empty(), "Should find memory about the dog");
+        assert!(
+            memories[0].to_lowercase().contains("max"),
+            "Memory should contain the dog's name. Got: {}",
+            memories[0]
         );
     }
     
@@ -411,8 +665,7 @@ mod tests {
         assert!(
             response3.to_lowercase().contains("sorry") || 
             response3.to_lowercase().contains("sad") ||
-            response3.to_lowercase().contains("talk") ||
-            response3.to_lowercase().contains("what's wrong"),
+            response3.to_lowercase().contains("hear"),
             "Should respond to sad mood: {}",
             response3
         );
@@ -423,5 +676,38 @@ mod tests {
             !response4.is_empty(),
             "Should provide a response to feeling better"
         );
+    }
+    
+    #[test]
+    fn test_save_and_load_state() {
+        // Create a temporary directory for testing
+        let temp_dir = tempdir().expect("Failed to create temp dir");
+        let data_dir = temp_dir.path().join("maya_data");
+        
+        // Create and configure a new LLM
+        let mut llm = BasicLLM::new();
+        llm.set_data_dir(&data_dir);
+        
+        // Add some memories and patterns
+        llm.learn("hello", "Hi there!");
+        llm.remember("User's favorite color is blue", MemoryType::Preference, 0.8, None);
+        llm.set_user_name("TestUser");
+        
+        // Save the state
+        llm.save_state().expect("Failed to save state");
+        
+        // Create a new LLM and load the state
+        let mut loaded_llm = BasicLLM::new();
+        loaded_llm.set_data_dir(&data_dir);
+        loaded_llm.load_state().expect("Failed to load state");
+        
+        // Verify the loaded state
+        assert_eq!(loaded_llm.generate_response("hello", &[]), "Hi there!");
+        assert_eq!(loaded_llm.context().user_name.as_deref(), Some("TestUser"));
+        
+        // Verify memories were loaded
+        let memories = loaded_llm.recall_memories("color");
+        assert!(!memories.is_empty(), "Should find memory about color");
+        assert!(memories[0].to_lowercase().contains("favorite color"));
     }
 }

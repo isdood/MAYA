@@ -4,7 +4,7 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const pattern_recognition = @import("pattern_recognition.zig");
+const pattern_recognition = @import("pattern_recognition");
 const crystal_computing = @import("crystal_computing.zig");
 
 /// Quantum processor configuration
@@ -28,7 +28,7 @@ pub const QuantumProcessor = struct {
     // System state
     config: QuantumConfig,
     allocator: std.mem.Allocator,
-    state: QuantumState,
+    state: pattern_recognition.QuantumState,
     crystal: ?*crystal_computing.CrystalProcessor,
 
     pub fn init(allocator: std.mem.Allocator) !*QuantumProcessor {
@@ -36,7 +36,7 @@ pub const QuantumProcessor = struct {
         processor.* = QuantumProcessor{
             .config = QuantumConfig{},
             .allocator = allocator,
-            .state = QuantumState{
+            .state = pattern_recognition.QuantumState{
                 .coherence = 1.0,
                 .entanglement = 0.0,
                 .superposition = 0.0,
@@ -106,25 +106,25 @@ pub const QuantumProcessor = struct {
         state.entanglement = @max(state.entanglement, crystal_state.entanglement);
 
         // Enhance superposition based on crystal depth
-        const depth_factor = @intToFloat(f64, crystal_state.depth) / @intToFloat(f64, self.config.superposition_depth);
+        const depth_factor = @as(f64, crystal_state.depth) / @as(f64, self.config.superposition_depth);
         state.superposition = @max(state.superposition, depth_factor);
     }
 
     /// Calculate quantum coherence
-    fn calculateCoherence(self: *QuantumProcessor, pattern_data: []const u8) f64 {
+    fn calculateCoherence(_self: *QuantumProcessor, _pattern_data: []const u8) f64 {
         // Simple coherence calculation based on pattern length
-        const base_coherence = @intToFloat(f64, pattern_data.len) / 100.0;
+        const base_coherence = @as(f64, _pattern_data.len) / 100.0;
         return @min(1.0, base_coherence);
     }
 
     /// Calculate quantum entanglement
-    fn calculateEntanglement(self: *QuantumProcessor, pattern_data: []const u8) f64 {
+    fn calculateEntanglement(_self: *QuantumProcessor, _pattern_data: []const u8) f64 {
         // Simple entanglement calculation based on pattern complexity
         var complexity: usize = 0;
-        for (pattern_data) |byte| {
+        for (_pattern_data) |byte| {
             complexity += @popCount(byte);
         }
-        return @min(1.0, @intToFloat(f64, complexity) / 100.0);
+        return @min(1.0, @as(f64, complexity) / 100.0);
     }
 
     /// Calculate quantum superposition
@@ -139,10 +139,10 @@ pub const QuantumProcessor = struct {
         }
 
         // Calculate entropy
-        const len = @intToFloat(f64, pattern_data.len);
+        const len = @as(f64, pattern_data.len);
         for (counts) |count| {
             if (count > 0) {
-                const p = @intToFloat(f64, count) / len;
+                const p = @as(f64, count) / len;
                 entropy -= p * std.math.log2(p);
             }
         }
