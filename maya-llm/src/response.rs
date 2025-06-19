@@ -1,10 +1,11 @@
 //! Response generation and templating system
 
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::fmt;
 
 /// Represents a response template that can contain variables and conditionals
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseTemplate {
     template: String,
 }
@@ -124,7 +125,7 @@ impl fmt::Display for ResponseTemplate {
 }
 
 /// Context for response generation
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ResponseContext {
     pub user_name: Option<String>,
     pub previous_messages: Vec<String>,

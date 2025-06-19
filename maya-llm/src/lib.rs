@@ -5,9 +5,11 @@ use std::rc::Rc;
 
 use log;
 use rand::seq::SliceRandom;
+use serde::{Serialize, Deserialize};
 
 pub mod pattern;
 pub mod response;
+pub mod persistence;
 
 use pattern::PatternMatcher;
 use response::ResponseContext;

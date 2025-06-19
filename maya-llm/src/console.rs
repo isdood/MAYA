@@ -89,14 +89,27 @@ fn show_help() {
 mod tests {
     use super::*;
     use crate::BasicLLM;
+    use std::panic::{self, AssertUnwindSafe};
     
     #[test]
     fn test_help_command() {
         // Basic test to ensure the help command works
         let mut llm = BasicLLM::default();
-        let result = std::panic::catch_unwind(|| {
+        
+        // Create a closure that takes ownership of llm
+        let test_closure = move || {
             let _ = run(&mut llm);
-        });
-        assert!(result.is_ok());
+        };
+        
+        // Run the test in a separate thread to avoid panic issues
+        let handle = std::thread::spawn(test_closure);
+        
+        // Give it a moment to run, then check if it's still alive
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        assert!(!handle.is_finished());
+        
+        // Clean up by joining the thread
+        handle.thread().unpark();
+        let _ = handle.join();
     }
 }

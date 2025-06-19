@@ -1,8 +1,9 @@
+use serde::{Serialize, Deserialize};
 use std::collections::HashSet;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Represents a pattern with its associated response and learning metadata
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pattern {
     pub text: String,
     pub response: String,
@@ -129,7 +130,7 @@ impl Pattern {
 }
 
 /// Manages a collection of patterns with learning capabilities
-#[derive(Default)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct PatternMatcher {
     /// The collection of patterns
     pub patterns: Vec<Pattern>,

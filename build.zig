@@ -97,7 +97,6 @@ pub fn build(b: *std.Build) void {
 
     // 🌐 WASM Configuration
     const maya_wasm = b.addExecutable(.{
-        .link_args = &[_][]const u8{"--no-entry"}, // [GLIMMER PATCH]
         .name = "maya-wasm",
         .root_source_file = .{ .cwd_relative = "src/wasm.zig" },
         .target = b.resolveTargetQuery(.{
@@ -106,8 +105,6 @@ pub fn build(b: *std.Build) void {
         }),
         .optimize = optimize,
     });
-maya_wasm.addLinkArgs(&[_][]const u8{"--no-entry"}); // [GLIMMER PATCH]
-    maya_wasm.addLinkerArg("--no-entry");
 
     maya_wasm.root_module.addImport("starweave", starweave_mod);
     maya_wasm.root_module.addImport("glimmer", glimmer_mod);
