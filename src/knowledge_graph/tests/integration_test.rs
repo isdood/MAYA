@@ -26,7 +26,8 @@ fn create_location_node(name: &str, capacity: i32) -> Node {
 fn test_end_to_end_workflow() -> Result<(), Box<dyn Error>> {
     // Create a test graph with explicit type
     let dir = tempdir()?;
-    let graph: KnowledgeGraph<SledStore> = KnowledgeGraph::open(dir.path())?;
+    let store = SledStore::open(dir.path())?;
+    let graph = KnowledgeGraph::new(store);
     
     // Create some nodes
     let alice = create_test_node("Person", "Alice", 30);

@@ -324,7 +324,8 @@ impl Storage for HybridStore {
             if self.should_use_cache(false) {
                 if let Err(e) = self.cache.put(key, value) {
                     log::warn!("Failed to update cache: {}", e);
-                } else if let Ok(mut key_routing) = self.key_routing.write() {
+                } else {
+                    let mut key_routing = self.key_routing.write();
                     key_routing.insert(key.to_vec(), true);
                 }
             }

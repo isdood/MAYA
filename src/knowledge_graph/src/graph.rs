@@ -111,18 +111,8 @@ where
     for<'a> <S as WriteBatchExt>::BatchType<'a>: WriteBatch + 'static,
     for<'a> &'a S: 'a,
 {
-    /// Create or open a knowledge graph at the given path
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self>
-    where
-        S: Sized,
-    {
-        let storage = S::open(path)?;
-        info!("Opened knowledge graph database");
-        Ok(Self { storage })
-    }
-    
     /// Create a new knowledge graph with a custom storage backend
-    pub fn with_storage(storage: S) -> Self {
+    pub fn new(storage: S) -> Self {
         Self { storage }
     }
 

@@ -40,7 +40,8 @@ fn assert_edges_eq(expected: &Edge, actual: &Edge) {
 // Helper function to create a test graph
 fn create_test_graph() -> (KnowledgeGraph<SledStore>, Vec<Node>, Vec<Edge>) {
     let dir = tempfile::tempdir().unwrap();
-    let graph = KnowledgeGraph::open(dir.path()).unwrap();
+    let store = SledStore::open(dir.path()).unwrap();
+    let graph = KnowledgeGraph::new(store);
     
     // Create test nodes
     let node1 = create_test_node("Person", "Alice", 30);
