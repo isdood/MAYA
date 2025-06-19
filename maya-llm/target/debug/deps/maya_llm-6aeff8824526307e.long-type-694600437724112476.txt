@@ -1,3 +1,0 @@
-Rc<RefCell<pattern::PatternMatcher>>
-Rc<RefCell<pattern::PatternMatcher>>: Serialize
-Rc<RefCell<pattern::PatternMatcher>>: Deserialize<'_>
