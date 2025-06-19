@@ -77,7 +77,7 @@ pub fn main() !void {
         try stdout.writeAll("\x1b[2J\x1b[H");
         
         // Update title and frame counter
-        try stdout.writer().print("MAYA Memory Visualization (Frame: {})\n\n", .{frame});
+        try std.fmt.format(stdout, "MAYA Memory Visualization (Frame: {})\n\n", .{frame});
         
         // Update node positions with force-directed layout
         graph.updateLayout();
@@ -91,7 +91,7 @@ pub fn main() !void {
         }
         
         // Render the graph
-        try graph.render(stdout.writer());
+        try graph.render(stdout);
         
         // Print simple controls
         try stdout.writeAll("\n\nPress 'q' to quit\n");

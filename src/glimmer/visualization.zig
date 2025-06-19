@@ -110,7 +110,7 @@ pub const MemoryGraph = struct {
 
     /// Render the graph to a string for terminal display
     // Get the color for a memory type
-    fn getMemoryTypeColor(self: *const MemoryGraph, mem_type: MemoryType) []const u8 {
+    fn getMemoryTypeColor(_: *const MemoryGraph, mem_type: MemoryType) []const u8 {
         return switch (mem_type) {
             .Fact => Color.BrightCyan,
             .Preference => Color.BrightGreen,
@@ -124,12 +124,11 @@ pub const MemoryGraph = struct {
             .Event => Color.BrightYellow,
             .Knowledge => Color.BrightCyan,
             .Skill => Color.BrightGreen,
-            else => Color.White,
         };
     }
 
     // Get the symbol for a memory type
-    fn getMemoryTypeSymbol(self: *const MemoryGraph, mem_type: MemoryType) u21 {
+    fn getMemoryTypeSymbol(_: *const MemoryGraph, mem_type: MemoryType) u21 {
         return switch (mem_type) {
             .Fact => '■',
             .Preference => '♥',
@@ -143,7 +142,6 @@ pub const MemoryGraph = struct {
             .Event => '⌛',
             .Knowledge => '📚',
             .Skill => '⚡',
-            else => '•',
         };
     }
 
@@ -184,7 +182,7 @@ pub const MemoryGraph = struct {
                         // Single point
                         if (x0 >= 0 and y0 >= 0 and 
                             x0 < self.width and y0 < self.height) {
-                            grid.items[@intCast(y0)].items[@intCast(x0)] = '*';
+                            grid.items[@intCast(y0)].items[@intCast(x0)] = .{ .char = '*', .fg = null };
                         }
                         continue;
                     }
@@ -196,10 +194,10 @@ pub const MemoryGraph = struct {
                     
                     // Choose line style based on relationship type
                     const line_char: u21 = switch (edge.relationship) {
-                        .RelatedTo => Box.Horizontal,
-                        .ParentOf => '─',
-                        .ChildOf => '─',
-                        .SimilarTo => '~',
+                        .RelatedTo => '─',
+                        .HasPreference => '♥',
+                        .WorksOn => '⚒',
+                        .HasTask => '✓',
                         .LeadsTo => '→',
                         .DependsOn => '⟶',
                         .PartOf => '⊂',
@@ -208,25 +206,20 @@ pub const MemoryGraph = struct {
                         .CausedBy => '⇐',
                         .OccurredBefore => '⟲',
                         .OccurredAfter => '⟳',
-                        else => '─',
+                        .ParentOf => '─',
+                        .ChildOf => '─',
                     };
 
-                    for (0..steps + 1) |i| {
+                    for (0..steps + 1) |_| {
                         const xi = @as(i32, @intFromFloat(x));
                         const yi = @as(i32, @intFromFloat(y));
                         
                         if (xi >= 0 and yi >= 0 and 
                             xi < self.width and yi < self.height) {
                             // Only draw line if the cell is empty or already has a line character
-                            const cell = &grid.items[@intCast(yi)].items[@intCast(xi)];
-                            if (cell.char == ' ' or cell.char == line_char or 
-                                cell.char == Box.Horizontal or cell.char == '~' or 
-                                cell.char == '→' or cell.char == '⟶' or 
-                                cell.char == '⊂' or cell.char == '⊃' or
-                                cell.char == '⇒' or cell.char == '⇐' or
-                                cell.char == '⟲' or cell.char == '⟳') {
-                                cell.char = line_char;
-                                cell.fg = Color.White; // Default line color
+                            if (grid.items[@intCast(yi)].items[@intCast(xi)].char == ' ' or 
+                                grid.items[@intCast(yi)].items[@intCast(xi)].char == line_char) {
+                                grid.items[@intCast(yi)].items[@intCast(xi)] = .{ .char = line_char, .fg = null };
                             }
                         }
                         
@@ -271,7 +264,7 @@ pub const MemoryGraph = struct {
             
             for (row.items) |cell| {
                 // Only change color if needed
-                if (current_fg != cell.fg) {
+                if (!std.mem.eql(u8, current_fg orelse "", cell.fg orelse "")) {
                     if (cell.fg) |fg| {
                         try writer.writeAll(fg);
                     } else {
@@ -301,20 +294,29 @@ pub const MemoryType = enum {
     Preference,
     Task,
     UserDetail,
-    Custom,
+    Experience,
+    Goal,
+    Idea,
+    Project,
+    Relationship,
+    Event,
+    Knowledge,
+    Skill,
 };
 
 pub const MemoryRelationship = enum {
     ParentOf,
     ChildOf,
-    HappenedBefore,
-    HappenedAfter,
-    CausedBy,
-    Caused,
     RelatedTo,
-    SimilarTo,
-    OppositeOf,
-    PartOf,
+    HasPreference,
+    WorksOn,
+    HasTask,
+    LeadsTo,
     DependsOn,
-    Custom,
+    PartOf,
+    HasPart,
+    Causes,
+    CausedBy,
+    OccurredBefore,
+    OccurredAfter,
 };
