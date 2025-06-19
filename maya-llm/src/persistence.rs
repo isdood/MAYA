@@ -1,18 +1,14 @@
 //! Data persistence for the MAYA LLM
 
 use serde::{Serialize, Deserialize};
-use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Write};
+use std::fs::File;
+use std::io::{self, Read};
 use std::path::Path;
-use std::error::Error;
-use std::fmt;
-use std::rc::Rc;
-use std::cell::RefCell;
+use std::collections::HashMap;
 
 use crate::pattern::PatternMatcher;
 use crate::response::ResponseContext;
-use crate::memory::{MemoryBank, Memory};
-use std::collections::HashMap;
+use crate::memory::MemoryBank;
 
 /// Represents the complete state of the LLM that needs to be persisted
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,8 +43,8 @@ pub enum PersistenceError {
     DeserializationError(serde_json::Error),
 }
 
-impl fmt::Display for PersistenceError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for PersistenceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PersistenceError::IoError(e) => write!(f, "IO error: {}", e),
             PersistenceError::SerializationError(e) => write!(f, "Serialization error: {}", e),
@@ -57,7 +53,7 @@ impl fmt::Display for PersistenceError {
     }
 }
 
-impl Error for PersistenceError {}
+impl std::error::Error for PersistenceError {}
 
 impl From<io::Error> for PersistenceError {
     fn from(err: io::Error) -> Self {
@@ -143,9 +139,9 @@ pub fn load_state<P: AsRef<Path>>(path: P) -> Result<SerializableLLM, Persistenc
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     use tempfile::tempdir;
-    use chrono::Utc;
-    use crate::memory::{Memory, MemoryType};
+    use crate::memory::MemoryType;
     
     #[test]
     fn test_save_and_load_state() {

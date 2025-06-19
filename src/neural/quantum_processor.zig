@@ -128,18 +128,18 @@ pub const QuantumProcessor = struct {
     }
 
     /// Calculate quantum superposition
-    fn calculateSuperposition(self: *QuantumProcessor, pattern_data: []const u8) f64 {
+    fn calculateSuperposition(_self: *QuantumProcessor, _pattern_data: []const u8) f64 {
         // Simple superposition calculation based on pattern entropy
         var entropy: f64 = 0.0;
         var counts = [_]usize{0} ** 256;
         
         // Count byte frequencies
-        for (pattern_data) |byte| {
+        for (_pattern_data) |byte| {
             counts[byte] += 1;
         }
 
         // Calculate entropy
-        const len = @as(f64, pattern_data.len);
+        const len = @as(f64, _pattern_data.len);
         for (counts) |count| {
             if (count > 0) {
                 const p = @as(f64, count) / len;

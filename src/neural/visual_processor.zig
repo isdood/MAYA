@@ -31,7 +31,9 @@ pub const VisualProcessor = struct {
             .config = VisualConfig{},
             .allocator = allocator,
             .state = pattern_recognition.VisualState{
+                .brightness = 0.0,
                 .contrast = 1.0,
+                .saturation = 0.0,
             },
         };
         return processor;
@@ -45,7 +47,9 @@ pub const VisualProcessor = struct {
     pub fn process(self: *VisualProcessor, pattern_data: []const u8) !pattern_recognition.VisualState {
         // Initialize visual state
         var state = pattern_recognition.VisualState{
+            .brightness = 0.0,
             .contrast = 0.0,
+            .saturation = 0.0,
         };
 
         // Process pattern in visual state
