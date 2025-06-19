@@ -421,23 +421,28 @@ impl Storage for HybridStore {
 // Remove duplicate Storage implementation - using the one above
 
 impl WriteBatchExt for HybridStore {
-    type Batch<'a> = HybridBatch<<SledStore as Storage>::Batch<'a>, <CachedStore<SledStore> as Storage>::Batch<'a>> where Self: 'a;
+    // The Batch type is already defined in the Storage implementation
     
-    fn create_batch(&self) -> Self::Batch<'_> {
+    fn batch(&self) -> Self::Batch<'_> {
+        // Create a new Arc containing a clone of the key_routing map
+        let key_routing = Arc::new(parking_lot::RwLock::new(
+            self.key_routing.read().clone()
+        ));
+        
         HybridBatch::new(
             self.primary.create_batch(),
             self.cache.create_batch(),
-            Arc::clone(&self.key_routing),
+            key_routing,
         )
     }
     
-    fn put_serialized<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
-        self.put(key, value)
+    // Override the default implementation to use our batch method
+    fn create_write_batch(&self) -> Self::Batch<'_> {
+        self.batch()
     }
     
-    fn delete_serialized(&self, key: &[u8]) -> Result<()> {
-        self.delete(key)
-    }
+    // Use the default implementations for put_serialized and delete_serialized
+    // which will use our batch() method
 }
 
 /// Batch implementation for HybridStore
@@ -479,12 +484,12 @@ where
     CB: WriteBatch + Send + 'static,
 {
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        // Add to primary batch
+        // Update primary first
         self.primary_batch.put_serialized(key, value)?;
         
-        // Add to cache batch
+        // Then update cache batch and routing
         if let Err(e) = self.cache_batch.put_serialized(key, value) {
-            log::warn!("Failed to add to cache batch: {}", e);
+            log::warn!("Failed to update cache batch: {}", e);
         }
         
         // Track the key for routing
@@ -528,66 +533,6 @@ where
         for key in self.keys_to_update {
             key_routing.insert(key, true);
         }
-        
-        Ok(())
-    }
-    
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    
-    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
-
-impl<PB, CB> WriteBatch for HybridBatch<PB, CB> 
-where
-    PB: WriteBatch + Send + 'static,
-    CB: WriteBatch + Send + 'static,
-{
-    fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-        // Update primary first
-        self.primary_batch.put_serialized(key, value)?;
-        
-        // Then update cache batch and routing
-        self.cache_batch.put_serialized(key, value)?;
-        self.key_routing.write().insert(key.to_vec(), true);
-        
-        Ok(())
-    }
-    
-    fn delete_serialized(&mut self, key: &[u8]) -> Result<()> {
-        // Delete from both batches
-        self.primary_batch.delete_serialized(key)?;
-        
-        // Update cache batch and routing
-        self.cache_batch.delete_serialized(key)?;
-        self.key_routing.write().remove(key);
-        
-        Ok(())
-    }
-    
-    fn clear(&mut self) {
-        self.primary_batch.clear();
-        self.cache_batch.clear();
-    }
-    
-    fn commit(self) -> Result<()> {
-        // Helper function to commit a boxed batch
-        fn commit_boxed<B: WriteBatch>(mut batch: B) -> Result<()> {
-            batch.commit()
-        }
-        
-        // Commit primary batch first
-        let primary_result = commit_boxed(*Box::new(self.primary_batch));
-        
-        // Then commit cache batch
-        let cache_result = commit_boxed(*Box::new(self.cache_batch));
-        
-        // Return primary result (more critical)
-        primary_result?;
-        cache_result?;
         
         Ok(())
     }

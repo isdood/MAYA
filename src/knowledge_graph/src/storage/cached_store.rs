@@ -268,19 +268,7 @@ where
         self.inner.get_raw(key)
     }
     
-    fn put_raw(&self, key: &[u8], value: &[u8]) -> Result<()> {
-        // Update cache
-        {
-            let mut cache = self.cache.write();
-            cache.put(key.to_vec(), value.to_vec());
-            self.metrics.record_write(value.len());
-        }
-        
-        // Write to inner storage
-        self.inner.put_raw(key, value)
-    }
-    
-    fn iter_prefix(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+    fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         // In a real implementation, this would iterate over the cache first, then the inner storage
         // For now, just delegate to the inner storage
         self.inner.iter_prefix(prefix)
@@ -319,22 +307,18 @@ where
     S: Storage + WriteBatchExt + 'static,
     for<'a> S::Batch<'a>: Clone + Send + Sync + 'a,
 {
-    type Batch<'a> = CachedBatch<S::Batch<'a>> where Self: 'a;
+    // The Batch type is already defined in the Storage implementation
     
-    fn batch(&self) -> Self::Batch<'_> {
-        self.create_batch()
-    }
-    
-    fn create_batch(&self) -> Self::Batch<'_> {
-        // Create the inner batch first
+    // Override the default implementation to use our batch method
+    fn create_write_batch(&self) -> Self::Batch<'_> {
+        // Create the inner batch
         let inner_batch = self.inner.create_batch();
         
-        CachedBatch::with_config(
+        // Create a new CachedBatch
+        CachedBatch::new(
             inner_batch,
-            self.cache.clone(),
-            self.metrics.clone(),
-            self.batch_config.clone(),
-            self.read_ahead_window,
+            Arc::clone(&self.cache),
+            Arc::clone(&self.metrics),
         )
     }
     
@@ -409,12 +393,6 @@ where
     B: WriteBatch + 'static,
     B: Send + Sync,
 {
-    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> Result<()> {
-        let bytes = bincode::serialize(value)
-            .map_err(|e| KnowledgeGraphError::from(format!("Failed to serialize value: {}", e)))?;
-        self.put_serialized(key, &bytes)
-    }
-    
     fn put_serialized(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         // Remove from pending deletes if it exists
         self.pending_deletes.remove(key);
@@ -430,10 +408,6 @@ where
         }
         
         Ok(())
-    }
-    
-    fn delete(&mut self, key: &[u8]) -> Result<()> {
-        self.delete_serialized(key)
     }
     
     fn delete_serialized(&mut self, key: &[u8]) -> Result<()> {

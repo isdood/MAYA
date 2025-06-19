@@ -1,0 +1,1 @@
+&KnowledgeGraph<S>: storage::Storage

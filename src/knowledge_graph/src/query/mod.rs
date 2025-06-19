@@ -263,17 +263,17 @@ mod tests {
 
         // Optionally, check the label index directly
         use crate::graph::get_node_ids_by_label;
-        let alpha_ids = get_node_ids_by_label(graph.storage(), "Alpha")?;
+        let alpha_ids = get_node_ids_by_label(&graph, "Alpha")?;
         assert!(alpha_ids.contains(&node_a1.id));
         assert!(alpha_ids.contains(&node_a2.id));
         assert_eq!(alpha_ids.len(), 2);
 
-        let beta_ids = get_node_ids_by_label(graph.storage(), "Beta")?;
+        let beta_ids = get_node_ids_by_label(&graph, "Beta")?;
         assert!(beta_ids.contains(&node_b1.id));
         assert!(beta_ids.contains(&node_b2.id));
         assert_eq!(beta_ids.len(), 2);
 
-        let gamma_ids = get_node_ids_by_label(graph.storage(), "Gamma")?;
+        let gamma_ids = get_node_ids_by_label(&graph, "Gamma")?;
         assert!(gamma_ids.contains(&node_c.id));
         assert_eq!(gamma_ids.len(), 1);
 
