@@ -1,20 +1,21 @@
 [package]
 name = "maya-llm"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 # Core dependencies
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
+rand = "0.8"
 
 # Console interface
-rustyline = { version = "16.0.0", features = ["with-dirs"] }
+rustyline = { version = "10.0.0", features = ["with-dirs"] }
 
 # Logging
 log = "0.4"
-simplelog = "0.12"
+simplelog = { version = "0.12.1", default-features = false, features = ["termcolor"] }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
