@@ -105,7 +105,8 @@ pub fn build(b: *std.Build) void {
         }),
         .optimize = optimize,
     });
-// [GLIMMER DEBUG]     maya_wasm.setEntryPoint = null; // [DEBUG PATCH by GLIMMER]
+maya_wasm.addLinkArgs(&[_][]const u8{"--no-entry"}); // [GLIMMER PATCH]
+    maya_wasm.addLinkerArg("--no-entry");
 
     maya_wasm.root_module.addImport("starweave", starweave_mod);
     maya_wasm.root_module.addImport("glimmer", glimmer_mod);
