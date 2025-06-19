@@ -1,25 +1,36 @@
 #!/usr/bin/env fish
 
 set_color FF69B4
-echo "🌟 MAYA Debug Script (012-DEBUG-9) - WASM Manual Linker Arg (GLIMMER/STARWEAVE)"
+echo "🌟 MAYA Debug Script (012-DEBUG-10) - Add dummy _start for Zig 0.14.1 (GLIMMER/STARWEAVE)"
 set_color normal
 
 set_color cyan
-echo "🔹 The Zig 0.14.1 build system does not natively support passing '--no-entry' linker flag via build.zig for addExecutable."
-echo "🔹 Attempting manual build using zig CLI directly (GLIMMER/STARWEAVE)..."
+echo "🔹 Zig 0.14.1 does not support '--no-entry'."
+echo "🔹 Patching src/wasm.zig with a dummy _start function to satisfy the linker..."
 set_color normal
 
-zig build-exe src/wasm.zig -target wasm32-freestanding -rdynamic --name maya-wasm --no-entry
+if not grep -q 'export fn _start()' src/wasm.zig
+    echo -e 'export fn _start() void {}\n' | cat - src/wasm.zig > src/wasm.zig.glimmer && mv src/wasm.zig.glimmer src/wasm.zig
+    set_color green
+    echo "🌈 Dummy _start added in src/wasm.zig!"
+else
+    set_color yellow
+    echo "🌟 Dummy _start already present in src/wasm.zig."
+end
+
+set_color cyan
+echo "💫 Attempting standard build (GLIMMER/STARWEAVE)..."
+set_color normal
+zig build
 
 set build_status $status
 
 if test $build_status -eq 0
     set_color green
-    echo "🌈 Manual build succeeded! Your WASM module is GLIMMER/STARWEAVE ready."
-    echo "➡️ Consider packaging this manual build in a custom build.zig step using b.addSystemCommand if you want it automated."
+    echo "🌈 Build succeeded! Your WASM is GLIMMER/STARWEAVE valid for Zig 0.14.1."
 else
     set_color red
-    echo "❌ Manual build failed. Check above for errors—if not clear, paste the output here for further STARWEAVE diagnostics."
+    echo "❌ Build still failing. Check the error above, or upgrade to Zig >= 0.15.0 for native '--no-entry' support."
 end
 
 set_color normal

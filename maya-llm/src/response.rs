@@ -216,32 +216,28 @@ mod tests {
     
     #[test]
     fn test_conditionals() {
-        // Test with space after the conditional in the template
-        let template1 = ResponseTemplate::new("{{if context:previous_messages|Remembering our chat. }}Hello!");
-        
-        // No previous messages
         let mut context = HashMap::new();
-        assert_eq!(template1.render(&context), "Hello!");
+        context.insert("name".to_string(), "Alice".to_string());
         
-        // With previous messages - space is included in the replacement
-        context.insert("previous_messages", "1".to_string());
-        
-        // The space after the conditional is preserved in the output
-        // Note: The space after the conditional is not preserved in the output
-        // because the template system trims the replacement text
-        assert_eq!(template1.render(&context), "Remembering our chat.Hello!");
+        let template1 = ResponseTemplate::new("{{#if name}}Hello, {{name}}!{{/if}}");
+        assert_eq!(template1.render(&context), "Hello, Alice!");
         
         // Test with space after the conditional in the template
-        let template2 = ResponseTemplate::new("{{if context:previous_messages|Remembering our chat.}} Hello!");
-        assert_eq!(template2.render(&context), "Remembering our chat. Hello!");
+        let template2 = ResponseTemplate::new("{{#if name}} Hello, {{name}}!{{/if}}");
+        assert_eq!(template2.render(&context), " Hello, Alice!");
         
-        // Test with no space in the template (will be concatenated directly)
-        let template3 = ResponseTemplate::new("{{if context:previous_messages|Remembering our chat.}}Hello!");
-        assert_eq!(template3.render(&context), "Remembering our chat.Hello!");
+        // Test with no space in the template
+        let template3 = ResponseTemplate::new("{{#if name}}Hello, {{name}}!{{/if}}");
+        assert_eq!(template3.render(&context), "Hello, Alice!");
+        
+        // Test with context variable
+        let mut context2 = HashMap::new();
+        context2.insert("previous_messages".to_string(), "1".to_string());
+        let template4 = ResponseTemplate::new("{{#if previous_messages}}Remembering our chat.{{/if}} Hello!");
+        assert_eq!(template4.render(&context2), "Remembering our chat. Hello!");
     }
     
     #[test]
-    #[ignore = "Temporarily disabled while fixing space handling in conditionals"]
     fn test_conditionals_with_spaces() {
         let mut context = HashMap::new();
         context.insert("previous_messages", "1".to_string());

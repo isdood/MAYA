@@ -1,3 +1,5 @@
+export fn _start() void {}
+
 // 🌐 MAYA WASM Bridge v2025.6.18
 const starweave = @import("starweave");
 const glimmer = @import("glimmer");
