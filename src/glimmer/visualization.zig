@@ -64,8 +64,9 @@ pub const MemoryGraph = struct {
         while (it.next()) |entry| {
             // Simple random movement for now
             const node = entry.value_ptr;
-            node.x += (std.crypto.random.int(u8) % 3) - 1;
-            node.y += (std.crypto.random.int(u8) % 3) - 1;
+            const rand_val = @as(f32, @floatFromInt(std.crypto.random.int(u8) % 3)) - 1.0;
+            node.x += rand_val;
+            node.y += rand_val;
             
             // Keep within bounds
             node.x = @max(0, @min(@as(f32, @floatFromInt(self.width)) - 1, node.x));
@@ -93,21 +94,42 @@ pub const MemoryGraph = struct {
         for (self.edges.items) |edge| {
             if (self.nodes.get(edge.source)) |source| {
                 if (self.nodes.get(edge.target)) |target| {
-                    // Simple line drawing (Bresenham's algorithm would be better)
-                    const x0 = @as(u32, @intFromFloat(source.x));
-                    const y0 = @as(u32, @intFromFloat(source.y));
-                    const x1 = @as(u32, @intFromFloat(target.x));
-                    const y1 = @as(u32, @intFromFloat(target.y));
+                    // Simple line drawing with bounds checking
+                    const x0 = @as(i32, @intFromFloat(source.x));
+                    const y0 = @as(i32, @intFromFloat(source.y));
+                    const x1 = @as(i32, @intFromFloat(target.x));
+                    const y1 = @as(i32, @intFromFloat(target.y));
                     
-                    // Simple line drawing (just for demo)
-                    const steps = @max(@abs(x1 - x0), @abs(y1 - y0));
-                    for (0..steps) |i| {
-                        const t = if (steps > 0) @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(steps)) else 0;
-                        const x = x0 + @as(u32, @intFromFloat(t * @as(f32, @floatFromInt(x1 - x0))));
-                        const y = y0 + @as(u32, @intFromFloat(t * @as(f32, @floatFromInt(y1 - y0))));
-                        if (x < self.width and y < self.height) {
-                            grid.items[y].items[x] = '-';
+                    // Simple DDA line drawing algorithm
+                    const dx = @abs(x1 - x0);
+                    const dy = @abs(y1 - y0);
+                    const steps = @max(dx, dy);
+                    
+                    if (steps == 0) {
+                        // Single point
+                        if (x0 >= 0 and y0 >= 0 and 
+                            x0 < self.width and y0 < self.height) {
+                            grid.items[@intCast(y0)].items[@intCast(x0)] = '*';
                         }
+                        continue;
+                    }
+                    
+                    var x = @as(f32, @floatFromInt(x0));
+                    var y = @as(f32, @floatFromInt(y0));
+                    const x_inc = @as(f32, @floatFromInt(x1 - x0)) / @as(f32, @floatFromInt(steps));
+                    const y_inc = @as(f32, @floatFromInt(y1 - y0)) / @as(f32, @floatFromInt(steps));
+                    
+                    for (0..steps + 1) |_| {
+                        const xi = @as(i32, @intFromFloat(x));
+                        const yi = @as(i32, @intFromFloat(y));
+                        
+                        if (xi >= 0 and yi >= 0 and 
+                            xi < self.width and yi < self.height) {
+                            grid.items[@intCast(yi)].items[@intCast(xi)] = '-';
+                        }
+                        
+                        x += x_inc;
+                        y += y_inc;
                     }
                 }
             }
@@ -122,7 +144,7 @@ pub const MemoryGraph = struct {
             
             if (x < self.width and y < self.height) {
                 // Simple node representation (just the first character of the content)
-                grid.items[y].items[x] = if (node.content.len > 0) node.content[0] else '•';
+                grid.items[y].items[x] = if (node.content.len > 0) node.content[0] else '*';
             }
         }
 
@@ -135,7 +157,7 @@ pub const MemoryGraph = struct {
 };
 
 // Import memory types from the main maya-llm crate
-const MemoryType = enum {
+pub const MemoryType = enum {
     Fact,
     Preference,
     Task,
@@ -143,7 +165,7 @@ const MemoryType = enum {
     Custom,
 };
 
-const MemoryRelationship = enum {
+pub const MemoryRelationship = enum {
     ParentOf,
     ChildOf,
     HappenedBefore,

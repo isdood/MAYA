@@ -97,7 +97,7 @@ pub const CrystalProcessor = struct {
     /// Calculate crystal coherence
     fn calculateCrystalCoherence(_: *CrystalProcessor, pattern_data: []const u8) f64 {
         const base_coherence = @as(f64, pattern_data.len) / 100.0;
-        return @min(1.0, base_coherence);
+        return @min(@as(f64, 1.0), base_coherence);
     }
 
     /// Calculate crystal entanglement
@@ -106,7 +106,7 @@ pub const CrystalProcessor = struct {
         for (pattern_data) |byte| {
             complexity += @popCount(byte);
         }
-        return @min(1.0, @as(f64, complexity) / 100.0);
+        return @min(@as(f64, 1.0), @as(f64, complexity) / 100.0);
     }
 
     /// Calculate crystal depth

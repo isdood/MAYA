@@ -16,12 +16,27 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .cwd_relative = "src/starweave/protocol.zig" },
     });
 
+    // Main GLIMMER module with visualization support
     const glimmer_mod = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/glimmer/patterns.zig" },
+        .root_source_file = .{ .cwd_relative = "src/glimmer/mod.zig" },
         .imports = &.{
             .{ .name = "starweave", .module = starweave_mod },
         },
     });
+
+    // Memory Visualization Example
+    const memory_vis_exe = b.addExecutable(.{
+        .name = "memory_visualization",
+        .root_source_file = .{ .cwd_relative = "examples/memory_visualization.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    memory_vis_exe.root_module.addImport("glimmer", glimmer_mod);
+    b.installArtifact(memory_vis_exe);
+    
+    const run_memory_vis = b.addRunArtifact(memory_vis_exe);
+    const memory_vis_step = b.step("memory-vis", "Run the memory visualization example");
+    memory_vis_step.dependOn(&run_memory_vis.step);
 
     // 🧠 Neural Pattern Recognition Modules
     const pattern_recognition_mod = b.createModule(.{

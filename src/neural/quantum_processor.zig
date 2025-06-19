@@ -111,32 +111,32 @@ pub const QuantumProcessor = struct {
     }
 
     /// Calculate quantum coherence
-    fn calculateCoherence(self: *QuantumProcessor, pattern_data: []const u8) f64 {
-        const base_coherence = @as(f64, pattern_data.len) / 100.0;
-        return @min(1.0, base_coherence);
+    fn calculateCoherence(_self: *QuantumProcessor, _pattern_data: []const u8) f64 {
+        const base_coherence = @as(f64, _pattern_data.len) / 100.0;
+        return @min(@as(f64, 1.0), base_coherence);
     }
 
     /// Calculate quantum entanglement
-    fn calculateEntanglement(self: *QuantumProcessor, pattern_data: []const u8) f64 {
+    fn calculateEntanglement(_self: *QuantumProcessor, _pattern_data: []const u8) f64 {
         var complexity: usize = 0;
-        for (pattern_data) |byte| {
+        for (_pattern_data) |byte| {
             complexity += @popCount(byte);
         }
-        return @min(1.0, @as(f64, complexity) / 100.0);
+        return @min(@as(f64, 1.0), @as(f64, complexity) / 100.0);
     }
 
     /// Calculate quantum superposition
-    fn calculateSuperposition(self: *QuantumProcessor, pattern_data: []const u8) f64 {
+    fn calculateSuperposition(_self: *QuantumProcessor, _pattern_data: []const u8) f64 {
         var entropy: f64 = 0.0;
         var counts = [_]usize{0} ** 256;
         
         // Count byte frequencies
-        for (pattern_data) |byte| {
+        for (_pattern_data) |byte| {
             counts[byte] += 1;
         }
 
         // Calculate entropy
-        const len = @as(f64, pattern_data.len);
+        const len = @as(f64, _pattern_data.len);
         for (counts) |count| {
             if (count > 0) {
                 const p = @as(f64, count) / len;
@@ -144,7 +144,7 @@ pub const QuantumProcessor = struct {
             }
         }
 
-        return @min(1.0, entropy / 8.0); // Normalize to [0,1]
+        return @min(@as(f64, 1.0), entropy / 8.0); // Normalize to [0,1]
     }
 
     /// Validate quantum state

@@ -11,6 +11,24 @@ This is as clearly stated as possible - MAYA can evolve & act in ways unexpected
 
 If anyone would like a breakdown of how to navigate this space properly, feel free to email me at calebjdt@gmail.com 🌟
 
+## ✨ Features
+
+### Memory Visualization with GLIMMER
+
+MAYA now includes an advanced memory visualization system powered by GLIMMER, allowing you to explore memory relationships in an interactive graph view.
+
+```bash
+# Run the memory visualization example
+zig build memory-vis
+```
+
+**Key Features**:
+- Interactive graph-based visualization of memory relationships
+- Support for different memory types (facts, preferences, tasks)
+- Real-time updates and layout adjustments
+- Custom styling and theming
+- Console-based interface with navigation controls
+
 ## 🚀 Getting Started
 
 ### Prerequisites
