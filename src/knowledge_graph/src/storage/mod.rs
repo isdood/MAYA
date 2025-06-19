@@ -128,6 +128,9 @@ pub trait Storage: Send + Sync + 'static {
     /// Get a raw byte value by key
     fn get_raw(&self, key: &[u8]) -> Result<Option<Vec<u8>>>;
     
+    /// Put a raw byte value by key
+    fn put_raw(&self, key: &[u8], value: &[u8]) -> Result<()>;
+    
     /// Iterate over key-value pairs with a prefix
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
     

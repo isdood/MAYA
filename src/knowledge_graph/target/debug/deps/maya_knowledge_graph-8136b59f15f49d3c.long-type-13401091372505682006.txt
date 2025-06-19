@@ -1,0 +1,2 @@
+<S as storage::Storage>::Batch<'a>: storage::Storage
+CachedBatch<<S as storage::Storage>::Batch<'a>>

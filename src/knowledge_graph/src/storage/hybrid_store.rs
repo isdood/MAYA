@@ -231,6 +231,28 @@ impl HybridStore {
 impl Storage for HybridStore {
     type Batch<'a> = HybridBatch<<SledStore as Storage>::Batch<'a>, <CachedStore<SledStore> as Storage>::Batch<'a>> where Self: 'a;
     
+    fn put_raw(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        // Determine if we should use the cache for this key
+        let use_cache = self.should_use_cache(false);
+        
+        // Write to primary storage first
+        self.primary.put_raw(key, value)?;
+        
+        // If using cache, update it as well
+        if use_cache {
+            if let Err(e) = self.cache.put_raw(key, value) {
+                log::warn!("Failed to update cache: {}", e);
+            } else {
+                // Update routing to prefer cache for this key
+                if let Ok(mut key_routing) = self.key_routing.write() {
+                    key_routing.insert(key.to_vec(), true);
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
     fn iter_prefix<'a>(&'a self, prefix: &[u8]) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         // Use prefetching for better performance on sequential scans
         let config = PrefetchConfig {
@@ -263,7 +285,7 @@ impl Storage for HybridStore {
         )
     }
     
-    fn get<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
+    fn get<T: DeserializeOwned + Serialize>(&self, key: &[u8]) -> Result<Option<T>> {
         self.update_stats(true, || {
             // Check if we should use the cache for this key
             let use_cache = self.should_use_cache(true);
@@ -409,9 +431,9 @@ impl Storage for HybridStore {
 }
 
 impl WriteBatchExt for HybridStore {
-    type BatchType<'a> = HybridBatch<<SledStore as Storage>::Batch<'a>, <CachedStore<SledStore> as Storage>::Batch<'a>> where Self: 'a;
+    type Batch<'a> = HybridBatch<<SledStore as Storage>::Batch<'a>, <CachedStore<SledStore> as Storage>::Batch<'a>> where Self: 'a;
     
-    fn create_batch(&self) -> Self::BatchType<'_> {
+    fn create_batch(&self) -> Self::Batch<'_> {
         HybridBatch::new(
             self.primary.create_batch(),
             self.cache.create_batch(),
@@ -530,32 +552,6 @@ where
     
     fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
         self
-    }
-}
-
-// Implement GenericWriteBatch for HybridBatch
-impl<PB, CB> GenericWriteBatch for HybridBatch<PB, CB> 
-where
-    PB: WriteBatch + Send + 'static,
-    CB: WriteBatch + Send + 'static,
-{
-    type Error = crate::error::KnowledgeGraphError;
-    
-    fn put<T: Serialize>(&mut self, key: &[u8], value: &T) -> std::result::Result<(), Self::Error> {
-        let bytes = bincode::serialize(value).map_err(|e| crate::error::KnowledgeGraphError::BincodeError(e.to_string()))?;
-        self.put_serialized(key, &bytes)
-    }
-    
-    fn delete(&mut self, key: &[u8]) -> std::result::Result<(), Self::Error> {
-        self.delete_serialized(key)
-    }
-    
-    fn clear(&mut self) {
-        WriteBatch::clear(self)
-    }
-    
-    fn commit(self) -> std::result::Result<(), Self::Error> {
-        WriteBatch::commit(self)
     }
 }
 

@@ -47,7 +47,11 @@ impl Storage for SledStore {
 
     fn put<T: Serialize>(&self, key: &[u8], value: &T) -> Result<()> {
         let bytes = serialize(value)?;
-        self.db.insert(key, bytes)?;
+        self.put_raw(key, &bytes)
+    }
+    
+    fn put_raw(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        self.db.insert(key, value)?;
         self.db.flush()?;
         Ok(())
     }

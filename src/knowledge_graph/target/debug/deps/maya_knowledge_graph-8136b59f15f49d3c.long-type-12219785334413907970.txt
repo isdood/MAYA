@@ -1,0 +1,1 @@
+<S as storage::Storage>::Batch<'_>: storage::Storage
