@@ -20,6 +20,33 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // Quantum processor module
+    const quantum_processor_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/quantum_processor.zig" },
+        .imports = &.{
+            .{ .name = "quantum_types", .module = b.createModule(.{
+                .root_source_file = .{ .cwd_relative = "src/neural/quantum_types.zig" },
+            }) },
+            .{ .name = "crystal_computing", .module = b.createModule(.{
+                .root_source_file = .{ .cwd_relative = "src/neural/crystal_computing.zig" },
+            }) },
+        },
+    });
+
+    // Benchmark executable
+    const benchmark_exe = b.addExecutable(.{
+        .name = "quantum_benchmark",
+        .root_source_file = .{ .cwd_relative = "benchmarks/quantum_benchmark.zig" },
+        .target = target,
+        .optimize = .ReleaseFast,
+    });
+    benchmark_exe.root_module.addImport("quantum_processor", quantum_processor_mod);
+    b.installArtifact(benchmark_exe);
+
+    const run_benchmark = b.addRunArtifact(benchmark_exe);
+    const benchmark_step = b.step("benchmark", "Run quantum processor benchmarks");
+    benchmark_step.dependOn(&run_benchmark.step);
+
     // Memory Visualization Example
     const memory_vis_exe = b.addExecutable(.{
         .name = "memory_visualization",
