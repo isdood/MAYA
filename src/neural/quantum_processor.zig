@@ -569,29 +569,11 @@ fn applyOptimizedPatternMatching(self: *Self, circuit: *quantum_types.QuantumCir
         try circuit.h(i % circuit.qubits.len);
     }
 }
-        
-/// Enhance quantum state with crystal computing results
-fn enhanceWithCrystalState(self: *Self, state: *quantum_types.QuantumState, 
-                         crystal_state: *crystal_computing.CrystalState) !void {
-    // Simple enhancement - average the amplitudes
-    const num_states = @as(usize, 1) << @as(u6, @intCast(state.qubits.len));
-    for (0..num_states) |i| {
-        if (i < crystal_state.amplitudes.len) {
-            state.amplitudes[i].re = (state.amplitudes[i].re + crystal_state.amplitudes[i].re) * 0.5;
-            state.amplitudes[i].im = (state.amplitudes[i].im + crystal_state.amplitudes[i].im) * 0.5;
-        }
-    }
-            
-    // Renormalize after enhancement
-    try self.normalizeState(state);
-                
-}
-            }
-            
-            /// Initialize a new quantum processor with the given configuration
-    pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
-        var self = try allocator.create(Self);
-        errdefer allocator.destroy(self);
+
+/// Initialize a new quantum processor with the given configuration
+pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
+    var self = try allocator.create(Self);
+    errdefer allocator.destroy(self);
         
         self.allocator = allocator;
         self.config = config;
@@ -921,20 +903,51 @@ fn enhanceWithCrystalState(self: *Self, state: *quantum_types.QuantumState,
         }
     }
     
-    /// Enhance quantum state with crystal computing results
+    /// Enhance quantum state with advanced crystal computing results
     fn enhanceWithCrystalState(
         self: *Self,
         state: *quantum_types.QuantumState,
         crystal_state: crystal_computing.CrystalState,
     ) !void {
-        // Crystal coherence enhances quantum coherence
-        state.coherence = @max(state.coherence, crystal_state.coherence);
+        const num_qubits = state.qubits.len;
+        const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
         
-        // Crystal entanglement can increase quantum entanglement
-        state.entanglement = @min(
-            self.config.max_entanglement,
-            state.entanglement + (crystal_state.entanglement * 0.1)  // Small boost
-        );
+        // Calculate enhancement factors based on crystal properties
+        const coherence_boost = 1.0 + (crystal_state.coherence * 0.5);  // Up to 50% boost
+        const entanglement_boost = 1.0 + (crystal_state.entanglement * 0.3);  // Up to 30% boost
+        const depth_boost = 1.0 + (@as(f64, @floatFromInt(crystal_state.depth)) / 10.0);  // 10% per depth level
+        
+        // Apply spectral enhancement if available
+        var spectral_boost: f64 = 1.0;
+        if (crystal_state.spectral) |spectral| {
+            // Higher entropy means more uniform spectrum, less enhancement
+            spectral_boost = 1.2 - (spectral.spectral_entropy * 0.2);
+            spectral_boost = @max(0.8, @min(1.2, spectral_boost));  // Clamp to [0.8, 1.2]
+        }
+        
+        // Calculate final enhancement factor
+        const enhancement = (coherence_boost * entanglement_boost * depth_boost * spectral_boost) / 4.0;
+        
+        // Apply enhancement to quantum state
+        for (0..num_states) |i| {
+            const idx = i % crystal_state.amplitudes.len;  // Handle different sizes
+            
+            // Enhanced amplitude mixing with crystal state
+            state.amplitudes[i].re = (state.amplitudes[i].re * 0.7) + 
+                                   (crystal_state.amplitudes[idx].re * 0.3) * enhancement;
+            state.amplitudes[i].im = (state.amplitudes[i].im * 0.7) + 
+                                   (crystal_state.amplitudes[idx].im * 0.3) * enhancement;
+        }
+        
+        // Update quantum state properties based on crystal state
+        state.coherence = @min(1.0, state.coherence * coherence_boost);
+        state.entanglement = @min(1.0, state.entanglement * entanglement_boost);
+        state.depth = @max(state.depth, crystal_state.depth);
+        
+        // Apply resonance effects if available
+        if (crystal_state.resonance) |resonance| {
+            try self.applyResonanceEffects(state, resonance);
+        }
         
         // Crystal depth can increase effective qubit count
         const depth_boost = @as(f64, @floatFromInt(crystal_state.depth)) / 
