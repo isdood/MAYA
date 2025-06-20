@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:51",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/regex-syntax-72f360a43ab69f4d/lib-regex_syntax.json",
-    "type": "json",
-    "hash": "dadbedcce74bbec8d11c1b5f01a832d4aec8e06f"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"arbitrary\", \"default\", \"std\", \"unicode\", \"unicode-age\", \"unicode-bool\", \"unicode-case\", \"unicode-gencat\", \"unicode-perl\", \"unicode-script\", \"unicode-segment\"]","target":742186494246220192,"profile":2040997289075261528,"path":1231206895138730117,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/regex-syntax-72f360a43ab69f4d/dep-lib-regex_syntax","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

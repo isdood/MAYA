@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/fxhash-5712e82df74b4d09/lib-fxhash.json",
-    "type": "json",
-    "hash": "46783c618111d43497462873fce71057fdab23c5"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":10973188114720300281,"profile":2241668132362809309,"path":1179972080441600162,"deps":[[3712811570531045576,"byteorder",false,11025814933013516417]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/fxhash-5712e82df74b4d09/dep-lib-fxhash","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

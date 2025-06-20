@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:41:33",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/criterion/sled_batch_writes/1000/new/estimates.json",
-    "type": "json",
-    "hash": "6fa351fa8bc94439d5780634e071fc12269dd841"
-  }
-}
-@pattern_meta@
 
 {"mean":{"confidence_interval":{"confidence_level":0.95,"lower_bound":295022.62023040664,"upper_bound":299034.7155779996},"point_estimate":296923.71491574927,"standard_error":1028.9346871938747},"median":{"confidence_interval":{"confidence_level":0.95,"lower_bound":296050.73758865247,"upper_bound":298212.57575757575},"point_estimate":297477.04901960783,"standard_error":579.2748874539266},"median_abs_dev":{"confidence_interval":{"confidence_level":0.95,"lower_bound":3177.495244789688,"upper_bound":8505.943862605684},"point_estimate":4740.948881190821,"standard_error":1356.616768312484},"slope":{"confidence_interval":{"confidence_level":0.95,"lower_bound":290272.3686805686,"upper_bound":295172.21392289596},"point_estimate":292452.48296241567,"standard_error":1260.951243728168},"std_dev":{"confidence_interval":{"confidence_level":0.95,"lower_bound":7079.690181306922,"upper_bound":13389.86825969609},"point_estimate":10404.273796225816,"standard_error":1617.50799769083}}

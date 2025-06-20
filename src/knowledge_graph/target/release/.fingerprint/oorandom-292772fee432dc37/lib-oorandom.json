@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/oorandom-292772fee432dc37/lib-oorandom.json",
-    "type": "json",
-    "hash": "f0c82632dad42d14b8b246329a4bf3e1a10c66eb"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":10218015127956776452,"profile":2040997289075261528,"path":7034065319523714755,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/oorandom-292772fee432dc37/dep-lib-oorandom","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

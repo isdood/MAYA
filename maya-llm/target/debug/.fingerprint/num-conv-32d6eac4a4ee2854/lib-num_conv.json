@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/num-conv-32d6eac4a4ee2854/lib-num_conv.json",
-    "type": "json",
-    "hash": "86cb065df8112be3e22e25b3bb3efb814f46fff1"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":17187170812452057412,"profile":308716055695625420,"path":10662876561871964117,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/num-conv-32d6eac4a4ee2854/dep-lib-num_conv","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

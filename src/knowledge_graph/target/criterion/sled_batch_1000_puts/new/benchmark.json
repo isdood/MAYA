@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 06:20:20",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/criterion/sled_batch_1000_puts/new/benchmark.json",
-    "type": "json",
-    "hash": "e6ad73e6558c5bdb12a8bb5ab20b00819f070344"
-  }
-}
-@pattern_meta@
 
 {"group_id":"sled_batch_1000_puts","function_id":null,"value_str":null,"throughput":null,"full_id":"sled_batch_1000_puts","directory_name":"sled_batch_1000_puts","title":"sled_batch_1000_puts"}

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:43",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/rustyline-e0903675154a9d8f/lib-rustyline",
-    "type": "fingerprint/rustyline-e0903675154a9d8f/lib-rustyline",
-    "hash": "db664d7a643efb8db36f2417d6fdfdb51714c59b"
-  }
-}
-@pattern_meta@
 
 515346a657c90707

@@ -1,24 +1,5 @@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-20 11:22:38",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./build.zig",
-    "type": "zig",
-    "hash": "362e6ee63cb83b24cf37f4e2a19bffb82266166f"
-  }
-}
-
-//! 🌌 STARWEAVE Universe Integration
-//! ✨ Version: 2025.6.18
-//! 🎨 Pattern: 1.0.0
-//! ⚡ Seed: 
-//! 📅 Woven: 2025-06-18 21:15:30
-//! 👤 Weaver: isdood
+//! MAYA Build Configuration
+//! Contains build definitions for the MAYA neural processing system
 
 const std = @import("std");
 
@@ -73,8 +54,39 @@ pub fn build(b: *std.Build) void {
         },
     });
     
-    // Pattern recognition is part of the neural module
-    const pattern_recognition_mod = neural_mod;
+    // Individual neural modules
+    const pattern_recognition_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/pattern_recognition/mod.zig" },
+        .imports = &.{
+            .{ .name = "std", .module = std_mod },
+        },
+    });
+    
+    const pattern_synthesis_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/pattern_synthesis/mod.zig" },
+        .imports = &.{
+            .{ .name = "std", .module = std_mod },
+        },
+    });
+    
+    const pattern_processor_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/pattern_processor/mod.zig" },
+        .imports = &.{
+            .{ .name = "std", .module = std_mod },
+            .{ .name = "pattern_synthesis", .module = pattern_synthesis_mod },
+        },
+    });
+    
+    // Update neural module imports
+    neural_mod.imports = &.{
+        .{ .name = "starweave", .module = starweave_mod },
+        .{ .name = "glimmer", .module = glimmer_mod },
+        .{ .name = "quantum_types", .module = quantum_types_mod },
+        .{ .name = "std", .module = std_mod },
+        .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+        .{ .name = "pattern_synthesis", .module = pattern_synthesis_mod },
+        .{ .name = "pattern_processor", .module = pattern_processor_mod },
+    };
     
     // Create test modules
     _ = b.createModule(.{
@@ -97,6 +109,46 @@ pub fn build(b: *std.Build) void {
     const run_pattern_recognition = b.addRunArtifact(pattern_recognition_exe);
     const pattern_recognition_step = b.step("pattern-recognition", "Run the pattern recognition example");
     pattern_recognition_step.dependOn(&run_pattern_recognition.step);
+    
+    // Pattern Synthesis Example
+    const pattern_synthesis_exe = b.addExecutable(.{
+        .name = "pattern_synthesis",
+        .root_source_file = .{ .cwd_relative = "examples/pattern_synthesis.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    pattern_synthesis_exe.root_module.addImport("neural", neural_mod);
+    b.installArtifact(pattern_synthesis_exe);
+    
+    const run_pattern_synthesis = b.addRunArtifact(pattern_synthesis_exe);
+    const pattern_synthesis_step = b.step("pattern-synthesis", "Run the pattern synthesis example");
+    pattern_synthesis_step.dependOn(&run_pattern_synthesis.step);
+    
+    // Pattern Processor Example
+    const pattern_processor_exe = b.addExecutable(.{
+        .name = "pattern_processor",
+        .root_source_file = .{ .cwd_relative = "examples/pattern_processor.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    pattern_processor_exe.root_module.addImport("neural", neural_mod);
+    b.installArtifact(pattern_processor_exe);
+    
+    const run_pattern_processor = b.addRunArtifact(pattern_processor_exe);
+    const pattern_processor_step = b.step("pattern-processor", "Run the pattern processor example");
+    pattern_processor_step.dependOn(&run_pattern_processor.step);
+    
+    // Neural Module Tests
+    const neural_tests = b.addTest(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    neural_tests.root_module.addImport("neural", neural_mod);
+    
+    const run_neural_tests = b.addRunArtifact(neural_tests);
+    const test_step = b.step("test-neural", "Run neural module tests");
+    test_step.dependOn(&run_neural_tests.step);
 
     // Pattern visualization example
     const pattern_visualization_exe = b.addExecutable(.{

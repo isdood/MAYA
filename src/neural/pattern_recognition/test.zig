@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-20 09:30:39",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/neural/pattern_recognition/test.zig",
-    "type": "zig",
-    "hash": "4c007f62a5c5f409ef38bb93cb7c60c60b993f07"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const expect = std.testing.expect;

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:45:59",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/sled-bc3e3b37832cd8f0/lib-sled.json",
-    "type": "json",
-    "hash": "c77a15262b477f813c5f93d1ee3b3bb25a46550f"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\", \"no_metrics\"]","declared_features":"[\"backtrace\", \"color-backtrace\", \"compression\", \"default\", \"docs\", \"event_log\", \"failpoints\", \"io_uring\", \"lock_free_delays\", \"measure_allocs\", \"miri_optimizations\", \"mutex\", \"no_inline\", \"no_logs\", \"no_metrics\", \"pretty_backtrace\", \"rio\", \"testing\", \"zstd\"]","target":3855776470257171463,"profile":15657897354478470176,"path":5228590248162938493,"deps":[[3528074118530651198,"crossbeam_epoch",false,4559609217094540851],[4468123440088164316,"crossbeam_utils",false,367517317232209361],[4684437522915235464,"libc",false,399879708815552545],[5466618496199522463,"crc32fast",false,17515215729644808126],[5986029879202738730,"log",false,2871167435259158015],[7521345276086848634,"fxhash",false,12808242031050287857],[8128303468064674118,"fs2",false,17610970872313564962],[11641406201058336332,"parking_lot",false,7957835662693072492]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/sled-bc3e3b37832cd8f0/dep-lib-sled","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/deps/regex_syntax-94aa5fbe357c858d.d",
-    "type": "d",
-    "hash": "cd2f0893c05560bccb7c559b739b505226f49628"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/debug/deps/libregex_syntax-94aa5fbe357c858d.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/ast/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/ast/parse.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/ast/print.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/ast/visitor.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/debug.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/either.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/interval.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/literal.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/print.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/translate.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/visitor.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/parser.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/rank.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/age.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/case_folding_simple.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/general_category.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/grapheme_cluster_break.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/perl_word.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/property_bool.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/property_names.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/property_values.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/script.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/script_extension.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/sentence_break.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/word_break.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/utf8.rs
 

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 16:11:37",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./vendor/cimgui/backend_test/example_sdl3_vulkan/main.c",
-    "type": "c",
-    "hash": "a27ed351d3005fda134580658adb80b5f112c946"
-  }
-}
-@pattern_meta@
 
 #include <stdio.h>          // printf, fprintf
 #include <stdlib.h>         // abort

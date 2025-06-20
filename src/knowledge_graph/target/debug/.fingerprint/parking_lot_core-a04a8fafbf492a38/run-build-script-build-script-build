@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/parking_lot_core-a04a8fafbf492a38/run-build-script-build-script-build",
-    "type": "fingerprint/parking_lot_core-a04a8fafbf492a38/run-build-script-build-script-build",
-    "hash": "dbdba82b1c984b7d435127eac647c55f6f5da578"
-  }
-}
-@pattern_meta@
 
 2b200ee3023ed829

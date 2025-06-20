@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/ryu-7042081d416f9dfe/lib-ryu.json",
-    "type": "json",
-    "hash": "3d0bb6761a50da86b1fb82ee5730805d6f6cbaa1"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"no-panic\", \"small\"]","target":8955674961151483972,"profile":2241668132362809309,"path":12183692000966373334,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/ryu-7042081d416f9dfe/dep-lib-ryu","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

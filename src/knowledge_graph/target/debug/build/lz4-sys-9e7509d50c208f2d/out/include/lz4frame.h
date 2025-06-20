@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:28",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/build/lz4-sys-9e7509d50c208f2d/out/include/lz4frame.h",
-    "type": "h",
-    "hash": "f04bdb7ae139c6c49a2c283dc5e3a2c96b41d7d4"
-  }
-}
-@pattern_meta@
 
 /*
    LZ4F - LZ4-Frame library

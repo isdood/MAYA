@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-16 08:36:04",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./cursor-extension/src/extension.ts",
-    "type": "ts",
-    "hash": "cfa17216f2e4547fa973a10aa83c3ee21379fa63"
-  }
-}
-@pattern_meta@
 
 import * as vscode from 'vscode';
 import * as path from 'path';

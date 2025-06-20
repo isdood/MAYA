@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:24",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/criterion-plot-b1c86e551875a67f/lib-criterion_plot",
-    "type": "fingerprint/criterion-plot-b1c86e551875a67f/lib-criterion_plot",
-    "hash": "fb68bf280c146b35e71c48ead1996b1b4d948e82"
-  }
-}
-@pattern_meta@
 
 1d87b7aa7ae99f88

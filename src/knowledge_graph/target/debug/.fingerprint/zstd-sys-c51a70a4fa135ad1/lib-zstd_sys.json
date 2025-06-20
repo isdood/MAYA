@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:50:45",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/zstd-sys-c51a70a4fa135ad1/lib-zstd_sys.json",
-    "type": "json",
-    "hash": "794ab6a7db7c0e7b1e829aa0319f1a5a0307758c"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"legacy\", \"std\"]","declared_features":"[\"bindgen\", \"debug\", \"default\", \"experimental\", \"legacy\", \"no_asm\", \"non-cargo\", \"pkg-config\", \"std\", \"thin\", \"zstdmt\"]","target":5582659848847024335,"profile":15657897354478470176,"path":298830292519076725,"deps":[[4684437522915235464,"libc",false,399879708815552545],[10446818747225672120,"build_script_build",false,11079378654557693009]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/zstd-sys-c51a70a4fa135ad1/dep-lib-zstd_sys","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/indexmap-ea36e30ddf78da6d/build-script-build-script-build.json",
-    "type": "json",
-    "hash": "339952af25dffaf06a8c484619bd5ac89af26a26"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"arbitrary\", \"quickcheck\", \"rayon\", \"rustc-rayon\", \"serde\", \"serde-1\", \"std\", \"test_debug\", \"test_low_transition_point\"]","target":5408242616063297496,"profile":1369601567987815722,"path":2170080015119368084,"deps":[[6229979215132119378,"autocfg",false,3536783906083895154]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/indexmap-ea36e30ddf78da6d/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 16:33:03",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./tests/benchmarks/memory_safe_runner.py",
-    "type": "py",
-    "hash": "f3ae683a1b56a714f4b3e9f31eb28b880ec06fc7"
-  }
-}
-@pattern_meta@
 
 #!/usr/bin/env python3
 """

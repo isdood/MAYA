@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/build/libc-bbe7cdc95a563636/root-output",
-    "type": "/maya-llm/target/debug/build/libc-bbe7cdc95a563636/root-output",
-    "hash": "8e276ed3c813bbaa9e804404f1371a0c8fb0f336"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/maya-llm/target/debug/build/libc-bbe7cdc95a563636/out

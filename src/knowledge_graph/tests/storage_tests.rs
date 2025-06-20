@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:17:57",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/tests/storage_tests.rs",
-    "type": "rs",
-    "hash": "1988bc67c4a34e9eab1a5dbec96d6cbc429a361f"
-  }
-}
-@pattern_meta@
 
 //! Tests for the storage module
 

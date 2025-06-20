@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:51",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/criterion-plot-df76f0ba4017ffec/lib-criterion_plot.json",
-    "type": "json",
-    "hash": "059df12e1db728869ff36c3116076a9f07cfa3d3"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":7203819160063648356,"profile":2040997289075261528,"path":3959609795423175798,"deps":[[11903278875415370753,"itertools",false,6654606988883957106],[14474842057495682559,"cast",false,8717275565718161811]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/criterion-plot-df76f0ba4017ffec/dep-lib-criterion_plot","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/shlex-a0e5d10e827cd16a/lib-shlex.json",
-    "type": "json",
-    "hash": "45cb073d50b19b82eacae3ae51a956b9978ebe45"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"default\", \"std\"]","target":929485496544747924,"profile":2225463790103693989,"path":11213001997381382854,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/shlex-a0e5d10e827cd16a/dep-lib-shlex","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

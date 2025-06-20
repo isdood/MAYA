@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/libc-f443d8bf675eb9ae/build-script-build-script-build.json",
-    "type": "json",
-    "hash": "c19a2dab601c903a55388d980280a9a71a2fb989"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"align\", \"const-extern-fn\", \"default\", \"extra_traits\", \"rustc-dep-of-std\", \"rustc-std-workspace-core\", \"std\", \"use_std\"]","target":5408242616063297496,"profile":8928907579149787682,"path":15353935960437366179,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/libc-f443d8bf675eb9ae/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

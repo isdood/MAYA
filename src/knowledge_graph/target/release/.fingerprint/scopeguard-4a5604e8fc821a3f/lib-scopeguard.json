@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:34:08",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/scopeguard-4a5604e8fc821a3f/lib-scopeguard.json",
-    "type": "json",
-    "hash": "f87b553281a36a5cfa6c5e948f7634cd9e7043c4"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\", \"use_std\"]","declared_features":"[\"default\", \"use_std\"]","target":3556356971060988614,"profile":2040997289075261528,"path":6533621489258137150,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/scopeguard-4a5604e8fc821a3f/dep-lib-scopeguard","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

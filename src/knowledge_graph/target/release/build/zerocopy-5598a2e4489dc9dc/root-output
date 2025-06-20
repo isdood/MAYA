@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/build/zerocopy-5598a2e4489dc9dc/root-output",
-    "type": "/src/knowledge_graph/target/release/build/zerocopy-5598a2e4489dc9dc/root-output",
-    "hash": "049d447d52163107e31f0a627a8f3668dae7a827"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/release/build/zerocopy-5598a2e4489dc9dc/out

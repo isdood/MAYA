@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/endian-type-a656178b882b0c8e/lib-endian_type.json",
-    "type": "json",
-    "hash": "2d06940eb83cd227a4c05760e1639e09a4a7602e"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":451648793009908646,"profile":15657897354478470176,"path":7087072396649254503,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/endian-type-a656178b882b0c8e/dep-lib-endian_type","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

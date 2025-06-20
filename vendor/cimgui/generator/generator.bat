@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 16:11:37",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./vendor/cimgui/generator/generator.bat",
-    "type": "bat",
-    "hash": "ea59e1f5350999b2a574e4ea56003a78808487a4"
-  }
-}
-@pattern_meta@
 
 :: this script must be executed in this directory
 :: all the output goes to generator/output folder

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/parking_lot_core-e8e552f60ab3efde/lib-parking_lot_core.json",
-    "type": "json",
-    "hash": "74721f2633702b9d275fc7fbccccedee528c9480"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"backtrace\", \"deadlock_detection\", \"nightly\", \"petgraph\", \"thread-id\"]","target":947505493299811221,"profile":2040997289075261528,"path":13360912468020870897,"deps":[[2828590642173593838,"cfg_if",false,12308637584652255972],[3666196340704888985,"smallvec",false,7178427888318201776],[4684437522915235464,"libc",false,5577918245937577928],[14196108479452351812,"instant",false,13205982865880728033],[14814334185036658946,"build_script_build",false,17287150988926183609]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/parking_lot_core-e8e552f60ab3efde/dep-lib-parking_lot_core","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

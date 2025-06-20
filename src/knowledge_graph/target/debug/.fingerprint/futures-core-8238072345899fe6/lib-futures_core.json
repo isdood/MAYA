@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/futures-core-8238072345899fe6/lib-futures_core.json",
-    "type": "json",
-    "hash": "0b502da7e591a15efc112ff96d6736b7c6fce473"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"std\"]","declared_features":"[\"alloc\", \"cfg-target-has-atomic\", \"default\", \"portable-atomic\", \"std\", \"unstable\"]","target":9453135960607436725,"profile":17467636112133979524,"path":6568116254852380633,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/futures-core-8238072345899fe6/dep-lib-futures_core","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

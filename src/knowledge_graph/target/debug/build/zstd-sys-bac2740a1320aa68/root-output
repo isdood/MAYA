@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:50:45",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/build/zstd-sys-bac2740a1320aa68/root-output",
-    "type": "/src/knowledge_graph/target/debug/build/zstd-sys-bac2740a1320aa68/root-output",
-    "hash": "f2a63484aa2b41be5229508153851c4a7188d03a"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/debug/build/zstd-sys-bac2740a1320aa68/out

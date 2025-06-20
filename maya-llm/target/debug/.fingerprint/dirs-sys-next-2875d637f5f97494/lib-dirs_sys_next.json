@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/dirs-sys-next-2875d637f5f97494/lib-dirs_sys_next.json",
-    "type": "json",
-    "hash": "6bcaece4a5dcb86938a0fef6bd6bceeba184fe2d"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":8654086329529161841,"profile":15657897354478470176,"path":4507420339760345730,"deps":[[4684437522915235464,"libc",false,12071980028814914709]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/dirs-sys-next-2875d637f5f97494/dep-lib-dirs_sys_next","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

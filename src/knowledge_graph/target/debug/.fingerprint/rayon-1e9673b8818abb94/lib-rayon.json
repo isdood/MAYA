@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:45:58",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/rayon-1e9673b8818abb94/lib-rayon.json",
-    "type": "json",
-    "hash": "132401b6db67c848a8be4c13fa4a4cab17b40492"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"web_spin_lock\"]","target":16352802939243045765,"profile":15657897354478470176,"path":4265313923572039238,"deps":[[9705675356647965917,"rayon_core",false,12875811624316124735],[12170264697963848012,"either",false,6154557126717501131]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/rayon-1e9673b8818abb94/dep-lib-rayon","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

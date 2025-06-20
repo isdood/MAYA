@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 13:35:21",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/serde_json-13cb3e302bd35d4d/lib-serde_json.json",
-    "type": "json",
-    "hash": "c2bef7b375ec42fa3d4552361f236910db1de861"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\", \"indexmap\", \"preserve_order\", \"std\"]","declared_features":"[\"alloc\", \"arbitrary_precision\", \"default\", \"float_roundtrip\", \"indexmap\", \"preserve_order\", \"raw_value\", \"std\", \"unbounded_depth\"]","target":9592559880233824070,"profile":15657897354478470176,"path":2681589285482207646,"deps":[[1216309103264968120,"ryu",false,11741387430172290476],[7695812897323945497,"itoa",false,7261331790288347881],[9689903380558560274,"serde",false,14246492737744078018],[14483812548788871374,"indexmap",false,13112084840457880197],[15367738274754116744,"build_script_build",false,16157444720429482535],[15932120279885307830,"memchr",false,5757829763432425991]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/serde_json-13cb3e302bd35d4d/dep-lib-serde_json","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

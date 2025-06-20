@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/nibble_vec-661246113122acad/lib-nibble_vec",
-    "type": "fingerprint/nibble_vec-661246113122acad/lib-nibble_vec",
-    "hash": "7f7da91ee9fe45b3fe9142ae74f36b19ff4817b6"
-  }
-}
-@pattern_meta@
 
 ca42ec970ed18eb5

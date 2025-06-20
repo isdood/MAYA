@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/time-macros-6139b9ef949b8b89/lib-time_macros.json",
-    "type": "json",
-    "hash": "8ac857e8ffc44729fe0e1a473f4ac8d9fe743fdf"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"formatting\"]","declared_features":"[\"formatting\", \"large-dates\", \"parsing\", \"serde\"]","target":14461430045757131889,"profile":15167838687655741401,"path":7684579372277349748,"deps":[[724804171976944018,"num_conv",false,1604482727577931684],[9886904983647127192,"time_core",false,9655260032433620096]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/time-macros-6139b9ef949b8b89/dep-lib-time_macros","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

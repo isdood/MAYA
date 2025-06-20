@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/atty-d9a910fa55e17b24/lib-atty",
-    "type": "fingerprint/atty-d9a910fa55e17b24/lib-atty",
-    "hash": "26bc0bc7da5b12ebe7903116cea4c11ce02913c9"
-  }
-}
-@pattern_meta@
 
 35daa54d407c1cce

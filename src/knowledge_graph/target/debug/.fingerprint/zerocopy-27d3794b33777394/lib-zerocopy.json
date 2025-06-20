@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:24",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/zerocopy-27d3794b33777394/lib-zerocopy.json",
-    "type": "json",
-    "hash": "87192df50706613a389c80715c58ff5a1c9b0e77"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"simd\"]","declared_features":"[\"__internal_use_only_features_that_work_on_stable\", \"alloc\", \"derive\", \"float-nightly\", \"simd\", \"simd-nightly\", \"std\", \"zerocopy-derive\"]","target":3084901215544504908,"profile":15657897354478470176,"path":4146435703769148529,"deps":[[14131061446229887432,"build_script_build",false,17366838410637987584]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/zerocopy-27d3794b33777394/dep-lib-zerocopy","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/lock_api-4bac02d733cdbdb7/lib-lock_api.json",
-    "type": "json",
-    "hash": "ac7ce9988889ed9b170e1dda2a074d24e2f4df16"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"atomic_usize\", \"default\"]","declared_features":"[\"arc_lock\", \"atomic_usize\", \"default\", \"nightly\", \"owning_ref\", \"serde\"]","target":16157403318809843794,"profile":2040997289075261528,"path":8820355251465310146,"deps":[[8081351675046095464,"build_script_build",false,6707126239050591849],[15358414700195712381,"scopeguard",false,16454621324999865147]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/lock_api-4bac02d733cdbdb7/dep-lib-lock_api","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

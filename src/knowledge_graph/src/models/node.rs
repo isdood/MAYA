@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:08:25",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/src/models/node.rs",
-    "type": "rs",
-    "hash": "ace2cfea1c74bae488d9c227568c3b9da8a6de95"
-  }
-}
-@pattern_meta@
 
 //! Node model for the knowledge graph
 

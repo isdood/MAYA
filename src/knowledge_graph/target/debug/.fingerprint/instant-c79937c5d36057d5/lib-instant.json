@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:45:57",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/instant-c79937c5d36057d5/lib-instant.json",
-    "type": "json",
-    "hash": "301357bf7322323d78b3658a0c23992e7a8bd060"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"inaccurate\", \"js-sys\", \"now\", \"stdweb\", \"wasm-bindgen\", \"wasm-bindgen_rs\", \"web-sys\"]","target":4929681601961957275,"profile":15657897354478470176,"path":4844953077513617528,"deps":[[2828590642173593838,"cfg_if",false,14889661699679411208]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/instant-c79937c5d36057d5/dep-lib-instant","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

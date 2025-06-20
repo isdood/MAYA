@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:43",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/nix-379289bb67d0631b/lib-nix.json",
-    "type": "json",
-    "hash": "a3fd23cf8dd2e9158d5767e5c2d179dde442bddc"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"fs\", \"ioctl\", \"poll\", \"process\", \"signal\", \"term\"]","declared_features":"[\"acct\", \"aio\", \"default\", \"dir\", \"env\", \"event\", \"feature\", \"fs\", \"hostname\", \"inotify\", \"ioctl\", \"kmod\", \"memoffset\", \"mman\", \"mount\", \"mqueue\", \"net\", \"personality\", \"pin-utils\", \"poll\", \"process\", \"pthread\", \"ptrace\", \"quota\", \"reboot\", \"resource\", \"sched\", \"signal\", \"socket\", \"term\", \"time\", \"ucontext\", \"uio\", \"user\", \"zerocopy\"]","target":16881288657864989906,"profile":15657897354478470176,"path":18378899329045455402,"deps":[[2828590642173593838,"cfg_if",false,14889661699679411208],[4684437522915235464,"libc",false,12071980028814914709],[10435729446543529114,"bitflags",false,8885546315270893426]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/nix-379289bb67d0631b/dep-lib-nix","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

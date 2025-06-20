@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/rand_core-5b9ee38229442944/lib-rand_core",
-    "type": "fingerprint/rand_core-5b9ee38229442944/lib-rand_core",
-    "hash": "bf50316f694731de5fc2a2f12cf25222db587f57"
-  }
-}
-@pattern_meta@
 
 b0302463a95480db

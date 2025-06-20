@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 13:53:44",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/renderer/shader.zig",
-    "type": "zig",
-    "hash": "4e97a485a06d47c048f0c448c8ceff27755ed3a0"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const vk_types = @import("vulkan_types.zig");

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 12:35:22",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/serde_json-4fd98dac500cf889/build-script-build-script-build.json",
-    "type": "json",
-    "hash": "116c0bea9055debf996e8d72dfe2155cc0d25afd"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\", \"indexmap\", \"preserve_order\", \"std\"]","declared_features":"[\"alloc\", \"arbitrary_precision\", \"default\", \"float_roundtrip\", \"indexmap\", \"preserve_order\", \"raw_value\", \"std\", \"unbounded_depth\"]","target":5408242616063297496,"profile":1369601567987815722,"path":14514158576599953529,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/serde_json-4fd98dac500cf889/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

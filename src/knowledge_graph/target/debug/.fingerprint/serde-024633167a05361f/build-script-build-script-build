@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/serde-024633167a05361f/build-script-build-script-build",
-    "type": "fingerprint/serde-024633167a05361f/build-script-build-script-build",
-    "hash": "72c3684eab1c7931ec4a74191699af1c8cd9c431"
-  }
-}
-@pattern_meta@
 
 1ab138115f45ad92

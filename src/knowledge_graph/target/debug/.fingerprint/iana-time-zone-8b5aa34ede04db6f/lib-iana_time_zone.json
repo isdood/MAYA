@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/iana-time-zone-8b5aa34ede04db6f/lib-iana_time_zone.json",
-    "type": "json",
-    "hash": "34331f3a254689e59f0bdc0fa608867afca60a12"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"fallback\"]","declared_features":"[\"fallback\"]","target":13492157405369956366,"profile":2241668132362809309,"path":10955286780986403774,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/iana-time-zone-8b5aa34ede04db6f/dep-lib-iana_time_zone","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

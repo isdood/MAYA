@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 13:57:27",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/maya_learn/__init__.py",
-    "type": "py",
-    "hash": "c7e1221d0fc8ec589b5c6b8d1ff21514235192f2"
-  }
-}
-@pattern_meta@
 
 """
 MAYA Learning Service - Autonomous learning system for MAYA AI

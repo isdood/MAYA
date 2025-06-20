@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/either-72aabee698d7e144/lib-either.json",
-    "type": "json",
-    "hash": "ee3ddf4f409d672019146343466f1a05bc5b364b"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"default\", \"serde\", \"std\", \"use_std\"]","target":17124342308084364240,"profile":2225463790103693989,"path":6424879269104696518,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/either-72aabee698d7e144/dep-lib-either","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:52",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/regex-2c866f84285de460/lib-regex.json",
-    "type": "json",
-    "hash": "c35bf536ab060f2600f15d7ffb732473ba326ef8"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"default\", \"logging\", \"pattern\", \"perf\", \"perf-backtrack\", \"perf-cache\", \"perf-dfa\", \"perf-dfa-full\", \"perf-inline\", \"perf-literal\", \"perf-onepass\", \"std\", \"unicode\", \"unicode-age\", \"unicode-bool\", \"unicode-case\", \"unicode-gencat\", \"unicode-perl\", \"unicode-script\", \"unicode-segment\", \"unstable\", \"use_std\"]","target":5796931310894148030,"profile":2040997289075261528,"path":1554478352785244442,"deps":[[555019317135488525,"regex_automata",false,4173605931636999035],[9408802513701742484,"regex_syntax",false,2026351959941401638]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/regex-2c866f84285de460/dep-lib-regex","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

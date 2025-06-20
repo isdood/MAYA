@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/yansi-9470d7846bba2346/lib-yansi.json",
-    "type": "json",
-    "hash": "910a0a362fb393b93de7bb25a3bec32d7442863b"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"default\", \"std\"]","declared_features":"[\"_nightly\", \"alloc\", \"default\", \"detect-env\", \"detect-tty\", \"hyperlink\", \"is-terminal\", \"std\"]","target":7022233409860942053,"profile":2241668132362809309,"path":17183366824958666403,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/yansi-9470d7846bba2346/dep-lib-yansi","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

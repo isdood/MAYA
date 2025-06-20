@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/crossbeam-deque-ceb947a17b44cae8/lib-crossbeam_deque",
-    "type": "fingerprint/crossbeam-deque-ceb947a17b44cae8/lib-crossbeam_deque",
-    "hash": "f84e40b8944a63882e5f8668805b340c18542ff3"
-  }
-}
-@pattern_meta@
 
 f2bab9837f93c02d

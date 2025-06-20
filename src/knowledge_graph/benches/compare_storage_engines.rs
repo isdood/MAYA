@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 12:36:57",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/benches/compare_storage_engines.rs",
-    "type": "rs",
-    "hash": "d1b3e705e56bfab94c7bffaafff6007f6ff018d5"
-  }
-}
-@pattern_meta@
 
 //! Benchmark comparison between Sled and RocksDB storage backends
 

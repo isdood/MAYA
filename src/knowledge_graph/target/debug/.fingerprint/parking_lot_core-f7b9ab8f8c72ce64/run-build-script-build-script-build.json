@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:45:57",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/parking_lot_core-f7b9ab8f8c72ce64/run-build-script-build-script-build.json",
-    "type": "json",
-    "hash": "56f18b9cf8d7eccbc63f53ec9e8b0f9f09b060e3"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[14814334185036658946,"build_script_build",false,3870071401820160]],"local":[{"RerunIfChanged":{"output":"debug/build/parking_lot_core-f7b9ab8f8c72ce64/output","paths":["build.rs"]}}],"rustflags":[],"config":0,"compile_kind":0}

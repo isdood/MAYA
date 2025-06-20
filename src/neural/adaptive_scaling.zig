@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 07:46:09",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/neural/adaptive_scaling.zig",
-    "type": "zig",
-    "hash": "fc1eaf9f0d983f8594050628b8d0441717bfe825"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const ResourceManager = @import("resource_management.zig").ResourceManager;

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 16:11:37",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./vendor/cimgui/backend_test/cmake/GenerateCimguiBindings.cmake",
-    "type": "cmake",
-    "hash": "eb190f961884feebbe6fe5badf59fe283f02d8b0"
-  }
-}
-@pattern_meta@
 
 # This downloads cimgui, configures it to generate the SDL3 and SDLGPU3 bindings, 
 # and adds it as a cmake target for you to link to. Feel free to copy this file

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 15:26:33",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/fastrand-30b40574bcf7f270/lib-fastrand",
-    "type": "fingerprint/fastrand-30b40574bcf7f270/lib-fastrand",
-    "hash": "b2d42e7a85c14c666b17348a941e7ad84b9cee12"
-  }
-}
-@pattern_meta@
 
 a42123d3f4c4d781

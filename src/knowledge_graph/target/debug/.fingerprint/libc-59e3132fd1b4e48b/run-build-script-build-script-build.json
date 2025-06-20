@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/libc-59e3132fd1b4e48b/run-build-script-build-script-build.json",
-    "type": "json",
-    "hash": "9125fd89241d2ab7726069cc4cf6d34bd4000902"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[4684437522915235464,"build_script_build",false,9280671773513989707]],"local":[{"RerunIfChanged":{"output":"debug/build/libc-59e3132fd1b4e48b/output","paths":["build.rs"]}},{"RerunIfEnvChanged":{"var":"RUST_LIBC_UNSTABLE_FREEBSD_VERSION","val":null}},{"RerunIfEnvChanged":{"var":"RUST_LIBC_UNSTABLE_MUSL_V1_2_3","val":null}},{"RerunIfEnvChanged":{"var":"RUST_LIBC_UNSTABLE_LINUX_TIME_BITS64","val":null}},{"RerunIfEnvChanged":{"var":"RUST_LIBC_UNSTABLE_GNU_FILE_OFFSET_BITS","val":null}},{"RerunIfEnvChanged":{"var":"RUST_LIBC_UNSTABLE_GNU_TIME_BITS","val":null}}],"rustflags":[],"config":0,"compile_kind":0}

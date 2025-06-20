@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:24",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/build/clang-sys-4cee19c9ee3e5917/out/macros.rs",
-    "type": "rs",
-    "hash": "259cbc7dc479ef357d2822bbaf04ea391da43d63"
-  }
-}
-@pattern_meta@
 
 // SPDX-License-Identifier: Apache-2.0
 

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 12:06:07",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/src/response.rs",
-    "type": "rs",
-    "hash": "cb6693b99cae43b0e07b674138d68a7a7b825cd9"
-  }
-}
-@pattern_meta@
 
 //! Response generation and templating system
 

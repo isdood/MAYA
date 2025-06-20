@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-05 23:30:31",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/neural/dictionary.zig",
-    "type": "zig",
-    "hash": "725b4097ff6e3e7440f634adea18f4e95eabee4d"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const neural = @import("neural");

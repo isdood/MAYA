@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/glob-f6c5b2ae5d218149/lib-glob.json",
-    "type": "json",
-    "hash": "5271c55b02216c1021f5fbfe35a19908369ac74e"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":205079002303639128,"profile":2225463790103693989,"path":8279228559704257981,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/glob-f6c5b2ae5d218149/dep-lib-glob","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

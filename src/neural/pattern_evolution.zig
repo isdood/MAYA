@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-20 11:29:15",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/neural/pattern_evolution.zig",
-    "type": "zig",
-    "hash": "85d70485b7e53956c2a1b56431037b4ae0bc87aa"
-  }
-}
-@pattern_meta@
 
 // 🎯 MAYA Pattern Evolution
 // ✨ Version: 1.0.0

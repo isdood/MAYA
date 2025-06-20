@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 17:16:00",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/src/storage/batch_optimizer.rs",
-    "type": "rs",
-    "hash": "9a0425348bdabef6611853c091770554910c990a"
-  }
-}
-@pattern_meta@
 
 //! Batch processing optimizations for storage operations
 

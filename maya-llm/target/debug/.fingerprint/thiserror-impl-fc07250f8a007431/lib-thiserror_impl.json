@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:43",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/thiserror-impl-fc07250f8a007431/lib-thiserror_impl.json",
-    "type": "json",
-    "hash": "69fe7072263ee8e56647977c62ac3cfb68b5c679"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":6216210811039475267,"profile":2225463790103693989,"path":15037500423255501990,"deps":[[3060637413840920116,"proc_macro2",false,10839234586264551430],[10640660562325816595,"syn",false,7472736417701829480],[17990358020177143287,"quote",false,16015703020425085848]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/thiserror-impl-fc07250f8a007431/dep-lib-thiserror_impl","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

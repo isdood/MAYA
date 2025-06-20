@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 14:09:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/maya_learn/config.py",
-    "type": "py",
-    "hash": "85a2e04616cb13d4af3cbd269f8179c5afcf0714"
-  }
-}
-@pattern_meta@
 
 """Configuration management for MAYA Learning Service."""
 

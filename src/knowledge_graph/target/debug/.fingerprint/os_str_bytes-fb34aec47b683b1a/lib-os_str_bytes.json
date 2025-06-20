@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/os_str_bytes-fb34aec47b683b1a/lib-os_str_bytes.json",
-    "type": "json",
-    "hash": "19bb2f8d401c2df25fcd02e672b4e853b64a43fc"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"raw_os_str\"]","declared_features":"[\"checked_conversions\", \"conversions\", \"default\", \"memchr\", \"nightly\", \"print_bytes\", \"raw_os_str\", \"uniquote\"]","target":9888630547303458284,"profile":15657897354478470176,"path":11880931000087970606,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/os_str_bytes-fb34aec47b683b1a/dep-lib-os_str_bytes","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

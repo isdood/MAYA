@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/deps/nix-379289bb67d0631b.d",
-    "type": "d",
-    "hash": "63b99b4c88be844e7c3239abff41b561e5c79720"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/maya-llm/target/debug/deps/libnix-379289bb67d0631b.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/macros.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/errno.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/fcntl.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/ioctl/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/ioctl/linux.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/signal.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/sysinfo.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/time.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/unistd.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/poll.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/pty.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/memfd.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/select.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/signalfd.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/stat.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/statfs.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/statvfs.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/termios.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.25.1/src/sys/wait.rs
 

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-16 08:30:05",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/learning/maya.zig",
-    "type": "zig",
-    "hash": "8c58c8c18a571798c5918d420ce02c8d9574de5e"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const InteractionRecorder = @import("interaction_recorder.zig").InteractionRecorder;

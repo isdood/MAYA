@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-20 09:59:07",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./013-DEBUG-8.fish",
-    "type": "fish",
-    "hash": "a1d20a0de178d7ed8a193d4a76dd3e8ce9c282de"
-  }
-}
-@pattern_meta@
 
 #!/usr/bin/env fish
 # 🌈💎 GLIMMER/STARWEAVE Debug Script: 013-DEBUG-8.fish 💎🌈

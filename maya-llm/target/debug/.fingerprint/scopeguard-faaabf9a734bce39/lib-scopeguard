@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/scopeguard-faaabf9a734bce39/lib-scopeguard",
-    "type": "fingerprint/scopeguard-faaabf9a734bce39/lib-scopeguard",
-    "hash": "2af7a20769cfffa9df272cf7f971b57636bdc3d2"
-  }
-}
-@pattern_meta@
 
 0bd19ca6964a42ec

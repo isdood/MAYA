@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:54",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/deps/chrono-60a36cc38e663d1b.d",
-    "type": "d",
-    "hash": "4930dbb68b8bc298d8b8d9decdbbdffc790f1d9b"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/release/deps/libchrono-60a36cc38e663d1b.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/time_delta.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/date.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/datetime/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/datetime/serde.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/format/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/format/formatting.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/format/parsed.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/format/parse.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/format/scan.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/format/strftime.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/format/locales.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/naive/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/naive/date/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/naive/datetime/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/naive/datetime/serde.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/naive/internals.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/naive/isoweek.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/naive/time/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/naive/time/serde.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/fixed.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/local/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/local/unix.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/local/tz_info/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/local/tz_info/timezone.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/local/tz_info/parser.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/local/tz_info/rule.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/offset/utc.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/round.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/weekday.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/weekday_set.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/month.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/chrono-0.4.41/src/traits.rs
 

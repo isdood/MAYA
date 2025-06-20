@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:24",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/vcpkg-39180dba8a7499ae/lib-vcpkg.json",
-    "type": "json",
-    "hash": "e8710b47eee2c52ccfbf8b53f4a2c13440406eb4"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":3860171895115171228,"profile":2225463790103693989,"path":18010335750078897454,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/vcpkg-39180dba8a7499ae/dep-lib-vcpkg","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

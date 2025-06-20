@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 15:38:31",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./scripts/monitor_maya_learn.py",
-    "type": "py",
-    "hash": "fac3825906a60aa7d290ad71f27169ed0fc0cb05"
-  }
-}
-@pattern_meta@
 
 #!/usr/bin/env python3
 """

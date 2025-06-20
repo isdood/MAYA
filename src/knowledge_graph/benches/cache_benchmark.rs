@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 06:36:03",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/benches/cache_benchmark.rs",
-    "type": "rs",
-    "hash": "e4d1791b92790e7db0611dc1c502a85c41214bd3"
-  }
-}
-@pattern_meta@
 
 //! Benchmark for the cached storage implementation
 

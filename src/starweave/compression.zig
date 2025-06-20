@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 13:01:12",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/starweave/compression.zig",
-    "type": "zig",
-    "hash": "4d379e90cfcc4fc3b5fb2b6161bcec520c63e761"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;

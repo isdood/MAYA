@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 16:11:37",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./vendor/cimgui/generator/output/typedefs_dict.lua",
-    "type": "lua",
-    "hash": "62eecef435d64d14d3ffbf2387e8b9eeafbd3fbc"
-  }
-}
-@pattern_meta@
 
 local t={
   ImBitArrayForNamedKeys="ImBitArray<ImGuiKey_NamedKey_COUNT, -ImGuiKey_NamedKey_BEGIN>",

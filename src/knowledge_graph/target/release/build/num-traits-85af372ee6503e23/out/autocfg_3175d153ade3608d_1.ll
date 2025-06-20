@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/build/num-traits-85af372ee6503e23/out/autocfg_3175d153ade3608d_1.ll",
-    "type": "ll",
-    "hash": "cb7d6a830e2612a4ba4c1834d8046bf8935ed66b"
-  }
-}
-@pattern_meta@
 
 ; ModuleID = 'autocfg_3175d153ade3608d_1.56f9d63d171e3e95-cgu.0'
 source_filename = "autocfg_3175d153ade3608d_1.56f9d63d171e3e95-cgu.0"

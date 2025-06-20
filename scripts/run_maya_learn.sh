@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 14:52:32",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./scripts/run_maya_learn.sh",
-    "type": "sh",
-    "hash": "9b6b0b5bb3ffde5f1fb07dbfb90a3ffcfae50027"
-  }
-}
-@pattern_meta@
 
 #!/usr/bin/env bash
 set -e  # Exit on error

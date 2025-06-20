@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 11:21:27",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./tests/glm_test.zig",
-    "type": "zig",
-    "hash": "072da7f02f9938cbcea9ed73c25a8d9631a5ce5d"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const GlimmerCore = @import("../src/glm/core.zig").GlimmerCore;

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:24",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/itertools-99af572f7884ee0b/lib-itertools.json",
-    "type": "json",
-    "hash": "d5b4b384dd0d86e5c8c8306f1c6e6257af9bbbe7"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"default\", \"use_alloc\", \"use_std\"]","target":9541170365560449339,"profile":2225463790103693989,"path":9817483370807259750,"deps":[[12170264697963848012,"either",false,4949752669742544449]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/itertools-99af572f7884ee0b/dep-lib-itertools","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

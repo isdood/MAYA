@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/deps/mio-d5e6b45fc472a4f4.d",
-    "type": "d",
-    "hash": "b95bbc32a0d6f786c733aead00de3f884639bde2"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/maya-llm/target/debug/deps/libmio-d5e6b45fc472a4f4.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/macros.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/interest.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/poll.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/token.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/waker.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/event/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/event/event.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/event/events.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/event/source.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/selector/epoll.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/waker/eventfd.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/sourcefd.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/pipe.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/selector/stateless_io_source.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/net.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/tcp.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/udp.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/uds/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/uds/datagram.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/uds/listener.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/sys/unix/uds/stream.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/io_source.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/tcp/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/tcp/listener.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/tcp/stream.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/udp.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/uds/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/uds/datagram.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/uds/listener.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mio-1.0.4/src/net/uds/stream.rs
 

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 08:41:12",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./012-DEBUG-6.fish",
-    "type": "fish",
-    "hash": "3d01f2e3ee17eb98a03b49d5504943b5481c86af"
-  }
-}
-@pattern_meta@
 
 #!/usr/bin/env fish
 

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:43",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/ppv-lite86-77bae26c5544a10b/lib-ppv_lite86.json",
-    "type": "json",
-    "hash": "1cd2349cefad6335445344a27d730fa363646581"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"simd\", \"std\"]","declared_features":"[\"default\", \"no_simd\", \"simd\", \"std\"]","target":2607852365283500179,"profile":2241668132362809309,"path":13393400069405699732,"deps":[[14131061446229887432,"zerocopy",false,3847481857530628040]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/ppv-lite86-77bae26c5544a10b/dep-lib-ppv_lite86","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

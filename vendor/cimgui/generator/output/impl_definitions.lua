@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 16:11:37",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./vendor/cimgui/generator/output/impl_definitions.lua",
-    "type": "lua",
-    "hash": "e56d20df43f079f252eb9317a38618b21f99bbc4"
-  }
-}
-@pattern_meta@
 
 local t={
   ImGui_ImplGlfw_CharCallback={

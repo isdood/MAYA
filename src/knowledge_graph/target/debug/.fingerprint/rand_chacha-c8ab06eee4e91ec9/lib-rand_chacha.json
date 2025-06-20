@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 15:40:24",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/rand_chacha-c8ab06eee4e91ec9/lib-rand_chacha.json",
-    "type": "json",
-    "hash": "73a1f67b7376fadfc417c6fac11996dcaeb6ec6d"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"default\", \"serde\", \"serde1\", \"simd\", \"std\"]","target":15766068575093147603,"profile":15657897354478470176,"path":15279326791522487558,"deps":[[12919011715531272606,"ppv_lite86",false,12387153298607723454],[18130209639506977569,"rand_core",false,729380717545845437]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/rand_chacha-c8ab06eee4e91ec9/dep-lib-rand_chacha","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

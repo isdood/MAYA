@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 20:54:45",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/src/graph.rs",
-    "type": "rs",
-    "hash": "80848e8b9ea87e2b16e85707a0e5e3236a94a692"
-  }
-}
-@pattern_meta@
 
 //! Core knowledge graph implementation
 //!

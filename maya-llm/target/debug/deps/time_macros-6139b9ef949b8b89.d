@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/deps/time_macros-6139b9ef949b8b89.d",
-    "type": "d",
-    "hash": "edb44080cc7312c938e40e7e9eb87113e00e8dd4"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/maya-llm/target/debug/deps/libtime_macros-6139b9ef949b8b89.so: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/quote.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/date.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/datetime.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/format_description/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/format_description/ast.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/format_description/format_item.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/format_description/lexer.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/format_description/public/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/format_description/public/component.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/format_description/public/modifier.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/helpers/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/helpers/string.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/offset.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/time.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/to_tokens.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/time-macros-0.2.22/src/utc_datetime.rs
 

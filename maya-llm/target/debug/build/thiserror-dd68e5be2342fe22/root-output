@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/build/thiserror-dd68e5be2342fe22/root-output",
-    "type": "/maya-llm/target/debug/build/thiserror-dd68e5be2342fe22/root-output",
-    "hash": "18f758a33f4d158d5ea6c6b20ab42cf11697e8be"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/maya-llm/target/debug/build/thiserror-dd68e5be2342fe22/out

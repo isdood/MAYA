@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-20 10:47:55",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/neural/neural_processor.zig",
-    "type": "zig",
-    "hash": "030b4c8cf659eb79bb91ee947aee70e9feba2029"
-  }
-}
-@pattern_meta@
 
 // 🧠 MAYA Neural Processor
 // ✨ Version: 1.0.0

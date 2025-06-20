@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 06:42:39",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/hashbrown-c0e8305ecdbedec7/lib-hashbrown.json",
-    "type": "json",
-    "hash": "336f9f523a8e2bd7289c80b9f271d5c2b1b38b1b"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"ahash\", \"default\", \"inline-more\"]","declared_features":"[\"ahash\", \"alloc\", \"bumpalo\", \"compiler_builtins\", \"core\", \"default\", \"inline-more\", \"nightly\", \"raw\", \"rayon\", \"rustc-dep-of-std\", \"rustc-internal-api\", \"serde\"]","target":9101038166729729440,"profile":15657897354478470176,"path":7249809866344622628,"deps":[[966925859616469517,"ahash",false,8060577949297159261]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/hashbrown-c0e8305ecdbedec7/dep-lib-hashbrown","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

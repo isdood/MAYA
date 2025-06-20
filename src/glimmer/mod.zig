@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-20 08:42:10",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/glimmer/mod.zig",
-    "type": "zig",
-    "hash": "d5f0d9840ac4ebce8227103acdc3c3d0a14ce37f"
-  }
-}
-@pattern_meta@
 
 //! ✨ GLIMMER: Visual Pattern Synthesis for MAYA
 //! 

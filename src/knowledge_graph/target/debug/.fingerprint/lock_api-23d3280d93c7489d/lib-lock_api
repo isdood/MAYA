@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:18:05",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/lock_api-23d3280d93c7489d/lib-lock_api",
-    "type": "fingerprint/lock_api-23d3280d93c7489d/lib-lock_api",
-    "hash": "86be2d19fe532350756276c1875c508e8a61d6fb"
-  }
-}
-@pattern_meta@
 
 d1006384a08ea6b4

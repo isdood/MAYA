@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/itoa-37c5ecc59978b7f6/lib-itoa",
-    "type": "fingerprint/itoa-37c5ecc59978b7f6/lib-itoa",
-    "hash": "983b1b46f5ecab9e4ca056bf3dde15ae0242e792"
-  }
-}
-@pattern_meta@
 
 e9626384ca6ec564

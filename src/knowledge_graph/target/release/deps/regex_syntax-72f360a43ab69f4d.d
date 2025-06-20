@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/deps/regex_syntax-72f360a43ab69f4d.d",
-    "type": "d",
-    "hash": "84e5d41d679b6de3d21a09197330b7bbf9e9f922"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/release/deps/libregex_syntax-72f360a43ab69f4d.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/ast/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/ast/parse.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/ast/print.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/ast/visitor.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/debug.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/either.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/interval.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/literal.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/print.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/translate.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/hir/visitor.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/parser.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/rank.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/unicode_tables/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/regex-syntax-0.8.5/src/utf8.rs
 

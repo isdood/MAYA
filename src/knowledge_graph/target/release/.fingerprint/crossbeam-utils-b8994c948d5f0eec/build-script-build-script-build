@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/crossbeam-utils-b8994c948d5f0eec/build-script-build-script-build",
-    "type": "fingerprint/crossbeam-utils-b8994c948d5f0eec/build-script-build-script-build",
-    "hash": "3f27c7966e809ac79cc596c65a3a8ec4781b48ea"
-  }
-}
-@pattern_meta@
 
 020b0f923cd89f8a

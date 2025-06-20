@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 12:35:22",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/build/serde_json-7faccba96d57b9eb/root-output",
-    "type": "/src/knowledge_graph/target/release/build/serde_json-7faccba96d57b9eb/root-output",
-    "hash": "892609bfdfd30786b87e8083b08c3ed9e54f8a8e"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/release/build/serde_json-7faccba96d57b9eb/out

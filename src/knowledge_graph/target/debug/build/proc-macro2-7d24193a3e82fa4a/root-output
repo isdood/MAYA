@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/build/proc-macro2-7d24193a3e82fa4a/root-output",
-    "type": "/src/knowledge_graph/target/debug/build/proc-macro2-7d24193a3e82fa4a/root-output",
-    "hash": "bee56d523e3cdbf03fc88716c4f2629cd5767db7"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/debug/build/proc-macro2-7d24193a3e82fa4a/out

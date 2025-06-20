@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/bitflags-c620a02f6d0c2c73/lib-bitflags.json",
-    "type": "json",
-    "hash": "5dbfc1e4ccfa8897df79ca5e3ed91bd6492e8ac6"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"arbitrary\", \"bytemuck\", \"compiler_builtins\", \"core\", \"example_generated\", \"rustc-dep-of-std\", \"serde\", \"std\"]","target":7691312148208718491,"profile":15657897354478470176,"path":7350492383366267250,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/bitflags-c620a02f6d0c2c73/dep-lib-bitflags","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

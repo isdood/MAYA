@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/getrandom-fe88aa2e8f2d5055/lib-getrandom.json",
-    "type": "json",
-    "hash": "da6882e4aab88b0fefe2ff54af643577743b7c70"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"compiler_builtins\", \"core\", \"custom\", \"js\", \"js-sys\", \"linux_disable_fallback\", \"rdrand\", \"rustc-dep-of-std\", \"std\", \"test-in-browser\", \"wasm-bindgen\"]","target":16244099637825074703,"profile":2241668132362809309,"path":10271675346788899470,"deps":[[2828590642173593838,"cfg_if",false,11325131976608261751],[4684437522915235464,"libc",false,9629107829217719510]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/getrandom-fe88aa2e8f2d5055/dep-lib-getrandom","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

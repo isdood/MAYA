@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:43",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/deps/rustyline-e0903675154a9d8f.d",
-    "type": "d",
-    "hash": "b1e25e28c6433eedf296f1673e14084b71390a91"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/maya-llm/target/debug/deps/librustyline-e0903675154a9d8f.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/binding.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/command.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/completion.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/config.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/edit.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/highlight.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/hint.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/history.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/keymap.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/keys.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/kill_ring.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/layout.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/line_buffer.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/tty/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/tty/unix.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/undo.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustyline-10.1.1/src/validate.rs
 

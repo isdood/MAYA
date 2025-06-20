@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:40:48",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/criterion/sled_sequential_writes/100/base/benchmark.json",
-    "type": "json",
-    "hash": "06771c0afa8ef72cf48a91884e62ad1098703774"
-  }
-}
-@pattern_meta@
 
 {"group_id":"sled_sequential_writes","function_id":null,"value_str":"100","throughput":null,"full_id":"sled_sequential_writes/100","directory_name":"sled_sequential_writes/100","title":"sled_sequential_writes/100"}

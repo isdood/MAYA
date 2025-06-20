@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 19:17:54",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/src/error.rs",
-    "type": "rs",
-    "hash": "b0385b3a87597906a643e2a92594b755df1c77ac"
-  }
-}
-@pattern_meta@
 
 //! Error types for the knowledge graph
 

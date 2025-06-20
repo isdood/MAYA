@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/pin-utils-c3687b10eb831c59/lib-pin_utils.json",
-    "type": "json",
-    "hash": "1d7662c8aedbcba885721eabd086f45958f34ff7"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":6142422912982997569,"profile":2241668132362809309,"path":15622526821153763803,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/pin-utils-c3687b10eb831c59/dep-lib-pin_utils","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

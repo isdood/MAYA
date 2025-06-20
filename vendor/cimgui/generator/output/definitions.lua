@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 16:11:37",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./vendor/cimgui/generator/output/definitions.lua",
-    "type": "lua",
-    "hash": "ecf23db147858fb89d12adb1954ee0b003fd2f81"
-  }
-}
-@pattern_meta@
 
 local t={
   ImBitArray_ClearAllBits={

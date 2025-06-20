@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:44:37",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/criterion/cached_cold_reads/100/new/benchmark.json",
-    "type": "json",
-    "hash": "928a0ebaa8e93f2630e6a9772c6973d7b72bab1f"
-  }
-}
-@pattern_meta@
 
 {"group_id":"cached_cold_reads","function_id":null,"value_str":"100","throughput":null,"full_id":"cached_cold_reads/100","directory_name":"cached_cold_reads/100","title":"cached_cold_reads/100"}

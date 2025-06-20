@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 12:32:20",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./scripts/build-windsurf.fish",
-    "type": "fish",
-    "hash": "2200bf1c14f95514f01f1bf7b5645bb2701eadee"
-  }
-}
-@pattern_meta@
 
 #!/usr/bin/env fish
 # Build and test script for Windsurf integration

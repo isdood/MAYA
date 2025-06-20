@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 12:37:03",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/maya_knowledge_graph-5ec9258082ba1323/test-bench-compare_storage_engines",
-    "type": "fingerprint/maya_knowledge_graph-5ec9258082ba1323/test-bench-compare_storage_engines",
-    "hash": "8548201718c33aa6779f204db83f01d8b2c8fe7f"
-  }
-}
-@pattern_meta@
 
 eba8c79978c3fee1

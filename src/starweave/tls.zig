@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 13:25:14",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/starweave/tls.zig",
-    "type": "zig",
-    "hash": "c294d3c638a7d93bbc362882827fe51468ba5236"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const net = std.net;

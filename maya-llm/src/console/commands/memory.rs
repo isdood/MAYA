@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 14:42:56",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/src/console/commands/memory.rs",
-    "type": "rs",
-    "hash": "97d31b249023a3e195bb12cf4281ac8d6b2a55cd"
-  }
-}
-@pattern_meta@
 
 //! Memory management commands for the MAYA LLM console
 

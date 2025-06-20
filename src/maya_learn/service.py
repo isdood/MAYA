@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 14:13:53",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/maya_learn/service.py",
-    "type": "py",
-    "hash": "856392217978536e1a57cfbb54b92b493cad181f"
-  }
-}
-@pattern_meta@
 
 """
 MAYA Learning Service - Main service implementation

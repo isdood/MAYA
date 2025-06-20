@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 19:20:43",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/src/storage/cached_store_fixed.rs",
-    "type": "rs",
-    "hash": "03da0c4b2ba65b1ee556c8e6f79d6453a91572fc"
-  }
-}
-@pattern_meta@
 
 //! Cached storage implementation for the knowledge graph
 

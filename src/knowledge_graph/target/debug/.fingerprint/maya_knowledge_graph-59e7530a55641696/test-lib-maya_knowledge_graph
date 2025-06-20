@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:17:41",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/maya_knowledge_graph-59e7530a55641696/test-lib-maya_knowledge_graph",
-    "type": "fingerprint/maya_knowledge_graph-59e7530a55641696/test-lib-maya_knowledge_graph",
-    "hash": "2b2de9221a0374944d6614de9268e4c4554a3545"
-  }
-}
-@pattern_meta@
 
 c656c48f3cc3ab07

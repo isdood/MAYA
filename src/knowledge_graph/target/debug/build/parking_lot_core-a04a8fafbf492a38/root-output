@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/build/parking_lot_core-a04a8fafbf492a38/root-output",
-    "type": "/src/knowledge_graph/target/debug/build/parking_lot_core-a04a8fafbf492a38/root-output",
-    "hash": "0ebc9ff7c3132891b96d9b0f905990b4b4469f4f"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/debug/build/parking_lot_core-a04a8fafbf492a38/out

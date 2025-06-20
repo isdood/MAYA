@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-05 23:30:31",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./010-MAYA-DOCUMENTATION.fish",
-    "type": "fish",
-    "hash": "b8c3de32fda22f73880dca5026b61cad4bc769ec"
-  }
-}
-@pattern_meta@
 
 #!/usr/bin/env fish
 

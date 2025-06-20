@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/build/libc-f959efed444c2dba/root-output",
-    "type": "/src/knowledge_graph/target/release/build/libc-f959efed444c2dba/root-output",
-    "hash": "497296f94b15b0f397b8a4cecfc20deae34e9fd3"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/release/build/libc-f959efed444c2dba/out

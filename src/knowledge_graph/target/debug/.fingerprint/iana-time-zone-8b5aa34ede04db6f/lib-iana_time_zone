@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 22:07:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/iana-time-zone-8b5aa34ede04db6f/lib-iana_time_zone",
-    "type": "fingerprint/iana-time-zone-8b5aa34ede04db6f/lib-iana_time_zone",
-    "hash": "9b47f6286622aec7d84a555a02feff0960beae1a"
-  }
-}
-@pattern_meta@
 
 fa1dc84628b78023

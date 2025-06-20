@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:45",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/maya-llm-f172f619d0f88f7e/lib-maya_llm.json",
-    "type": "json",
-    "hash": "f4d4033e0ca3a6e186cde14508113f5c65f7eca4"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":15012774047277228564,"profile":8731458305071235362,"path":10763286916239946207,"deps":[[5986029879202738730,"log",false,17118243959229990673],[8008191657135824715,"thiserror",false,1354036402024625618],[9110771444911784240,"simplelog",false,9897234866593763087],[9538054652646069845,"tokio",false,427297930319069853],[9689903380558560274,"serde",false,11811158444631834606],[9897246384292347999,"chrono",false,2404547292105862329],[11578722627376950799,"ordered_float",false,9336319532301296502],[13208667028893622512,"rand",false,383278693503408519],[14395443585379723999,"rustyline",false,506594861391434577],[15367738274754116744,"serde_json",false,18380953449531342354]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/maya-llm-f172f619d0f88f7e/dep-lib-maya_llm","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

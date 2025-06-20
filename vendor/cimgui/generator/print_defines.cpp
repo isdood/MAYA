@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 16:11:37",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./vendor/cimgui/generator/print_defines.cpp",
-    "type": "cpp",
-    "hash": "c57d25e438bac974e9f17ca0a597c1c1897b08d4"
-  }
-}
-@pattern_meta@
 
 #include "imgui.h"
 

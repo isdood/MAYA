@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:42:56",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/criterion/sled_concurrent_rw/1_threads/base/benchmark.json",
-    "type": "json",
-    "hash": "eafe5976007e6ab0741e7ee8ad7ea1a4f8852e5c"
-  }
-}
-@pattern_meta@
 
 {"group_id":"sled_concurrent_rw","function_id":null,"value_str":"1_threads","throughput":null,"full_id":"sled_concurrent_rw/1_threads","directory_name":"sled_concurrent_rw/1_threads","title":"sled_concurrent_rw/1_threads"}

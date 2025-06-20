@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/zerocopy-27d3794b33777394/lib-zerocopy",
-    "type": "fingerprint/zerocopy-27d3794b33777394/lib-zerocopy",
-    "hash": "d23bbd03f2caa1720a8bb25ab35bdc6ae2dff0ed"
-  }
-}
-@pattern_meta@
 
 a1218b5399e0cc85

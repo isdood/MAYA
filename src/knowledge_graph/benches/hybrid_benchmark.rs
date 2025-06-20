@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:57:11",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/benches/hybrid_benchmark.rs",
-    "type": "rs",
-    "hash": "62f138466a4765a4d1cc0d3d26529c441f9f3fd1"
-  }
-}
-@pattern_meta@
 
 use criterion::{criterion_group, criterion_main, Criterion, BatchSize, BenchmarkId};
 use maya_knowledge_graph::storage::{Storage, WriteBatchExt};

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 06:38:48",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/version_check-ac861858003339ac/lib-version_check.json",
-    "type": "json",
-    "hash": "8d3e4bde0714f022b80af7121f2315c04fb30e1f"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":18099224280402537651,"profile":1369601567987815722,"path":11003452790030510944,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/version_check-ac861858003339ac/dep-lib-version_check","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

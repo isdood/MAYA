@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/build/rayon-core-f15df3d880c8c338/root-output",
-    "type": "/src/knowledge_graph/target/release/build/rayon-core-f15df3d880c8c338/root-output",
-    "hash": "29c5a7579ea5a559d0ea0446486f4715f5eab360"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/release/build/rayon-core-f15df3d880c8c338/out

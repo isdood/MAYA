@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/build/rayon-core-4461254972a5acb5/build_script_build-4461254972a5acb5.d",
-    "type": "d",
-    "hash": "abeeae4118e40a7d9ea4de233afcfafc0c6add39"
-  }
-}
-@pattern_meta@
 
 /home/shimmer/MAYA/src/knowledge_graph/target/debug/build/rayon-core-4461254972a5acb5/build_script_build-4461254972a5acb5: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/build.rs
 

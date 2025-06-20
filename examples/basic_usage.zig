@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-16 08:30:06",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./examples/basic_usage.zig",
-    "type": "zig",
-    "hash": "d851ef0a97eb09fdb1eebb79cbe4ae06049027bd"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const Maya = @import("../src/learning/maya.zig").Maya;

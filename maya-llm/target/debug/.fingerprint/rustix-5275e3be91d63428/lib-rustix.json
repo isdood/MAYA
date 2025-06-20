@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/rustix-5275e3be91d63428/lib-rustix.json",
-    "type": "json",
-    "hash": "9790dc28d8f09dab398f031aa241b0bbe93da421"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"default\", \"fs\", \"libc-extra-traits\", \"std\", \"use-libc-auxv\"]","declared_features":"[\"all-apis\", \"alloc\", \"cc\", \"compiler_builtins\", \"core\", \"default\", \"event\", \"fs\", \"io_uring\", \"itoa\", \"libc\", \"libc-extra-traits\", \"libc_errno\", \"linux_4_11\", \"linux_latest\", \"mm\", \"mount\", \"net\", \"once_cell\", \"param\", \"pipe\", \"process\", \"procfs\", \"pty\", \"rand\", \"runtime\", \"rustc-dep-of-std\", \"rustc-std-workspace-alloc\", \"shm\", \"std\", \"stdio\", \"system\", \"termios\", \"thread\", \"time\", \"try_close\", \"use-explicitly-provided-auxv\", \"use-libc\", \"use-libc-auxv\"]","target":16221545317719767766,"profile":8582226208830198931,"path":8993318929529041614,"deps":[[3430646239657634944,"build_script_build",false,2876618205255774484],[5036304442846774733,"linux_raw_sys",false,14040213452455699957],[7896293946984509699,"bitflags",false,11829930589287825382]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/rustix-5275e3be91d63428/dep-lib-rustix","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

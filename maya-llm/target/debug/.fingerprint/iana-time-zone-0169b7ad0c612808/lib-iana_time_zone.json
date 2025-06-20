@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/iana-time-zone-0169b7ad0c612808/lib-iana_time_zone.json",
-    "type": "json",
-    "hash": "96943dd80bbb6484c18a054ab116090e60444271"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"fallback\"]","declared_features":"[\"fallback\"]","target":13492157405369956366,"profile":15657897354478470176,"path":10955286780986403774,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/iana-time-zone-0169b7ad0c612808/dep-lib-iana_time_zone","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

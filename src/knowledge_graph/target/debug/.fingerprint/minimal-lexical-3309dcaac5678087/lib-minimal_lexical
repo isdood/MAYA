@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/minimal-lexical-3309dcaac5678087/lib-minimal_lexical",
-    "type": "fingerprint/minimal-lexical-3309dcaac5678087/lib-minimal_lexical",
-    "hash": "d0b6b90a02a80fa72dd592c385c8434c5664791d"
-  }
-}
-@pattern_meta@
 
 92e68049c8e7fd4d

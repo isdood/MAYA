@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:25",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/build/libz-sys-3f3bb805a2c4af41/out/include/zconf.h",
-    "type": "h",
-    "hash": "0996c26f95eb74273a8f2ae6cf898e6575b490fa"
-  }
-}
-@pattern_meta@
 
 /* zconf.h -- configuration of the zlib compression library
  * Copyright (C) 1995-2024 Jean-loup Gailly, Mark Adler

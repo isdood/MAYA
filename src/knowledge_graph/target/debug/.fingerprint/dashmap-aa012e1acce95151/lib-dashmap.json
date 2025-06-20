@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:18:05",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/dashmap-aa012e1acce95151/lib-dashmap.json",
-    "type": "json",
-    "hash": "17c352a55ba9844f1b1f8e25a9266ac10a834d0a"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"arbitrary\", \"inline\", \"raw-api\", \"rayon\", \"serde\"]","target":7646408341754254191,"profile":15657897354478470176,"path":12173363162013589849,"deps":[[2828590642173593838,"cfg_if",false,14889661699679411208],[3722963349756955755,"once_cell",false,5468255697328013840],[4269498962362888130,"parking_lot_core",false,13125708156674465153],[8081351675046095464,"lock_api",false,13017248593027989713],[13018563866916002725,"hashbrown",false,1559138388721045018]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/dashmap-aa012e1acce95151/dep-lib-dashmap","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

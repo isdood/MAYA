@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/ciborium-ll-43690d95a87b2fd9/lib-ciborium_ll.json",
-    "type": "json",
-    "hash": "c4e38a24b6f8e739604402866bd7865845af2ec8"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"alloc\", \"std\"]","target":6259365080488940533,"profile":2040997289075261528,"path":2963522796583443787,"deps":[[10057415176380654875,"ciborium_io",false,8026048850039465656],[16857843618210199216,"half",false,118110971545103314]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/ciborium-ll-43690d95a87b2fd9/dep-lib-ciborium_ll","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

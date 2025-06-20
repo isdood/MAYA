@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/crossbeam-utils-2584b837455c8c84/run-build-script-build-script-build.json",
-    "type": "json",
-    "hash": "0b50e75c529e35baecda7c33973b6356e5f02e47"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[4468123440088164316,"build_script_build",false,3579012605102128823]],"local":[{"RerunIfChanged":{"output":"debug/build/crossbeam-utils-2584b837455c8c84/output","paths":["no_atomic.rs"]}}],"rustflags":[],"config":0,"compile_kind":0}

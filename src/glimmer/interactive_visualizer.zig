@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-20 08:42:54",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/glimmer/interactive_visualizer.zig",
-    "type": "zig",
-    "hash": "5c18750f0d41e2cfd10826b955ea90eaa4c03d02"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const MemoryGraph = @import("visualization.zig").MemoryGraph;

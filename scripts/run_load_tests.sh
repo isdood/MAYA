@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 16:17:59",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./scripts/run_load_tests.sh",
-    "type": "sh",
-    "hash": "07e9a6ea63504f57acd766a98671cab809567b21"
-  }
-}
-@pattern_meta@
 
 #!/bin/bash
 #

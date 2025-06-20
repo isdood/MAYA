@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:28",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/build/lz4-sys-9e7509d50c208f2d/out/include/lz4hc.h",
-    "type": "h",
-    "hash": "653dbe3acadbbc8533e6b3133ae420ddb626fd0b"
-  }
-}
-@pattern_meta@
 
 /*
    LZ4 HC - High Compression Mode of LZ4

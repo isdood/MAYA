@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 14:34:08",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/parking_lot-996a7d7e36c1458a/lib-parking_lot.json",
-    "type": "json",
-    "hash": "5d587e8a501f24464926d8053396f29e821f9df1"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\"]","declared_features":"[\"arc_lock\", \"deadlock_detection\", \"default\", \"nightly\", \"owning_ref\", \"send_guard\", \"serde\", \"stdweb\", \"wasm-bindgen\"]","target":14160162848842265298,"profile":2040997289075261528,"path":2289016392716012397,"deps":[[8081351675046095464,"lock_api",false,1410844082607247129],[14196108479452351812,"instant",false,13205982865880728033],[14814334185036658946,"parking_lot_core",false,15424596045623292459]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/parking_lot-996a7d7e36c1458a/dep-lib-parking_lot","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

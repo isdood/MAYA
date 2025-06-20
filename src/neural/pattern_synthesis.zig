@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 19:28:04",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/neural/pattern_synthesis.zig",
-    "type": "zig",
-    "hash": "b9e6b02c743d9fc9068f4d4829e7e86dca0ef847"
-  }
-}
-@pattern_meta@
 
 // 🎯 MAYA Pattern Synthesis Core
 // ✨ Version: 1.0.0

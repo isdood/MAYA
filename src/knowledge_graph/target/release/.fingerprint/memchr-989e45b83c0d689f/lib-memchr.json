@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:50",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/memchr-989e45b83c0d689f/lib-memchr.json",
-    "type": "json",
-    "hash": "dce270118c142938a5807910411f0fe6948cd1df"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"default\", \"std\"]","declared_features":"[\"alloc\", \"core\", \"default\", \"libc\", \"logging\", \"rustc-dep-of-std\", \"std\", \"use_std\"]","target":11745930252914242013,"profile":2040997289075261528,"path":399001829675497872,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/memchr-989e45b83c0d689f/dep-lib-memchr","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

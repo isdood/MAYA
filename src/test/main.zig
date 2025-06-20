@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-20 10:08:49",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/test/main.zig",
-    "type": "zig",
-    "hash": "9bac16d1211148c7779293e4c832c6a9c3f24b01"
-  }
-}
-@pattern_meta@
 
 // 🧪 MAYA Tests v2025.6.18
 const std = @import("std");

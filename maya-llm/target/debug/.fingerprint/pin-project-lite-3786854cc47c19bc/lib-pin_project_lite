@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/pin-project-lite-3786854cc47c19bc/lib-pin_project_lite",
-    "type": "fingerprint/pin-project-lite-3786854cc47c19bc/lib-pin_project_lite",
-    "hash": "604f30e62acfa90a25c54a844fcacb08a5c7c6dd"
-  }
-}
-@pattern_meta@
 
 21f63b79d2e7dcc5

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:43",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/simplelog-229663713aff9ef1/lib-simplelog.json",
-    "type": "json",
-    "hash": "f5883a65d2493f207eca3c91e70530b73b9a46d1"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"termcolor\"]","declared_features":"[\"ansi_term\", \"default\", \"local-offset\", \"paris\", \"termcolor\", \"test\"]","target":3737508560202782591,"profile":15657897354478470176,"path":10645077749310303691,"deps":[[5986029879202738730,"log",false,17118243959229990673],[12409575957772518135,"time",false,18010501561383447831],[12902659978838094914,"termcolor",false,15019682635448354757]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/simplelog-229663713aff9ef1/dep-lib-simplelog","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 12:35:22",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/serde_json-7faccba96d57b9eb/run-build-script-build-script-build.json",
-    "type": "json",
-    "hash": "a63a5eff816143bbb057b840246350520d2ecf6e"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[15367738274754116744,"build_script_build",false,18366230397588878688]],"local":[{"RerunIfChanged":{"output":"release/build/serde_json-7faccba96d57b9eb/output","paths":["build.rs"]}}],"rustflags":[],"config":0,"compile_kind":0}

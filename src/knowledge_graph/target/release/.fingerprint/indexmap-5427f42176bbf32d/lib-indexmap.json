@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 05:52:51",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/indexmap-5427f42176bbf32d/lib-indexmap.json",
-    "type": "json",
-    "hash": "f376568098db2337a15c2d5b37e9cd6af58dd55b"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"arbitrary\", \"quickcheck\", \"rayon\", \"rustc-rayon\", \"serde\", \"serde-1\", \"std\", \"test_debug\", \"test_low_transition_point\"]","target":7464724397252027387,"profile":2040997289075261528,"path":13241897379026895594,"deps":[[2548171882066012255,"hashbrown",false,209714153148310470],[14923790796823607459,"build_script_build",false,1806680584963134624]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/indexmap-5427f42176bbf32d/dep-lib-indexmap","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

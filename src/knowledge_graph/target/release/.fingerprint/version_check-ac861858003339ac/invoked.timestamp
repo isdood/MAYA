@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 06:38:48",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/release/.fingerprint/version_check-ac861858003339ac/invoked.timestamp",
-    "type": "timestamp",
-    "hash": "2609bf5809b2a3d6a76a9f7e2f28ab2149662bab"
-  }
-}
-@pattern_meta@
 
 This file has an mtime of when this was started.

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-16 08:27:07",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/test/pattern_recognizer_test.zig",
-    "type": "zig",
-    "hash": "1ac3b2dbd21195b57872536375868de176ebfa22"
-  }
-}
-@pattern_meta@
 
 const std = @import("std");
 const testing = std.testing;

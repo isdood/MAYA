@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 16:04:17",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./tests/benchmarks/test_monitoring_performance.py",
-    "type": "py",
-    "hash": "79cc34bfa11df8f0b32ea9b280dd8f51c7a5f34e"
-  }
-}
-@pattern_meta@
 
 #!/usr/bin/env python3
 """

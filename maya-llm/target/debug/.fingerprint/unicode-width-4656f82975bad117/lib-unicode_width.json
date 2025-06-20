@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/unicode-width-4656f82975bad117/lib-unicode_width.json",
-    "type": "json",
-    "hash": "a9d08e0adccc5fec31cea3d3c1499f209c500ccd"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"cjk\", \"default\"]","declared_features":"[\"cjk\", \"compiler_builtins\", \"core\", \"default\", \"no_std\", \"rustc-dep-of-std\", \"std\"]","target":16876147670056848225,"profile":15657897354478470176,"path":7817991403489870780,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/unicode-width-4656f82975bad117/dep-lib-unicode_width","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

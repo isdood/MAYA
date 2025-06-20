@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-19 15:31:42",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./maya-llm/target/debug/.fingerprint/zerocopy-0405da2ec4aa05da/build-script-build-script-build.json",
-    "type": "json",
-    "hash": "2fc7e44f7c2f463c620c32147787ab51b05b2291"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"simd\"]","declared_features":"[\"__internal_use_only_features_that_work_on_stable\", \"alloc\", \"derive\", \"float-nightly\", \"simd\", \"simd-nightly\", \"std\", \"zerocopy-derive\"]","target":5408242616063297496,"profile":2225463790103693989,"path":10212975071735170686,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/zerocopy-0405da2ec4aa05da/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

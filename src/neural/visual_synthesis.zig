@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 19:26:23",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/neural/visual_synthesis.zig",
-    "type": "zig",
-    "hash": "f443b60684409e3032fd37bebb2f77732090ad09"
-  }
-}
-@pattern_meta@
 
 // 🎨 MAYA Visual Synthesis
 // ✨ Version: 1.0.0

@@ -1,19 +1,3 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-06 13:13:30",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./scripts/setup_arch.sh",
-    "type": "sh",
-    "hash": "edfe5ba823cf1f0c46b735786b633eb9da57173b"
-  }
-}
-@pattern_meta@
 
 #!/bin/bash
 

@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-17 17:41:24",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/debug/.fingerprint/pretty_assertions-54ae4c043656d495/lib-pretty_assertions.json",
-    "type": "json",
-    "hash": "52a4e02636c8c7acb5886d1d08f77b824f0230b1"
-  }
-}
-@pattern_meta@
 
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"alloc\", \"default\", \"std\", \"unstable\"]","target":11922006449871018939,"profile":15657897354478470176,"path":12285469983544396225,"deps":[[11369524874753292000,"diff",false,3303183574968121261],[11462695054828705146,"yansi",false,16631642311948581273]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/pretty_assertions-54ae4c043656d495/dep-lib-pretty_assertions","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

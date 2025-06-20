@@ -1,18 +1,2 @@
-@pattern_meta@
-GLIMMER Pattern:
-{
-  "metadata": {
-    "timestamp": "2025-06-18 12:37:09",
-    "author": "isdood",
-    "pattern_version": "1.0.0",
-    "color": "#FF69B4"
-  },
-  "file_info": {
-    "path": "./src/knowledge_graph/target/criterion/sled_write_1kb/base/sample.json",
-    "type": "json",
-    "hash": "db8983445229d28652d93b6506d7233886cdf88e"
-  }
-}
-@pattern_meta@
 
 {"sampling_mode":"Linear","iters":[39797.0,79594.0,119391.0,159188.0,198985.0,238782.0,278579.0,318376.0,358173.0,397970.0],"times":[90028666.0,184499345.0,273338850.0,369115747.0,447723709.0,537361284.0,643978800.0,720658393.0,812598724.0,900989534.0]}
