@@ -56,26 +56,27 @@ pub fn build(b: *std.Build) void {
     
     // Pattern recognition is part of the neural module
     const pattern_recognition_mod = neural_mod;
-
-    // Add these after neural_mod definition:
+    
+    // Create quantum processor module with all necessary imports
     const quantum_processor_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/neural/quantum_processor.zig" },
         .imports = &.{
-            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+            .{ .name = "neural", .module = neural_mod },
+            .{ .name = "starweave", .module = starweave_mod },
+            .{ .name = "glimmer", .module = glimmer_mod },
+            .{ .name = "quantum_types", .module = quantum_types_mod },
         },
     });
-    const visual_processor_mod = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/neural/visual_processor.zig" },
-        .imports = &.{
-            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
-        },
-    });
+    
+    // Create neural processor module with all necessary imports
     const neural_processor_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/neural/neural_processor.zig" },
         .imports = &.{
-            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+            .{ .name = "neural", .module = neural_mod },
             .{ .name = "quantum_processor", .module = quantum_processor_mod },
-            .{ .name = "visual_processor", .module = visual_processor_mod },
+            .{ .name = "starweave", .module = starweave_mod },
+            .{ .name = "glimmer", .module = glimmer_mod },
+            .{ .name = "quantum_types", .module = quantum_types_mod },
         },
     });
 
@@ -117,7 +118,6 @@ pub fn build(b: *std.Build) void {
     
     // TODO: Add other neural modules as they're implemented
     // exe.root_module.addImport("quantum_processor", quantum_processor_mod);
-    // exe.root_module.addImport("visual_processor", visual_processor_mod);
     // exe.root_module.addImport("neural_processor", neural_processor_mod);
 
     // 🎨 System Library Integration
@@ -142,7 +142,6 @@ pub fn build(b: *std.Build) void {
     maya_wasm.root_module.addImport("glimmer", glimmer_mod);
     maya_wasm.root_module.addImport("pattern_recognition", pattern_recognition_mod);
     maya_wasm.root_module.addImport("quantum_processor", quantum_processor_mod);
-    maya_wasm.root_module.addImport("visual_processor", visual_processor_mod);
     maya_wasm.root_module.addImport("neural_processor", neural_processor_mod);
 
     // 🧪 Quantum Test Configuration
@@ -159,7 +158,6 @@ pub fn build(b: *std.Build) void {
     main_tests.root_module.addImport("colors", colors_mod);
     main_tests.root_module.addImport("pattern_recognition", pattern_recognition_mod);
     main_tests.root_module.addImport("quantum_processor", quantum_processor_mod);
-    main_tests.root_module.addImport("visual_processor", visual_processor_mod);
     main_tests.root_module.addImport("neural_processor", neural_processor_mod);
 
     const run_main_tests = b.addRunArtifact(main_tests);

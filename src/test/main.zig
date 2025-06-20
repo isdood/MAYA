@@ -45,8 +45,10 @@ test "pattern recognition system" {
     const visual_state = try visual.process(pattern_data);
     try std.testing.expect(visual_state.contrast >= 0.0);
     try std.testing.expect(visual_state.contrast <= 1.0);
-    try std.testing.expect(visual_state.resolution > 0);
-    try std.testing.expect(visual_state.resolution <= visual.config.resolution);
+    try std.testing.expect(visual_state.brightness >= 0.0);
+    try std.testing.expect(visual_state.brightness <= 1.0);
+    try std.testing.expect(visual_state.saturation >= 0.0);
+    try std.testing.expect(visual_state.saturation <= 1.0);
 
     // Test neural processing
     const result = try neural_proc.process(pattern_data);

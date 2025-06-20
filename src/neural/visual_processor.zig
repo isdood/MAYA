@@ -4,7 +4,7 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const pattern_recognition = @import("pattern_recognition/mod.zig");
+const neural = @import("neural");
 
 /// Visual processor configuration
 pub const VisualConfig = struct {
@@ -23,18 +23,14 @@ pub const VisualProcessor = struct {
     // System state
     config: VisualConfig,
     allocator: std.mem.Allocator,
-    state: pattern_recognition.VisualState,
+    state: neural.VisualState,
 
     pub fn init(allocator: std.mem.Allocator) !*VisualProcessor {
         const processor = try allocator.create(VisualProcessor);
         processor.* = VisualProcessor{
             .config = VisualConfig{},
             .allocator = allocator,
-            .state = pattern_recognition.VisualState{
-                .brightness = 0.0,
-                .contrast = 1.0,
-                .saturation = 0.0,
-            },
+            .state = neural.VisualState{},
         };
         return processor;
     }
@@ -44,11 +40,11 @@ pub const VisualProcessor = struct {
     }
 
     /// Process pattern data through visual processor
-    pub fn process(self: *VisualProcessor, pattern_data: []const u8) !pattern_recognition.VisualState {
+    pub fn process(self: *VisualProcessor, pattern_data: []const u8) !neural.VisualState {
         // Initialize visual state
-        var state = pattern_recognition.VisualState{
+        var state = neural.VisualState{
             .brightness = 0.0,
-            .contrast = 0.0,
+            .contrast = 1.0,
             .saturation = 0.0,
         };
 
@@ -64,30 +60,33 @@ pub const VisualProcessor = struct {
     }
 
     /// Process pattern in visual state
-    fn processVisualState(self: *VisualProcessor, state: *pattern_recognition.VisualState, pattern_data: []const u8) !void {
+    fn processVisualState(self: *VisualProcessor, state: *neural.VisualState, pattern_data: []const u8) !void {
         // Calculate visual contrast
         state.contrast = self.calculateContrast(pattern_data);
     }
 
-    /// Calculate visual contrast
-    fn calculateContrast(_: *VisualProcessor, pattern_data: []const u8) f64 {
+    /// Calculate contrast from pattern data
+    fn calculateContrast(self: *const VisualProcessor, data: []const u8) f64 {
+        _ = self; // Unused parameter
+        if (data.len < 2) return 0.0;
+        
         // Simple contrast calculation based on byte value differences
         var total_diff: usize = 0;
         var count: usize = 0;
 
         var i: usize = 1;
-        while (i < pattern_data.len) : (i += 1) {
-            const diff = @abs(@as(i32, pattern_data[i]) - @as(i32, pattern_data[i - 1]));
-            total_diff += @as(usize, diff);
+        while (i < data.len) : (i += 1) {
+            const diff = @abs(@as(i32, data[i]) - @as(i32, data[i - 1]));
+            total_diff += @as(usize, @intCast(diff));
             count += 1;
         }
 
         if (count == 0) return 0.0;
-        return @min(1.0, @as(f64, @floatFromInt(total_diff)) / (@as(f64, count) * @as(f64, 255.0)));
+        return @min(1.0, @as(f64, @floatFromInt(total_diff)) / (@as(f64, @floatFromInt(count)) * 255.0));
     }
 
     /// Validate visual state
-    fn isValidState(self: *VisualProcessor, state: pattern_recognition.VisualState) bool {
+    fn isValidState(self: *VisualProcessor, state: neural.VisualState) bool {
         return state.contrast >= self.config.min_contrast;
     }
 };

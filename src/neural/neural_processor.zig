@@ -4,9 +4,17 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const pattern_recognition = @import("pattern_recognition");
-const quantum_processor = @import("quantum_processor");
-const visual_processor = @import("visual_processor");
+const neural = @import("neural");
+const quantum_processor = @import("neural/quantum_processor.zig");
+const visual_processor = @import("neural/visual_processor.zig");
+const quantum_types = @import("neural/quantum_types.zig");
+
+// Re-export pattern recognition types for backward compatibility
+pub const pattern_recognition = neural;
+
+// Import types for clarity
+const QuantumState = quantum_types.QuantumState;
+const VisualState = neural.VisualState;
 
 /// Neural processor configuration
 pub const NeuralConfig = struct {
@@ -45,8 +53,19 @@ pub const NeuralProcessor = struct {
         self.allocator.destroy(self);
     }
 
+    /// Pattern processing result
+    pub const ProcessResult = struct {
+        confidence: f64,
+        pattern_id: []const u8,
+        pattern_type: enum { Unknown, Visual, Quantum, Combined },
+        metadata: struct {
+            timestamp: i64,
+            source: []const u8,
+        },
+    };
+
     /// Process pattern data through neural processor
-    pub fn process(self: *NeuralProcessor, pattern_data: []const u8) !pattern_recognition.PatternResult {
+    pub fn process(self: *NeuralProcessor, pattern_data: []const u8) !ProcessResult {
         // Process through quantum processor
         const quantum_state = try self.quantum.process(pattern_data);
 
@@ -55,35 +74,47 @@ pub const NeuralProcessor = struct {
 
         // Calculate pattern confidence
         const confidence = self.calculateConfidence(quantum_state, visual_state);
+        
+        // Create pattern ID from hash of input data
+        var hasher = std.hash.Wyhash.init(0);
+        hasher.update(pattern_data);
+        const hash = hasher.final();
+        const pattern_id = try std.fmt.allocPrint(self.allocator, "pattern_{x}", .{hash});
+        
+        // Determine pattern type based on confidence
+        const pattern_type = if (quantum_state.coherence > 0.8 and visual_state.brightness > 0.5) 
+            .Combined 
+        else if (quantum_state.coherence > 0.5) 
+            .Quantum 
+        else if (visual_state.brightness > 0.5) 
+            .Visual 
+        else 
+            .Unknown;
 
-        // Determine pattern type
-        const pattern_type = self.determinePatternType(quantum_state, visual_state);
-
-        // Create pattern metadata
-        const metadata = try self.createMetadata(quantum_state, visual_state);
-
-        // Create pattern result
-        return pattern_recognition.PatternResult{
-            .pattern_id = self.generatePatternId(),
+        return ProcessResult{
             .confidence = confidence,
+            .pattern_id = pattern_id,
             .pattern_type = pattern_type,
-            .metadata = metadata,
+            .metadata = .{
+                .timestamp = std.time.timestamp(),
+                .source = "neural_processor",
+            },
         };
     }
 
-    /// Calculate pattern confidence
-    fn calculateConfidence(_: *NeuralProcessor, quantum_state: pattern_recognition.QuantumState, visual_state: pattern_recognition.VisualState) f64 {
+    /// Calculate confidence score from quantum and visual states
+    fn calculateConfidence(_: *NeuralProcessor, quantum_state: QuantumState, visual_state: VisualState) f64 {
         // Weight quantum and visual components
         const quantum_weight = 0.6;
         const visual_weight = 0.4;
 
-        // Calculate quantum confidence
-        const quantum_confidence = (quantum_state.coherence + (1.0 - quantum_state.noise)) / 2.0;
+        // Calculate quantum confidence using coherence and superposition
+        const quantum_confidence = (quantum_state.coherence + quantum_state.superposition) / 2.0;
 
-        // Calculate visual confidence
-        const visual_confidence = (visual_state.contrast + (1.0 - visual_state.noise)) / 2.0;
+        // Calculate visual confidence using brightness and saturation
+        const visual_confidence = (visual_state.brightness + visual_state.saturation) / 2.0;
 
-        // Combine confidences
+        // Combine confidences using weighted average
         return quantum_weight * quantum_confidence + visual_weight * visual_confidence;
     }
 
@@ -129,6 +160,7 @@ test "neural processor initialization" {
     var processor = try NeuralProcessor.init(allocator);
     defer processor.deinit();
 
+    // Test basic initialization
     try std.testing.expect(processor.config.min_confidence == 0.8);
     try std.testing.expect(processor.config.max_patterns == 1000);
     try std.testing.expect(processor.config.learning_rate == 0.01);
@@ -141,9 +173,13 @@ test "neural pattern processing" {
 
     const pattern_data = "test pattern";
     const result = try processor.process(pattern_data);
+    // Free the allocated pattern_id
+    defer allocator.free(result.pattern_id);
 
     try std.testing.expect(result.confidence >= 0.0);
     try std.testing.expect(result.confidence <= 1.0);
     try std.testing.expect(result.pattern_id.len > 0);
+    try std.testing.expect(std.mem.startsWith(u8, result.pattern_id, "pattern_"));
+    try std.testing.expect(result.metadata.source.len > 0);
     try std.testing.expect(result.metadata.timestamp > 0);
-} 
+}
