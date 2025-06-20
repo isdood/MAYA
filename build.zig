@@ -44,6 +44,9 @@ pub fn build(b: *std.Build) void {
         .imports = &.{},
     });
 
+    // Get the standard library module
+    const std_mod = b.dependency("std", .{}).module("std");
+
     // 🧠 Neural Module with Pattern Recognition
     const neural_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/neural/mod.zig" },
@@ -51,7 +54,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "starweave", .module = starweave_mod },
             .{ .name = "glimmer", .module = glimmer_mod },
             .{ .name = "quantum_types", .module = quantum_types_mod },
-            .{ .name = "std", .module = b.dependency("std", .{}).module("std") },
+            .{ .name = "std", .module = std_mod },
         },
     });
     
@@ -63,7 +66,6 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .cwd_relative = "src/neural/crystal_computing.zig" },
         .imports = &.{
             .{ .name = "quantum_types", .module = quantum_types_mod },
-            .{ .name = "std", .module = b.dependency("std", .{}).module("std") },
         },
     });
     
@@ -125,22 +127,68 @@ pub fn build(b: *std.Build) void {
     maya_wasm.root_module.addImport("glimmer", glimmer_mod);
     maya_wasm.root_module.addImport("pattern_recognition", pattern_recognition_mod);
 
-    // 🧪 Quantum Test Configuration
-    const test_step = b.step("test", "🧪 Run MAYA quantum tests");
+    // 🧪 Test Configuration
+    const test_step = b.step("test", "Run all tests");
+    
+    // Main tests
     const main_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/test/main.zig" },
+        .root_source_file = .{ .path = "src/test.zig" },
         .target = target,
         .optimize = optimize,
     });
-
+    
+    // Add module imports for main tests
     main_tests.root_module.addImport("starweave", starweave_mod);
     main_tests.root_module.addImport("glimmer", glimmer_mod);
     main_tests.root_module.addImport("neural", neural_mod);
     main_tests.root_module.addImport("colors", colors_mod);
     main_tests.root_module.addImport("pattern_recognition", pattern_recognition_mod);
 
-    const run_main_tests = b.addRunArtifact(main_tests);
-    test_step.dependOn(&run_main_tests.step);
+    // Integration tests
+    const integration_tests = b.addTest(.{
+        .root_source_file = .{ .cwd_relative = "test_integration.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    integration_tests.root_module.addImport("neural", neural_mod);
+    integration_tests.root_module.addImport("quantum_types", quantum_types_mod);
+    integration_tests.root_module.addImport("colors", colors_mod);
+    integration_tests.root_module.addImport("pattern_recognition", pattern_recognition_mod);
+
+    const run_integration_tests = b.addRunArtifact(integration_tests);
+    const test_integration_step = b.step("test:integration", "Run integration tests");
+    test_integration_step.dependOn(&run_integration_tests.step);
+
+    // Pattern Evolution Benchmark
+    const pattern_evolution_bench_exe = b.addExecutable(.{
+        .name = "pattern_evolution_benchmark",
+        .root_source_file = .{ .cwd_relative = "benchmarks/pattern_evolution_benchmark.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    pattern_evolution_bench_exe.root_module.addImport("neural", neural_mod);
+    b.installArtifact(pattern_evolution_bench_exe);
+    
+    const run_bench = b.addRunArtifact(pattern_evolution_bench_exe);
+    const bench_step = b.step("bench:pattern-evolution", "Run pattern evolution benchmarks");
+    bench_step.dependOn(&run_bench.step);
+
+    // Pattern Visualization Example
+    const pattern_viz_exe = b.addExecutable(.{
+        .name = "pattern_visualization",
+        .root_source_file = .{ .cwd_relative = "examples/pattern_visualization.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    pattern_viz_exe.root_module.addImport("neural", neural_mod);
+    pattern_viz_exe.root_module.addImport("visualization", b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/visualization/pattern_visualizer.zig" },
+    }));
+    b.installArtifact(pattern_viz_exe);
+    
+    const run_pattern_viz = b.addRunArtifact(pattern_viz_exe);
+    const pattern_viz_step = b.step("viz:pattern", "Run pattern visualization example");
+    pattern_viz_step.dependOn(&run_pattern_viz.step);
 
     // ⚡ Install Steps
     b.installArtifact(exe);

@@ -4,10 +4,10 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const neural = @import("neural");
-const quantum_processor = @import("quantum_processor");
-const visual_processor = @import("visual_processor");
-const quantum_types = @import("quantum_types");
+const neural = @import("mod.zig");
+const quantum_processor = @import("quantum_processor.zig");
+const visual_processor = @import("visual_processor.zig");
+const quantum_types = @import("quantum_types.zig");
 
 // Re-export pattern recognition types for backward compatibility
 pub const pattern_recognition = neural;
@@ -87,7 +87,13 @@ pub const NeuralProcessor = struct {
         var hasher = std.hash.Wyhash.init(0);
         hasher.update(pattern_data);
         const hash = hasher.final();
-        const pattern_id = try std.fmt.allocPrint(self.allocator, "pattern_{x}", .{hash});
+        
+        // Generate pattern ID
+        var buffer: [64]u8 = undefined;
+        const pattern_id_buf = try std.fmt.bufPrint(&buffer, "pattern_{x}", .{hash});
+        
+        // Duplicate the pattern ID to ensure it lives long enough
+        const pattern_id = try self.allocator.dupe(u8, pattern_id_buf);
         
         // Determine pattern type based on confidence at runtime
         var pattern_type: PatternType = .Unknown;

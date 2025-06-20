@@ -61,6 +61,11 @@ pub const QuantumProcessor = struct {
 
     /// Process pattern data through quantum processor
     pub fn process(self: *QuantumProcessor, pattern_data: []const u8) !quantum_types.QuantumState {
+        // Validate input
+        if (pattern_data.len == 0) {
+            return error.InvalidPatternData;
+        }
+        
         // Initialize quantum state
         var state = quantum_types.QuantumState{
             .coherence = 0.0,

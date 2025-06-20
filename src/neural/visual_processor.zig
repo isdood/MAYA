@@ -50,6 +50,11 @@ pub const VisualProcessor = struct {
 
     /// Process pattern data through visual processor
     pub fn process(self: *VisualProcessor, pattern_data: []const u8) !VisualState {
+        // Validate input
+        if (pattern_data.len == 0) {
+            return error.InvalidPatternData;
+        }
+        
         // Initialize visual state
         var state = VisualState{
             .brightness = 0.0,

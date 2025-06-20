@@ -5,7 +5,7 @@ const glimmer = @import("glimmer");
 const neural = @import("neural");
 const colors = @import("colors");
 const pattern_recognition = @import("pattern_recognition");
-const quantum_processor = @import("quantum_processor");
+const quantum_processor = neural.QuantumProcessor;
 const visual_processor = @import("visual_processor");
 const neural_processor = @import("neural_processor");
 
