@@ -1,4 +1,3 @@
-@pattern_meta@
 GLIMMER Pattern:
 {
   "metadata": {
@@ -13,7 +12,6 @@ GLIMMER Pattern:
     "hash": "362e6ee63cb83b24cf37f4e2a19bffb82266166f"
   }
 }
-@pattern_meta@
 
 //! 🌌 STARWEAVE Universe Integration
 //! ✨ Version: 2025.6.18
