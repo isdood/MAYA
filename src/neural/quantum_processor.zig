@@ -111,13 +111,13 @@ pub const QuantumProcessor = struct {
     }
 
     /// Calculate quantum coherence
-    fn calculateCoherence(self: *QuantumProcessor, pattern_data: []const u8) f64 {
+    fn calculateCoherence(_: *QuantumProcessor, pattern_data: []const u8) f64 {
         const base_coherence = @as(f64, @floatFromInt(pattern_data.len)) / 100.0;
         return @min(1.0, base_coherence);
     }
 
     /// Calculate quantum entanglement
-    fn calculateEntanglement(self: *QuantumProcessor, pattern_data: []const u8) f64 {
+    fn calculateEntanglement(_: *QuantumProcessor, pattern_data: []const u8) f64 {
         var complexity: usize = 0;
         for (pattern_data) |byte| {
             complexity += @popCount(byte);
@@ -126,7 +126,7 @@ pub const QuantumProcessor = struct {
     }
 
     /// Calculate quantum superposition
-    fn calculateSuperposition(self: *QuantumProcessor, pattern_data: []const u8) f64 {
+    fn calculateSuperposition(_: *QuantumProcessor, pattern_data: []const u8) f64 {
         var entropy: f64 = 0.0;
         var counts = [_]usize{0} ** 256;
         

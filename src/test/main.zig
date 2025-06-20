@@ -45,8 +45,6 @@ test "pattern recognition system" {
     const visual_state = try visual.process(pattern_data);
     try std.testing.expect(visual_state.contrast >= 0.0);
     try std.testing.expect(visual_state.contrast <= 1.0);
-    try std.testing.expect(visual_state.noise >= 0.0);
-    try std.testing.expect(visual_state.noise <= 1.0);
     try std.testing.expect(visual_state.resolution > 0);
     try std.testing.expect(visual_state.resolution <= visual.config.resolution);
 

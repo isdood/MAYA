@@ -99,12 +99,30 @@ pub fn main() !void {
         try graph.edges.append(edge);
     }
 
-    // Animation loop
-    var frame: u32 = 0;
+    // Set up terminal handling
+    const stdin = std.io.getStdIn();
+    
+    // For now, we'll use a simple approach without raw mode
+    // This means the user will need to press Enter after each command
+    // We can enhance this later with platform-specific raw mode handling
+    
+    // Initialize interactive visualizer
+    var visualizer = InteractiveVisualizer.init(allocator, &graph);
+    
+    // Hide cursor
+    if (supports_ansi) {
+        try stdout_writer.writeAll("\x1b[?25l");
+    }
+    
+    // Main loop
+    var frame: u64 = 0;
     var running = true;
     
     while (running) {
-        // Clear screen and move cursor to top-left
+        // Update layout
+        graph.updateLayout();
+        
+        // Clear screen and render
         if (supports_ansi) {
             try stdout_writer.writeAll("\x1b[2J\x1b[H");
         } else {
@@ -115,35 +133,20 @@ pub fn main() !void {
             try stdout_writer.writeAll("\x1b[H");
         }
         
-        // Update title and frame counter
-        try stdout_writer.writeAll("MAYA Memory Visualization (Frame: ");
-        try std.fmt.formatInt(frame, 10, .lower, .{}, stdout_writer);
-        try stdout_writer.writeAll(")\nTerminal: ");
-        try stdout_writer.writeAll(if (is_tty) "TTY" else "Not a TTY");
-        try stdout_writer.writeAll("  ANSI: ");
-        try stdout_writer.writeAll(if (supports_ansi) "Yes" else "No");
-        try stdout_writer.writeAll("\n\n");
-        
-        // Update node positions with force-directed layout
-        graph.updateLayout();
-        
-        // Add some subtle animation
-        if (frame % 20 == 0) {
-            // Make a node move slightly
-            if (graph.nodes.getPtr(4)) |node| { // Task node
-                node.x += 0.5 * @sin(@as(f32, @floatFromInt(frame)) * 0.1);
-            }
-        }
+        // Render the visualization
+        try visualizer.render(stdout_writer);
         
         // Print frame counter
         try stdout_writer.print("Frame: {}\n", .{frame});
         
-        // Check for input (non-blocking)
-        var input_buf: [16]u8 = undefined;
-        if (stdin.read(&input_buf) catch null) |bytes_read| {
-            const input = input_buf[0..bytes_read];
-            if (!visualizer.handleInput(input)) {
-                running = false; // Quit if handleInput returns false
+        // Check for input (blocking for now, will make non-blocking later)
+        if (frame % 10 == 0) { // Only check for input every 10 frames
+            var input_buf: [16]u8 = undefined;
+            if (stdin.read(&input_buf) catch null) |bytes_read| {
+                const input = input_buf[0..bytes_read];
+                if (!visualizer.handleInput(input)) {
+                    running = false; // Quit if handleInput returns false
+                }
             }
         }
         

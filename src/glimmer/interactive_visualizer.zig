@@ -34,11 +34,15 @@ pub const InteractiveVisualizer = struct {
     
     /// Handle user input
     pub fn handleInput(self: *InteractiveVisualizer, input: []const u8) bool {
-        if (input.len == 0) return false;
+        if (input.len == 0) return true;
         
-        const key = input[0];
+        // Handle Enter key (newline or carriage return)
+        if (input[0] == '\n' or input[0] == '\r') {
+            // Just continue if Enter is pressed
+            return true;
+        }
         
-        // Handle arrow keys for panning
+        // Handle arrow keys for panning (ANSI escape sequences)
         if (input.len >= 3 and input[0] == '\x1b' and input[1] == '[') {
             switch (input[2]) {
                 'A' => { self.offset_y -= 10.0 / self.scale; return true; }, // Up
@@ -49,30 +53,52 @@ pub const InteractiveVisualizer = struct {
             }
         }
         
-        // Handle zoom in/out with +/-
+        // Handle single character commands
+        const key = input[0];
         switch (key) {
-            '+' => { 
+            '+', '=' => { 
                 self.scale *= 1.2; 
                 return true; 
             },
-            '-' => { 
+            '-', '_' => { 
                 self.scale = @max(0.1, self.scale / 1.2);
                 return true; 
             },
-            'r' => { 
+            'r', 'R' => { 
                 // Reset view
                 self.offset_x = 0;
                 self.offset_y = 0;
                 self.scale = 1.0;
                 return true;
             },
-            'q' => {
+            'q', 'Q' => {
                 return false; // Signal to quit
+            },
+            ' ' => {
+                // Toggle node selection (placeholder for now)
+                self.selected_node = null;
+                return true;
+            },
+            'h' => { 
+                self.offset_x -= 10.0 / self.scale; 
+                return true; 
+            },
+            'j' => { 
+                self.offset_y += 10.0 / self.scale; 
+                return true; 
+            },
+            'k' => { 
+                self.offset_y -= 10.0 / self.scale; 
+                return true; 
+            },
+            'l' => { 
+                self.offset_x += 10.0 / self.scale; 
+                return true; 
             },
             else => {}
         }
         
-        return false;
+        return true;
     }
     
     /// Transform screen coordinates to graph coordinates
@@ -105,9 +131,6 @@ pub const InteractiveVisualizer = struct {
     
     /// Render the graph with the current view transform
     pub fn render(self: *const InteractiveVisualizer, writer: anytype) !void {
-        // Save current graph state
-        const original_nodes = self.graph.nodes;
-        
         // Apply view transform to a copy of the graph
         var transformed_graph = try self.graph.clone();
         defer transformed_graph.deinit();
@@ -125,7 +148,8 @@ pub const InteractiveVisualizer = struct {
         
         // Draw UI overlay
         try writer.writeAll("\n");
-        try writer.writeAll("Controls: [Arrows] Pan  [+/-] Zoom  [R] Reset  [Q] Quit\n");
+        try writer.writeAll("Controls: [Arrows/HJKL] Pan  [+/-] Zoom  [R] Reset  [Q] Quit\n");
+        try writer.writeAll("Press Enter after each command\n");
         
         // Show selected node info
         if (self.selected_node) |node_id| {
@@ -136,6 +160,8 @@ pub const InteractiveVisualizer = struct {
                     @tagName(node.memory_type),
                 });
             }
+        } else {
+            try writer.writeAll("No node selected. Use arrow keys to navigate.\n");
         }
     }
-}
+};
