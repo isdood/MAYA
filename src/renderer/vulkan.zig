@@ -294,9 +294,15 @@ pub const VulkanRenderer = struct {
         vk.vkDestroyRenderPass(self.device, self.render_pass, null);
 
         // Clean up depth resources
-        vk.vkDestroyImageView(self.device, self.depth_image_view, null);
-        vk.vkDestroyImage(self.device, self.depth_image, null);
-        vk.vkFreeMemory(self.device, self.depth_image_memory, null);
+        if (self.depth_image_view != null) {
+            vk.vkDestroyImageView(self.device, self.depth_image_view, null);
+        }
+        if (self.depth_image != null) {
+            vk.vkDestroyImage(self.device, self.depth_image, null);
+        }
+        if (self.depth_image_memory != null) {
+            vk.vkFreeMemory(self.device, self.depth_image_memory, null);
+        }
 
         // Clean up swapchain resources
         for (self.swapchain_image_views) |image_view| {
@@ -584,6 +590,7 @@ pub const VulkanRenderer = struct {
     }
 
     fn createDepthResources(self: *Self) !void {
+        std.log.info("[Vulkan] Creating depth resources: swapchain extent = {d}x{d}", .{self.swapchain_extent.width, self.swapchain_extent.height});
         const depth_format = try self.findDepthFormat();
 
         // Create depth image with exact same dimensions as swapchain images
@@ -612,6 +619,7 @@ pub const VulkanRenderer = struct {
         if (vk.vkCreateImage(self.device, &image_info, null, &self.depth_image) != vk.VK_SUCCESS) {
             return error.ImageCreationFailed;
         }
+        std.log.info("[Vulkan] Depth image created: {d}x{d}", .{image_info.extent.width, image_info.extent.height});
 
         var mem_requirements: vk.VkMemoryRequirements = undefined;
         vk.vkGetImageMemoryRequirements(self.device, self.depth_image, &mem_requirements);
@@ -1665,6 +1673,7 @@ pub const VulkanRenderer = struct {
             glfw.glfwGetFramebufferSize(self.window, &width, &height);
             glfw.glfwWaitEvents();
         }
+        std.log.info("[Vulkan] Resizing: window size = {d}x{d}", .{width, height});
 
         _ = vk.vkDeviceWaitIdle(self.device);
 
@@ -1673,6 +1682,7 @@ pub const VulkanRenderer = struct {
         try self.createSwapChain();
         try self.createImageViews();
         try self.createRenderPass();
+        try self.createDepthResources();
         try self.createGraphicsPipeline();
         try self.createFramebuffers();
         try self.createCommandBuffers();

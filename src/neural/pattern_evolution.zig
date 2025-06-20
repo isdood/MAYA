@@ -199,13 +199,13 @@ pub const PatternEvolution = struct {
 
     /// Mutate pattern
     fn mutatePattern(self: *PatternEvolution, pattern_data: []const u8) ![]const u8 {
-        var mutated = try self.allocator.dupe(u8, pattern_data);
+        const mutated = try self.allocator.dupe(u8, pattern_data);
         errdefer self.allocator.free(mutated);
 
         // Apply mutations based on mutation rate
         for (mutated) |*byte| {
             if (self.shouldMutate()) {
-                byte.* = @truncate(u8, std.crypto.random.int(u8));
+                byte.* = @as(u8, @truncate(std.crypto.random.int(u8)));
             }
         }
 
@@ -224,22 +224,23 @@ pub const PatternEvolution = struct {
         const n = population.len;
 
         // Calculate average Hamming distance
-        for (population) |individual1, i| {
+        for (0..population.len) |i| {
+            const individual1 = population[i];
             for (population[i + 1..]) |individual2| {
                 diversity += self.calculateHammingDistance(individual1, individual2);
             }
         }
 
-        return diversity / (@intToFloat(f64, n * (n - 1)) / 2.0);
+        return diversity / (@as(f64, @floatFromInt(n * (n - 1))) / 2.0);
     }
 
     /// Calculate convergence
-    fn calculateConvergence(self: *PatternEvolution, state: *EvolutionState) f64 {
+    fn calculateConvergence(_: *PatternEvolution, state: *EvolutionState) f64 {
         return state.fitness;
     }
 
     /// Determine evolution type
-    fn determineEvolutionType(self: *PatternEvolution, state: pattern_synthesis.SynthesisState) EvolutionType {
+    fn determineEvolutionType(_: *PatternEvolution, state: pattern_synthesis.SynthesisState) EvolutionType {
         return switch (state.pattern_type) {
             .Quantum => .Quantum,
             .Visual => .Visual,
@@ -254,7 +255,7 @@ pub const PatternEvolution = struct {
     }
 
     /// Calculate Hamming distance
-    fn calculateHammingDistance(self: *PatternEvolution, data1: []const u8, data2: []const u8) f64 {
+    fn calculateHammingDistance(_: *PatternEvolution, data1: []const u8, data2: []const u8) f64 {
         var distance: usize = 0;
         const min_len = @min(data1.len, data2.len);
 
@@ -264,7 +265,7 @@ pub const PatternEvolution = struct {
             }
         }
 
-        return @intToFloat(f64, distance) / @intToFloat(f64, min_len);
+        return @as(f64, @floatFromInt(distance)) / @as(f64, @floatFromInt(min_len));
     }
 };
 

@@ -1,4 +1,12 @@
-{
-    .name = "maya",
-    .version = "0.1.0"
+.{
+    .name = .maya,
+    .version = "0.1.0",
+    .dependencies = .{
+        .std = .{
+            .url = "https://github.com/ziglang/zig/archive/refs/tags/0.11.0.tar.gz",
+            .hash = "N-V-__8AANRm4Amco5bLbVcfTsTaUThc82gM19R7AVVtJuRx",
+        },
+    },
+    .paths = .{""},
+    .fingerprint = 0x6555c2a4e6139062,
 }

@@ -83,6 +83,36 @@ pub fn build(b: *std.Build) void {
     const pattern_recognition_step = b.step("pattern-recognition", "Run the pattern recognition example");
     pattern_recognition_step.dependOn(&run_pattern_recognition.step);
 
+    // Pattern visualization example
+    const pattern_visualization_exe = b.addExecutable(.{
+        .name = "pattern_visualization",
+        .root_source_file = .{ .cwd_relative = "examples/pattern_visualization.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    pattern_visualization_exe.root_module.addImport("neural", neural_mod);
+    pattern_visualization_exe.root_module.addImport("visualization", b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/visualization/pattern_visualizer.zig" },
+    }));
+
+    const run_pattern_visualization = b.addRunArtifact(pattern_visualization_exe);
+    const pattern_visualization_step = b.step("run:pattern-visualization", "Run pattern visualization example");
+    pattern_visualization_step.dependOn(&run_pattern_visualization.step);
+
+    // Simple pattern evolution example
+    const simple_pattern_evolution_exe = b.addExecutable(.{
+        .name = "simple_pattern_evolution",
+        .root_source_file = .{ .cwd_relative = "examples/simple_pattern_evolution.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    simple_pattern_evolution_exe.root_module.addImport("neural", neural_mod);
+    simple_pattern_evolution_exe.root_module.addImport("quantum_types", quantum_types_mod);
+
+    const run_simple_pattern_evolution = b.addRunArtifact(simple_pattern_evolution_exe);
+    const simple_pattern_evolution_step = b.step("run:simple-pattern-evolution", "Run simple pattern evolution example");
+    simple_pattern_evolution_step.dependOn(&run_simple_pattern_evolution.step);
+
     const colors_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
         .imports = &.{
@@ -132,7 +162,7 @@ pub fn build(b: *std.Build) void {
     
     // Main tests
     const main_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/test.zig" },
+        .root_source_file = .{ .cwd_relative = "src/test.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -158,6 +188,22 @@ pub fn build(b: *std.Build) void {
     const run_integration_tests = b.addRunArtifact(integration_tests);
     const test_integration_step = b.step("test:integration", "Run integration tests");
     test_integration_step.dependOn(&run_integration_tests.step);
+
+    // Pattern evolution tests
+    const pattern_evolution_tests = b.addTest(.{
+        .root_source_file = .{ .cwd_relative = "test/pattern_evolution_test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    pattern_evolution_tests.root_module.addImport("neural", neural_mod);
+    pattern_evolution_tests.root_module.addImport("quantum_types", quantum_types_mod);
+
+    const run_pattern_evolution_tests = b.addRunArtifact(pattern_evolution_tests);
+    const test_pattern_evolution_step = b.step("test:pattern-evolution", "Run pattern evolution tests");
+    test_pattern_evolution_step.dependOn(&run_pattern_evolution_tests.step);
+    
+    // Make the main test step depend on all test steps
+    test_step.dependOn(test_pattern_evolution_step);
 
     // Pattern Evolution Benchmark
     const pattern_evolution_bench_exe = b.addExecutable(.{
