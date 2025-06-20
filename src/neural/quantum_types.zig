@@ -16,7 +16,7 @@ pub const QuantumState = struct {
     
     /// Initialize a new quantum state with n qubits
     pub fn init(allocator: std.mem.Allocator, num_qubits: usize) !@This() {
-        var qubits = try allocator.alloc(Qubit, num_qubits);
+        const qubits = try allocator.alloc(Qubit, num_qubits);
         @memset(qubits, Qubit{ .amplitude0 = 1.0, .amplitude1 = 0.0 });
         
         return .{
@@ -215,7 +215,7 @@ pub const QuantumCircuit = struct {
     }
     
     /// Apply a single gate operation to the quantum state
-    fn applyGate(self: *const @This(), state: *QuantumState, op: Operation) !void {
+    fn applyGate(_: *const @This(), state: *QuantumState, op: Operation) !void {
         // For now, just apply directly to the target qubit
         // In a real implementation, this would handle controlled gates and entanglement
         if (op.target_qubit >= state.qubits.len) return error.InvalidQubitIndex;
