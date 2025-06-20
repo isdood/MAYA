@@ -38,6 +38,47 @@ pub fn build(b: *std.Build) void {
     const memory_vis_step = b.step("memory-vis", "Run the memory visualization example");
     memory_vis_step.dependOn(&run_memory_vis.step);
 
+    // Create quantum types module
+    const quantum_types_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/quantum_types.zig" },
+        .imports = &.{},
+    });
+
+    // 🧠 Neural Module with Pattern Recognition
+    const neural_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/mod.zig" },
+        .imports = &.{
+            .{ .name = "starweave", .module = starweave_mod },
+            .{ .name = "glimmer", .module = glimmer_mod },
+            .{ .name = "quantum_types", .module = quantum_types_mod },
+        },
+    });
+    
+    // Pattern recognition is part of the neural module
+    const pattern_recognition_mod = neural_mod;
+
+    // Add these after neural_mod definition:
+    const quantum_processor_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/quantum_processor.zig" },
+        .imports = &.{
+            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+        },
+    });
+    const visual_processor_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/visual_processor.zig" },
+        .imports = &.{
+            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+        },
+    });
+    const neural_processor_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/neural_processor.zig" },
+        .imports = &.{
+            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
+            .{ .name = "quantum_processor", .module = quantum_processor_mod },
+            .{ .name = "visual_processor", .module = visual_processor_mod },
+        },
+    });
+
     // Pattern Recognition Example
     const pattern_recognition_exe = b.addExecutable(.{
         .name = "pattern_recognition",
@@ -51,11 +92,6 @@ pub fn build(b: *std.Build) void {
     const run_pattern_recognition = b.addRunArtifact(pattern_recognition_exe);
     const pattern_recognition_step = b.step("pattern-recognition", "Run the pattern recognition example");
     pattern_recognition_step.dependOn(&run_pattern_recognition.step);
-
-    // TODO: Add other neural modules as they're implemented
-    // const quantum_processor_mod = ...
-    // const visual_processor_mod = ...
-    // const neural_processor_mod = ...
 
     const colors_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },
@@ -78,9 +114,11 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("neural", neural_mod);
     exe.root_module.addImport("colors", colors_mod);
     exe.root_module.addImport("pattern_recognition", pattern_recognition_mod);
-    exe.root_module.addImport("quantum_processor", quantum_processor_mod);
-    exe.root_module.addImport("visual_processor", visual_processor_mod);
-    exe.root_module.addImport("neural_processor", neural_processor_mod);
+    
+    // TODO: Add other neural modules as they're implemented
+    // exe.root_module.addImport("quantum_processor", quantum_processor_mod);
+    // exe.root_module.addImport("visual_processor", visual_processor_mod);
+    // exe.root_module.addImport("neural_processor", neural_processor_mod);
 
     // 🎨 System Library Integration
     exe.linkSystemLibrary("glfw");

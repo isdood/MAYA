@@ -4,8 +4,8 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const pattern_recognition = @import("pattern_recognition");
 const crystal_computing = @import("crystal_computing.zig");
+const quantum_types = @import("quantum_types.zig");
 
 /// Quantum processor configuration
 pub const QuantumConfig = struct {
@@ -28,7 +28,7 @@ pub const QuantumProcessor = struct {
     // System state
     config: QuantumConfig,
     allocator: std.mem.Allocator,
-    state: pattern_recognition.QuantumState,
+    state: quantum_types.QuantumState,
     crystal: ?*crystal_computing.CrystalProcessor,
 
     pub fn init(allocator: std.mem.Allocator) !*QuantumProcessor {
@@ -36,7 +36,7 @@ pub const QuantumProcessor = struct {
         processor.* = QuantumProcessor{
             .config = QuantumConfig{},
             .allocator = allocator,
-            .state = pattern_recognition.QuantumState{
+            .state = quantum_types.QuantumState{
                 .coherence = 1.0,
                 .entanglement = 0.0,
                 .superposition = 0.0,
@@ -60,9 +60,9 @@ pub const QuantumProcessor = struct {
     }
 
     /// Process pattern data through quantum processor
-    pub fn process(self: *QuantumProcessor, pattern_data: []const u8) !pattern_recognition.QuantumState {
+    pub fn process(self: *QuantumProcessor, pattern_data: []const u8) !quantum_types.QuantumState {
         // Initialize quantum state
-        var state = pattern_recognition.QuantumState{
+        var state = quantum_types.QuantumState{
             .coherence = 0.0,
             .entanglement = 0.0,
             .superposition = 0.0,
@@ -86,7 +86,7 @@ pub const QuantumProcessor = struct {
     }
 
     /// Process pattern in quantum state
-    fn processQuantumState(self: *QuantumProcessor, state: *pattern_recognition.QuantumState, pattern_data: []const u8) !void {
+    fn processQuantumState(self: *QuantumProcessor, state: *quantum_types.QuantumState, pattern_data: []const u8) !void {
         // Calculate quantum coherence
         state.coherence = self.calculateCoherence(pattern_data);
 
@@ -98,7 +98,7 @@ pub const QuantumProcessor = struct {
     }
 
     /// Enhance quantum state with crystal computing results
-    fn enhanceWithCrystalState(self: *QuantumProcessor, state: *pattern_recognition.QuantumState, crystal_state: crystal_computing.CrystalState) !void {
+    fn enhanceWithCrystalState(self: *QuantumProcessor, state: *quantum_types.QuantumState, crystal_state: crystal_computing.CrystalState) !void {
         // Enhance coherence with crystal coherence
         state.coherence = @max(state.coherence, crystal_state.coherence);
 
@@ -148,7 +148,7 @@ pub const QuantumProcessor = struct {
     }
 
     /// Validate quantum state
-    fn isValidState(self: *QuantumProcessor, state: pattern_recognition.QuantumState) bool {
+    fn isValidState(self: *QuantumProcessor, state: quantum_types.QuantumState) bool {
         return state.coherence >= self.config.min_coherence and
                state.entanglement <= self.config.max_entanglement and
                state.superposition >= 0.0 and

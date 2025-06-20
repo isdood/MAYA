@@ -20,8 +20,9 @@ pub fn main() !void {
     const test_pattern = try createTestPattern(allocator, "test1");
     defer test_pattern.deinit(allocator);
     
-    std.debug.print("Pattern '{}' created with confidence: {d:.2}\n", 
-        .{test_pattern.id, test_pattern.confidence});
+    std.debug.print("Created test pattern with ID: {s}\n", .{test_pattern.id});
+    std.debug.print("Features: {any}\n", .{test_pattern.features});
+    std.debug.print("Confidence: {d}\n", .{test_pattern.confidence});
 
     // Example of giving feedback
     const feedback = PatternFeedback{
@@ -37,7 +38,7 @@ pub fn main() !void {
 fn createTestPattern(allocator: std.mem.Allocator, id: []const u8) !Pattern {
     // Create sample features (just random values for demonstration)
     const features = try allocator.alloc(f32, 10);
-    for (features) |*feature, i| {
+    for (features, 0..) |*feature, i| {
         feature.* = @as(f32, @floatFromInt(i)) * 0.1;
     }
     

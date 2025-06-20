@@ -4,7 +4,7 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const pattern_recognition = @import("pattern_recognition");
+const pattern_recognition = @import("pattern_recognition/mod.zig");
 
 /// Visual processor configuration
 pub const VisualConfig = struct {
