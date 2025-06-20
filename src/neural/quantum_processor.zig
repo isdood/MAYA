@@ -267,9 +267,11 @@ pub const QuantumProcessor = struct {
         }
     }
     
-    /// Execute circuit with performance optimizations
+    /// Execute an optimized quantum circuit with memory access optimizations
     fn executeOptimizedCircuit(self: *Self, circuit: *quantum_types.QuantumCircuit, 
                              state: *quantum_types.QuantumState) !void {
+        const complex_size = @sizeOf(quantum_types.Complex);
+        const elements_per_block = self.config.cache_block_size / complex_size;
         if (self.config.optimize_circuit) {
             try circuit.optimize();
         }
@@ -281,12 +283,64 @@ pub const QuantumProcessor = struct {
         }
     }
     
-    /// Optimized pattern measurement
-    fn measurePatternOptimized(self: *Self, state: *const quantum_types.QuantumState, 
+    /// Measure the quantum state with cache-optimized sampling
+    fn measurePatternOptimized(self: *Self, state: *quantum_types.QuantumState, 
                              pattern: []const u8) !quantum_types.PatternMatch {
-        _ = pattern; // Used in more complex measurements
-        var rng = std.rand.DefaultPrng.init(@bitCast(std.time.nanoTimestamp()));
-        return state.measure(&rng.random());
+        _ = pattern; // Not used in this simplified version
+        
+        const complex_size = @sizeOf(quantum_types.Complex);
+        const elements_per_block = self.config.cache_block_size / complex_size;
+        const num_blocks = (state.amplitudes.len + elements_per_block - 1) / elements_per_block;
+        
+        // Calculate probabilities with cache blocking
+        var probabilities = try self.allocator.alloc(f64, state.amplitudes.len);
+        defer self.allocator.free(probabilities);
+        
+        var total_prob: f64 = 0.0;
+        for (0..num_blocks) |block| {
+            const start = block * elements_per_block;
+            const end = @min(start + elements_per_block, state.amplitudes.len);
+            
+            // Prefetch next block
+            if (block + 1 < num_blocks) {
+                const next_block_start = (block + 1) * elements_per_block;
+                const next_block_end = @min(next_block_start + elements_per_block, state.amplitudes.len);
+                @prefetch(&state.amplitudes[next_block_start], .{ .rw = .read, .locality = 2, .cache = .data });
+                @prefetch(&probabilities[next_block_start], .{ .rw = .write, .locality = 2, .cache = .data });
+            }
+            
+            // Process current block
+            for (start..end) |i| {
+                const prob = state.amplitudes[i].norm2();
+                probabilities[i] = prob;
+                total_prob += prob;
+            }
+        }
+        
+        // Normalize probabilities
+        const inv_total = 1.0 / total_prob;
+        for (0..num_blocks) |block| {
+            const start = block * elements_per_block;
+            const end = @min(start + elements_per_block, state.amplitudes.len);
+            
+            // Process current block with prefetching next
+            for (start..end) |i| {
+                probabilities[i] *= inv_total;
+                if (i + 4 < state.amplitudes.len) {
+                    @prefetch(&probabilities[i + 4], .{ .rw = .read, .locality = 1, .cache = .data });
+                }
+            }
+        }
+        
+        // Simple measurement - collapse to a basis state
+        const measurement = try state.measure(&probabilities);
+        
+        // Create a pattern match result
+        return quantum_types.PatternMatch{
+            .fidelity = 1.0,  // Placeholder
+            .confidence = 1.0, // Placeholder
+            .measurement = measurement,
+        };
     }
     
     /// Encode a pattern into a quantum state
@@ -316,18 +370,40 @@ pub const QuantumProcessor = struct {
         }
     }
     
-    /// Apply optimized quantum pattern matching algorithm
+    /// Apply optimized quantum pattern matching algorithm with cache-aware processing
     fn applyOptimizedPatternMatching(self: *Self, circuit: *quantum_types.QuantumCircuit, 
                                    pattern: []const u8) !void {
         const num_qubits = circuit.num_qubits;
+        const complex_size = @sizeOf(quantum_types.Complex);
+        const elements_per_block = self.config.cache_block_size / complex_size;
         
-        // Apply optimized gates based on pattern characteristics
+        // Apply optimized gates with cache awareness
         if (self.config.use_simd) {
-            // Use parallel gate application
-            try circuit.applyParallelGates(.H, 0, num_qubits);
+            // Process qubits in blocks that fit in cache
+            var qubit = @as(usize, 0);
+            while (qubit < num_qubits) {
+                const block_end = @min(qubit + elements_per_block, num_qubits);
+                
+                // Prefetch next block of qubits
+                if (block_end < num_qubits) {
+                    const next_block_start = block_end;
+                    const next_block_end = @min(next_block_start + elements_per_block, num_qubits);
+                    for (next_block_start..next_block_end) |i| {
+                        @prefetch(&circuit.qubits[i], .{ .rw = .read, .locality = 3, .cache = .data });
+                    }
+                }
+                
+                // Process current block with SIMD
+                try circuit.applyParallelGates(.H, qubit, block_end);
+                qubit = block_end;
+            }
         } else {
-            // Standard gate application
+            // Standard gate application with prefetching
             for (0..num_qubits) |i| {
+                // Prefetch next few qubits
+                if (i + 4 < num_qubits) {
+                    @prefetch(&circuit.qubits[i + 4], .{ .rw = .read, .locality = 2, .cache = .data });
+                }
                 try circuit.applyGate(.H, i);
             }
         }
