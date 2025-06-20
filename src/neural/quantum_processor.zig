@@ -449,460 +449,251 @@ pub const QuantumConfig = struct {
         return std.math.ceilPowerOfTwo(usize, best_block_size) catch best_block_size;
     }
     
-    /// Calculate optimal prefetch distance based on memory latency and block size
-    pub fn calculatePrefetchDistance(self: *const QuantumConfig, block_size: usize, access_stride: usize) usize {
-        // Base prefetch distance on memory latency and processing speed
-        const latency_cycles: usize = 200; // Typical memory latency in cycles
-        const cycles_per_byte: f64 = 0.1;  // Rough estimate of processing speed
+    /// Calculate optimal thread count based on problem size and CPU capabilities
+    pub fn calculateOptimalThreads(self: *const QuantumConfig, problem_size: usize) usize {
+        const cpu_count = std.Thread.getCpuCount() catch 1;
+        const threads_per_core = if (self.memory_hierarchy.has_smt) 2 else 1;
+        const physical_cores = cpu_count / threads_per_core;
         
-        // Calculate theoretical optimal distance
-        let distance = @as(usize, @intFromFloat(
-            @as(f64, @floatFromInt(latency_cycles)) * 
-            self.prefetch_aggressiveness / 
-            (cycles_per_byte * @as(f64, @floatFromInt(access_stride)))
-        ));
-        
-        // Apply architecture-specific adjustments
-        if (self.stream_detection) {
-            distance = @min(distance, 8); // Limit for stream detection
+        // For very small problems, use fewer threads to avoid overhead
+        if (problem_size <= 4) { // 1-4 qubits (2-16 states)
+            return @min(1, physical_cores);
+        } 
+        // For small problems, use up to half the cores
+        else if (problem_size <= 8) { // 5-8 qubits (32-256 states)
+            return @max(1, @min(2, physical_cores / 2));
         }
-        
-        // Ensure minimum distance
-        distance = @max(distance, 1);
-        
-        // Align to cache line boundaries
-        const cache_line_size = self.cache_line_sizes[0];
-        distance = ((distance + cache_line_size - 1) / cache_line_size) * cache_line_size;
-        
-        return distance;
+        // For medium problems, use all physical cores
+        else if (problem_size <= 12) { // 9-12 qubits (512-4096 states)
+            return physical_cores;
+        }
+        // For large problems, use all available threads
+        else {
+            return cpu_count;
+        }
     }
-
-    // Crystal computing parameters
-    use_crystal_computing: bool = true,  // Enable crystal computing integration
-    crystal_config: crystal_computing.CrystalConfig = .{},
-
-    // Performance settings
-    batch_size: usize = 32,              // Batch size for pattern processing
-    timeout_ms: u32 = 500,               // Maximum processing time per pattern (ms)
     
-    // Quantum circuit settings
-    max_circuit_depth: usize = 100,       // Maximum circuit depth
-    use_parallel_execution: bool = true,  // Enable parallel circuit execution
-    optimize_circuit: bool = true,        // Enable circuit optimization
-    use_simd: bool = true,               // Use SIMD optimizations where available
-    
-    // Pattern matching settings
-    grover_iterations: usize = 3,         // Number of Grover iterations for search
-    amplitude_estimation_qubits: usize = 5, // Qubits for amplitude estimation
-    
-    // Cache settings
-    cache_line_size: usize = 64,          // Size of a cache line in bytes
-    prefetch_distance: usize = 2,         // Number of cache lines to prefetch
-    min_block_size: usize = 1024,         // Minimum block size (1KB)
-    max_block_size: usize = 64 * 1024,    // Maximum block size (64KB)
-    num_cache_levels: usize = 3,          // Number of cache levels to consider
-    cache_sizes: [3]usize = [3]usize{ 32 * 1024, 256 * 1024, 8 * 1024 * 1024 }, // L1, L2, L3 cache sizes
-    cache_line_sizes: [3]usize = [3]usize{ 64, 64, 64 }, // Cache line sizes per level
-    
-    // Cache optimization parameters
-    cache_associativity: usize = 8,       // Typical cache associativity
-    cache_write_allocate: bool = true,    // Whether cache uses write-allocate policy
-    cache_write_back: bool = true,        // Whether cache uses write-back policy
-    
-    // Block size tuning parameters
-    min_block_size_ratio: f64 = 0.125,     // Minimum block size as fraction of cache
-    max_block_size_ratio: f64 = 0.5,       // Maximum block size as fraction of cache
-    block_size_aggression: f64 = 0.7,      // Aggressiveness of block size scaling (0.0-1.0)
-    
-    // Prefetch tuning parameters
-    prefetch_distance: usize = 2,          // Number of cache lines to prefetch ahead
-    prefetch_level: u2 = 3,                // Cache level to prefetch into (1-3)
-    prefetch_aggressiveness: f64 = 0.7,    // Aggressiveness of prefetching (0.0-1.0)
-    
-    // Architecture-specific tuning
-    cache_line_prefetchers: u8 = 0b111,    // Bitmask of available hardware prefetchers
-    stream_detection: bool = true,         // Enable stream detection for prefetching
-    spatial_locality: bool = true,         // Optimize for spatial locality
-    temporal_locality: bool = true,        // Optimize for temporal locality
-};
-
-/// Quantum processor state
-pub const QuantumProcessor = struct {
-    const Self = @This();
-
-    // System state
-    allocator: Allocator,
-    config: QuantumConfig,
-    crystal: ?*crystal_computing.CrystalProcessor,
-    thread_pool: ?*std.Thread.Pool,
-    state: quantum_types.QuantumState,
-    
-    /// Initialize a new quantum processor with performance optimizations
-    pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
-        // Make config mutable for cache detection
-        var mutable_config = config;
-        mutable_config.detectCacheHierarchy();
+    /// Get the optimal prefetch distance based on memory latency and access pattern
+    pub fn calculatePrefetchDistance(self: *const Self, block_size: usize, element_size: usize) usize {
+        // Get architecture-specific base prefetch distance
+        var prefetch_dist: usize = 8; // Default value
         
-        // Initialize thread pool if parallel execution is enabled
-        var thread_pool: ?*std.Thread.Pool = null;
-        if (mutable_config.use_parallel_execution) {
-            const num_threads = @min(
-                mutable_config.max_parallel_qubits, 
-                std.Thread.getCpuCount() catch 1
-            );
-            thread_pool = try allocator.create(std.Thread.Pool);
-            try thread_pool.?.init({
-                .allocator = allocator,
-                .n_jobs = num_threads,
-            });
-            
-            // Set thread affinity for better cache locality
-            if (builtin.os.tag == .linux) {
-                const cpu_set = std.os.linux.cpu_set{};
-                @memset(&cpu_set, 0);
-                for (0..num_threads) |i| {
-                    cpu_set.set(i % @as(usize, @intCast(std.Thread.getCpuCount() catch 1)));
-                }
-                // Note: Actual thread affinity setting would go here
-            }
-        }
-        const self = try allocator.create(Self);
-        
-        // Initialize thread pool if parallel execution is enabled
-        var thread_pool: ?*std.Thread.Pool = null;
-        if (config.use_parallel_execution) {
-            const num_threads = @min(
-                config.max_parallel_qubits, 
-                std.Thread.getCpuCount() catch 1
-            );
-            thread_pool = try allocator.create(std.Thread.Pool);
-            try thread_pool.?.init({
-                .allocator = allocator,
-                .n_jobs = num_threads,
-            });
-            
-            // Set thread affinity for better cache locality
-            if (builtin.os.tag == .linux) {
-                const cpu_set = std.os.linux.cpu_set{};
-                @memset(&cpu_set, 0);
-                for (0..num_threads) |i| {
-                    cpu_set.set(i % @as(usize, @intCast(std.Thread.getCpuCount() catch 1)));
-                }
-                // Note: Actual thread affinity setting would go here
-            }
-        }
-        
-        // Initialize crystal computing if enabled
-        var crystal: ?*crystal_computing.CrystalProcessor = null;
-        if (config.use_crystal_computing) {
-            crystal = try crystal_computing.CrystalProcessor.init(allocator);
-        }
-        
-        self.* = .{
-            .allocator = allocator,
-            .config = config,
-            .crystal = crystal,
-            .thread_pool = thread_pool,
-            .state = quantum_types.QuantumState{
-                .coherence = 1.0,
-                .entanglement = 0.0,
-                .superposition = 0.0,
-                .qubits = &[0]quantum_types.Qubit{},
+        // Adjust based on CPU architecture
+        switch (self.arch_optimizations.arch) {
+            .skylake, .zen3, .zen4 => {
+                // Modern CPUs with good prefetchers
+                prefetch_dist = 12;
             },
-        };
-        
-        return self;
-    }
-    
-    /// Deinitialize the quantum processor and free all resources
-    pub fn deinit(self: *Self) void {
-        // Free any allocated qubits
-        if (self.state.qubits.len > 0) {
-            self.allocator.free(self.state.qubits);
+            .firestorm, .avalanche => {
+                // Apple Silicon has aggressive prefetchers
+                prefetch_dist = 8;
+            },
+            else => {
+                // Conservative default for unknown architectures
+                prefetch_dist = 6;
+            },
         }
         
-        // Free crystal resources if enabled
-        if (self.crystal) |crystal| {
-            // The crystal's deinit method handles its own cleanup
-            crystal.deinit();
-        }
+        // Adjust based on block size and element size
+        const elements_per_cache_line = 64 / @max(1, element_size);
+        const cache_lines_per_block = (block_size + elements_per_cache_line - 1) / elements_per_cache_line;
         
-        // Free thread pool if it exists
-        if (self.thread_pool) |pool| {
-            pool.deinit();
-            self.allocator.destroy(pool);
-        }
+        // Scale prefetch distance based on block size and cache hierarchy
+        prefetch_dist = @min(prefetch_dist, cache_lines_per_block * 2);
         
-        // Free self
-        self.allocator.destroy(self);
+        // Ensure minimum prefetch distance
+        return @max(1, @min(32, prefetch_dist));
     }
 
-    /// Process a pattern using quantum algorithms with performance optimizations
-    pub fn processPattern(self: *Self, pattern: []const u8) !quantum_types.PatternMatch {
-        if (pattern.len == 0) return error.InvalidPattern;
-        
-        // Calculate required number of qubits with optimization for small patterns
-        const num_qubits = @min(
-            self.config.max_parallel_qubits,
-            if (pattern.len <= 2) 1 else @as(usize, @intFromFloat(@log2(@as(f64, @floatFromInt(pattern.len))))) + 1
-        );
-        
-        // Use arena allocator for temporary allocations
-        var arena = std.heap.ArenaAllocator.init(self.allocator);
-        defer arena.deinit();
-        const allocator = arena.allocator();
-        
-        // Initialize quantum state with optimized memory layout
-        var state = try quantum_types.QuantumState.init(allocator, num_qubits);
-        
-        // Encode the pattern using optimized encoding
-        try self.encodePatternOptimized(&state, pattern);
-        
-        // Create and optimize quantum circuit
-        var circuit = quantum_types.QuantumCircuit.init(allocator, num_qubits);
-        
-        // Apply optimized pattern matching
-        try self.applyOptimizedPatternMatching(&circuit, pattern);
-        
-        // Execute the circuit with optimizations
-        try self.executeOptimizedCircuit(&circuit, &state);
-        
-        // Process through crystal computing if enabled
-        if (self.crystal) |crystal| {
-            const crystal_state = try crystal.process(pattern);
-            try self.enhanceWithCrystalState(&state, crystal_state);
+    /// Get the prefetch level (0=L1, 1=L2, 2=L3, 3=RAM)
+    pub fn getPrefetchLevel(self: *const Self) u2 {
+        // For very small qubit counts (1-2 qubits), no prefetching
+        if (self.state_size <= 4) { // 1-2 qubits (2-4 states)
+            return 0; // No prefetching for very small states
         }
         
-        // Measure the result with optimized sampling
-        const match = try self.measurePatternOptimized(&state, pattern);
-        
-        // Validate the match
-        if (!match.isValid()) {
-            return error.InvalidPatternMatch;
+        // For small qubit counts (3-4 qubits), use L1 prefetching
+        if (self.state_size <= 16) { // 3-4 qubits (8-16 states)
+            return 0; // L1 prefetch
         }
         
-        return match;
+        // For medium sizes (5-8 qubits), use L2
+        if (self.state_size <= 256) { // 5-8 qubits (32-256 states)
+            return 1; // L2 prefetch
+        }
+        
+        // For larger sizes (9+ qubits), use L3 or RAM based on cache sizes
+        const l3_size = self.memory_hierarchy.l3_cache_size;
+        const total_data_size = self.state_size * @sizeOf(f64);
+        
+        if (total_data_size <= l3_size / 4) {
+            return 2; // L3 prefetch
+        }
+        
+        return 3; // RAM prefetch (minimal benefit)
     }
-    
-    /// Optimized pattern encoding with adaptive cache-blocking and prefetching
-    fn encodePatternOptimized(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
-        const num_qubits = state.qubits.len;
-        const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
-        const complex_size = @sizeOf(quantum_types.Complex);
         
-        // Calculate adaptive block size based on cache hierarchy and data size
-        const elements_per_block = self.config.calculateBlockSize(num_states, complex_size);
-        const num_blocks = (num_states + elements_per_block - 1) / elements_per_block;
-        
-        // Calculate prefetch distance based on access pattern
-        const prefetch_dist = self.config.calculatePrefetchDistance(elements_per_block, @sizeOf(f64));
-        const prefetch_blocks = @min(4, num_blocks / 8 + 1); // Prefetch up to 4 blocks ahead
-        
-        // Pre-calculate normalization factor with cache blocking
-        var norm: f64 = 0.0;
-        for (0..num_blocks) |block| {
-            const start = block * elements_per_block;
-            const end = @min(start + elements_per_block, num_states);
+/// Normalize the quantum state vector
+fn normalizeState(self: *Self, state: *quantum_types.QuantumState) !void {
+    var norm: f64 = 0.0;
+    const num_states = @as(usize, 1) << @as(u6, @intCast(state.qubits.len));
             
-            // Prefetch next block
-            if (block + 1 < num_blocks) {
-                const prefetch_addr = &state.amplitudes[(block + 1) * elements_per_block];
-                @prefetch(prefetch_addr, .{ .rw = .read, .locality = 3, .cache = .data });
-            }
+    // Calculate norm
+    for (0..num_states) |i| {
+        const amp = state.amplitudes[i];
+        norm += amp.re * amp.re + amp.im * amp.im;
+    }
             
-            // Process current block
-            for (start..end) |i| {
-                if (i < pattern.len) {
-                    const val = @as(f64, @floatFromInt(pattern[i])) / 255.0;
-                    norm += val * val;
-                }
-            }
-        }
-            const val = @as(f64, @floatFromInt(pattern[i]));
-            norm += val * val;
-        }
-        norm = @sqrt(norm);
-        
-        // Use SIMD for amplitude calculation if available
-        if (self.config.use_simd and @hasField(@TypeOf(state.qubits[0]), "simd_amplitude")) {
-            // SIMD-optimized path
-            const simd_width = @typeInfo(@TypeOf(state.qubits[0].simd_amplitude[0])).Vector.len;
-            var i: usize = 0;
-            
-            while (i < num_states) : (i += simd_width) {
-                var simd_amp: @Vector(simd_width, f64) = undefined;
-                
-                // Process multiple amplitudes in parallel
-                for (0..simd_width) |j| {
-                    const idx = (i + j) % pattern.len;
-                    const val = if (i + j < num_states) 
-                        @as(f64, @floatFromInt(pattern[idx])) / norm 
-                        else 0.0;
-                    simd_amp[j] = val;
-                }
-                
-                // Store SIMD vector
-                state.qubits[i / simd_width].simd_amplitude = simd_amp;
-            }
-        } else {
-            // Scalar fallback
-            for (0..num_states) |i| {
-                const idx = i % pattern.len;
-                const amplitude = if (norm > 0) 
-                    @as(f64, @floatFromInt(pattern[idx])) / norm 
-                    else 0.0;
-                
-                // Simple encoding for first qubit
-                if (i < pattern.len) {
-                    state.qubits[0].amplitude0 = amplitude;
-                    state.qubits[0].amplitude1 = 1.0 - amplitude;
-                }
-            }
+    // Normalize if needed
+    if (norm > 0.0) {
+        const inv_norm = 1.0 / @sqrt(norm);
+        for (0..num_states) |i| {
+            state.amplitudes[i].re *= inv_norm;
+            state.amplitudes[i].im *= inv_norm;
         }
     }
-    
-    /// Execute an optimized quantum circuit with memory access optimizations
-    fn executeOptimizedCircuit(self: *Self, circuit: *quantum_types.QuantumCircuit, 
-                             state: *quantum_types.QuantumState) !void {
-        const complex_size = @sizeOf(quantum_types.Complex);
-        const elements_per_block = self.config.cache_block_size / complex_size;
-        if (self.config.optimize_circuit) {
-            try circuit.optimize();
-        }
+}
         
-        if (self.thread_pool) |pool| {
-            try circuit.executeParallel(state, pool);
-        } else {
-            try circuit.execute(state);
+/// Apply optimized pattern matching algorithm
+fn applyOptimizedPatternMatching(self: *Self, circuit: *quantum_types.QuantumCircuit, 
+                               pattern: []const u8) !void {
+    // Apply Hadamard to create superposition
+    for (0..circuit.qubits.len) |i| {
+        try circuit.h(i);
+    }
+            
+    // Apply pattern-dependent gates
+    for (pattern, 0..) |_, i| {
+        // Simple pattern encoding - customize based on your needs
+        try circuit.x(i % circuit.qubits.len);
+        try circuit.h(i % circuit.qubits.len);
+    }
+}
+        
+/// Enhance quantum state with crystal computing results
+fn enhanceWithCrystalState(self: *Self, state: *quantum_types.QuantumState, 
+                         crystal_state: *crystal_computing.CrystalState) !void {
+    // Simple enhancement - average the amplitudes
+    const num_states = @as(usize, 1) << @as(u6, @intCast(state.qubits.len));
+    for (0..num_states) |i| {
+        if (i < crystal_state.amplitudes.len) {
+            state.amplitudes[i].re = (state.amplitudes[i].re + crystal_state.amplitudes[i].re) * 0.5;
+            state.amplitudes[i].im = (state.amplitudes[i].im + crystal_state.amplitudes[i].im) * 0.5;
         }
     }
-    
-    /// Measure the quantum state with adaptive cache-blocking and prefetching
-    fn measurePatternOptimized(self: *Self, state: *quantum_types.QuantumState, 
-                             pattern: []const u8) !quantum_types.PatternMatch {
-        _ = pattern; // Not used in this simplified version
-        
-        const complex_size = @sizeOf(quantum_types.Complex);
-        
-        // Calculate adaptive block size based on cache hierarchy and state size
-        const elements_per_block = self.config.calculateBlockSize(
-            state.amplitudes.len, 
-            complex_size
-        );
-        const num_blocks = (state.amplitudes.len + elements_per_block - 1) / elements_per_block;
-        
-        // Calculate probabilities with adaptive cache blocking
-        var probabilities = try self.allocator.alloc(f64, state.amplitudes.len);
-        defer self.allocator.free(probabilities);
-        
-        // First pass: calculate probabilities and total probability
-        var total_prob: f64 = 0.0;
-        for (0..num_blocks) |block| {
-            const start = block * elements_per_block;
-            const end = @min(start + elements_per_block, state.amplitudes.len);
             
-            // Prefetch upcoming blocks based on calculated distance
-            for (1..prefetch_blocks + 1) |prefetch_block| {
-                const target_block = block + prefetch_block;
-                if (target_block >= num_blocks) break;
+    // Renormalize after enhancement
+    try self.normalizeState(state);
                 
-                const prefetch_start = target_block * elements_per_block;
-                const prefetch_end = @min(prefetch_start + elements_per_block, state.amplitudes.len);
-                
-                // Adjust prefetch locality based on distance
-                const locality: u2 = @intCast(@min(3, 4 - prefetch_block));
-                
-                // Prefetch with optimized stride and cache level
-                const stride = self.config.cache_line_sizes[0] / complex_size;
-                var i = prefetch_start;
-                while (i < prefetch_end) : (i += stride) {
-                    @prefetch(
-                        &state.amplitudes[i], 
-                        .{ .rw = .read, .locality = locality, .cache = .data }
-                    );
-                    
-                    if (i < probabilities.len) {
-                        @prefetch(
-                            &probabilities[i],
-                            .{ .rw = .write, .locality = locality, .cache = .data }
-                        );
-                    }
-                }
+}
             }
             
-            // Process current block with potential SIMD optimization
-            for (start..end) |i| {
-                const prob = state.amplitudes[i].norm2();
-                probabilities[i] = prob;
-                total_prob += prob;
-                
-                // Adaptive element prefetching
-                if (i + prefetch_dist < end) {
-                    const prefetch_idx = i + prefetch_dist;
-                    @prefetch(
-                        &state.amplitudes[prefetch_idx], 
-                        .{ .rw = .read, .locality = 1, .cache = .data }
-                    );
-                    
+            /// Initialize a new quantum processor with the given configuration
+    pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
+        var self = try allocator.create(Self);
+        errdefer allocator.destroy(self);
+        
+        self.allocator = allocator;
+        self.config = config;
+        self.rng = std.rand.DefaultPrng.init(@intCast(std.time.milliTimestamp()));
+        
+        // Initialize with default thread count, will be adjusted per-operation
+        // based on problem size
+        const default_threads = std.Thread.getCpuCount() catch 1;
+        self.thread_pool = try ThreadPool.init(.{
+            .allocator = allocator,
+            .n_jobs = default_threads,
+        });
+        
+        // Set thread pool size based on default problem size (8 qubits)
+        self.adjustThreadPool(8);            
                     // Prefetch for write if next block is being prefetched
                     if (prefetch_idx < probabilities.len) {
                         @prefetch(
                             &probabilities[prefetch_idx],
                             .{ .rw = .write, .locality = 1, .cache = .data }
-                        );
-                    }
-                }
-            }
-        }
-        
-        // Normalize probabilities
-        const inv_total = 1.0 / total_prob;
-        for (0..num_blocks) |block| {
-            const start = block * elements_per_block;
-            const end = @min(start + elements_per_block, state.amplitudes.len);
-            
-            // Process current block with prefetching next
-            for (start..end) |i| {
-                probabilities[i] *= inv_total;
-                if (i + 4 < state.amplitudes.len) {
-                    @prefetch(&probabilities[i + 4], .{ .rw = .read, .locality = 1, .cache = .data });
-                }
-            }
-        }
-        
-        // Simple measurement - collapse to a basis state
-        const measurement = try state.measure(&probabilities);
-        
-        // Create a pattern match result
-        return quantum_types.PatternMatch{
-            .fidelity = 1.0,  // Placeholder
+{{ ... }}
             .confidence = 1.0, // Placeholder
             .measurement = measurement,
         };
     }
     
-    /// Encode a pattern into a quantum state
-    fn encodePattern(_: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
-        // Simple amplitude encoding for now
+    /// Adjust thread pool size based on problem size (qubit count)
+    fn adjustThreadPool(self: *Self, num_qubits: usize) void {
+        if (self.thread_pool) |pool| {
+            const optimal_threads = self.config.calculateOptimalThreads(num_qubits);
+            if (pool.workers.len != optimal_threads) {
+                // In a real implementation, we would resize the thread pool here
+                // For now, we just log the recommended thread count
+                std.log.debug("Optimal thread count for {} qubits: {}", .{num_qubits, optimal_threads});
+            }
+        }
+    }
+    
+    /// Specialized encoding for very small qubit counts (1-2 qubits)
+    fn encodeSmallPattern(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
         const num_qubits = state.qubits.len;
         const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
         
-        // Calculate normalization factor
-        var norm: f64 = 0.0;
+        // For very small patterns, use a simple sequential approach
         for (0..num_states) |i| {
-            const idx = i % pattern.len;
-            norm += @as(f64, @floatFromInt(pattern[idx])) * @as(f64, @floatFromInt(pattern[idx]));
+            const val = if (i < pattern.len) @as(f64, @floatFromInt(pattern[i])) / 255.0 else 0.0;
+            state.amplitudes[i] = .{ .re = val, .im = 0.0 };
         }
-        norm = @sqrt(norm);
         
-        // Set amplitudes based on pattern
+        // Use optimized normalization for very small states
+        try self.normalizeStateSmall(state);
+    }
+    
+    /// Specialized encoding for medium qubit counts (3-4 qubits)
+    fn encodeMediumPattern(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
+        const num_qubits = state.qubits.len;
+        const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
+        
+        // Optimized path for 3-4 qubits with minimal branching
         for (0..num_states) |i| {
-            const idx = i % pattern.len;
+            const val = if (i < pattern.len) 
+                @as(f64, @floatFromInt(pattern[i])) / 255.0 
+                else 0.0;
+            state.amplitudes[i] = .{ .re = val, .im = 0.0 };
+        }
+        
+        // Use optimized normalization for small states
+        try self.normalizeStateSmall(state);
+    }
+    
+    /// Optimized normalization for small quantum states (≤4 qubits)
+    fn normalizeStateSmall(self: *Self, state: *quantum_types.QuantumState) !void {
+        var norm: f64 = 0.0;
+        const num_states = @as(usize, 1) << @as(u6, @intCast(state.qubits.len));
+        
+        // Unrolled loop for small counts
+        switch (num_states) {
+            1...4 => {
+                for (0..num_states) |i| {
+                    const amp = state.amplitudes[i];
+                    norm += amp.re * amp.re + amp.im * amp.im;
+                }
+            },
+            else => {
+                return error.InvalidStateSize;
+            },
+        }
+        
+        if (norm > 0.0) {
+            const inv_norm = 1.0 / @sqrt(norm);
+            for (0..num_states) |i| {
+                state.amplitudes[i].re *= inv_norm;
+                state.amplitudes[i].im *= inv_norm;
+            }
+        }
+    }        const idx = i % pattern.len;
             const amplitude = if (norm > 0) @as(f64, @floatFromInt(pattern[idx])) / norm else 0.0;
             
             // Simple encoding: use first qubit for pattern
             if (i < pattern.len) {
                 state.qubits[0].amplitude0 = amplitude;
+{{ ... }}
                 state.qubits[0].amplitude1 = 1.0 - amplitude;
             }
         }
