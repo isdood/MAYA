@@ -5,16 +5,16 @@
 
 const std = @import("std");
 const neural = @import("neural");
-const quantum_processor = @import("neural/quantum_processor.zig");
-const visual_processor = @import("neural/visual_processor.zig");
-const quantum_types = @import("neural/quantum_types.zig");
+const quantum_processor = @import("quantum_processor");
+const visual_processor = @import("visual_processor");
+const quantum_types = @import("quantum_types");
 
 // Re-export pattern recognition types for backward compatibility
 pub const pattern_recognition = neural;
 
 // Import types for clarity
 const QuantumState = quantum_types.QuantumState;
-const VisualState = neural.VisualState;
+const VisualState = visual_processor.VisualState;
 
 /// Neural processor configuration
 pub const NeuralConfig = struct {
@@ -53,11 +53,19 @@ pub const NeuralProcessor = struct {
         self.allocator.destroy(self);
     }
 
+    /// Pattern type classification
+    pub const PatternType = enum {
+        Unknown,
+        Visual,
+        Quantum,
+        Combined,
+    };
+
     /// Pattern processing result
     pub const ProcessResult = struct {
         confidence: f64,
         pattern_id: []const u8,
-        pattern_type: enum { Unknown, Visual, Quantum, Combined },
+        pattern_type: PatternType,
         metadata: struct {
             timestamp: i64,
             source: []const u8,
@@ -81,15 +89,15 @@ pub const NeuralProcessor = struct {
         const hash = hasher.final();
         const pattern_id = try std.fmt.allocPrint(self.allocator, "pattern_{x}", .{hash});
         
-        // Determine pattern type based on confidence
-        const pattern_type = if (quantum_state.coherence > 0.8 and visual_state.brightness > 0.5) 
-            .Combined 
-        else if (quantum_state.coherence > 0.5) 
-            .Quantum 
-        else if (visual_state.brightness > 0.5) 
-            .Visual 
-        else 
-            .Unknown;
+        // Determine pattern type based on confidence at runtime
+        var pattern_type: PatternType = .Unknown;
+        if (quantum_state.coherence > 0.8 and visual_state.brightness > 0.5) {
+            pattern_type = .Combined;
+        } else if (quantum_state.coherence > 0.5) {
+            pattern_type = .Quantum;
+        } else if (visual_state.brightness > 0.5) {
+            pattern_type = .Visual;
+        }
 
         return ProcessResult{
             .confidence = confidence,

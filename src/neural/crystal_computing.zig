@@ -41,6 +41,7 @@ pub const CrystalProcessor = struct {
     config: CrystalConfig,
     allocator: std.mem.Allocator,
     state: CrystalState,
+    generated_ids: ?std.ArrayList([]const u8),
 
     pub fn init(allocator: std.mem.Allocator) !*CrystalProcessor {
         const processor = try allocator.create(CrystalProcessor);
@@ -51,13 +52,25 @@ pub const CrystalProcessor = struct {
                 .coherence = 1.0,
                 .entanglement = 0.0,
                 .depth = 0,
-                .pattern_id = "",
+                .pattern_id = "crystal_init",
             },
+            .generated_ids = std.ArrayList([]const u8).init(allocator),
         };
         return processor;
     }
 
     pub fn deinit(self: *CrystalProcessor) void {
+        // Free all generated pattern IDs
+        if (self.generated_ids) |*ids| {
+            for (ids.items) |id| {
+                if (!std.mem.eql(u8, id, "crystal_init") and 
+                    !std.mem.eql(u8, id, "crystal_unknown") and
+                    !std.mem.eql(u8, id, "crystal_alloc_failed")) {
+                    self.allocator.free(id);
+                }
+            }
+            ids.deinit();
+        }
         self.allocator.destroy(self);
     }
 
@@ -116,11 +129,26 @@ pub const CrystalProcessor = struct {
     }
 
     /// Generate unique pattern ID
-    fn generatePatternId(_: *CrystalProcessor) []const u8 {
+    fn generatePatternId(self: *CrystalProcessor) []const u8 {
         // Simple pattern ID generation based on timestamp
         const timestamp = std.time.timestamp();
-        var buffer: [32]u8 = undefined;
-        const id = std.fmt.bufPrint(&buffer, "crystal_{}", .{timestamp}) catch "crystal_unknown";
+        const id = std.fmt.allocPrint(
+            self.allocator,
+            "crystal_{}",
+            .{timestamp}
+        ) catch return "crystal_unknown";
+        
+        // Store the allocated memory to be freed in deinit
+        if (self.generated_ids) |*ids| {
+            ids.append(id) catch {
+                self.allocator.free(id);
+                return "crystal_alloc_failed";
+            };
+        } else {
+            self.allocator.free(id);
+            return "crystal_alloc_failed";
+        }
+        
         return id;
     }
 };

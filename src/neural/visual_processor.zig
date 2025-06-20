@@ -4,7 +4,16 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const neural = @import("neural");
+
+/// Visual state containing brightness, contrast, and saturation values
+pub const VisualState = struct {
+    brightness: f64 = 0.0,
+    contrast: f64 = 1.0,
+    saturation: f64 = 0.0,
+};
+
+// Internal imports
+const neural = @This();
 
 /// Visual processor configuration
 pub const VisualConfig = struct {
@@ -23,7 +32,7 @@ pub const VisualProcessor = struct {
     // System state
     config: VisualConfig,
     allocator: std.mem.Allocator,
-    state: neural.VisualState,
+    state: VisualState,
 
     pub fn init(allocator: std.mem.Allocator) !*VisualProcessor {
         const processor = try allocator.create(VisualProcessor);
@@ -40,9 +49,9 @@ pub const VisualProcessor = struct {
     }
 
     /// Process pattern data through visual processor
-    pub fn process(self: *VisualProcessor, pattern_data: []const u8) !neural.VisualState {
+    pub fn process(self: *VisualProcessor, pattern_data: []const u8) !VisualState {
         // Initialize visual state
-        var state = neural.VisualState{
+        var state = VisualState{
             .brightness = 0.0,
             .contrast = 1.0,
             .saturation = 0.0,
@@ -60,9 +69,19 @@ pub const VisualProcessor = struct {
     }
 
     /// Process pattern in visual state
-    fn processVisualState(self: *VisualProcessor, state: *neural.VisualState, pattern_data: []const u8) !void {
-        // Calculate visual contrast
+    fn processVisualState(self: *VisualProcessor, state: *VisualState, pattern_data: []const u8) !void {
+        // Calculate visual properties
         state.contrast = self.calculateContrast(pattern_data);
+        state.brightness = self.calculateBrightness(pattern_data);
+        state.saturation = self.calculateSaturation(pattern_data);
+        
+        // Ensure the state is valid after processing
+        if (!self.isValidState(state.*)) {
+            // If state is invalid, adjust values to be within bounds
+            state.contrast = @max(self.config.min_contrast, state.contrast);
+            state.brightness = std.math.clamp(state.brightness, 0.0, 1.0);
+            state.saturation = std.math.clamp(state.saturation, 0.0, 1.0);
+        }
     }
 
     /// Calculate contrast from pattern data
@@ -85,9 +104,42 @@ pub const VisualProcessor = struct {
         return @min(1.0, @as(f64, @floatFromInt(total_diff)) / (@as(f64, @floatFromInt(count)) * 255.0));
     }
 
+    /// Calculate brightness from pattern data
+    fn calculateBrightness(self: *const VisualProcessor, data: []const u8) f64 {
+        _ = self; // Unused parameter
+        if (data.len == 0) return 0.0;
+        
+        // Simple brightness calculation based on average byte value
+        var sum: usize = 0;
+        for (data) |byte| {
+            sum += byte;
+        }
+        
+        return @as(f64, @floatFromInt(sum)) / (@as(f64, @floatFromInt(data.len)) * 255.0);
+    }
+    
+    /// Calculate saturation from pattern data
+    fn calculateSaturation(self: *const VisualProcessor, data: []const u8) f64 {
+        if (data.len < 2) return 0.0;
+        
+        // Simple saturation calculation based on standard deviation of byte values
+        const mean = self.calculateBrightness(data) * 255.0;
+        var sum_sq_diff: f64 = 0.0;
+        
+        for (data) |byte| {
+            const diff = @as(f64, @floatFromInt(byte)) - mean;
+            sum_sq_diff += diff * diff;
+        }
+        
+        const std_dev = @sqrt(sum_sq_diff / @as(f64, @floatFromInt(data.len)));
+        return @min(1.0, std_dev / 128.0);
+    }
+
     /// Validate visual state
-    fn isValidState(self: *VisualProcessor, state: neural.VisualState) bool {
-        return state.contrast >= self.config.min_contrast;
+    fn isValidState(self: *const VisualProcessor, state: VisualState) bool {
+        return state.contrast >= self.config.min_contrast and
+               state.brightness >= 0.0 and state.brightness <= 1.0 and
+               state.saturation >= 0.0 and state.saturation <= 1.0;
     }
 };
 

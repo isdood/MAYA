@@ -2,11 +2,12 @@
 //! Contains advanced neural processing capabilities for MAYA
 
 // Common types
-pub const VisualState = struct {
-    brightness: f64 = 0.0,
-    contrast: f64 = 1.0,
-    saturation: f64 = 0.0,
-};
+export const VisualState = @import("visual_processor.zig").VisualState;
+
+// Export processors
+export const VisualProcessor = @import("visual_processor.zig").VisualProcessor;
+export const QuantumProcessor = @import("quantum_processor.zig").QuantumProcessor;
+export const NeuralProcessor = @import("neural_processor.zig").NeuralProcessor;
 
 // Export pattern recognition functionality directly
 pub usingnamespace @import("pattern_recognition/mod.zig");

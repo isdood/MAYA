@@ -95,6 +95,14 @@ pub const QuantumProcessor = struct {
 
         // Calculate quantum superposition
         state.superposition = self.calculateSuperposition(pattern_data);
+
+        // Ensure the state is valid after processing
+        if (!self.isValidState(state.*)) {
+            // If state is invalid, adjust values to be within bounds
+            state.coherence = @max(self.config.min_coherence, state.coherence);
+            state.entanglement = @min(self.config.max_entanglement, state.entanglement);
+            state.superposition = std.math.clamp(state.superposition, 0.0, 1.0);
+        }
     }
 
     /// Enhance quantum state with crystal computing results

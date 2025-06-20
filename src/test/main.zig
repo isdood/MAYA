@@ -23,7 +23,7 @@ test "pattern recognition system" {
     var quantum = try quantum_processor.QuantumProcessor.init(allocator);
     defer quantum.deinit();
 
-    var visual = try visual_processor.VisualProcessor.init(allocator);
+    var visual = try neural.VisualProcessor.init(allocator);
     defer visual.deinit();
 
     var neural_proc = try neural_processor.NeuralProcessor.init(allocator);
