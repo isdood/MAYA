@@ -10,7 +10,9 @@
 //! 
 //! Performance Optimizations:
 //! - Optimized qubit operations using SIMD where available
+//! - Cache-blocked quantum state updates
 //! - Improved memory layout for better cache locality
+//! - Hardware prefetching for predictable access patterns
 //! - Circuit optimization passes
 //! - Batch processing of quantum gates
 //! - Parallel execution of independent operations
@@ -57,6 +59,8 @@ pub const QuantumConfig = struct {
     // Cache settings
     cache_line_size: usize = 64,          // Size of a cache line in bytes
     prefetch_distance: usize = 2,         // Number of cache lines to prefetch
+    cache_block_size: usize = 4 * 1024,   // Size of cache blocks for blocking (4KB)
+    num_cache_blocks: usize = 4,          // Number of cache blocks to use for blocking
 };
 
 /// Quantum processor state
@@ -190,14 +194,36 @@ pub const QuantumProcessor = struct {
         return match;
     }
     
-    /// Optimized pattern encoding using SIMD where available
+    /// Optimized pattern encoding with cache-blocking and prefetching
     fn encodePatternOptimized(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
         const num_qubits = state.qubits.len;
         const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
         
-        // Pre-calculate normalization factor
+        // Calculate block size based on cache configuration
+        const complex_size = @sizeOf(quantum_types.Complex);
+        const elements_per_block = self.config.cache_block_size / complex_size;
+        const num_blocks = (num_states + elements_per_block - 1) / elements_per_block;
+        
+        // Pre-calculate normalization factor with cache blocking
         var norm: f64 = 0.0;
-        for (0..@min(num_states, pattern.len)) |i| {
+        for (0..num_blocks) |block| {
+            const start = block * elements_per_block;
+            const end = @min(start + elements_per_block, num_states);
+            
+            // Prefetch next block
+            if (block + 1 < num_blocks) {
+                const prefetch_addr = &state.amplitudes[(block + 1) * elements_per_block];
+                @prefetch(prefetch_addr, .{ .rw = .read, .locality = 3, .cache = .data });
+            }
+            
+            // Process current block
+            for (start..end) |i| {
+                if (i < pattern.len) {
+                    const val = @as(f64, @floatFromInt(pattern[i])) / 255.0;
+                    norm += val * val;
+                }
+            }
+        }
             const val = @as(f64, @floatFromInt(pattern[i]));
             norm += val * val;
         }
