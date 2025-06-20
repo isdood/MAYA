@@ -15,6 +15,8 @@ GLIMMER Pattern:
 }
 @pattern_meta@
 
+## Need to fix GLIMMER-METADATA. Injected too recklessly lol
+
 # MAYA ✨
 
 > A proprietary adaptive LLM interface to the STARWEAVE meta-intelligence, weaving together the stellar components of the STARWEAVE universe through Fish Shell and Zig
