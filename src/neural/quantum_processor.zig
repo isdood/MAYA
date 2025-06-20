@@ -815,6 +815,112 @@ fn enhanceWithCrystalState(self: *Self, state: *quantum_types.QuantumState,
         return results;
     }
     
+    /// Process a single pattern through the quantum processor
+    pub fn processPattern(self: *Self, pattern: []const u8) !quantum_types.PatternMatch {
+        if (pattern.len == 0) return error.InvalidPattern;
+
+        // Calculate optimal number of qubits for the pattern length
+        const num_qubits = @min(
+            self.config.max_parallel_qubits,
+            @as(usize, @intCast(@log2(@as(f64, @floatFromInt(pattern.len + 1)))))
+        );
+        
+        // Adjust thread pool based on problem size
+        self.adjustThreadPool(num_qubits);
+
+        // Initialize quantum state
+        var state = try quantum_types.QuantumState.init(self.allocator, num_qubits);
+        defer state.deinit();
+
+        // Use specialized encoding based on qubit count
+        if (num_qubits <= 2) {
+            try self.encodeSmallPattern(&state, pattern);
+        } else if (num_qubits <= 4) {
+            try self.encodeMediumPattern(&state, pattern);
+        } else {
+            try self.encodePattern(&state, pattern);
+        }
+
+        // Process quantum state
+        try self.processQuantumState(&state, pattern);
+
+        // Apply crystal computing enhancement if enabled
+        if (self.config.use_crystal_computing) {
+            if (self.crystal) |crystal| {
+                const crystal_state = try crystal.computeState(pattern);
+                try self.enhanceWithCrystalState(&state, crystal_state);
+            }
+        }
+
+        // Measure and return results
+        return self.measurePattern(&state, pattern);
+    }
+    
+    /// Encode a pattern into a quantum state (general case)
+    fn encodePattern(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
+        const num_qubits = state.qubits.len;
+        const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
+        
+        // Calculate normalization factor
+        var norm: f64 = 0.0;
+        for (0..num_states) |i| {
+            const val = if (i < pattern.len) @as(f64, @floatFromInt(pattern[i])) / 255.0 else 0.0;
+            state.amplitudes[i] = .{ .re = val, .im = 0.0 };
+            norm += val * val;
+        }
+        
+        // Normalize the state
+        if (norm > 0.0) {
+            const inv_norm = 1.0 / @sqrt(norm);
+            for (0..num_states) |i| {
+                state.amplitudes[i].re *= inv_norm;
+            }
+        }
+    }
+    
+    /// Process quantum state with the pattern
+    fn processQuantumState(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
+        const num_qubits = state.qubits.len;
+        
+        // Apply Hadamard to all qubits to create superposition
+        for (0..num_qubits) |i| {
+            try state.applyGate(.H, i);
+        }
+        
+        // Apply pattern-specific phase shifts
+        for (0..pattern.len) |i| {
+            const phase = @as(f64, @floatFromInt(pattern[i])) / 255.0 * math.pi * 2.0;
+            try state.applyPhase(i % num_qubits, phase);
+        }
+        
+        // Apply inverse QFT for pattern matching
+        try self.applyInverseQFT(state);
+    }
+    
+    /// Apply inverse Quantum Fourier Transform
+    fn applyInverseQFT(self: *Self, state: *quantum_types.QuantumState) !void {
+        const n = state.qubits.len;
+        
+        // Apply inverse QFT by applying QFT in reverse order with negative phases
+        for (0..n) |i| {
+            // Apply Hadamard to qubit i
+            try state.applyGate(.H, i);
+            
+            // Apply controlled rotations with negative phase
+            for (i + 1..n) |j| {
+                const theta = -2.0 * math.pi / std.math.pow(f64, 2.0, @as(f64, @floatFromInt(j - i + 1)));
+                try state.applyControlledPhaseShift(j, i, theta);
+            }
+        }
+        
+        // Swap qubits to complete the inverse QFT
+        for (0..n / 2) |i| {
+            if (i != n - 1 - i) {
+                try state.applySwap(i, n - 1 - i);
+            }
+        }
+    }
+    
     /// Enhance quantum state with crystal computing results
     fn enhanceWithCrystalState(
         self: *Self,
