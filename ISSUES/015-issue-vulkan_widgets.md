@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:32:17",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/015-issue-vulkan_widgets.md",
+    "type": "md",
+    "hash": "bb9fbff65a2bd3389ce51ff61ce130560c090b88"
+  }
+}
+@pattern_meta@
+
 # Issue 015: Vulkan Widget Architecture & Compilation Errors
 
 ## Summary

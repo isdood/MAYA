@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 22:07:43",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/serde-dd2586db155155ad/lib-serde.json",
+    "type": "json",
+    "hash": "066940cee3c662cb2cc3e250862ff1c1a976efe1"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"derive\", \"rc\", \"serde_derive\", \"std\"]","declared_features":"[\"alloc\", \"default\", \"derive\", \"rc\", \"serde_derive\", \"std\", \"unstable\"]","target":16256121404318112599,"profile":2241668132362809309,"path":17980971697050947985,"deps":[[9689903380558560274,"build_script_build",false,7399704783985537639],[16257276029081467297,"serde_derive",false,2886146517294665705]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/serde-dd2586db155155ad/dep-lib-serde","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

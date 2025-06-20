@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 14:01:08",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/src/pattern.rs",
+    "type": "rs",
+    "hash": "8de8d85e91ec8e24b070e1212c150d229062192c"
+  }
+}
+@pattern_meta@
+
 use serde::{Serialize, Deserialize};
 use std::collections::HashSet;
 use std::time::{SystemTime, UNIX_EPOCH};

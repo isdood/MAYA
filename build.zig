@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 11:22:38",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./build.zig",
+    "type": "zig",
+    "hash": "362e6ee63cb83b24cf37f4e2a19bffb82266166f"
+  }
+}
+@pattern_meta@
+
 //! 🌌 STARWEAVE Universe Integration
 //! ✨ Version: 2025.6.18
 //! 🎨 Pattern: 1.0.0
@@ -156,6 +173,20 @@ pub fn build(b: *std.Build) void {
     maya_wasm.root_module.addImport("starweave", starweave_mod);
     maya_wasm.root_module.addImport("glimmer", glimmer_mod);
     maya_wasm.root_module.addImport("pattern_recognition", pattern_recognition_mod);
+
+    // Real-time Evolution Example
+    const realtime_evolution_exe = b.addExecutable(.{
+        .name = "realtime_evolution",
+        .root_source_file = .{ .cwd_relative = "examples/realtime_evolution.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    realtime_evolution_exe.root_module.addImport("neural", neural_mod);
+    b.installArtifact(realtime_evolution_exe);
+    
+    const run_realtime_evolution = b.addRunArtifact(realtime_evolution_exe);
+    const realtime_evolution_step = b.step("realtime-evolution", "Run the real-time pattern evolution example");
+    realtime_evolution_step.dependOn(&run_realtime_evolution.step);
 
     // 🧪 Test Configuration
     const test_step = b.step("test", "Run all tests");

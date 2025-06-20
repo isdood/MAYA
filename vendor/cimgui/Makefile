@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/Makefile",
+    "type": "/vendor/cimgui/Makefile",
+    "hash": "b5d68940018d7aca77ebb569463495db39b56c8f"
+  }
+}
+@pattern_meta@
+
 #
 # Cross Platform Makefile
 # Compatible with Ubuntu 14.04.1 and macOS

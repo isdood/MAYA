@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:38:38",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/graph-caf2b78abb9e4b6b.long-type-10436048643909755246.txt",
+    "type": "txt",
+    "hash": "17e4d20d238760dd79c9dc7c10c36fc35c288e54"
+  }
+}
+@pattern_meta@
+
 maya_knowledge_graph::KnowledgeGraph<_>

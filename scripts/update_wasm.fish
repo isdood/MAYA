@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-16 09:45:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./scripts/update_wasm.fish",
+    "type": "fish",
+    "hash": "7b7f331152c427f1646a39bf3b8c1f893b83dbad"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env fish
 
 # Compile the Zig code to WebAssembly

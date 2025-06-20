@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 17:17:20",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./.starweave.yml",
+    "type": "yml",
+    "hash": "b1e45bcbc7893176c99149a884909a5cd5f41c50"
+  }
+}
+@pattern_meta@
+
 # 🌌 STARWEAVE Universe Configuration
 version: 2025.6.18
 pattern: 1.0.0

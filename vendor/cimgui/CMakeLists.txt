@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/CMakeLists.txt",
+    "type": "txt",
+    "hash": "b65478277474637f2bd4219bca33e8df4cb23ca6"
+  }
+}
+@pattern_meta@
+
 cmake_minimum_required(VERSION 3.15)
 cmake_policy(SET CMP0091 NEW)
 project(cimgui)

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:53:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/storage/sled_store.rs",
+    "type": "rs",
+    "hash": "8eee06dfe1a23650ff3d1df16074409b40fb300b"
+  }
+}
+@pattern_meta@
+
 //! Sled storage implementation for the knowledge graph
 
 use std::path::Path;

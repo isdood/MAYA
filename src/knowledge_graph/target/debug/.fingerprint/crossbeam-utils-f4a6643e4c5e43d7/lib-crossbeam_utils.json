@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/crossbeam-utils-f4a6643e4c5e43d7/lib-crossbeam_utils.json",
+    "type": "json",
+    "hash": "7ad719e2468d88efbf105944a1df37765630ec81"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"default\", \"loom\", \"nightly\", \"std\"]","target":9626079250877207070,"profile":8636238262651292397,"path":11355349018555193594,"deps":[[4468123440088164316,"build_script_build",false,13148141649844923288]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/crossbeam-utils-f4a6643e4c5e43d7/dep-lib-crossbeam_utils","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

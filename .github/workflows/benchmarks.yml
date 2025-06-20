@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 12:32:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./.github/workflows/benchmarks.yml",
+    "type": "yml",
+    "hash": "b7c728ab96787f255decfc9dc21ebc98a1bc51e5"
+  }
+}
+@pattern_meta@
+
 name: Performance Benchmarks
 
 on:

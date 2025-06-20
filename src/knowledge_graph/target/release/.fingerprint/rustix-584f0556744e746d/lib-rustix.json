@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:54:46",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/rustix-584f0556744e746d/lib-rustix.json",
+    "type": "json",
+    "hash": "242c27dcf055da206a84d42d31ab16e63b0c33d8"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"default\", \"fs\", \"std\"]","declared_features":"[\"all-apis\", \"alloc\", \"compiler_builtins\", \"core\", \"default\", \"event\", \"fs\", \"io_uring\", \"libc\", \"libc_errno\", \"linux_4_11\", \"linux_5_1\", \"linux_5_11\", \"linux_latest\", \"mm\", \"mount\", \"net\", \"param\", \"pipe\", \"process\", \"pty\", \"rand\", \"runtime\", \"rustc-dep-of-std\", \"rustc-std-workspace-alloc\", \"shm\", \"std\", \"stdio\", \"system\", \"termios\", \"thread\", \"time\", \"try_close\", \"use-explicitly-provided-auxv\", \"use-libc\", \"use-libc-auxv\"]","target":16221545317719767766,"profile":9298903534527576498,"path":5999271934397206092,"deps":[[7896293946984509699,"bitflags",false,6363118760725086009],[12053020504183902936,"build_script_build",false,12467877645989739226],[12846346674781677812,"linux_raw_sys",false,12795868909075940307]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/rustix-584f0556744e746d/dep-lib-rustix","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

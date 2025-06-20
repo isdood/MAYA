@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:11:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./BUILD.md",
+    "type": "md",
+    "hash": "f1c9b230fc8b8b398df8f9b4b899ba283bd26e28"
+  }
+}
+@pattern_meta@
+
 # 🌌 STARWEAVE Universe Documentation
 ✨ Version: 2025.6.18
 🎨 GLIMMER Pattern: 1.0.0

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:52:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/storage/mod.rs",
+    "type": "rs",
+    "hash": "6b527a13a12462d14f384565b169bb57e68ab80b"
+  }
+}
+@pattern_meta@
+
 //! Storage abstraction layer for the knowledge graph.
 //!
 //! This module defines the [`Storage`] trait and related types that provide a

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/clang-sys-4cee19c9ee3e5917/out/dynamic.rs",
+    "type": "rs",
+    "hash": "1028cdb410532c0eb7f7d45aef7e8a224345495b"
+  }
+}
+@pattern_meta@
+
 // SPDX-License-Identifier: Apache-2.0
 
 use std::env;

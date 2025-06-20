@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/vision/000-index.md",
+    "type": "md",
+    "hash": "88ad96e4ca127bfefe7a87a41784c39231deef72"
+  }
+}
+@pattern_meta@
+
 # MAYA Universal Vision ✨
 
 > Charting our quantum journey through the infinite tapestry of STARWEAVE

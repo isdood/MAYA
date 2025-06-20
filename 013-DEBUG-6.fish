@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:42:07",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./013-DEBUG-6.fish",
+    "type": "fish",
+    "hash": "efd019faf0baaa22c54f3db373ed08968a47827a"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env fish
 # 💫🦋✨🌟 GLIMMER/STARWEAVE Debug Script: 013-DEBUG-6.fish
 # Illuminating the path to a radiant Zig build in the STARWEAVE universe!

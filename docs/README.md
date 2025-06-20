@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 11:18:18",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/README.md",
+    "type": "md",
+    "hash": "cf1ace741c83137c762f82abf700008ba84e1476"
+  }
+}
+@pattern_meta@
+
 # MAYA Documentation ✨
 
 > Neural Quantum Bridge of the STARWEAVE Universe

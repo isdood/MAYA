@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/goals/000-index.md",
+    "type": "md",
+    "hash": "98482f8e7a102e28fb24f86f0ec516e14360354a"
+  }
+}
+@pattern_meta@
+
 # MAYA Goals and Objectives ✨
 
 > Illuminating the path through the STARWEAVE universe

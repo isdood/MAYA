@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 08:48:32",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./build.zig.012-debug8-backup",
+    "type": "012-debug8-backup",
+    "hash": "8ef29d8763fbc74771823e2caff66c8b7f9a5e97"
+  }
+}
+@pattern_meta@
+
 //! 🌌 STARWEAVE Universe Integration
 //! ✨ Version: 2025.6.18
 //! 🎨 Pattern: 1.0.0

@@ -1,2 +1,19 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/build/crossbeam-utils-858db6ae28c0aa4a/output",
+    "type": "/src/knowledge_graph/target/release/build/crossbeam-utils-858db6ae28c0aa4a/output",
+    "hash": "ddee5aead7addcef0b7b5b7ac8080be386f2708e"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=no_atomic.rs
 cargo:rustc-check-cfg=cfg(crossbeam_no_atomic,crossbeam_sanitize_thread)

@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:10",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/anyhow-0168358c9fa8eb6b/lib-anyhow.json",
+    "type": "json",
+    "hash": "16b36103f8351e704f507eefc3d7fbccf9a98543"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"backtrace\", \"default\", \"std\"]","target":16100955855663461252,"profile":15657897354478470176,"path":12862587146966103405,"deps":[[13625485746686963219,"build_script_build",false,9145355714145014604]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/anyhow-0168358c9fa8eb6b/dep-lib-anyhow","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

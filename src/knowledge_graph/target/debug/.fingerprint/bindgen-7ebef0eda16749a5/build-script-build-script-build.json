@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/bindgen-7ebef0eda16749a5/build-script-build-script-build.json",
+    "type": "json",
+    "hash": "834fe69c8a503e1603cef0933eeab2ba45d5f1b5"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"runtime\"]","declared_features":"[\"cli\", \"default\", \"experimental\", \"log\", \"logging\", \"runtime\", \"static\", \"testing_only_docs\", \"testing_only_extra_assertions\", \"testing_only_libclang_5\", \"testing_only_libclang_9\", \"which\", \"which-rustfmt\"]","target":17883862002600103897,"profile":2225463790103693989,"path":16324043344926489393,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/bindgen-7ebef0eda16749a5/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-16 08:36:05",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./cursor-extension/package.json",
+    "type": "json",
+    "hash": "1a00e96d6578c694e1130756f462481228a1bb0a"
+  }
+}
+@pattern_meta@
+
 {
   "name": "maya-cursor",
   "displayName": "MAYA Learning System",

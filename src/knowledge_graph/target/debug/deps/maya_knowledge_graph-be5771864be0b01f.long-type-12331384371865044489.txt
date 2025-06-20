@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 06:57:13",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-be5771864be0b01f.long-type-12331384371865044489.txt",
+    "type": "txt",
+    "hash": "a24ae5f7fbad0588896b2c6d6884112267776e77"
+  }
+}
+@pattern_meta@
+
 std::result::Result<std::option::Option<Arc<&str>>, anyhow::Error>

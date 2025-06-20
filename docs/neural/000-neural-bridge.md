@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:19:57",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/neural/000-neural-bridge.md",
+    "type": "md",
+    "hash": "184b9ef4959e70677d0c01271527a8a63ad0f6f9"
+  }
+}
+@pattern_meta@
+
 # 🧠 MAYA Neural Bridge
 
 ## Overview

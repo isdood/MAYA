@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:19:44",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/neural/001-pattern-recognition.md",
+    "type": "md",
+    "hash": "396579cc6901911941e77c0f2d6e25960afd2a75"
+  }
+}
+@pattern_meta@
+
 # 🧠 MAYA Pattern Recognition System
 
 ## Overview

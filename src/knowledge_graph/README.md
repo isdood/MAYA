@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 12:07:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/README.md",
+    "type": "md",
+    "hash": "568424bfd712c7d875426c0ffd09589389833b17"
+  }
+}
+@pattern_meta@
+
 # MAYA Knowledge Graph
 
 > High-performance, persistent knowledge graph storage and query engine for the MAYA ecosystem

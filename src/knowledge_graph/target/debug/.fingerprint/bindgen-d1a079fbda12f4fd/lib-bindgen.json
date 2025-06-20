@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:27",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/bindgen-d1a079fbda12f4fd/lib-bindgen.json",
+    "type": "json",
+    "hash": "49773a50783ad0badf70a7ac15a261db5b3c6451"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"runtime\"]","declared_features":"[\"cli\", \"default\", \"experimental\", \"log\", \"logging\", \"runtime\", \"static\", \"testing_only_docs\", \"testing_only_extra_assertions\", \"testing_only_libclang_5\", \"testing_only_libclang_9\", \"which\", \"which-rustfmt\"]","target":15460903241111225995,"profile":2225463790103693989,"path":17447613473069555428,"deps":[[950716570147248582,"cexpr",false,103375601581064053],[2004958070545769120,"lazycell",false,8649570954852032733],[2713742371683562785,"syn",false,7044558255511550331],[3060637413840920116,"proc_macro2",false,10839234586264551430],[4885725550624711673,"clang_sys",false,11457491548798608653],[7379057635065087144,"build_script_build",false,1050475171720177309],[8410525223747752176,"shlex",false,670004093811855423],[9451456094439810778,"regex",false,1573956528168850930],[10435729446543529114,"bitflags",false,8885546315270893426],[11863159202453368486,"peeking_take_while",false,6654720453669313268],[16055916053474393816,"rustc_hash",false,48729367295374600],[17917672826516349275,"lazy_static",false,6784701103933607949],[17990358020177143287,"quote",false,16015703020425085848]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/bindgen-d1a079fbda12f4fd/dep-lib-bindgen","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

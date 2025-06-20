@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/num-traits-a45d4371febbf200/lib-num_traits.json",
+    "type": "json",
+    "hash": "fb21a595928348e02b94a7b23db644723c2f625e"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"default\", \"i128\", \"libm\", \"std\"]","target":4278088450330190724,"profile":15657897354478470176,"path":17558020744381435747,"deps":[[5157631553186200874,"build_script_build",false,724920823699432942]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/num-traits-a45d4371febbf200/dep-lib-num_traits","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

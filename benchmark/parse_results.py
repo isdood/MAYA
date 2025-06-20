@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 12:41:05",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./benchmark/parse_results.py",
+    "type": "py",
+    "hash": "5119b651950e28099fc4136d6b23119e000a617a"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env python3
 """
 Script to parse Criterion benchmark results and update the RESULTS.md file.

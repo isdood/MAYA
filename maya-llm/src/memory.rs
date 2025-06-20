@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 14:43:09",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/src/memory.rs",
+    "type": "rs",
+    "hash": "957145bb4379be4ecea33f68a74fbcdca22b862f"
+  }
+}
+@pattern_meta@
+
 //! Memory system for the MAYA LLM
 
 use chrono::{DateTime, Utc};

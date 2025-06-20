@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/mio-d5e6b45fc472a4f4/lib-mio",
+    "type": "fingerprint/mio-d5e6b45fc472a4f4/lib-mio",
+    "hash": "66e1460689858d4fbda63c39d88c5a21496f5ce2"
+  }
+}
+@pattern_meta@
+
 433479789eadb2a1

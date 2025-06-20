@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 13:54:38",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/013-issue-systemd_school.md",
+    "type": "md",
+    "hash": "de098ec7b5ff55e791f8513554c64dfa48734cba"
+  }
+}
+@pattern_meta@
+
 # MAYA Systemd Learning Service
 
 **Issue #013**  

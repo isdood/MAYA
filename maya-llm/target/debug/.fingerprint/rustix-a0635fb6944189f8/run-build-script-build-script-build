@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/rustix-a0635fb6944189f8/run-build-script-build-script-build",
+    "type": "fingerprint/rustix-a0635fb6944189f8/run-build-script-build-script-build",
+    "hash": "c50ce5a23788366561a70bb84c966e37ac00c830"
+  }
+}
+@pattern_meta@
+
 1431b14604cdeb27

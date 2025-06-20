@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/regex-automata-10cf733958f0fe8a/lib-regex_automata.json",
+    "type": "json",
+    "hash": "7c7279aaa7f49cb73acaf4b0022b17c0c45e9696"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"meta\", \"nfa-pikevm\", \"nfa-thompson\", \"std\", \"syntax\"]","declared_features":"[\"alloc\", \"default\", \"dfa\", \"dfa-build\", \"dfa-onepass\", \"dfa-search\", \"hybrid\", \"internal-instrument\", \"internal-instrument-pikevm\", \"logging\", \"meta\", \"nfa\", \"nfa-backtrack\", \"nfa-pikevm\", \"nfa-thompson\", \"perf\", \"perf-inline\", \"perf-literal\", \"perf-literal-multisubstring\", \"perf-literal-substring\", \"std\", \"syntax\", \"unicode\", \"unicode-age\", \"unicode-bool\", \"unicode-case\", \"unicode-gencat\", \"unicode-perl\", \"unicode-script\", \"unicode-segment\", \"unicode-word-boundary\"]","target":4726246767843925232,"profile":15657897354478470176,"path":423667031311404262,"deps":[[9408802513701742484,"regex_syntax",false,2285610923252656207]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/regex-automata-10cf733958f0fe8a/dep-lib-regex_automata","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

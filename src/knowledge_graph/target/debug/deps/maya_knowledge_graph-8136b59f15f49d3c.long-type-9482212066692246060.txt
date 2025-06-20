@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:30:15",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-8136b59f15f49d3c.long-type-9482212066692246060.txt",
+    "type": "txt",
+    "hash": "58da13b23e289676bb6259a4beb60df41c35b0ec"
+  }
+}
+@pattern_meta@
+
 serde_json::Error: From<Box<bincode::ErrorKind>>

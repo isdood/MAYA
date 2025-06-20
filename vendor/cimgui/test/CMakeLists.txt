@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/test/CMakeLists.txt",
+    "type": "txt",
+    "hash": "944480ec8d30c923f2a32a7fc22673d347fa0400"
+  }
+}
+@pattern_meta@
+
 file(GLOB CIMGUI_TEST_SOURCES
     main.c
 )

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 12:15:02",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/Cargo.toml",
+    "type": "toml",
+    "hash": "32b31df8b8b628f1edf0d1cd9e70e80029f83c53"
+  }
+}
+@pattern_meta@
+
 [package]
 name = "maya-llm"
 version = "0.1.0"

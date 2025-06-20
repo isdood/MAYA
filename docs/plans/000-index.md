@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/plans/000-index.md",
+    "type": "md",
+    "hash": "b542e0bc6a521fc5559f5c5fb02c57aa971995af"
+  }
+}
+@pattern_meta@
+
 # MAYA Universal Plans ✨
 
 > Weaving our path through the infinite tapestry of STARWEAVE

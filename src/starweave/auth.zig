@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 13:17:15",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/starweave/auth.zig",
+    "type": "zig",
+    "hash": "40b657791d814e766afec270bc9d3c55ceecd5da"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const crypto = std.crypto;
 const base64 = std.base64;

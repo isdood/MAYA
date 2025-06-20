@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:24:30",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-ea2e4d8807f8e122.long-type-6287488646856298418.txt",
+    "type": "txt",
+    "hash": "5aaee7546d5006f01913b6a9428362aa7abc6b44"
+  }
+}
+@pattern_meta@
+
 std::result::Result<std::sync::RwLockWriteGuard<'_, HashMap<Vec<u8>, bool>>, PoisonError<std::sync::RwLockWriteGuard<'_, HashMap<Vec<u8>, bool>>>>

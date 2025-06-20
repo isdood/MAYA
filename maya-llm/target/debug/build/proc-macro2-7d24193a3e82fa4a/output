@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/build/proc-macro2-7d24193a3e82fa4a/output",
+    "type": "/maya-llm/target/debug/build/proc-macro2-7d24193a3e82fa4a/output",
+    "hash": "584ad4c23eafe0024e0d3e2384f9f73d3935d180"
+  }
+}
+@pattern_meta@
+
 cargo:rustc-check-cfg=cfg(fuzzing)
 cargo:rustc-check-cfg=cfg(no_is_available)
 cargo:rustc-check-cfg=cfg(no_literal_byte_character)

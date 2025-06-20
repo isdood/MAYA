@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:43:47",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/criterion/cached_sequential_writes/1000/base/benchmark.json",
+    "type": "json",
+    "hash": "97cab7df47b1ed846bb1b82eeec91880e8f0a0ab"
+  }
+}
+@pattern_meta@
+
 {"group_id":"cached_sequential_writes","function_id":null,"value_str":"1000","throughput":null,"full_id":"cached_sequential_writes/1000","directory_name":"cached_sequential_writes/1000","title":"cached_sequential_writes/1000"}

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:34:16",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/tests/integration_test.rs",
+    "type": "rs",
+    "hash": "aa73a99694b978688ca3e4ecbe14e560fa7bb6b2"
+  }
+}
+@pattern_meta@
+
 //! Integration tests for the knowledge graph
 
 use maya_knowledge_graph::{

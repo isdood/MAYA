@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/libc-59e3132fd1b4e48b/output",
+    "type": "/src/knowledge_graph/target/debug/build/libc-59e3132fd1b4e48b/output",
+    "hash": "7e9837d1913e75415d4675761d103e53e477658c"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=build.rs
 cargo:rerun-if-env-changed=RUST_LIBC_UNSTABLE_FREEBSD_VERSION
 cargo:rustc-cfg=freebsd11

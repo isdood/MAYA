@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:47:00",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/storage/hybrid_store.rs.orig",
+    "type": "orig",
+    "hash": "4ffea5d3cdadd826f885faff698318d738a24930"
+  }
+}
+@pattern_meta@
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::path::Path;

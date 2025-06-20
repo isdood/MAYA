@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/bindgen-120dd0d37fa73fa3/out/host-target.txt",
+    "type": "txt",
+    "hash": "2c45b68ccb237a6c4bbbabd63caf4c02673737b4"
+  }
+}
+@pattern_meta@
+
 x86_64-unknown-linux-gnu

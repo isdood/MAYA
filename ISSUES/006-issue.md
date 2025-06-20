@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-06 13:12:41",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/006-issue.md",
+    "type": "md",
+    "hash": "de43d1e45b72319361ff7b629d2f13f20bb217b3"
+  }
+}
+@pattern_meta@
+
 # MAYA GUI Interface - Issue #006
 
 ## 🎨 Design Overview

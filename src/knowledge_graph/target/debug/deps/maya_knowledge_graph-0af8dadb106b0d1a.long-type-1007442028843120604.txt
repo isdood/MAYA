@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:12",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-1007442028843120604.txt",
+    "type": "txt",
+    "hash": "549760692e04f88aea68dea6993a0c6dbf7409cf"
+  }
+}
+@pattern_meta@
+
 UnsafeCell<std::option::Option<sled::flusher::Flusher>>
 parking_lot::lock_api::Mutex<parking_lot::raw_mutex::RawMutex, std::option::Option<sled::flusher::Flusher>>
 sled::arc::ArcInner<parking_lot::lock_api::Mutex<parking_lot::raw_mutex::RawMutex, std::option::Option<sled::flusher::Flusher>>>

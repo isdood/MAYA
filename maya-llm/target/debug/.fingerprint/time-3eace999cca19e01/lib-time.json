@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:43",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/time-3eace999cca19e01/lib-time.json",
+    "type": "json",
+    "hash": "4f073a8544835da69453b8413cd140c5555750fe"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"default\", \"formatting\", \"macros\", \"std\"]","declared_features":"[\"alloc\", \"default\", \"formatting\", \"large-dates\", \"local-offset\", \"macros\", \"parsing\", \"quickcheck\", \"rand\", \"serde\", \"serde-human-readable\", \"serde-well-known\", \"std\", \"wasm-bindgen\"]","target":3713843603798095488,"profile":17564239539340744749,"path":9332274828898522920,"deps":[[253581978874359338,"deranged",false,4056425524676361987],[724804171976944018,"num_conv",false,1604482727577931684],[1509944293013079861,"time_macros",false,114588460565094209],[5901133744777009488,"powerfmt",false,213676591228735201],[7695812897323945497,"itoa",false,7261331790288347881],[9886904983647127192,"time_core",false,9655260032433620096]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/time-3eace999cca19e01/dep-lib-time","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

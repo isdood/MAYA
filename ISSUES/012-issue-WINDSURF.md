@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 13:34:44",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/012-issue-WINDSURF.md",
+    "type": "md",
+    "hash": "533c03cfedfb3d8f15df63da60558559d9605c32"
+  }
+}
+@pattern_meta@
+
 # WINDSURF IDE Integration with MAYA LLM
 
 **Issue #012**  

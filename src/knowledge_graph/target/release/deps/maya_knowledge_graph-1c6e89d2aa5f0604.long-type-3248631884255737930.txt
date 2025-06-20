@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:53:47",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/deps/maya_knowledge_graph-1c6e89d2aa5f0604.long-type-3248631884255737930.txt",
+    "type": "txt",
+    "hash": "5f8389c56cd63f5c3dddecd5c2f2cdd7602abf98"
+  }
+}
+@pattern_meta@
+
 storage::KnowledgeGraphError: From<serde_json::Error>

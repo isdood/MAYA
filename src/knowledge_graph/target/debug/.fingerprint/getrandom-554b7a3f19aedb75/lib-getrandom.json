@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 22:07:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/getrandom-554b7a3f19aedb75/lib-getrandom.json",
+    "type": "json",
+    "hash": "5647308ef09d55a690b84983ef9237da4f0c81e0"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"rustc-dep-of-std\", \"std\", \"wasm_js\"]","target":11669924403970522481,"profile":3913059252234853083,"path":8821406492689256156,"deps":[[2828590642173593838,"cfg_if",false,11325131976608261751],[3331586631144870129,"build_script_build",false,2218006163084064991],[4684437522915235464,"libc",false,9629107829217719510]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/getrandom-554b7a3f19aedb75/dep-lib-getrandom","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./005-PLANS.fish",
+    "type": "fish",
+    "hash": "ab8eeb219536f37e5df06311b64d3ea0ecf67ff4"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env fish
 
 # 005-PLANS.fish

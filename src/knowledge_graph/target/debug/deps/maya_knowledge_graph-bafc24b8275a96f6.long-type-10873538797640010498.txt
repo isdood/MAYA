@@ -1,2 +1,19 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 13:45:55",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-bafc24b8275a96f6.long-type-10873538797640010498.txt",
+    "type": "txt",
+    "hash": "214da8db6d708d1e469227a1f973cba7ea2feaf8"
+  }
+}
+@pattern_meta@
+
 <S as storage::Storage>::Batch<'a>: Clone
 CachedBatch<'a, <S as storage::Storage>::Batch<'a>>

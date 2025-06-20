@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/itoa-a68ea12a2369cd39/lib-itoa.json",
+    "type": "json",
+    "hash": "a4045c7128487b458d275689eb2c661bbb9c6826"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"no-panic\"]","target":8239509073162986830,"profile":2040997289075261528,"path":13048009577478210061,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/itoa-a68ea12a2369cd39/dep-lib-itoa","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

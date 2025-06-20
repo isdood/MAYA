@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:47:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/futures-macro-4cd721a90510f9ba/lib-futures_macro",
+    "type": "fingerprint/futures-macro-4cd721a90510f9ba/lib-futures_macro",
+    "hash": "a2a4fb07f5f7a30809037dd6b14d37719d445fe0"
+  }
+}
+@pattern_meta@
+
 dd766cad82168e81

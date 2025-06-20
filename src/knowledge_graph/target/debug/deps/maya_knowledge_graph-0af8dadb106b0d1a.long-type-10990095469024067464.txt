@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 20:10:28",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-10990095469024067464.txt",
+    "type": "txt",
+    "hash": "bebcafcc0f8570c49beaa7c16e7222179661ff77"
+  }
+}
+@pattern_meta@
+
 error::KnowledgeGraphError: From<TransactionError<()>>

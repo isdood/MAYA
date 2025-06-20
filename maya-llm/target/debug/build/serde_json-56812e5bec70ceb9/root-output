@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/build/serde_json-56812e5bec70ceb9/root-output",
+    "type": "/maya-llm/target/debug/build/serde_json-56812e5bec70ceb9/root-output",
+    "hash": "52978310f318365dcb898b515a6a5089d66721d2"
+  }
+}
+@pattern_meta@
+
 /home/shimmer/MAYA/maya-llm/target/debug/build/serde_json-56812e5bec70ceb9/out

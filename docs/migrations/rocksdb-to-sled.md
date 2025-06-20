@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:44:02",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/migrations/rocksdb-to-sled.md",
+    "type": "md",
+    "hash": "e3a9a733be85de033d5e37b82338987eaff7d0a4"
+  }
+}
+@pattern_meta@
+
 # Migration Guide: RocksDB to Sled
 
 This guide provides instructions for migrating from RocksDB to Sled as the storage backend for MAYA's knowledge graph.

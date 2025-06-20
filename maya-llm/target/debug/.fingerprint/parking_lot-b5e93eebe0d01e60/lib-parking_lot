@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/parking_lot-b5e93eebe0d01e60/lib-parking_lot",
+    "type": "fingerprint/parking_lot-b5e93eebe0d01e60/lib-parking_lot",
+    "hash": "23177b0d896b952318949feb60e7e775cbd64fd1"
+  }
+}
+@pattern_meta@
+
 4d947651da459520

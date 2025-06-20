@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/starweave/handlers.zig",
+    "type": "zig",
+    "hash": "2906ec0e88fe92513a276a6fc7b2f36b331ad0bd"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const neural = @import("neural");
 const glimmer = @import("glimmer");

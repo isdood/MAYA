@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 06:19:59",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/criterion/sled_put/change/estimates.json",
+    "type": "json",
+    "hash": "23c992b7a84300d44f7b8f3a5802b8f0caf0e913"
+  }
+}
+@pattern_meta@
+
 {"mean":{"confidence_interval":{"confidence_level":0.95,"lower_bound":-0.038287107043188676,"upper_bound":-0.032006010547497424},"point_estimate":-0.035043299454520005,"standard_error":0.0016131636505551184},"median":{"confidence_interval":{"confidence_level":0.95,"lower_bound":-0.03911878789517986,"upper_bound":-0.030422806495600696},"point_estimate":-0.034604494185010326,"standard_error":0.002274621441536087}}

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/build/thiserror-e613a7d8d5c24d30/output",
+    "type": "/src/knowledge_graph/target/release/build/thiserror-e613a7d8d5c24d30/output",
+    "hash": "2fc4f632289069bffb2948cd5d36f6da484b16bd"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=build/probe.rs
 cargo:rustc-check-cfg=cfg(error_generic_member_access)
 cargo:rustc-check-cfg=cfg(thiserror_nightly_testing)

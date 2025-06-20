@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:18:18",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-15503151948780026593.txt",
+    "type": "txt",
+    "hash": "f155aeed3c9b8d06a4abebc0dd9b311ded9903df"
+  }
+}
+@pattern_meta@
+
 sled_store::SledStore: storage::WriteBatchExt

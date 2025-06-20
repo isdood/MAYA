@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:10",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/anyhow-c46cc427d69eb396/build-script-build-script-build.json",
+    "type": "json",
+    "hash": "8f60917ad54e55103338cfbead2ecff97afdb339"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"backtrace\", \"default\", \"std\"]","target":17883862002600103897,"profile":2225463790103693989,"path":5906803067622762330,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/anyhow-c46cc427d69eb396/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

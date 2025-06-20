@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/reference/000-index.md",
+    "type": "md",
+    "hash": "185cadd8440670953b2b2f7e67a9989069c5152d"
+  }
+}
+@pattern_meta@
+
 # MAYA Reference Documentation ✨
 
 > Navigating the quantum knowledge matrix of the STARWEAVE universe

@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:29:05",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-8136b59f15f49d3c.long-type-17298093210551735333.txt",
+    "type": "txt",
+    "hash": "09f11cf71b124750532b6f3faf5826238ecee714"
+  }
+}
+@pattern_meta@
+
 HybridBatch<SledWriteBatch, CachedBatch<SledWriteBatch>>

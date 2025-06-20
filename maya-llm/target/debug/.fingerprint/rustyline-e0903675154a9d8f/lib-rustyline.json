@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:43",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/rustyline-e0903675154a9d8f/lib-rustyline.json",
+    "type": "json",
+    "hash": "815e736a4f681a94c9f967e56139cdc52d1d76ae"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"custom-bindings\", \"default\", \"dirs-next\", \"radix_trie\", \"with-dirs\"]","declared_features":"[\"case_insensitive_history_search\", \"custom-bindings\", \"default\", \"dirs-next\", \"radix_trie\", \"regex\", \"signal-hook\", \"skim\", \"with-dirs\", \"with-fuzzy\"]","target":16020387536590446896,"profile":15657897354478470176,"path":3776756828733855288,"deps":[[1232198224951696867,"unicode_segmentation",false,17327650832819782632],[1322514204948454048,"unicode_width",false,14133834409518045469],[2828590642173593838,"cfg_if",false,14889661699679411208],[3812455420980172077,"nix",false,17039116197220117563],[4450062412064442726,"dirs_next",false,936961060868884020],[4684437522915235464,"libc",false,12071980028814914709],[5986029879202738730,"log",false,17118243959229990673],[10435729446543529114,"bitflags",false,8885546315270893426],[13495677209339419690,"radix_trie",false,14598239924025146690],[15046037678646901802,"fd_lock",false,9949150927974382123],[15932120279885307830,"memchr",false,5757829763432425991],[17716308468579268865,"utf8parse",false,16525118995477629231]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/rustyline-e0903675154a9d8f/dep-lib-rustyline","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

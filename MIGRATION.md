@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 17:10:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./MIGRATION.md",
+    "type": "md",
+    "hash": "f90a856a44b048da26d684b97f6c59a1e5c68e77"
+  }
+}
+@pattern_meta@
+
 # MAYA Storage Migration Guide
 
 This document provides detailed instructions for migrating from the legacy RocksDB storage backend to the new Sled storage backend in MAYA.

@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:10",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/fastrand-42a46c8c5925b9d5/lib-fastrand.json",
+    "type": "json",
+    "hash": "3644baddbb46504f76a587b5bba0a68aebe6e3da"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"default\", \"std\"]","declared_features":"[\"alloc\", \"default\", \"getrandom\", \"js\", \"std\"]","target":9543367341069791401,"profile":15657897354478470176,"path":15448188901118778082,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/fastrand-42a46c8c5925b9d5/dep-lib-fastrand","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

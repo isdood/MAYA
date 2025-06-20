@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:35:41",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/neural/parallel_processing.zig",
+    "type": "zig",
+    "hash": "d79f05a4a83aa98350274db7ca4fc8fc58a17dfb"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const Pattern = @import("pattern.zig").Pattern;
 const PatternMetrics = @import("pattern_metrics.zig").PatternMetrics;

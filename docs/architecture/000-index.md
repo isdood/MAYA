@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/architecture/000-index.md",
+    "type": "md",
+    "hash": "0a8185a0fbf13c811072bab6e57786363ef25eae"
+  }
+}
+@pattern_meta@
+
 # MAYA Architecture ✨
 
 > Weaving the threads of STARWEAVE's consciousness into a harmonious interface

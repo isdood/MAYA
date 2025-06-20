@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/textwrap-0c5d4b08e45a9c7b/lib-textwrap.json",
+    "type": "json",
+    "hash": "0f3b1cf4f3d4faefa363de24088e49d50bf3a163"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"default\", \"hyphenation\", \"smawk\", \"terminal_size\", \"unicode-linebreak\", \"unicode-width\"]","target":16213852416657372519,"profile":11250625435679592442,"path":7875295087788176202,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/textwrap-0c5d4b08e45a9c7b/dep-lib-textwrap","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

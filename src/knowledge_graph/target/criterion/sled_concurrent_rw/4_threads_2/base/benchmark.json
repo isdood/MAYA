@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:46:36",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/criterion/sled_concurrent_rw/4_threads_2/base/benchmark.json",
+    "type": "json",
+    "hash": "425af6d220851135d39430a049a761d9f2d2a262"
+  }
+}
+@pattern_meta@
+
 {"group_id":"sled_concurrent_rw","function_id":null,"value_str":"4_threads","throughput":null,"full_id":"sled_concurrent_rw/4_threads","directory_name":"sled_concurrent_rw/4_threads_2","title":"sled_concurrent_rw/4_threads #2"}

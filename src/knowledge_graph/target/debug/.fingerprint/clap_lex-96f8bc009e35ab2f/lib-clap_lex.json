@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/clap_lex-96f8bc009e35ab2f/lib-clap_lex.json",
+    "type": "json",
+    "hash": "cbecd51dd5afa69c963b57765cfbcbbf6f7c568b"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":16530349796863023660,"profile":15657897354478470176,"path":4795749135155115083,"deps":[[1332144223136197308,"os_str_bytes",false,2755037486072802245]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/clap_lex-96f8bc009e35ab2f/dep-lib-clap_lex","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

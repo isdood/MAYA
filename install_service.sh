@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 15:17:02",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./install_service.sh",
+    "type": "sh",
+    "hash": "42d3543fcb09c76c588d8346ae687ab18278d2e9"
+  }
+}
+@pattern_meta@
+
 #!/bin/bash
 set -e
 

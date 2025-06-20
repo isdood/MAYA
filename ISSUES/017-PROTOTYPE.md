@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 08:35:29",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/017-PROTOTYPE.md",
+    "type": "md",
+    "hash": "2cf2a4ba8b922d53b31b75bacb04cdb78847960f"
+  }
+}
+@pattern_meta@
+
 # 017: MAYA LLM Prototype Implementation
 
 ## Objective

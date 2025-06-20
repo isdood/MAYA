@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:54",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/deps/ciborium-167f065c64720044.d",
+    "type": "d",
+    "hash": "67ef6626ddbe387a3714477787754bcee51b2f2e"
+  }
+}
+@pattern_meta@
+
 /home/shimmer/MAYA/src/knowledge_graph/target/release/deps/libciborium-167f065c64720044.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/de/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/de/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/ser/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/ser/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/tag.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/canonical.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/integer.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/de.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/ser.rs
 
 /home/shimmer/MAYA/src/knowledge_graph/target/release/deps/libciborium-167f065c64720044.rlib: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/de/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/de/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/ser/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/ser/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/tag.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/canonical.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/integer.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/de.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ciborium-0.2.2/src/value/ser.rs

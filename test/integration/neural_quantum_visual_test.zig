@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 10:40:29",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./test/integration/neural_quantum_visual_test.zig",
+    "type": "zig",
+    "hash": "ea0ce665c546012e625ce37ec2aba8a90e02894c"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const testing = std.testing;
 const allocator = testing.allocator;

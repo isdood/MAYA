@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/goals/002-milestones.md",
+    "type": "md",
+    "hash": "19b1dcc52b8525c735ee6b8e07e5c0e5400f97a2"
+  }
+}
+@pattern_meta@
+
 # MAYA Development Milestones ✨
 
 > Charting our course through the STARWEAVE universe

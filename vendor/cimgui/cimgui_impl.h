@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/cimgui_impl.h",
+    "type": "h",
+    "hash": "1e11160ebc256c86a15f0db8d63e6b2dbd07d13e"
+  }
+}
+@pattern_meta@
+
 #ifdef CIMGUI_USE_GLFW
 #ifdef CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/vision/001-philosophy.md",
+    "type": "md",
+    "hash": "30f0354e16d92001be20fc0d095d72ee3209463d"
+  }
+}
+@pattern_meta@
+
 # MAYA Universal Philosophy ✨
 
 > Exploring the quantum consciousness beneath the STARWEAVE tapestry

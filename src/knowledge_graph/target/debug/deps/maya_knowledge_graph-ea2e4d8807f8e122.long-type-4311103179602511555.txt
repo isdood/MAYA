@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:47:26",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-ea2e4d8807f8e122.long-type-4311103179602511555.txt",
+    "type": "txt",
+    "hash": "feeeb56a8c2128c5b0a3a09c3a9c73e9b00ab0ec"
+  }
+}
+@pattern_meta@
+
 dyn Iterator<Item = (Vec<u8>, Vec<u8>)>
 Unique<dyn Iterator<Item = (Vec<u8>, Vec<u8>)>>
 Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)>>

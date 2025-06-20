@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:47:03",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/integration-891afff39afa878b.long-type-15818853244163820714.txt",
+    "type": "txt",
+    "hash": "96ce1f48d3e11ed63e09469b1084ea932520f7da"
+  }
+}
+@pattern_meta@
+
 _: Into<serde_json::value::Value>

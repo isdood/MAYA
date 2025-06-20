@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 22:07:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/crossbeam-utils-9f831418afb66b3a/invoked.timestamp",
+    "type": "timestamp",
+    "hash": "2609bf5809b2a3d6a76a9f7e2f28ab2149662bab"
+  }
+}
+@pattern_meta@
+
 This file has an mtime of when this was started.

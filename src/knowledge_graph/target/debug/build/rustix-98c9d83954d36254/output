@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:10",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/rustix-98c9d83954d36254/output",
+    "type": "/src/knowledge_graph/target/debug/build/rustix-98c9d83954d36254/output",
+    "hash": "e766772d2f47bc43b3804d7eb10d136c61c6a5c5"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=build.rs
 cargo:rustc-cfg=static_assertions
 cargo:rustc-cfg=linux_raw

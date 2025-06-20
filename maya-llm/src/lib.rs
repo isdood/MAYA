@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 14:29:32",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/src/lib.rs",
+    "type": "rs",
+    "hash": "55d3aeddfa1bfae394d72385f535299576eb9da6"
+  }
+}
+@pattern_meta@
+
 //! Core LLM implementation for MAYA
 
 use std::cell::RefCell;

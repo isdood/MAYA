@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/parking_lot_core-476b90a7380fcccd/lib-parking_lot_core.json",
+    "type": "json",
+    "hash": "cf7c9053d8edcc5ace3a658518ad2c070d325369"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"backtrace\", \"deadlock_detection\", \"nightly\", \"petgraph\", \"thread-id\"]","target":12558056885032795287,"profile":15657897354478470176,"path":4798931578341142114,"deps":[[2828590642173593838,"cfg_if",false,14889661699679411208],[3666196340704888985,"smallvec",false,8190997310309922502],[4269498962362888130,"build_script_build",false,3015228132644757547],[4684437522915235464,"libc",false,12071980028814914709]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/parking_lot_core-476b90a7380fcccd/dep-lib-parking_lot_core","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 12:32:01",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./benchmark/README.md",
+    "type": "md",
+    "hash": "7f6fcd146f371f06ba67caefd74db2dc2bc82093"
+  }
+}
+@pattern_meta@
+
 # Storage Engine Benchmarking
 
 This directory contains the benchmarking infrastructure for comparing different storage engines

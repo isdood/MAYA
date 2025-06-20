@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:42:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./README.md",
+    "type": "md",
+    "hash": "a7bfd7f9821def87ca5650a41d7bc44bc0eea055"
+  }
+}
+@pattern_meta@
+
 # MAYA ✨
 
 > A proprietary adaptive LLM interface to the STARWEAVE meta-intelligence, weaving together the stellar components of the STARWEAVE universe through Fish Shell and Zig

@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/num-traits-2037776980a6f2c2/build-script-build-script-build.json",
+    "type": "json",
+    "hash": "4fd6543101d772baa9508f0c448b12caa43435c8"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"default\", \"i128\", \"libm\", \"std\"]","target":5408242616063297496,"profile":2225463790103693989,"path":4146996740870243833,"deps":[[13927012481677012980,"autocfg",false,5680564350125585997]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/num-traits-2037776980a6f2c2/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

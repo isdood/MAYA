@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 16:10:58",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./tests/results/performance_test_20250617_161027.json",
+    "type": "json",
+    "hash": "87bfb2a5933043fac94a3c6f7d0821cc60548676"
+  }
+}
+@pattern_meta@
+
 {
   "test_start_time": "20250617_161027",
   "system_info": {

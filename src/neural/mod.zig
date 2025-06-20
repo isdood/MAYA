@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 10:08:38",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/neural/mod.zig",
+    "type": "zig",
+    "hash": "d97551b79aa537e5c01ebb9dd93cf8812a8f4dde"
+  }
+}
+@pattern_meta@
+
 //! Neural Network and Pattern Recognition Modules
 //! Contains advanced neural processing capabilities for MAYA
 

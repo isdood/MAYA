@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 06:57:35",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/cache.rs",
+    "type": "rs",
+    "hash": "dca9f0d8bea4185af5f1f198e1a75b75562509be"
+  }
+}
+@pattern_meta@
+
 //! Caching layer for the knowledge graph
 
 use std::sync::{Arc, RwLock, RwLockWriteGuard, RwLockReadGuard};

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 12:59:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/starweave/client.zig",
+    "type": "zig",
+    "hash": "9fb4f58141efc2ba85e74945fdfdefafd19fb6a6"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const net = std.net;
 const json = std.json;

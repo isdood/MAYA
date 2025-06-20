@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 16:17:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./tests/visualize_load_tests.py",
+    "type": "py",
+    "hash": "a2507df5d8d1d3526288c3ae306bc4a20efa2fdd"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env python3
 """
 Visualize load test results.

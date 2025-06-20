@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:59",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./performance_reports/20250618_055239/benchmark_output.txt",
+    "type": "txt",
+    "hash": "68bb628b4ab9d2f3c8dc99a923b152f8dd0f76b0"
+  }
+}
+@pattern_meta@
+
    Compiling libc v0.2.174
    Compiling proc-macro2 v1.0.95
    Compiling cfg-if v1.0.1

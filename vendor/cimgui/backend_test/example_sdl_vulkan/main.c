@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/backend_test/example_sdl_vulkan/main.c",
+    "type": "c",
+    "hash": "9530eb29d3e5c5203328f3912e5252f92feaf0c6"
+  }
+}
+@pattern_meta@
+
 #include <stdio.h>          // printf, fprintf
 #include <stdlib.h>         // abort
 #include <assert.h>

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/build/zerocopy-5598a2e4489dc9dc/output",
+    "type": "/src/knowledge_graph/target/release/build/zerocopy-5598a2e4489dc9dc/output",
+    "hash": "cb8a899cad791f679711010d1e46d7a4394f1cbf"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=build.rs
 cargo:rerun-if-changed=Cargo.toml
 cargo:rustc-check-cfg=cfg(zerocopy_aarch64_simd_1_59_0)

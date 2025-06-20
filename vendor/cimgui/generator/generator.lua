@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/generator/generator.lua",
+    "type": "lua",
+    "hash": "9512b305a6eba409556660a1577a2c365a8cdd61"
+  }
+}
+@pattern_meta@
+
 --------------------------------------------------------------------------
 --script for auto_funcs.h and auto_funcs.cpp generation
 --expects LuaJIT

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 08:41:20",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./examples/memory_visualization.zig",
+    "type": "zig",
+    "hash": "23aa1528644237f9000c568f4eccb9e07c8d5ba1"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const glimmer = @import("glimmer");
 const MemoryGraph = glimmer.visualization.MemoryGraph;

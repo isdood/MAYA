@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/TODO.txt",
+    "type": "txt",
+    "hash": "2f0dba543a4c3a284602534b39262078d89369cd"
+  }
+}
+@pattern_meta@
+
 
 
  - Being able to use a prefix for structs and enums. Could be a manual dictionary or an option to take parent namespace and struct (https://github.com/rokups/ImNodes/pull/20#issuecomment-719713982)

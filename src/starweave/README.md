@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 12:21:59",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/starweave/README.md",
+    "type": "md",
+    "hash": "0a9b967ccacf8cf0e2fb69801791a0723169fae7"
+  }
+}
+@pattern_meta@
+
 # STARWEAVE Client
 
 A high-performance, type-safe Zig implementation of the STARWEAVE protocol client, designed for secure and efficient quantum-neural communication within the MAYA ecosystem.

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/tutorials/000-index.md",
+    "type": "md",
+    "hash": "25f5aa2de11316b861a6f210691640c91d9a8f0f"
+  }
+}
+@pattern_meta@
+
 # MAYA Tutorials ✨
 
 > Guiding you through the quantum pathways of the STARWEAVE universe

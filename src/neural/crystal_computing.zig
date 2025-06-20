@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 10:44:57",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/neural/crystal_computing.zig",
+    "type": "zig",
+    "hash": "bf2dac0da605830e6f6434a737387c6c14046163"
+  }
+}
+@pattern_meta@
+
 // 🧠 MAYA Crystal Computing Interface
 // ✨ Version: 1.0.0
 // 📅 Created: 2025-06-18

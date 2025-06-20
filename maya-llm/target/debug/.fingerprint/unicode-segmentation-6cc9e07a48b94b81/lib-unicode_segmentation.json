@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/unicode-segmentation-6cc9e07a48b94b81/lib-unicode_segmentation.json",
+    "type": "json",
+    "hash": "2600a978f8bd3122de543c76c1ef142949a84c1f"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"no_std\"]","target":14369684853076716314,"profile":15657897354478470176,"path":6082492342247969330,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/unicode-segmentation-6cc9e07a48b94b81/dep-lib-unicode_segmentation","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

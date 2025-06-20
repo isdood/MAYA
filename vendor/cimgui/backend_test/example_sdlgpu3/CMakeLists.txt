@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/backend_test/example_sdlgpu3/CMakeLists.txt",
+    "type": "txt",
+    "hash": "063e5aa1f0ba2f234543e53fb90776a4b1593846"
+  }
+}
+@pattern_meta@
+
 cmake_minimum_required(VERSION 3.30)
 project(cimgui_sdlgpu3 LANGUAGES C CXX)
 

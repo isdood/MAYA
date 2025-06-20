@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/signal-hook-registry-af1d176d480afdb1/lib-signal_hook_registry",
+    "type": "fingerprint/signal-hook-registry-af1d176d480afdb1/lib-signal_hook_registry",
+    "hash": "1350e4c2f1c0d740f94a4753615e829b00918d27"
+  }
+}
+@pattern_meta@
+
 853a16253aeaed2e

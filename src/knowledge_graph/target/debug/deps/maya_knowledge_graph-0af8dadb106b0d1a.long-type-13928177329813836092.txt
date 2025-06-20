@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:21:02",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-13928177329813836092.txt",
+    "type": "txt",
+    "hash": "6f4a9f5b5d47200c9d94ea952b9e66da360a977a"
+  }
+}
+@pattern_meta@
+
 std::result::Result<(), TransactionError<Box<dyn StdError + Send + Sync>>>

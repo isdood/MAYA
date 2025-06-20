@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 08:54:49",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./build.log",
+    "type": "log",
+    "hash": "63ef3a7036e2cde34c5d07bf1d4b4825a7e80fd4"
+  }
+}
+@pattern_meta@
+
 /usr/bin/zig build-exe -ODebug --dep glimmer -Mroot=examples/memory_visualization.zig --dep starweave -Mglimmer=src/glimmer/mod.zig -Mstarweave=src/starweave/protocol.zig --cache-dir .zig-cache --global-cache-dir /home/shimmer/.cache/zig --name memory_visualization --zig-lib-dir /usr/lib/zig/ --listen=- 
 ./.zig-cache/o/2dd724a4b08cf00ec7ada4c6102529bf/memory_visualization 
 Warning: Terminal may not support ANSI colors. Visualization may not display correctly.

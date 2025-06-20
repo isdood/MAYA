@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/backend_test/example_glfw_dx11/CMakeLists.txt",
+    "type": "txt",
+    "hash": "2438e41a81fcab2df87e46d73416bf777c6dc6d8"
+  }
+}
+@pattern_meta@
+
 cmake_minimum_required(VERSION 3.11)
 project(cimgui_glfwdx11 LANGUAGES C CXX)
 

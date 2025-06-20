@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 06:20:08",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/criterion/sled_get/base/benchmark.json",
+    "type": "json",
+    "hash": "979de6b369ae76a3b0cf0b4c33e81a99c1be4cd0"
+  }
+}
+@pattern_meta@
+
 {"group_id":"sled_get","function_id":null,"value_str":null,"throughput":null,"full_id":"sled_get","directory_name":"sled_get","title":"sled_get"}

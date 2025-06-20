@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-15 21:42:53",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/debug/001-debug.txt",
+    "type": "txt",
+    "hash": "51fdb29afd1d42d442ff9b53cad038915d181327"
+  }
+}
+@pattern_meta@
+
 test-run
 └─ run maya-test
    └─ zig build-exe maya-test Debug native 1 errors

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:40:58",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/glimmer/build.zig",
+    "type": "zig",
+    "hash": "ac927fc4b12a96cdd42543debd0dfa7e0e864657"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 
 // This is a module that can be imported by other Zig code

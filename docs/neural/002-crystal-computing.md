@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:25:29",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/neural/002-crystal-computing.md",
+    "type": "md",
+    "hash": "e28fd572b838b4f37b35e0b6a448017e19fd4224"
+  }
+}
+@pattern_meta@
+
 # 🎯 Crystal Computing Integration
 
 > Quantum-enhanced pattern processing through crystal computing

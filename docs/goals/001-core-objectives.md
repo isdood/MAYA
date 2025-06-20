@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/goals/001-core-objectives.md",
+    "type": "md",
+    "hash": "c8cf26d1530b854f1b4ae87a34ce9852a61d7b5c"
+  }
+}
+@pattern_meta@
+
 # MAYA Core Objectives ✨
 
 > Defining our stellar purpose within the STARWEAVE universe

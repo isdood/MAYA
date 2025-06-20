@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 15:16:05",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./scripts/install_maya_learn.sh",
+    "type": "sh",
+    "hash": "88580b945acac7d20a24b0cb9cb827b7f12ecff1"
+  }
+}
+@pattern_meta@
+
 #!/bin/bash
 
 # Exit on error

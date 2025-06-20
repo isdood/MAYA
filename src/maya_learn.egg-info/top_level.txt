@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 14:05:54",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/maya_learn.egg-info/top_level.txt",
+    "type": "txt",
+    "hash": "6fc5d122a77d8ffd6e0e74433512dc70e10185b7"
+  }
+}
+@pattern_meta@
+
 core
 glimmer
 glm

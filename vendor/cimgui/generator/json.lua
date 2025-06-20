@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/generator/json.lua",
+    "type": "lua",
+    "hash": "c54f11e5d77807d29735944248e311f8b494c5a3"
+  }
+}
+@pattern_meta@
+
 --
 -- json.lua
 --

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/serde_json-56812e5bec70ceb9/output",
+    "type": "/src/knowledge_graph/target/debug/build/serde_json-56812e5bec70ceb9/output",
+    "hash": "505506237bd5c04aa6f14ee9e8b0b7906dfd9cb0"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=build.rs
 cargo:rustc-check-cfg=cfg(fast_arithmetic, values("32", "64"))
 cargo:rustc-cfg=fast_arithmetic="64"

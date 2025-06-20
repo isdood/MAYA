@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/generator/generator.sh",
+    "type": "sh",
+    "hash": "c9356e37de3e17994a570ec4b47039ae0452c3a2"
+  }
+}
+@pattern_meta@
+
 #!/bin/bash
 
 # this script must be executed in this directory

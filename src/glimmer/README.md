@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:42:12",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/glimmer/README.md",
+    "type": "md",
+    "hash": "3b35a21082e58358d2908c306180e2bf610d0c2c"
+  }
+}
+@pattern_meta@
+
 # ✨ GLIMMER: Visual Pattern Synthesis
 
 GLIMMER is the visual pattern synthesis system for MAYA, providing rich visualization capabilities for the MAYA LLM system, particularly focused on memory visualization.

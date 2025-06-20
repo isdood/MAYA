@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/zerocopy-93e8dc242e3cfb5b/build-script-build-script-build.json",
+    "type": "json",
+    "hash": "7d8b7e2896ea83fef71927527f142bee7220247e"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"simd\"]","declared_features":"[\"__internal_use_only_features_that_work_on_stable\", \"alloc\", \"derive\", \"float-nightly\", \"simd\", \"simd-nightly\", \"std\", \"zerocopy-derive\"]","target":5408242616063297496,"profile":1369601567987815722,"path":10212975071735170686,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/zerocopy-93e8dc242e3cfb5b/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

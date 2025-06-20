@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:45:57",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/byteorder-fcc84cb3db99adfd/lib-byteorder.json",
+    "type": "json",
+    "hash": "ee4e517752f07828a1597c31cf01292d10c3efe7"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"default\", \"i128\", \"std\"]","target":8344828840634961491,"profile":15657897354478470176,"path":6285582350159474306,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/byteorder-fcc84cb3db99adfd/dep-lib-byteorder","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

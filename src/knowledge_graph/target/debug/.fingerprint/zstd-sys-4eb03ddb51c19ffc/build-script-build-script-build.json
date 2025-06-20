@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 22:07:43",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/zstd-sys-4eb03ddb51c19ffc/build-script-build-script-build.json",
+    "type": "json",
+    "hash": "e41b348cea4a7d682930d00abc9e5d9c07a28bff"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"legacy\", \"std\"]","declared_features":"[\"bindgen\", \"debug\", \"default\", \"experimental\", \"legacy\", \"no_asm\", \"non-cargo\", \"pkg-config\", \"std\", \"thin\", \"zstdmt\"]","target":17883862002600103897,"profile":2225463790103693989,"path":10291343227079945624,"deps":[[10689043378672162905,"cc",false,7760523753574237897]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/zstd-sys-4eb03ddb51c19ffc/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

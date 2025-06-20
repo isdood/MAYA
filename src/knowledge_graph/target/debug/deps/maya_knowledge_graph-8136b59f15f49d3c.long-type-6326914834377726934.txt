@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:28:20",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-8136b59f15f49d3c.long-type-6326914834377726934.txt",
+    "type": "txt",
+    "hash": "357456f2a0c7bc60cbfb75d1515a416c50385531"
+  }
+}
+@pattern_meta@
+
 std::result::Result<std::sync::RwLockReadGuard<'_, OperationStats>, PoisonError<std::sync::RwLockReadGuard<'_, OperationStats>>>

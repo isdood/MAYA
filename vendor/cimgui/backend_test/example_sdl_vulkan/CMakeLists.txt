@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/backend_test/example_sdl_vulkan/CMakeLists.txt",
+    "type": "txt",
+    "hash": "7a9dadfaa60fd3274847604d53eb1fdaa67a8cf0"
+  }
+}
+@pattern_meta@
+
 Project(cimgui_sdl_vk)
 cmake_minimum_required(VERSION 2.8)
 if(WIN32) # to make mingw work as all the others

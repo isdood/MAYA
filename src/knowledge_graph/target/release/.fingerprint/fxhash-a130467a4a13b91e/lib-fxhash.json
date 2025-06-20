@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/fxhash-a130467a4a13b91e/lib-fxhash.json",
+    "type": "json",
+    "hash": "f5cc67b7c046ce76799175141e1edc4143d916a9"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":10973188114720300281,"profile":2040997289075261528,"path":1179972080441600162,"deps":[[3712811570531045576,"byteorder",false,9991422925232350421]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/fxhash-a130467a4a13b91e/dep-lib-fxhash","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

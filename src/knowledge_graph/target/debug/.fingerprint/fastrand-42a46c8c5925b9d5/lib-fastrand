@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:10",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/fastrand-42a46c8c5925b9d5/lib-fastrand",
+    "type": "fingerprint/fastrand-42a46c8c5925b9d5/lib-fastrand",
+    "hash": "8447dd00007d0f334f8e4c058fa1ed9176de04c6"
+  }
+}
+@pattern_meta@
+
 9457179b542a25b2

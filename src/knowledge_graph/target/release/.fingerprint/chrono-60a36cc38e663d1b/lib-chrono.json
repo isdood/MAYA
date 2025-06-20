@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:55",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/chrono-60a36cc38e663d1b/lib-chrono.json",
+    "type": "json",
+    "hash": "e3ee83b18ac3877b8ee7fadc0f90902629a0d800"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"android-tzdata\", \"clock\", \"default\", \"iana-time-zone\", \"js-sys\", \"now\", \"oldtime\", \"serde\", \"std\", \"wasm-bindgen\", \"wasmbind\", \"winapi\", \"windows-link\"]","declared_features":"[\"__internal_bench\", \"alloc\", \"android-tzdata\", \"arbitrary\", \"clock\", \"default\", \"iana-time-zone\", \"js-sys\", \"libc\", \"now\", \"oldtime\", \"pure-rust-locales\", \"rkyv\", \"rkyv-16\", \"rkyv-32\", \"rkyv-64\", \"rkyv-validation\", \"serde\", \"std\", \"unstable-locales\", \"wasm-bindgen\", \"wasmbind\", \"winapi\", \"windows-link\"]","target":15315924755136109342,"profile":2040997289075261528,"path":18277845542468744291,"deps":[[5157631553186200874,"num_traits",false,9578637957423391911],[7910860254152155345,"iana_time_zone",false,6123573982448044322],[9689903380558560274,"serde",false,1072269876741435746]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/chrono-60a36cc38e663d1b/dep-lib-chrono","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

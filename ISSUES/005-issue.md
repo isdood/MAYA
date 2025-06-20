@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-06 13:01:14",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/005-issue.md",
+    "type": "md",
+    "hash": "4b6d44a48d9e49be831fecccd8b290ebaa7b3d44"
+  }
+}
+@pattern_meta@
+
 # MAYA Development Status Update - Issue #005
 
 ## 📊 Project Status Overview

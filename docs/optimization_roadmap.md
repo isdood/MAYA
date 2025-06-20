@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 17:10:47",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/optimization_roadmap.md",
+    "type": "md",
+    "hash": "102115eb0be8f061295f881a1b291b2854191888"
+  }
+}
+@pattern_meta@
+
 # MAYA Optimization Roadmap
 
 This document outlines the planned optimizations and improvements for MAYA's storage and query systems.

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:17:02",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-3106987279043210969.txt",
+    "type": "txt",
+    "hash": "af4ba19a4ccde89119ae1379f90edfe123034d1b"
+  }
+}
+@pattern_meta@
+
 lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, ()>
 sled::arc::ArcInner<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, ()>>
 *mut sled::arc::ArcInner<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, ()>>

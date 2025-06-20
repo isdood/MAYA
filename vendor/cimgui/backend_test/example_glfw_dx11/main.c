@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/backend_test/example_glfw_dx11/main.c",
+    "type": "c",
+    "hash": "4584af8f11fefc63d3a50e26c6c35787ed558911"
+  }
+}
+@pattern_meta@
+
 //#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS is done in cmake
 #include "cimgui.h"
 #include "cimgui_impl.h"

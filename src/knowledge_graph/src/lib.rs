@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:36:04",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/lib.rs",
+    "type": "rs",
+    "hash": "e48b30d4bace11d126efc3b8f4d47c849865c7dd"
+  }
+}
+@pattern_meta@
+
 //! # Maya Knowledge Graph
 //! 
 //! A high-performance, embedded knowledge graph for MAYA's intelligent coding assistant,

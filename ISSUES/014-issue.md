@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:26:26",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/014-issue.md",
+    "type": "md",
+    "hash": "97d1d57a172944995523007dda4a728e8354f728"
+  }
+}
+@pattern_meta@
+
 # Sled Storage Backend Migration - Complete ✅
 
 ## Current Status: Completed (2025-06-18)

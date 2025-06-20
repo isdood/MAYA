@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/num-traits-bce109ba1f5efbcd/lib-num_traits.json",
+    "type": "json",
+    "hash": "ffc1fbd4097d8f2e3e9fdff8bff8b307b8ab0980"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"default\", \"i128\", \"libm\", \"std\"]","target":4278088450330190724,"profile":15657897354478470176,"path":17558020744381435747,"deps":[[5157631553186200874,"build_script_build",false,3983147537064342532]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/num-traits-bce109ba1f5efbcd/dep-lib-num_traits","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

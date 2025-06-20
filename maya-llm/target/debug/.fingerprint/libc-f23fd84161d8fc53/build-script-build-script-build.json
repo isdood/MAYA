@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/libc-f23fd84161d8fc53/build-script-build-script-build.json",
+    "type": "json",
+    "hash": "3753c813c108647aa132c620b6a19c667fc97a12"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"extra_traits\", \"std\"]","declared_features":"[\"align\", \"const-extern-fn\", \"default\", \"extra_traits\", \"rustc-dep-of-std\", \"rustc-std-workspace-core\", \"std\", \"use_std\"]","target":5408242616063297496,"profile":1565149285177326037,"path":15353935960437366179,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/libc-f23fd84161d8fc53/dep-build-script-build-script-build","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

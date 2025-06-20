@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 09:30:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/neural/pattern_recognition/mod.zig",
+    "type": "zig",
+    "hash": "e4dc0d8d219edf4243e8554b7eca7e5eebd6664f"
+  }
+}
+@pattern_meta@
+
 //! Advanced Pattern Recognition Module
 //! Implements deep pattern analysis, predictive modeling, and adaptive recognition
 //! for the MAYA neural core.

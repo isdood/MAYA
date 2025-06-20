@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/004-issue.md",
+    "type": "md",
+    "hash": "6d317656a4c03507aaa69c2e72585ea689b2b401"
+  }
+}
+@pattern_meta@
+
 I'll analyze our progress against the goals outlined in ISSUES/003-issue.md:
 
 ### ✅ Completed Components

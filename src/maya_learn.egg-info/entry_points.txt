@@ -1,2 +1,19 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 14:05:54",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/maya_learn.egg-info/entry_points.txt",
+    "type": "txt",
+    "hash": "b55b103ed799e834c757f5f6a170c1bb60e334e7"
+  }
+}
+@pattern_meta@
+
 [console_scripts]
 maya-learn = maya_learn.service:main

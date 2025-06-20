@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/num-traits-c1ef8c54e1e090fb/out/autocfg_33862d988f76b0e3_1.ll",
+    "type": "ll",
+    "hash": "33ab5b46793606377a9b8c752dca9f2fe93911a5"
+  }
+}
+@pattern_meta@
+
 ; ModuleID = 'autocfg_33862d988f76b0e3_1.acd6b674528e8ed3-cgu.0'
 source_filename = "autocfg_33862d988f76b0e3_1.acd6b674528e8ed3-cgu.0"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"

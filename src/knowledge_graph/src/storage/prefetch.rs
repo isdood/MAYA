@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:53:49",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/storage/prefetch.rs",
+    "type": "rs",
+    "hash": "e7cbc9084a23d88b3f2decebb63a334fb6c6f8c6"
+  }
+}
+@pattern_meta@
+
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::sync::Arc;

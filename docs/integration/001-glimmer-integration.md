@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:16:19",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/integration/001-glimmer-integration.md",
+    "type": "md",
+    "hash": "f3fe10332d9efa2fd58f48b2bc77b7e2e62aa961"
+  }
+}
+@pattern_meta@
+
 # GLIMMER Integration ✨
 
 > Weaving visual patterns through the quantum tapestry of STARWEAVE

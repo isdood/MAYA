@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/lock_api-ba2b18c1b40a793f/output",
+    "type": "/src/knowledge_graph/target/debug/build/lock_api-ba2b18c1b40a793f/output",
+    "hash": "8ecbb40c3c5c5f77ffd11fb6f611d91f69fa495f"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=build.rs
 cargo:rustc-check-cfg=cfg(has_const_fn_trait_bound)
 cargo:rustc-cfg=has_const_fn_trait_bound

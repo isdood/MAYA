@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:12",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-5865820785715182942.txt",
+    "type": "txt",
+    "hash": "d890e3aa749d3023434966a13cff413066d4f622"
+  }
+}
+@pattern_meta@
+
 UnsafeCell<BTreeMap<Vec<u8>, sled::arc::Arc<parking_lot::lock_api::RwLock<parking_lot::raw_rwlock::RawRwLock, HashMap<usize, (std::option::Option<Waker>, SyncSender<sled::oneshot::OneShot<std::option::Option<Event>>>)>>>>>
 parking_lot::lock_api::RwLock<parking_lot::raw_rwlock::RawRwLock, BTreeMap<Vec<u8>, sled::arc::Arc<parking_lot::lock_api::RwLock<parking_lot::raw_rwlock::RawRwLock, HashMap<usize, (std::option::Option<Waker>, SyncSender<sled::oneshot::OneShot<std::option::Option<Event>>>)>>>>>
 sled::subscriber::Subscribers

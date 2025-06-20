@@ -1,2 +1,19 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:46:16",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/graph-caf2b78abb9e4b6b.long-type-8747292567638151433.txt",
+    "type": "txt",
+    "hash": "f4f2a189d9e9a0f2bfd2287862b5ca71eaea1d49"
+  }
+}
+@pattern_meta@
+
 serde_json::error::Error
 serde_json::error::Error: From<&str>

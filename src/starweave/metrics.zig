@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 13:25:33",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/starweave/metrics.zig",
+    "type": "zig",
+    "hash": "ffca156614e392d4f19786be64b601ad0ede1bd4"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const time = std.time;
 const Allocator = std.mem.Allocator;

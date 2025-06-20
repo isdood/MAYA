@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:02:57",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-8136b59f15f49d3c.long-type-1234749981005093926.txt",
+    "type": "txt",
+    "hash": "98701d2befac4e78ca4d8b77201cdff2b3ff9a5f"
+  }
+}
+@pattern_meta@
+
 parking_lot::lock_api::RwLockReadGuard<'_, parking_lot::RawRwLock, LruCache<Vec<u8>, Vec<u8>>>

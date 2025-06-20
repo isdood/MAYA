@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 12:35:22",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/hashbrown-e384bcd48d03db95/lib-hashbrown.json",
+    "type": "json",
+    "hash": "c33018f6c54a101fb062fafe32d8d9882f3dfa26"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"alloc\", \"allocator-api2\", \"core\", \"default\", \"default-hasher\", \"equivalent\", \"inline-more\", \"nightly\", \"raw-entry\", \"rayon\", \"rustc-dep-of-std\", \"rustc-internal-api\", \"serde\"]","target":13796197676120832388,"profile":2040997289075261528,"path":14130175938754084182,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/hashbrown-e384bcd48d03db95/dep-lib-hashbrown","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

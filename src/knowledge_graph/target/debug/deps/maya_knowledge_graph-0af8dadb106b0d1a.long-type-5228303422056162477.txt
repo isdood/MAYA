@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:17:02",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-5228303422056162477.txt",
+    "type": "txt",
+    "hash": "6bd2e2e818affe7b0064ebe0b881b4f25f3b0577"
+  }
+}
+@pattern_meta@
+
 UnsafeCell<sled::lru::Shard>
 sled::fastlock::FastLock<sled::lru::Shard>
 (sled::lru::AccessQueue, sled::fastlock::FastLock<sled::lru::Shard>)

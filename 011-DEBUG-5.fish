@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:34:28",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./011-DEBUG-5.fish",
+    "type": "fish",
+    "hash": "219eb8b385b9f4ea5e7692478ec8d818f004120e"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env fish
 
 # 🌌 MAYA Debug Script 5: STARWEAVE Builder Quantum Harmonization

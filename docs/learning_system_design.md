@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-16 07:20:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/learning_system_design.md",
+    "type": "md",
+    "hash": "41c569f521fa16e0d816e538d7a315ae6d85df81"
+  }
+}
+@pattern_meta@
+
 # MAYA Learning System Design
 
 ## Overview

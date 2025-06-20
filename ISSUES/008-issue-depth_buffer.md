@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-07 00:28:39",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/008-issue-depth_buffer.md",
+    "type": "md",
+    "hash": "f6400c2805043e39a003366afc09762d822c14af"
+  }
+}
+@pattern_meta@
+
 # Depth Buffer Implementation & Future Optimizations 🎯
 
 ## Current Implementation Plan

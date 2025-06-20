@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:50:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./benches/README.md",
+    "type": "md",
+    "hash": "5b082a8b47feae59eb6976d904928e74de7114df"
+  }
+}
+@pattern_meta@
+
 # Performance Benchmarks
 
 This directory contains benchmarks for measuring the performance of MAYA's storage backend and other critical components.

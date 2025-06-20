@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/clap_lex-96f8bc009e35ab2f/lib-clap_lex",
+    "type": "fingerprint/clap_lex-96f8bc009e35ab2f/lib-clap_lex",
+    "hash": "8bdd318f54f60fa4c4c4b5677b093f2a84b52496"
+  }
+}
+@pattern_meta@
+
 5757cd5aa978bf1e

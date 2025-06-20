@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/clang-sys-4cee19c9ee3e5917/out/common.rs",
+    "type": "rs",
+    "hash": "fd00fa0374d1dbbf3d514b28cdc05ea595c3ac73"
+  }
+}
+@pattern_meta@
+
 // SPDX-License-Identifier: Apache-2.0
 
 use std::cell::RefCell;

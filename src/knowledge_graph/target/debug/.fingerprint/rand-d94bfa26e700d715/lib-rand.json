@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:40:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/rand-d94bfa26e700d715/lib-rand.json",
+    "type": "json",
+    "hash": "3526725552f43d2a3636faa474be5ea46926ad40"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"default\", \"getrandom\", \"libc\", \"rand_chacha\", \"small_rng\", \"std\", \"std_rng\"]","declared_features":"[\"alloc\", \"default\", \"getrandom\", \"libc\", \"log\", \"min_const_gen\", \"nightly\", \"packed_simd\", \"rand_chacha\", \"serde\", \"serde1\", \"simd_support\", \"small_rng\", \"std\", \"std_rng\"]","target":8827111241893198906,"profile":15657897354478470176,"path":9075665732867635968,"deps":[[1573238666360410412,"rand_chacha",false,3078311515993233203],[4684437522915235464,"libc",false,399879708815552545],[18130209639506977569,"rand_core",false,729380717545845437]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/rand-d94bfa26e700d715/dep-lib-rand","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

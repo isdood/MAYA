@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/oorandom-292772fee432dc37/lib-oorandom",
+    "type": "fingerprint/oorandom-292772fee432dc37/lib-oorandom",
+    "hash": "5e17ed4ed7b62653792ca1329f561ba46b8eefa5"
+  }
+}
+@pattern_meta@
+
 60fbe4353325a52b

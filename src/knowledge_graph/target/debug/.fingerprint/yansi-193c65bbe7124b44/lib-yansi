@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/yansi-193c65bbe7124b44/lib-yansi",
+    "type": "fingerprint/yansi-193c65bbe7124b44/lib-yansi",
+    "hash": "be861b8c743747277321e1d273df7763dac226e1"
+  }
+}
+@pattern_meta@
+
 99390d839076cfe6

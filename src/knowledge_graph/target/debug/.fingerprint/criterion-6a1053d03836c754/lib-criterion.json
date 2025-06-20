@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:29",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/criterion-6a1053d03836c754/lib-criterion.json",
+    "type": "json",
+    "hash": "aff193046bbd5084d30afdd1ecad8d456ed1aa5a"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"cargo_bench_support\", \"default\", \"html_reports\", \"plotters\", \"rayon\"]","declared_features":"[\"async\", \"async-std\", \"async_futures\", \"async_smol\", \"async_std\", \"async_tokio\", \"cargo_bench_support\", \"csv\", \"csv_output\", \"default\", \"futures\", \"html_reports\", \"plotters\", \"rayon\", \"real_blackbox\", \"smol\", \"stable\", \"tokio\"]","target":13134102886742499045,"profile":15657897354478470176,"path":10032375324178123091,"deps":[[797101358849049107,"plotters",false,12934841850196181060],[3271484356813889443,"oorandom",false,8097278259253725741],[4567981546493079902,"anes",false,6343640087031589203],[5157631553186200874,"num_traits",false,1143052643428985869],[9451456094439810778,"regex",false,17860284591546640877],[9689903380558560274,"serde",false,3356654086133633318],[10058577953979766589,"atty",false,439582976607045511],[10697383615564341592,"rayon",false,8375671559108540917],[11898908734080445782,"tinytemplate",false,5423345495791434418],[11903278875415370753,"itertools",false,7711291347529931951],[11934022306856972276,"ciborium",false,4050945530974790001],[14474842057495682559,"cast",false,12067513698136473915],[15355436635694932780,"clap",false,16272142041528688563],[15367738274754116744,"serde_json",false,14490576271141305288],[15622660310229662834,"walkdir",false,9237452586436659601],[16257276029081467297,"serde_derive",false,17874790879777470907],[17905811754654748051,"criterion_plot",false,9844844023514629917],[17917672826516349275,"lazy_static",false,6784701103933607949]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/criterion-6a1053d03836c754/dep-lib-criterion","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

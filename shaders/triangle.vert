@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-07 00:35:52",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./shaders/triangle.vert",
+    "type": "vert",
+    "hash": "8ff51be513852e1fc6e04a426cacc8a71ae598c0"
+  }
+}
+@pattern_meta@
+
 #version 450
 
 layout(location = 0) in vec3 inPosition;

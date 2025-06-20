@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:47:26",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-ea2e4d8807f8e122.long-type-2502154780787200367.txt",
+    "type": "txt",
+    "hash": "31cae773f835613cb92e1cd418a8f3609006af04"
+  }
+}
+@pattern_meta@
+
 PrefetchingIterator<HybridStore, Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)>>, Vec<u8>>
 Box<PrefetchingIterator<HybridStore, Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)>>, Vec<u8>>>
 Box<(dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a)>

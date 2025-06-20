@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/ciborium-io-94071ae60c78e363/lib-ciborium_io.json",
+    "type": "json",
+    "hash": "2e898a12a32d04c869fb6059944987d05dd89d8f"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"std\"]","declared_features":"[\"alloc\", \"std\"]","target":11045875261356110034,"profile":15657897354478470176,"path":2525931961025457884,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/ciborium-io-94071ae60c78e363/dep-lib-ciborium_io","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:54:46",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/linux-raw-sys-84721aa7d977aed9/lib-linux_raw_sys.json",
+    "type": "json",
+    "hash": "866b6d36fa728730d1ad59f69c2862210296d8f0"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"elf\", \"errno\", \"general\", \"ioctl\", \"no_std\"]","declared_features":"[\"bootparam\", \"btrfs\", \"compiler_builtins\", \"core\", \"default\", \"elf\", \"elf_uapi\", \"errno\", \"general\", \"if_arp\", \"if_ether\", \"if_packet\", \"image\", \"io_uring\", \"ioctl\", \"landlock\", \"loop_device\", \"mempolicy\", \"net\", \"netlink\", \"no_std\", \"prctl\", \"ptrace\", \"rustc-dep-of-std\", \"std\", \"system\", \"xdp\"]","target":5772965225213482929,"profile":4314370921045452772,"path":16785772698956764575,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/linux-raw-sys-84721aa7d977aed9/dep-lib-linux_raw_sys","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

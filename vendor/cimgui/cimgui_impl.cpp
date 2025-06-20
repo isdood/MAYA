@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/cimgui_impl.cpp",
+    "type": "cpp",
+    "hash": "2f3721f2fcc66f1570fca0439fe8e69595424b6c"
+  }
+}
+@pattern_meta@
+
 #include "./imgui/imgui.h"
 #ifdef IMGUI_ENABLE_FREETYPE
 #include "./imgui/misc/freetype/imgui_freetype.h"

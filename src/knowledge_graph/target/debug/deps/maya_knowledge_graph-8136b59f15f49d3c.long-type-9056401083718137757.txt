@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:24:30",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-8136b59f15f49d3c.long-type-9056401083718137757.txt",
+    "type": "txt",
+    "hash": "b97c1717ec0ae3961a0e715ae270ed047c426bfe"
+  }
+}
+@pattern_meta@
+
 std::sync::RwLock<HashMap<Vec<u8>, bool>>

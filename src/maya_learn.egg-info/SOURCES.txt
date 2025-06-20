@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 14:05:54",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/maya_learn.egg-info/SOURCES.txt",
+    "type": "txt",
+    "hash": "baa3e3a539c59b77efdad2c00ad30c7b94025368"
+  }
+}
+@pattern_meta@
+
 LICENSE
 README.md
 pyproject.toml

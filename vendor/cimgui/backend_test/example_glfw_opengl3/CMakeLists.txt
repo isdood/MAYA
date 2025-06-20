@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/backend_test/example_glfw_opengl3/CMakeLists.txt",
+    "type": "txt",
+    "hash": "89e50bd3c38c6d3bcd2505158fc6ae87e0bc320e"
+  }
+}
+@pattern_meta@
+
 Project(cimgui_glfw)
 cmake_minimum_required(VERSION 3.11)
 if(WIN32) # to mingw work as all the others

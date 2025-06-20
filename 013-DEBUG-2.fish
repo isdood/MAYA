@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 14:03:53",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./013-DEBUG-2.fish",
+    "type": "fish",
+    "hash": "1e607679a592095319672b6d7de5fc181e987172"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env fish
 # 🌈 GLIMMER/STARWEAVE Debug Script: 013-DEBUG-2.fish
 # Purpose: Next-level triage for Zig test/build errors in the STARWEAVE universe (Zig 0.15+)

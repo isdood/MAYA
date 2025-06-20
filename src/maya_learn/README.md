@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 12:15:41",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/maya_learn/README.md",
+    "type": "md",
+    "hash": "a598ed389991247af65bf7dc1af10ac37793f815"
+  }
+}
+@pattern_meta@
+
 # MAYA Learning Service
 
 A systemd service for continuous learning and pattern recognition in the MAYA AI ecosystem, enabling adaptive behavior and intelligent automation.

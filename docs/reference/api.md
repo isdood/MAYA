@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 13:51:27",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/reference/api.md",
+    "type": "md",
+    "hash": "3eadb4694fdfe1a29dde8593ce01c8410085962d"
+  }
+}
+@pattern_meta@
+
 # MAYA API Reference
 
 This document provides a comprehensive reference for MAYA's programming interfaces.

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 16:05:17",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./tests/generate_performance_report.py",
+    "type": "py",
+    "hash": "6fb69e1d569178a5cdbea2ea86f9db52867dd8c9"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env python3
 """
 Generate performance reports from test results.

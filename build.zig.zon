@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 11:09:27",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./build.zig.zon",
+    "type": "zon",
+    "hash": "e0f7b019cb6a72bc30db67775e7abfce79806668"
+  }
+}
+@pattern_meta@
+
 .{
     .name = .maya,
     .version = "0.1.0",

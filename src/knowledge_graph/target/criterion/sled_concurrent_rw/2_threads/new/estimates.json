@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:43:05",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/criterion/sled_concurrent_rw/2_threads/new/estimates.json",
+    "type": "json",
+    "hash": "d6df2adbaafd9a3b0d3e533f609a7cb818a53bd1"
+  }
+}
+@pattern_meta@
+
 {"mean":{"confidence_interval":{"confidence_level":0.95,"lower_bound":201387.81384375002,"upper_bound":205578.105625},"point_estimate":203473.82125,"standard_error":1067.688437443256},"median":{"confidence_interval":{"confidence_level":0.95,"lower_bound":200351.8125,"upper_bound":205105.0625},"point_estimate":202158.8125,"standard_error":1135.6796296644857},"median_abs_dev":{"confidence_interval":{"confidence_level":0.95,"lower_bound":6815.512079000473,"upper_bound":11820.120952650905},"point_estimate":8837.129805609584,"standard_error":1233.1741026430157},"slope":null,"std_dev":{"confidence_interval":{"confidence_level":0.95,"lower_bound":8858.231939063873,"upper_bound":12466.979430222165},"point_estimate":10696.482598641247,"standard_error":919.5272804042049}}

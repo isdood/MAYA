@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:35:30",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/models/property.rs",
+    "type": "rs",
+    "hash": "489630bd45840843ea7785a03db1e4ec2661e011"
+  }
+}
+@pattern_meta@
+
 //! Property model for graph elements
 
 use super::*;

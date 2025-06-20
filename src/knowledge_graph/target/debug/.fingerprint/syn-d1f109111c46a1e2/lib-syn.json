@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/syn-d1f109111c46a1e2/lib-syn.json",
+    "type": "json",
+    "hash": "1265e0b0a30fd1b10b5408a9ec95bc02d72a0670"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"clone-impls\", \"default\", \"derive\", \"extra-traits\", \"full\", \"parsing\", \"printing\", \"proc-macro\", \"visit-mut\"]","declared_features":"[\"clone-impls\", \"default\", \"derive\", \"extra-traits\", \"fold\", \"full\", \"parsing\", \"printing\", \"proc-macro\", \"test\", \"visit\", \"visit-mut\"]","target":9442126953582868550,"profile":2225463790103693989,"path":4524323700427660773,"deps":[[1988483478007900009,"unicode_ident",false,11882961933918571093],[3060637413840920116,"proc_macro2",false,10839234586264551430],[17990358020177143287,"quote",false,16015703020425085848]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/syn-d1f109111c46a1e2/dep-lib-syn","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

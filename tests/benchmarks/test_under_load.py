@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 16:33:39",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./tests/benchmarks/test_under_load.py",
+    "type": "py",
+    "hash": "e90d240f3e2e10abad85642ccd290014bbc64868"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env python3
 """
 Load testing for MAYA Monitoring System

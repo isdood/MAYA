@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:22:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/storage/cached_store.rs.backup",
+    "type": "backup",
+    "hash": "112b0b267600000bd2a0a786abd06ad9960968fd"
+  }
+}
+@pattern_meta@
+
 //! Cached storage implementation for the knowledge graph
 
 use std::sync::Arc;

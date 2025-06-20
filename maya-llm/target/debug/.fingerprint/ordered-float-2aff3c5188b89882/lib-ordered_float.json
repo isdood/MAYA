@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/ordered-float-2aff3c5188b89882/lib-ordered_float.json",
+    "type": "json",
+    "hash": "3b7690937d87f21cbb1e65c2252608aa6e3a1ab5"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"arbitrary\", \"bytemuck\", \"default\", \"proptest\", \"rand\", \"randtest\", \"rkyv\", \"rkyv_16\", \"rkyv_32\", \"rkyv_64\", \"rkyv_ck\", \"schemars\", \"serde\", \"speedy\", \"std\"]","target":10997316721270772160,"profile":15657897354478470176,"path":11914001236305351607,"deps":[[5157631553186200874,"num_traits",false,9737417137841150579]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/ordered-float-2aff3c5188b89882/dep-lib-ordered_float","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

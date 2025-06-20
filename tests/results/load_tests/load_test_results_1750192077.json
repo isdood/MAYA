@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 16:27:57",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./tests/results/load_tests/load_test_results_1750192077.json",
+    "type": "json",
+    "hash": "83729ce266b13d3b2b047979b4e34d8d170a4bdb"
+  }
+}
+@pattern_meta@
+
 {
   "system_info": {
     "hostname": "001-STARCORE",

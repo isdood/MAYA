@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/ciborium-io-5e889dc3c66f5bca/lib-ciborium_io",
+    "type": "fingerprint/ciborium-io-5e889dc3c66f5bca/lib-ciborium_io",
+    "hash": "38a79eed703fdef64d5a6e93cacd04273406c3eb"
+  }
+}
+@pattern_meta@
+
 b8e688c0e740626f

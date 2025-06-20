@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 08:09:47",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./debug_report_(date +%Y%m%d_%H%M%S).txt",
+    "type": "txt",
+    "hash": "2c9b4a4e57bf615b22f072216b9fe3df7e4b3345"
+  }
+}
+@pattern_meta@
+
 MAYA Debug Report
 ==================
 Timestamp: Thu 19 Jun 2025 08:09:46 AM EDT UTC

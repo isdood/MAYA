@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:06:38",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-bafc24b8275a96f6.long-type-10210606632830983820.txt",
+    "type": "txt",
+    "hash": "050bbb6eca30cd62cb78fef95cbf90a186307f01"
+  }
+}
+@pattern_meta@
+
 <S as storage::Storage>::Batch<'a>: storage::WriteBatch

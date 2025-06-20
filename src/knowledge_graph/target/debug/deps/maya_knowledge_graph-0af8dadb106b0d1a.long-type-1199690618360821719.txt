@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:18:18",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-1199690618360821719.txt",
+    "type": "txt",
+    "hash": "3f3d9aba61bb4bd022bb3e8223a960085ff18dc4"
+  }
+}
+@pattern_meta@
+
 Box<dyn storage::WriteBatch>: storage::WriteBatch
 Box<Box<dyn storage::WriteBatch>>
 Box<(dyn storage::WriteBatch + 'static)>

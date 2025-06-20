@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/cexpr-d2158e165d80ac9e/lib-cexpr.json",
+    "type": "json",
+    "hash": "1be57ecfe232ac30119fc312355e02c13c1dba64"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":18139931998865716051,"profile":2225463790103693989,"path":11989868359505120957,"deps":[[6502365400774175331,"nom",false,4933427722253200097]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/cexpr-d2158e165d80ac9e/dep-lib-cexpr","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

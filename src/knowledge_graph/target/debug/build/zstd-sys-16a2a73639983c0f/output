@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 22:07:43",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/zstd-sys-16a2a73639983c0f/output",
+    "type": "/src/knowledge_graph/target/debug/build/zstd-sys-16a2a73639983c0f/output",
+    "hash": "58f9450d98467fd69e4bf0ac3e55a92900abb4e7"
+  }
+}
+@pattern_meta@
+
 OUT_DIR = Some(/home/shimmer/MAYA/src/knowledge_graph/target/debug/build/zstd-sys-16a2a73639983c0f/out)
 TARGET = Some(x86_64-unknown-linux-gnu)
 HOST = Some(x86_64-unknown-linux-gnu)

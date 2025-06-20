@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/num-traits-c1ef8c54e1e090fb/output",
+    "type": "/src/knowledge_graph/target/debug/build/num-traits-c1ef8c54e1e090fb/output",
+    "hash": "c6f4f023b8882a3ff8f43c2412c0400b9cdc18a1"
+  }
+}
+@pattern_meta@
+
 cargo:rustc-check-cfg=cfg(has_total_cmp)
 cargo:rustc-cfg=has_total_cmp
 cargo:rerun-if-changed=build.rs

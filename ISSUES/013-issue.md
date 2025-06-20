@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:05:54",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/013-issue.md",
+    "type": "md",
+    "hash": "882a5ba64e2610a10a5549e0a93eaf83e272d76a"
+  }
+}
+@pattern_meta@
+
 # MAYA Project Roadmap: Intelligent Coding Assistant Integration
 
 ## Overview

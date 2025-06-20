@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/generator/output/overloads.txt",
+    "type": "txt",
+    "hash": "2c99ff43ae8a650c5558cbf5687c4a0ed03d7eb6"
+  }
+}
+@pattern_meta@
+
 ----------------overloadings---------------------------
 ImColor_ImColor	5
 1	nil	ImColor_ImColor_Nil ()

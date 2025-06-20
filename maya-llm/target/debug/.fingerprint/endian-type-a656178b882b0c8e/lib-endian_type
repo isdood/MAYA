@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/endian-type-a656178b882b0c8e/lib-endian_type",
+    "type": "fingerprint/endian-type-a656178b882b0c8e/lib-endian_type",
+    "hash": "17de661b2e9575412b1391ea30ea9fb75b04b053"
+  }
+}
+@pattern_meta@
+
 9ff195c18f2649d7

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 13:25:44",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./benchmark/parse_benchmark_results.py",
+    "type": "py",
+    "hash": "4ae2fb978420c6badc187f9d3a92d3c3baf28800"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env python3
 """
 Parse Criterion benchmark results and generate a markdown report.

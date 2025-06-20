@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/syn-bb0ed5bbc9139ddb/output",
+    "type": "/src/knowledge_graph/target/debug/build/syn-bb0ed5bbc9139ddb/output",
+    "hash": "4df7617bf33cd2bde896d407343da9c30268c538"
+  }
+}
+@pattern_meta@
+
 cargo:rustc-cfg=syn_disable_nightly_tests

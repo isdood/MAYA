@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/jobserver-a33d4bfbebf4b236/lib-jobserver.json",
+    "type": "json",
+    "hash": "0beec0d0657ca466529e8f1f496c995e018f29b7"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":15857469692476194146,"profile":2225463790103693989,"path":1861601707283469822,"deps":[[4684437522915235464,"libc",false,399879708815552545]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/jobserver-a33d4bfbebf4b236/dep-lib-jobserver","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

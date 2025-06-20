@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/log-ff97d2b12ce05993/lib-log.json",
+    "type": "json",
+    "hash": "d7e5aa271b942e3ff3760619a364edd94792c668"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"kv\", \"kv_serde\", \"kv_std\", \"kv_sval\", \"kv_unstable\", \"kv_unstable_serde\", \"kv_unstable_std\", \"kv_unstable_sval\", \"max_level_debug\", \"max_level_error\", \"max_level_info\", \"max_level_off\", \"max_level_trace\", \"max_level_warn\", \"release_max_level_debug\", \"release_max_level_error\", \"release_max_level_info\", \"release_max_level_off\", \"release_max_level_trace\", \"release_max_level_warn\", \"serde\", \"std\", \"sval\", \"sval_ref\", \"value-bag\"]","target":6550155848337067049,"profile":15657897354478470176,"path":6298501019993773321,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/log-ff97d2b12ce05993/dep-lib-log","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

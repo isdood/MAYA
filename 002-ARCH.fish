@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./002-ARCH.fish",
+    "type": "fish",
+    "hash": "39c6eb18169b5b9d244e9119d791049caa2cec77"
+  }
+}
+@pattern_meta@
+
 #!/usr/bin/env fish
 
 # 002-ARCH.fish

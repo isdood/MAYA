@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 14:00:48",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./pyproject.toml",
+    "type": "toml",
+    "hash": "3a93e3a54e5db88a4e6fe9b99e97726056727887"
+  }
+}
+@pattern_meta@
+
 [build-system]
 requires = ["setuptools>=42"]
 build-backend = "setuptools.build_meta"

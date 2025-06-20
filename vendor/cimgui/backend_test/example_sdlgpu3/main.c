@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/backend_test/example_sdlgpu3/main.c",
+    "type": "c",
+    "hash": "c56170d9ee5a223b8e793ef3ec40aab5e8904da3"
+  }
+}
+@pattern_meta@
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>

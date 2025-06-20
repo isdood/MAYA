@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 13:25:49",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./benchmark/RESULTS.md",
+    "type": "md",
+    "hash": "bde34ce7869446456ac7fc6edca1b7bc5f990f4a"
+  }
+}
+@pattern_meta@
+
 # Storage Engine Benchmark Results
 
 ## Test Environment

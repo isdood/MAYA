@@ -1,2 +1,19 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/build/parking_lot_core-885dce6b99ceaa73/output",
+    "type": "/src/knowledge_graph/target/release/build/parking_lot_core-885dce6b99ceaa73/output",
+    "hash": "ba5cbc252c142c8886522d8971f8ac08aa287e2e"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=build.rs
 cargo:rustc-check-cfg=cfg(tsan_enabled)

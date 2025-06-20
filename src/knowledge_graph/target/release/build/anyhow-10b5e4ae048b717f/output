@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/build/anyhow-10b5e4ae048b717f/output",
+    "type": "/src/knowledge_graph/target/release/build/anyhow-10b5e4ae048b717f/output",
+    "hash": "df2045996d2b4e83777790213ba79674b0e58b4a"
+  }
+}
+@pattern_meta@
+
 cargo:rerun-if-changed=src/nightly.rs
 cargo:rerun-if-env-changed=RUSTC_BOOTSTRAP
 cargo:rustc-check-cfg=cfg(anyhow_build_probe)

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:54:24",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/query/mod.rs",
+    "type": "rs",
+    "hash": "6bb030b16ba60e1be346b3d38e2463f458c0a2c4"
+  }
+}
+@pattern_meta@
+
 //! Query interface for the knowledge graph
 //!
 //! Provides a fluent API for querying the knowledge graph.

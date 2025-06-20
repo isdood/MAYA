@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/clap-eb0260b00af4f3a2/lib-clap.json",
+    "type": "json",
+    "hash": "1df9e563fcb931c0cd0915818e390c439d9b87a1"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"atty\", \"backtrace\", \"cargo\", \"clap_derive\", \"color\", \"debug\", \"default\", \"deprecated\", \"derive\", \"env\", \"once_cell\", \"regex\", \"std\", \"strsim\", \"suggestions\", \"termcolor\", \"terminal_size\", \"unicase\", \"unicode\", \"unstable-doc\", \"unstable-grouped\", \"unstable-replace\", \"unstable-v4\", \"wrap_help\", \"yaml\", \"yaml-rust\"]","target":725892165292113192,"profile":15657897354478470176,"path":14104539952873707776,"deps":[[580378868546634928,"textwrap",false,14340433043244711130],[10435729446543529114,"bitflags",false,8885546315270893426],[14923790796823607459,"indexmap",false,18212412610137678923],[15944592714770878610,"clap_lex",false,2215622210457786199]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/clap-eb0260b00af4f3a2/dep-lib-clap","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

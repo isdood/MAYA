@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-15 21:41:39",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/010-issue-compilation_errors.md",
+    "type": "md",
+    "hash": "55a541a7df8942df20172dd4b00f4d09008f176e"
+  }
+}
+@pattern_meta@
+
 # Compilation Errors
 
 ## Current Issues

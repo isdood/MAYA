@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:12",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-17081750874394114115.txt",
+    "type": "txt",
+    "hash": "41041349e5f6eb52143015b8fd1caa3ea2f25775"
+  }
+}
+@pattern_meta@
+
 (dyn StdError + Send + Sync + 'static)
 PhantomData<(dyn StdError + Send + Sync + 'static)>
 Unique<(dyn StdError + Send + Sync + 'static)>

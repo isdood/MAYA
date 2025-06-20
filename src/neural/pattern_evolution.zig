@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 11:29:15",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/neural/pattern_evolution.zig",
+    "type": "zig",
+    "hash": "85d70485b7e53956c2a1b56431037b4ae0bc87aa"
+  }
+}
+@pattern_meta@
+
 // 🎯 MAYA Pattern Evolution
 // ✨ Version: 1.0.0
 // 📅 Created: 2025-06-18
@@ -6,6 +23,25 @@
 const std = @import("std");
 const pattern_synthesis = @import("pattern_synthesis.zig");
 const pattern_transformation = @import("pattern_transformation.zig");
+
+/// Callback function type for real-time evolution updates
+pub const EvolutionCallback = *const fn (
+    context: ?*anyopaque, 
+    state: *const EvolutionState,
+    current_best: []const u8
+) anyerror!void;
+
+/// Configuration for real-time evolution
+pub const RealTimeConfig = struct {
+    /// Time between updates in milliseconds
+    update_interval_ms: u64 = 100,
+    
+    /// Maximum time to run in milliseconds (0 for unlimited)
+    max_runtime_ms: u64 = 0,
+    
+    /// Whether to run evolution in a separate thread
+    threaded: bool = true,
+};
 
 /// Evolution configuration
 pub const EvolutionConfig = struct {
@@ -20,6 +56,9 @@ pub const EvolutionConfig = struct {
     timeout_ms: u32 = 500,
 };
 
+/// Fitness function type
+const FitnessFn = *const fn (?*anyopaque, []const u8) f64;
+
 /// Evolution state
 pub const EvolutionState = struct {
     // Core properties
@@ -32,6 +71,10 @@ pub const EvolutionState = struct {
     pattern_id: []const u8,
     pattern_type: pattern_synthesis.PatternType,
     evolution_type: EvolutionType,
+    
+    // Fitness function
+    fitness_fn: FitnessFn,
+    fitness_ctx: ?*anyopaque = null,
 
     // Component states
     synthesis_state: pattern_synthesis.SynthesisState,
@@ -65,6 +108,20 @@ pub const PatternEvolution = struct {
     state: EvolutionState,
     synthesis: *pattern_synthesis.PatternSynthesis,
     transformer: *pattern_transformation.PatternTransformer,
+    
+    // Real-time state
+    rt_config: ?RealTimeConfig = null,
+    rt_callback: ?EvolutionCallback = null,
+    rt_context: ?*anyopaque = null,
+    rt_thread: ?std.Thread = null,
+    rt_should_stop: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(false),
+    current_population: ?[][]const u8 = null,
+    current_best: ?[]const u8 = null,
+
+    // Default fitness function that returns a constant value
+    fn defaultFitness(_: ?*anyopaque, _: []const u8) f64 {
+        return 0.5; // Default fitness value
+    }
 
     pub fn init(allocator: std.mem.Allocator) !*PatternEvolution {
         var evolution = try allocator.create(PatternEvolution);
@@ -77,24 +134,223 @@ pub const PatternEvolution = struct {
                 .diversity = 0.0,
                 .convergence = 0.0,
                 .pattern_id = "",
-                .pattern_type = .Universal,
-                .evolution_type = .Universal,
+                .pattern_type = .Quantum,
+                .evolution_type = .Neural,
+                .fitness_fn = defaultFitness,
+                .fitness_ctx = null,
                 .synthesis_state = undefined,
                 .transformation_state = undefined,
             },
-            .synthesis = try pattern_synthesis.PatternSynthesis.init(allocator),
-            .transformer = try pattern_transformation.PatternTransformer.init(allocator),
+            .synthesis = undefined,
+            .transformer = undefined,
         };
+
+        // Initialize components
+        evolution.synthesis = try pattern_synthesis.PatternSynthesis.init(allocator);
+        evolution.transformer = try pattern_transformation.PatternTransformer.init(allocator);
+
         return evolution;
     }
 
     pub fn deinit(self: *PatternEvolution) void {
+        // Signal any running real-time evolution to stop
+        self.stopRealtime();
+        
+        // Wait for thread to finish if running
+        if (self.rt_thread) |thread| {
+            thread.join();
+        }
+        
+        // Free current population if it exists
+        if (self.current_population) |pop| {
+            self.freePopulation(pop);
+        }
+        
+        // Free current best if it exists
+        if (self.current_best) |best| {
+            self.allocator.free(best);
+        }
+        
         self.synthesis.deinit();
         self.transformer.deinit();
         self.allocator.destroy(self);
     }
 
-    /// Evolve pattern data
+    /// Stop any running real-time evolution
+    pub fn stopRealtime(self: *PatternEvolution) void {
+        self.rt_should_stop.store(true, .SeqCst);
+    }
+    
+    /// Evolve pattern data in real-time with callbacks
+    pub fn evolveRealtime(
+        self: *PatternEvolution, 
+        pattern_data: []const u8,
+        config: RealTimeConfig,
+        callback: EvolutionCallback,
+        context: ?*anyopaque
+    ) !void {
+        // Store real-time configuration and callback
+        self.rt_config = config;
+        self.rt_callback = callback;
+        self.rt_context = context;
+        self.rt_should_stop.store(false, .SeqCst);
+        
+        // Store initial pattern
+        if (self.current_best) |best| {
+            self.allocator.free(best);
+        }
+        self.current_best = try self.allocator.dupe(u8, pattern_data);
+        
+        // Initialize population if needed
+        if (self.current_population == null) {
+            self.current_population = try self.generatePopulation(pattern_data);
+        }
+        
+        // Start evolution in a separate thread if requested
+        if (config.threaded) {
+            self.rt_thread = try std.Thread.spawn(.{}, evolveThread, .{self});
+        } else {
+            try self.evolveThread();
+        }
+    }
+    
+    fn evolveThread(self: *PatternEvolution) !void {
+        const config = self.rt_config orelse return error.NoRealTimeConfig;
+        const callback = self.rt_callback orelse return error.NoCallbackProvided;
+        
+        const start_time = std.time.milliTimestamp();
+        var last_update: i64 = 0;
+        
+        while (!self.rt_should_stop.load(.SeqCst)) {
+            const now = std.time.milliTimestamp();
+            
+            // Check if max runtime exceeded
+            if (config.max_runtime_ms > 0 and (now - start_time) >= @as(i64, @intCast(config.max_runtime_ms))) {
+                break;
+            }
+            
+            // Perform a single evolution step
+            try self.evolveStep();
+            
+            // Call callback at specified interval
+            if ((now - last_update) >= @as(i64, @intCast(config.update_interval_ms))) {
+                try callback(self.rt_context, &self.state, self.current_best orelse return error.NoBestPattern);
+                last_update = now;
+            }
+            
+            // Small sleep to prevent busy waiting
+            std.time.sleep(1_000_000); // 1ms
+        }
+        
+        // Final update
+        try callback(self.rt_context, &self.state, self.current_best orelse return error.NoBestPattern);
+        try callback(self.rt_context, &self.state, self.state.pattern_id);
+    }
+    
+    /// Evolve a single step
+    pub fn evolveStep(self: *PatternEvolution) !void {
+        // Initialize population if this is the first step
+        if (self.current_population == null) {
+            if (self.current_best == null) {
+                return error.NoInitialPattern;
+            }
+            self.current_population = try self.generatePopulation(self.current_best.?);
+        }
+        
+        const population = self.current_population orelse return error.NoPopulation;
+        if (population.len == 0) return error.EmptyPopulation;
+        
+        // Evaluate all individuals in the population
+        var total_fitness: f64 = 0.0;
+        var best_fitness: f64 = 0.0;
+        var best_individual: ?[]const u8 = null;
+        
+        // Calculate fitness for each individual
+        for (population) |individual| {
+            const fitness = self.state.fitness_fn(self.state.fitness_ctx, individual);
+            total_fitness += fitness;
+            
+            // Track the best individual
+            if (best_individual == null or fitness > best_fitness) {
+                best_fitness = fitness;
+                best_individual = individual;
+            }
+        }
+        
+        // Update the best pattern if we found a better one
+        if (best_individual) |best| {
+            if (self.current_best) |current| {
+                const current_fitness = self.state.fitness_fn(self.state.fitness_ctx, current);
+                if (best_fitness > current_fitness) {
+                    self.allocator.free(current);
+                    self.current_best = try self.allocator.dupe(u8, best);
+                }
+            } else {
+                self.current_best = try self.allocator.dupe(u8, best);
+            }
+        }
+        
+        // Calculate population statistics
+        const avg_fitness = total_fitness / @as(f64, @floatFromInt(population.len));
+        
+        // Simple diversity metric (standard deviation of fitness values)
+        var variance: f64 = 0.0;
+        for (population) |individual| {
+            const diff = self.state.fitness_fn(self.state.fitness_ctx, individual) - avg_fitness;
+            variance += diff * diff;
+        }
+        variance /= @as(f64, @floatFromInt(population.len));
+        const diversity = @sqrt(variance);
+        
+        // Update state
+        self.state.generation += 1;
+        self.state.fitness = best_fitness;
+        self.state.diversity = if (diversity > 1.0) 1.0 else if (diversity < 0.0) 0.0 else diversity;
+        self.state.convergence = 1.0 - (diversity / @max(1.0, best_fitness));
+        
+        // Create new population through selection, crossover, and mutation
+        var new_population = try self.allocator.alloc([]const u8, population.len);
+        errdefer {
+            for (new_population) |ind| self.allocator.free(ind);
+            self.allocator.free(new_population);
+        }
+        
+        // Keep the best individual (elitism)
+        if (self.current_best) |best| {
+            new_population[0] = try self.allocator.dupe(u8, best);
+        } else {
+            new_population[0] = try self.allocator.dupe(u8, population[0]);
+        }
+        
+        // Fill the rest of the population with offspring
+        for (new_population[1..]) |*individual| {
+            // Select parents (tournament selection)
+            const parent1 = try self.selectParent(population, 3);
+            const parent2 = try self.selectParent(population, 3);
+            
+            // Create offspring through crossover and mutation
+            individual.* = try self.createOffspring(parent1, parent2);
+        }
+        
+        // Free old population
+        for (population) |ind| self.allocator.free(ind);
+        self.allocator.free(population);
+        
+        // Update current population
+        self.current_population = new_population;
+        }
+        
+        // Update evolution state
+        self.state.generation += 1;
+        self.state.diversity = self.calculateDiversity(population);
+        self.state.convergence = self.calculateConvergence(&self.state);
+        
+        // Generate next generation
+        self.freePopulation(population);
+        self.current_population = try self.generatePopulation(self.current_best.?);
+    }
+    
+    /// Evolve pattern data (blocking)
     pub fn evolve(self: *PatternEvolution, pattern_data: []const u8) !EvolutionState {
         // Process initial pattern
         const initial_state = try self.synthesis.synthesize(pattern_data);
@@ -159,14 +415,16 @@ pub const PatternEvolution = struct {
 
     /// Generate population
     fn generatePopulation(self: *PatternEvolution, pattern_data: []const u8) ![][]const u8 {
+        // Initialize the population with random patterns
         var population = try self.allocator.alloc([]const u8, self.config.population_size);
-        errdefer self.freePopulation(population);
-
-        // Initialize population with mutations
+        var seed = @as(u64, @intCast(std.time.milliTimestamp()));
+        var rng = std.rand.DefaultPrng.init(seed);
         for (population) |*individual| {
-            individual.* = try self.mutatePattern(pattern_data);
+            individual.* = try self.allocator.alloc(u8, self.config.pattern_size);
+            for (individual.*) |*byte| {
+                byte.* = rng.random().int(u8);
+            }
         }
-
         return population;
     }
 
@@ -176,6 +434,65 @@ pub const PatternEvolution = struct {
             self.allocator.free(individual);
         }
         self.allocator.free(population);
+    }
+    
+    /// Select a parent using tournament selection
+    fn selectParent(self: *PatternEvolution, population: [][]const u8, tournament_size: usize) ![]const u8 {
+        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
+        
+        // Select tournament_size random individuals
+        var best_fitness: f64 = -1.0;
+        var best_individual: ?[]const u8 = null;
+        
+        for (0..tournament_size) |_| {
+            const idx = rng.random().int(usize) % population.len;
+            const individual = population[idx];
+            const fitness = self.state.fitness_fn(self.state.fitness_ctx, individual);
+            
+            if (best_individual == null or fitness > best_fitness) {
+                best_fitness = fitness;
+                best_individual = individual;
+            }
+        }
+        
+        return best_individual orelse return error.SelectionFailed;
+    }
+    
+    /// Create an offspring through crossover and mutation
+    fn createOffspring(self: *PatternEvolution, parent1: []const u8, parent2: []const u8) ![]u8 {
+        // Simple one-point crossover
+        const min_len = @min(parent1.len, parent2.len);
+        if (min_len == 0) return error.InvalidPatternLength;
+        
+        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
+        const crossover_point = rng.random().int(usize) % min_len;
+        
+        // Create child by combining parts of both parents
+        var child = try self.allocator.alloc(u8, parent1.len);
+        
+        // Copy first part from parent1
+        @memcpy(child[0..crossover_point], parent1[0..crossover_point]);
+        
+        // Copy second part from parent2
+        @memcpy(child[crossover_point..], parent2[crossover_point..]);
+        
+        // Apply mutation
+        try self.mutatePattern(child);
+        
+        return child;
+    }
+    
+    /// Mutate a pattern in-place
+    fn mutatePattern(self: *PatternEvolution, pattern: []u8) !void {
+        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
+        
+        for (pattern) |*byte| {
+            if (rng.random().float(f64) < self.config.mutation_rate) {
+                // Flip a random bit in the byte
+                const bit_pos = rng.random().int(u3);
+                byte.* ^= @as(u8, 1) << @intCast(bit_pos);
+            }
+        }
     }
 
     /// Evaluate population
@@ -270,6 +587,36 @@ pub const PatternEvolution = struct {
 };
 
 // Tests
+const testing = std.testing;
+
+test "real-time pattern evolution" {
+    const allocator = testing.allocator;
+    
+    // Initialize pattern evolution
+    var evolution = try PatternEvolution.init(allocator);
+    defer evolution.deinit();
+    
+    // Test pattern
+    const pattern_data = "test pattern";
+    
+    // Set initial best
+    evolution.current_best = try allocator.dupe(u8, pattern_data);
+    
+    // Run a few evolution steps
+    for (0..10) |_| {
+        try evolution.evolveStep();
+        
+        // Verify state is valid
+        try testing.expect(evolution.state.isValid());
+        try testing.expect(evolution.state.generation > 0);
+    }
+    
+    // Cleanup
+    if (evolution.current_best) |best| {
+        allocator.free(best);
+    }
+}
+
 test "pattern evolution initialization" {
     const allocator = std.testing.allocator;
     var evolution = try PatternEvolution.init(allocator);

@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 06:42:39",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/ahash-31620b658889a1c0/lib-ahash.json",
+    "type": "json",
+    "hash": "3cb26b4260134851ffa93e8fbe3e4f571ca5c06a"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"atomic-polyfill\", \"compile-time-rng\", \"const-random\", \"default\", \"getrandom\", \"nightly-arm-aes\", \"no-rng\", \"runtime-rng\", \"serde\", \"std\"]","target":8470944000320059508,"profile":15657897354478470176,"path":16596926602859992957,"deps":[[966925859616469517,"build_script_build",false,2679306384615336465],[2828590642173593838,"cfg_if",false,14889661699679411208],[3722963349756955755,"once_cell",false,5468255697328013840],[14131061446229887432,"zerocopy",false,9641327851429634465]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/ahash-31620b658889a1c0/dep-lib-ahash","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

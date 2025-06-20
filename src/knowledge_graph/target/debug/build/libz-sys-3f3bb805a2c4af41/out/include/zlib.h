@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/libz-sys-3f3bb805a2c4af41/out/include/zlib.h",
+    "type": "h",
+    "hash": "723effae91274a2b617e1b389fe1109633db3e3e"
+  }
+}
+@pattern_meta@
+
 /* zlib.h -- interface of the 'zlib' general purpose compression library
   version 1.3.1, January 22nd, 2024
 

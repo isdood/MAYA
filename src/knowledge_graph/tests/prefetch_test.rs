@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:56:36",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/tests/prefetch_test.rs",
+    "type": "rs",
+    "hash": "2e33c6236cbccc1d812042d2d65e25e82fb3904b"
+  }
+}
+@pattern_meta@
+
 use maya_knowledge_graph::storage::{
     Storage, PrefetchConfig, PrefetchExt, SledStore
 };

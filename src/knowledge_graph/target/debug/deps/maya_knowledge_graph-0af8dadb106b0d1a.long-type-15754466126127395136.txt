@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:12",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-15754466126127395136.txt",
+    "type": "txt",
+    "hash": "c18d0ab4d722ad4dcc684cb58f93605eedb31fcf"
+  }
+}
+@pattern_meta@
+
 UnsafeCell<HashMap<IVec, Tree, BuildHasherDefault<fxhash::FxHasher64>>>
 parking_lot::lock_api::RwLock<parking_lot::raw_rwlock::RawRwLock, HashMap<IVec, Tree, BuildHasherDefault<fxhash::FxHasher64>>>
 sled::arc::ArcInner<parking_lot::lock_api::RwLock<parking_lot::raw_rwlock::RawRwLock, HashMap<IVec, Tree, BuildHasherDefault<fxhash::FxHasher64>>>>

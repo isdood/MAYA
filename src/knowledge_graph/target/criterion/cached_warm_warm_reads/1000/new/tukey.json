@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:45:16",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/criterion/cached_warm_warm_reads/1000/new/tukey.json",
+    "type": "json",
+    "hash": "b7bda3ec2776e41030b643d7a2b424c40f705b33"
+  }
+}
+@pattern_meta@
+
 [1103132.299331266,1120426.6803856126,1166545.0298638705,1183839.4109182172]

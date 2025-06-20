@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 16:10:58",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/performance/performance_report_20250617_161058.md",
+    "type": "md",
+    "hash": "5a12f5934c347435871f08dae8bea09060df11a4"
+  }
+}
+@pattern_meta@
+
 # MAYA Monitoring Performance Report
 Generated: 2025-06-17 16:10:58
 

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-07 00:21:26",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/007-issue.md",
+    "type": "md",
+    "hash": "242c08aeb13c20197c53de04448904af4787de4b"
+  }
+}
+@pattern_meta@
+
 # GUI/Vulkan Integration Progress 🎨
 
 ## Current Status

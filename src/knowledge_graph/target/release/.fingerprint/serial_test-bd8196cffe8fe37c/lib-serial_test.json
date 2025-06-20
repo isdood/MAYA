@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:34:08",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/serial_test-bd8196cffe8fe37c/lib-serial_test.json",
+    "type": "json",
+    "hash": "6cc6e97181c3e1585b5549cc56b6d197b9166c07"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"async\", \"default\", \"futures\", \"log\", \"logging\"]","declared_features":"[\"async\", \"default\", \"docsrs\", \"document-features\", \"file_locks\", \"fslock\", \"futures\", \"log\", \"logging\"]","target":4656940298690361176,"profile":2040997289075261528,"path":14782801174012781184,"deps":[[2706460456408817945,"futures",false,10502242830776668077],[4495526598637097934,"parking_lot",false,2862873000289211425],[5364813825765636762,"dashmap",false,4324090925783457783],[5986029879202738730,"log",false,15661223059885338790],[15050505014973373994,"serial_test_derive",false,1503119832014135392],[17917672826516349275,"lazy_static",false,11824651809690169472]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/serial_test-bd8196cffe8fe37c/dep-lib-serial_test","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

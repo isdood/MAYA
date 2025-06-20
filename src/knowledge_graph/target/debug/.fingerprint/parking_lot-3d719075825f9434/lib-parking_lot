@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:26:33",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/parking_lot-3d719075825f9434/lib-parking_lot",
+    "type": "fingerprint/parking_lot-3d719075825f9434/lib-parking_lot",
+    "hash": "3049be5cf809054e58838d972e3e0f4f1c34f8fb"
+  }
+}
+@pattern_meta@
+
 f2cc4d418489c9af

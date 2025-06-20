@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/generator/cimgui_template.h",
+    "type": "h",
+    "hash": "3edbeaef3fdcdeaab642192ed432cddf6d064caa"
+  }
+}
+@pattern_meta@
+
 #ifndef CIMGUI_INCLUDED
 #define CIMGUI_INCLUDED
 #include <stdio.h>

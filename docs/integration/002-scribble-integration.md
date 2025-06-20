@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:16:28",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/integration/002-scribble-integration.md",
+    "type": "md",
+    "hash": "9d07a8d0e27ea7a14ea619ebd0ac10dbcfbe59c3"
+  }
+}
+@pattern_meta@
+
 # SCRIBBLE Integration ✨
 
 > Weaving quantum computational patterns through the crystalline matrix of STARWEAVE

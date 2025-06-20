@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:26",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/thiserror-b2b4847dd7203080/lib-thiserror.json",
+    "type": "json",
+    "hash": "8b34fb0a98db6fbdf00f31c3d812e875e30fb725"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":13586076721141200315,"profile":15657897354478470176,"path":10179202502758381470,"deps":[[8008191657135824715,"build_script_build",false,14360988587915834223],[15291996789830541733,"thiserror_impl",false,3655630924944671202]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/thiserror-b2b4847dd7203080/dep-lib-thiserror","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

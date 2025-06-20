@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:34:08",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/deps/parking_lot-996a7d7e36c1458a.d",
+    "type": "d",
+    "hash": "a3a90a10cf5659c74fc0252aeb99508df23072dc"
+  }
+}
+@pattern_meta@
+
 /home/shimmer/MAYA/src/knowledge_graph/target/release/deps/libparking_lot-996a7d7e36c1458a.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/condvar.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/elision.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/fair_mutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/mutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/once.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/raw_fair_mutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/raw_mutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/raw_rwlock.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/remutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/rwlock.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/util.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/deadlock.rs
 
 /home/shimmer/MAYA/src/knowledge_graph/target/release/deps/libparking_lot-996a7d7e36c1458a.rlib: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/condvar.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/elision.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/fair_mutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/mutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/once.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/raw_fair_mutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/raw_mutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/raw_rwlock.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/remutex.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/rwlock.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/util.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/parking_lot-0.11.2/src/deadlock.rs

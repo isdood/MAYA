@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:43",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/tokio-macros-45f18c34506bac08/lib-tokio_macros",
+    "type": "fingerprint/tokio-macros-45f18c34506bac08/lib-tokio_macros",
+    "hash": "b26630184b0746f28e4905d89b83849aaa650b5e"
+  }
+}
+@pattern_meta@
+
 362b3116988633d7

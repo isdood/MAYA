@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:50:45",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/zstd-sys-bac2740a1320aa68/out/include/zstd_errors.h",
+    "type": "h",
+    "hash": "915261dc65a2118fb25f4aa87aed53a82f1103bf"
+  }
+}
+@pattern_meta@
+
 /*
  * Copyright (c) Yann Collet, Facebook, Inc.
  * All rights reserved.

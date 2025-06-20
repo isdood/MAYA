@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:26:33",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/crossbeam-deque-65ab308bf566e372/lib-crossbeam_deque.json",
+    "type": "json",
+    "hash": "405e5c8031eb6641764a32cf56eef4bda865fc08"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"default\", \"std\"]","target":15353977948366730291,"profile":2682017813363557493,"path":12568718714777011731,"deps":[[3528074118530651198,"crossbeam_epoch",false,15677552409304781422],[4468123440088164316,"crossbeam_utils",false,8411182114596207468]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/crossbeam-deque-65ab308bf566e372/dep-lib-crossbeam_deque","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

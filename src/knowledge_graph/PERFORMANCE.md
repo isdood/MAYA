@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 06:33:36",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/PERFORMANCE.md",
+    "type": "md",
+    "hash": "6f83ac7f4b27ff94dc7b8566c5650b9ae13d3c61"
+  }
+}
+@pattern_meta@
+
 # MAYA Knowledge Graph Performance
 
 This document outlines the performance characteristics of the MAYA Knowledge Graph's storage backend.

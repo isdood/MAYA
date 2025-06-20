@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:46:15",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-6adfdccbf6e04521.long-type-449329979654708218.txt",
+    "type": "txt",
+    "hash": "fb21792bd44a194d2ea54d182623ee10a43f7edc"
+  }
+}
+@pattern_meta@
+
 error::KnowledgeGraphError
 std::result::Result<sled_store::SledStore, error::KnowledgeGraphError>
 std::result::Result<std::option::Option<T>, error::KnowledgeGraphError>

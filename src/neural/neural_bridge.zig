@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:23:34",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/neural/neural_bridge.zig",
+    "type": "zig",
+    "hash": "33f41358c1832275360bec940cb9a83bbd3738c7"
+  }
+}
+@pattern_meta@
+
 // 🎯 MAYA Neural Bridge Enhancement
 // ✨ Version: 1.0.0
 // 📅 Created: 2025-06-18

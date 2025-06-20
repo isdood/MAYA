@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:12",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-16730259378906913928.txt",
+    "type": "txt",
+    "hash": "dd352f2841cb79079368722096a63eaafec12cd1"
+  }
+}
+@pattern_meta@
+
 UnsafeCell<std::option::Option<Box<(dyn MergeOperator + 'static)>>>
 parking_lot::lock_api::RwLock<parking_lot::raw_rwlock::RawRwLock, std::option::Option<Box<(dyn MergeOperator + 'static)>>>
 sled::arc::ArcInner<sled::tree::TreeInner>

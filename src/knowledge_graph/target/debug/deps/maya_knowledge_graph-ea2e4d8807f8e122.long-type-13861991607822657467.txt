@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 20:54:36",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-ea2e4d8807f8e122.long-type-13861991607822657467.txt",
+    "type": "txt",
+    "hash": "1d93ccc3775fa7daaddd5022aae545216fb1450b"
+  }
+}
+@pattern_meta@
+
 parking_lot::lock_api::MutexGuard<'_, parking_lot::RawMutex, ()>

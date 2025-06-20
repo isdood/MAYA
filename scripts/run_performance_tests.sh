@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 16:05:28",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./scripts/run_performance_tests.sh",
+    "type": "sh",
+    "hash": "d98ae123b1f03f9c6603ebba0a1936bd8f5dae84"
+  }
+}
+@pattern_meta@
+
 #!/bin/bash
 #
 # Run MAYA performance tests and generate a report

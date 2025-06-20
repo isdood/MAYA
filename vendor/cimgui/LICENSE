@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/LICENSE",
+    "type": "/vendor/cimgui/LICENSE",
+    "hash": "18e36b1b5634c208fd9a97fb5cc1b96ff979f1cd"
+  }
+}
+@pattern_meta@
+
 The MIT License (MIT)
 
 Copyright (c) 2015 Stephan Dilly

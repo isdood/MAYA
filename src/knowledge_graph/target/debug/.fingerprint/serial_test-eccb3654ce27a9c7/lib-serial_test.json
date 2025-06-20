@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 15:47:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/serial_test-eccb3654ce27a9c7/lib-serial_test.json",
+    "type": "json",
+    "hash": "f226b0c635f9d53025bd2687fc59af338c821c5e"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"async\", \"default\", \"futures\", \"log\", \"logging\"]","declared_features":"[\"async\", \"default\", \"docsrs\", \"document-features\", \"file_locks\", \"fslock\", \"futures\", \"log\", \"logging\"]","target":4656940298690361176,"profile":15657897354478470176,"path":14782801174012781184,"deps":[[2706460456408817945,"futures",false,3900835240777731933],[4495526598637097934,"parking_lot",false,17620584437636736429],[5364813825765636762,"dashmap",false,3328476859515202206],[5986029879202738730,"log",false,2871167435259158015],[15050505014973373994,"serial_test_derive",false,15152981123024500417],[17917672826516349275,"lazy_static",false,6784701103933607949]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/serial_test-eccb3654ce27a9c7/dep-lib-serial_test","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

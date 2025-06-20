@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 11:21:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/glm/README.md",
+    "type": "md",
+    "hash": "9e0c9e64de9f64861e6500fa6bdeaf1edcb5a167"
+  }
+}
+@pattern_meta@
+
 # GLIMMER Module ✨
 
 > Visual pattern generation and processing for the STARWEAVE ecosystem

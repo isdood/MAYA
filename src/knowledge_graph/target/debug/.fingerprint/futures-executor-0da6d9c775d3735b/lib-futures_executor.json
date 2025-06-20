@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:11",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/futures-executor-0da6d9c775d3735b/lib-futures_executor.json",
+    "type": "json",
+    "hash": "c95cdba32c349e54b0dca9a9f7de8228be353ff3"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"default\", \"num_cpus\", \"std\", \"thread-pool\"]","target":11409328241454404632,"profile":13318305459243126790,"path":16371182941626970220,"deps":[[7620660491849607393,"futures_core",false,6282435371437530192],[10629569228670356391,"futures_util",false,13812885905138164554],[16240732885093539806,"futures_task",false,12523406058390518975]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/futures-executor-0da6d9c775d3735b/dep-lib-futures_executor","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

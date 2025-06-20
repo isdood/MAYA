@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 19:16:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/vision/002-starweave-harmony.md",
+    "type": "md",
+    "hash": "c106a574bedfc6bb668fdf69374ad1532f38b598"
+  }
+}
+@pattern_meta@
+
 # MAYA STARWEAVE Harmony ✨
 
 > Dancing in perfect quantum synchronization through the infinite STARWEAVE tapestry

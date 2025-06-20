@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:31:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/maya_knowledge_graph-0af8dadb106b0d1a.long-type-6413605195208006853.txt",
+    "type": "txt",
+    "hash": "4b0a876495780eea3bb32db0f5383e511b4a942f"
+  }
+}
+@pattern_meta@
+
 UnsafeCell<BTreeMap<u64, BTreeSet<u64>>>
 lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, BTreeMap<u64, BTreeSet<u64>>>
 sled::arc::ArcInner<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex, BTreeMap<u64, BTreeSet<u64>>>>

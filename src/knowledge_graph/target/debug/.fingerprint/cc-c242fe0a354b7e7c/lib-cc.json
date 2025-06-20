@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 22:07:43",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/cc-c242fe0a354b7e7c/lib-cc.json",
+    "type": "json",
+    "hash": "e52622911bbb7e641eb4259a276c866e610d7750"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"parallel\"]","declared_features":"[\"jobserver\", \"parallel\"]","target":11042037588551934598,"profile":2225463790103693989,"path":9105477930252750355,"deps":[[368266236819139940,"jobserver",false,5047250700033103117],[4684437522915235464,"libc",false,10413979392783468613],[8410525223747752176,"shlex",false,670004093811855423]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/cc-c242fe0a354b7e7c/dep-lib-cc","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

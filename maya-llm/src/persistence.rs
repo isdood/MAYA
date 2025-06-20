@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 14:43:26",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/src/persistence.rs",
+    "type": "rs",
+    "hash": "94711b1df2f024bbd09838d7be1d2fbb42ba94ea"
+  }
+}
+@pattern_meta@
+
 //! Data persistence for the MAYA LLM
 
 use serde::{Serialize, Deserialize};

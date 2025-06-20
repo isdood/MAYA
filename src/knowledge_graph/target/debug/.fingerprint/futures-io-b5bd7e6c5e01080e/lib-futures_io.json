@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 22:07:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/futures-io-b5bd7e6c5e01080e/lib-futures_io.json",
+    "type": "json",
+    "hash": "f307f5304eeb7c0374a362f93c2b7120426566f3"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"std\"]","declared_features":"[\"default\", \"std\", \"unstable\"]","target":5742820543410686210,"profile":17467636112133979524,"path":18353901042932882363,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/futures-io-b5bd7e6c5e01080e/dep-lib-futures_io","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

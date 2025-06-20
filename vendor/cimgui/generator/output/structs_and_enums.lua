@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 16:11:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./vendor/cimgui/generator/output/structs_and_enums.lua",
+    "type": "lua",
+    "hash": "b5d624130ef2c46d8284a3b6d5b2b8cabb284b0d"
+  }
+}
+@pattern_meta@
+
 local t={
   enums={
     ImDrawFlags_={

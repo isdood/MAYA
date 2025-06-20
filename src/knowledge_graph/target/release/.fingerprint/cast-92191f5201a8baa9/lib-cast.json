@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/cast-92191f5201a8baa9/lib-cast.json",
+    "type": "json",
+    "hash": "466c42e4fcf51920da09c638cd4f1afb1549eab1"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[\"std\"]","target":5545552490577062777,"profile":2040997289075261528,"path":11627728385175175844,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/cast-92191f5201a8baa9/dep-lib-cast","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

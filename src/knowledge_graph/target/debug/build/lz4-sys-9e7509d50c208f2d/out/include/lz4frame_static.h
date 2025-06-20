@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:28",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/build/lz4-sys-9e7509d50c208f2d/out/include/lz4frame_static.h",
+    "type": "h",
+    "hash": "03cc07c28a78ff09cc86983aeb6e45c5f37ad398"
+  }
+}
+@pattern_meta@
+
 /*
    LZ4 auto-framing library
    Header File for static linking only

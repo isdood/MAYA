@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-15 21:16:14",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/009-issue-window_resizing.md",
+    "type": "md",
+    "hash": "ca34473bd2cbd8fa72d789dbda859be82968ca96"
+  }
+}
+@pattern_meta@
+
 # Window Resizing Issue
 
 ## Problem Description

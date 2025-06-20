@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/bitflags-55db667a50ba1c74/lib-bitflags",
+    "type": "fingerprint/bitflags-55db667a50ba1c74/lib-bitflags",
+    "hash": "230e1b29edd1e34decc04d24ef45f274b137cafe"
+  }
+}
+@pattern_meta@
+
 72af00cd4bcd4f7b

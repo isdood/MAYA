@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/socket2-60b661691f975038/lib-socket2",
+    "type": "fingerprint/socket2-60b661691f975038/lib-socket2",
+    "hash": "9add581d44a578747e7cfe73fe17aab20b600bda"
+  }
+}
+@pattern_meta@
+
 cabcb13b57db7952

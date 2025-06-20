@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 15:38:48",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/maya_learn/console_dashboard.py",
+    "type": "py",
+    "hash": "c4b9c49a3bdd93cc8e5dd1e54e9999d2257a7973"
+  }
+}
+@pattern_meta@
+
 """Console-based dashboard for MAYA Learning Service monitoring."""
 
 import asyncio

@@ -1,2 +1,19 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:30",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./.directory",
+    "type": "directory",
+    "hash": "6e632c2fc1e7f24bc0dc313863878a3889f48895"
+  }
+}
+@pattern_meta@
+
 [Desktop Entry]
 Icon=kstars_supernovae-symbolic

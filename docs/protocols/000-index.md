@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/protocols/000-index.md",
+    "type": "md",
+    "hash": "7d67df0a5a40925e6b66b5d9d33b329af7b2fa1f"
+  }
+}
+@pattern_meta@
+
 # MAYA Universal Protocols ✨
 
 > Establishing quantum harmony through standardized patterns in the STARWEAVE universe

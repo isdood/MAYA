@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/rustc-hash-051f344b81ea21d9/lib-rustc_hash.json",
+    "type": "json",
+    "hash": "205c4dfbf4cb4a1bc7e873f1b2c4e35d6c69d84e"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"default\", \"std\"]","declared_features":"[\"default\", \"std\"]","target":1529797168494151460,"profile":2225463790103693989,"path":5222367221618438933,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/rustc-hash-051f344b81ea21d9/dep-lib-rustc_hash","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

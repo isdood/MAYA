@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/integration/004-starguard-integration.md",
+    "type": "md",
+    "hash": "34c40f6c9e79281a108f2f08011b81f37180f28c"
+  }
+}
+@pattern_meta@
+
 # STARGUARD Integration ✨
 
 > Weaving quantum protection through the STARWEAVE universe

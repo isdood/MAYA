@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-16 08:15:37",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/learning/pattern_recognizer.zig",
+    "type": "zig",
+    "hash": "c00beec8c1397f31c1692fd2b8517845120d11e9"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const Interaction = @import("interaction_recorder.zig").Interaction;
 

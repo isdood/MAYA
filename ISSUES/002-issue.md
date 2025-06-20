@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-05 23:30:31",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./ISSUES/002-issue.md",
+    "type": "md",
+    "hash": "0fe2d89531624e0432619c437b1e79f6c26c2c33"
+  }
+}
+@pattern_meta@
+
 # 🌟 MAYA Development Progress Report
 
 > *"In the cosmic dance of development, each step forward illuminates new paths to explore."* ✨

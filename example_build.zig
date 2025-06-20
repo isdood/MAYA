@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-20 08:50:48",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./example_build.zig",
+    "type": "zig",
+    "hash": "71e54f2afa32885308187456fe4a7c27f6ad52b9"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {

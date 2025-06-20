@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 18:15:10",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/linux-raw-sys-6b03a34b8e4dc060/lib-linux_raw_sys",
+    "type": "fingerprint/linux-raw-sys-6b03a34b8e4dc060/lib-linux_raw_sys",
+    "hash": "475a19231a293965ccc66ba5f470c598eacbf780"
+  }
+}
+@pattern_meta@
+
 e4046e6bca2fb8ae

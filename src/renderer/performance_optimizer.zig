@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-06 18:12:49",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/renderer/performance_optimizer.zig",
+    "type": "zig",
+    "hash": "e3a83e26d637a4444f9f07b83e0f5efb665795d1"
+  }
+}
+@pattern_meta@
+
 const std = @import("std");
 const vk = @cImport({
     @cInclude("vulkan/vulkan.h");

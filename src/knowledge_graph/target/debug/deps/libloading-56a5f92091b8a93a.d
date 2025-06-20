@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:23",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/deps/libloading-56a5f92091b8a93a.d",
+    "type": "d",
+    "hash": "41fcb319a4ee63f7c877d386c9d4b9282c6e4a19"
+  }
+}
+@pattern_meta@
+
 /home/shimmer/MAYA/src/knowledge_graph/target/debug/deps/liblibloading-56a5f92091b8a93a.rmeta: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/changelog.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/os/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/os/unix/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/os/unix/consts.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/util.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/safe.rs
 
 /home/shimmer/MAYA/src/knowledge_graph/target/debug/deps/liblibloading-56a5f92091b8a93a.rlib: /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/lib.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/changelog.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/os/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/os/unix/mod.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/os/unix/consts.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/util.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/error.rs /home/shimmer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libloading-0.8.8/src/safe.rs

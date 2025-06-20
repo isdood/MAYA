@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 05:52:50",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/release/.fingerprint/yansi-953c1e0c25dd1b81/lib-yansi.json",
+    "type": "json",
+    "hash": "1bc908553a9bcbe20748cdb0b1d67d9575c8dca2"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[\"alloc\", \"default\", \"std\"]","declared_features":"[\"_nightly\", \"alloc\", \"default\", \"detect-env\", \"detect-tty\", \"hyperlink\", \"is-terminal\", \"std\"]","target":7022233409860942053,"profile":2040997289075261528,"path":17183366824958666403,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/yansi-953c1e0c25dd1b81/dep-lib-yansi","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

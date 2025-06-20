@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:35:18",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/src/models/edge.rs",
+    "type": "rs",
+    "hash": "8e2a54cac10bfa7cc9f66c14f782456af0e226d3"
+  }
+}
+@pattern_meta@
+
 //! Edge model for the knowledge graph
 
 use super::*;

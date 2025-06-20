@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-16 08:30:07",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./docs/INTEGRATION.md",
+    "type": "md",
+    "hash": "dded59e5c476d02399c7e82029a0d4f5ab325ed4"
+  }
+}
+@pattern_meta@
+
 # Integrating MAYA into Your Tools
 
 MAYA is designed to be easily integrated into various development tools and IDEs. This guide explains how to integrate MAYA into your environment.

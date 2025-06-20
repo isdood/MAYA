@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 15:31:42",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/target/debug/.fingerprint/termcolor-78d6a6b6a8a8b71f/lib-termcolor.json",
+    "type": "json",
+    "hash": "bba1df6b0ac892fda68d89020f9395d3d84b19c0"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"[]","declared_features":"[]","target":386963995487357571,"profile":15657897354478470176,"path":4392729108235198729,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/termcolor-78d6a6b6a8a8b71f/dep-lib-termcolor","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

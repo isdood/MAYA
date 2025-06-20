@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-18 14:42:33",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/criterion/sled_warm_warm_reads/1000/new/benchmark.json",
+    "type": "json",
+    "hash": "320b3efcb6f97a8add40b8f5ecc8bb30c9ecd464"
+  }
+}
+@pattern_meta@
+
 {"group_id":"sled_warm_warm_reads","function_id":null,"value_str":"1000","throughput":null,"full_id":"sled_warm_warm_reads/1000","directory_name":"sled_warm_warm_reads/1000","title":"sled_warm_warm_reads/1000"}

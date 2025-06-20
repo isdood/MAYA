@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 15:51:33",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/maya_learn/monitor.py",
+    "type": "py",
+    "hash": "5cefaff2aa46c33dd27029f9c112b8e6916e2d34"
+  }
+}
+@pattern_meta@
+
 """System monitoring for MAYA Learning Service."""
 
 import asyncio

@@ -1,3 +1,20 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-19 14:29:17",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./maya-llm/src/console.rs",
+    "type": "rs",
+    "hash": "8ae958caaef6bae49316b939987655aa6ec722f4"
+  }
+}
+@pattern_meta@
+
 //! Console interface for the MAYA LLM
 
 use maya_llm::LLM;

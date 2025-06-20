@@ -1,1 +1,18 @@
+@pattern_meta@
+GLIMMER Pattern:
+{
+  "metadata": {
+    "timestamp": "2025-06-17 17:41:25",
+    "author": "isdood",
+    "pattern_version": "1.0.0",
+    "color": "#FF69B4"
+  },
+  "file_info": {
+    "path": "./src/knowledge_graph/target/debug/.fingerprint/bzip2-sys-b129effa1d7ec9c3/run-build-script-build-script-build.json",
+    "type": "json",
+    "hash": "6b8a21094bdbe8ad71e283d21624d718f52e25cf"
+  }
+}
+@pattern_meta@
+
 {"rustc":13226066032359371072,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[4838720168581948726,"build_script_build",false,13421361804533132592]],"local":[{"RerunIfEnvChanged":{"var":"CC_x86_64-unknown-linux-gnu","val":null}},{"RerunIfEnvChanged":{"var":"CC_x86_64_unknown_linux_gnu","val":null}},{"RerunIfEnvChanged":{"var":"HOST_CC","val":null}},{"RerunIfEnvChanged":{"var":"CC","val":null}},{"RerunIfEnvChanged":{"var":"CC_ENABLE_DEBUG_OUTPUT","val":null}},{"RerunIfEnvChanged":{"var":"CRATE_CC_NO_DEFAULTS","val":null}},{"RerunIfEnvChanged":{"var":"CFLAGS","val":null}},{"RerunIfEnvChanged":{"var":"HOST_CFLAGS","val":null}},{"RerunIfEnvChanged":{"var":"CFLAGS_x86_64_unknown_linux_gnu","val":null}},{"RerunIfEnvChanged":{"var":"CFLAGS_x86_64-unknown-linux-gnu","val":null}},{"RerunIfEnvChanged":{"var":"AR_x86_64-unknown-linux-gnu","val":null}},{"RerunIfEnvChanged":{"var":"AR_x86_64_unknown_linux_gnu","val":null}},{"RerunIfEnvChanged":{"var":"HOST_AR","val":null}},{"RerunIfEnvChanged":{"var":"AR","val":null}},{"RerunIfEnvChanged":{"var":"ARFLAGS","val":null}},{"RerunIfEnvChanged":{"var":"HOST_ARFLAGS","val":null}},{"RerunIfEnvChanged":{"var":"ARFLAGS_x86_64_unknown_linux_gnu","val":null}},{"RerunIfEnvChanged":{"var":"ARFLAGS_x86_64-unknown-linux-gnu","val":null}}],"rustflags":[],"config":0,"compile_kind":0}
