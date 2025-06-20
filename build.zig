@@ -44,22 +44,13 @@ pub fn build(b: *std.Build) void {
         .imports = &.{},
     });
 
-    // Create visual processor module
-    const visual_processor_mod = b.createModule({
-        .root_source_file = .{ .cwd_relative = "src/neural/visual_processor.zig" },
-        .imports = &{
-            .{ .name = "std", .module = b.dependency("std", .{}).module("std") },
-        },
-    });
-
     // 🧠 Neural Module with Pattern Recognition
-    const neural_mod = b.createModule({
+    const neural_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/neural/mod.zig" },
-        .imports = &{
+        .imports = &.{
             .{ .name = "starweave", .module = starweave_mod },
             .{ .name = "glimmer", .module = glimmer_mod },
             .{ .name = "quantum_types", .module = quantum_types_mod },
-            .{ .name = "visual_processor", .module = visual_processor_mod },
             .{ .name = "std", .module = b.dependency("std", .{}).module("std") },
         },
     });
@@ -67,20 +58,12 @@ pub fn build(b: *std.Build) void {
     // Pattern recognition is part of the neural module
     const pattern_recognition_mod = neural_mod;
     
-    // Create quantum processor module with all necessary imports
-    const quantum_processor_mod = b.createModule({
-        .root_source_file = .{ .cwd_relative = "src/neural/quantum_processor.zig" },
-        .imports = &{
-            .{ .name = "neural", .module = neural_mod },
-            .{ .name = "starweave", .module = starweave_mod },
-            .{ .name = "glimmer", .module = glimmer_mod },
+    // Create test modules
+    _ = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/neural/crystal_computing.zig" },
+        .imports = &.{
             .{ .name = "quantum_types", .module = quantum_types_mod },
-            .{ .name = "crystal_computing", .module = b.createModule({
-                .root_source_file = .{ .cwd_relative = "src/neural/crystal_computing.zig" },
-                .imports = &{
-                    .{ .name = "quantum_types", .module = quantum_types_mod },
-                },
-            })},
+            .{ .name = "std", .module = b.dependency("std", .{}).module("std") },
         },
     });
     
@@ -141,7 +124,6 @@ pub fn build(b: *std.Build) void {
     maya_wasm.root_module.addImport("starweave", starweave_mod);
     maya_wasm.root_module.addImport("glimmer", glimmer_mod);
     maya_wasm.root_module.addImport("pattern_recognition", pattern_recognition_mod);
-    maya_wasm.root_module.addImport("quantum_processor", quantum_processor_mod);
 
     // 🧪 Quantum Test Configuration
     const test_step = b.step("test", "🧪 Run MAYA quantum tests");
@@ -156,22 +138,6 @@ pub fn build(b: *std.Build) void {
     main_tests.root_module.addImport("neural", neural_mod);
     main_tests.root_module.addImport("colors", colors_mod);
     main_tests.root_module.addImport("pattern_recognition", pattern_recognition_mod);
-    main_tests.root_module.addImport("quantum_processor", quantum_processor_mod);
-
-    const neural_processor_mod = b.createModule({
-        .root_source_file = .{ .cwd_relative = "src/neural/neural_processor.zig" },
-        .imports = &{
-            .{ .name = "neural", .module = neural_mod },
-            .{ .name = "quantum_processor", .module = quantum_processor_mod },
-            .{ .name = "visual_processor", .module = visual_processor_mod },
-            .{ .name = "quantum_types", .module = quantum_types_mod },
-            .{ .name = "std", .module = b.dependency("std", .{}).module("std") },
-        },
-    });
-
-    main_tests.root_module.addImport("neural_processor", neural_processor_mod);
-    main_tests.root_module.addImport("quantum_types", quantum_types_mod);
-    main_tests.root_module.addImport("visual_processor", visual_processor_mod);
 
     const run_main_tests = b.addRunArtifact(main_tests);
     test_step.dependOn(&run_main_tests.step);
