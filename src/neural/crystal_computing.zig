@@ -111,7 +111,7 @@ pub const CrystalProcessor = struct {
 
     /// Calculate crystal depth
     fn calculateCrystalDepth(self: *CrystalProcessor, pattern_data: []const u8) usize {
-        const base_depth = @floatToInt(usize, std.math.log2(@as(f64, @floatFromInt(pattern_data.len))));
+        const base_depth = @as(usize, @intFromFloat(std.math.log2(@as(f64, @floatFromInt(pattern_data.len)))));
         return @min(self.config.crystal_depth, base_depth);
     }
 

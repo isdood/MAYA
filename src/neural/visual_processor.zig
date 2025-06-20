@@ -83,7 +83,7 @@ pub const VisualProcessor = struct {
         }
 
         if (count == 0) return 0.0;
-        return @min(1.0, @floatFromInt(f64, total_diff) / (@as(f64, @floatFromInt(count)) * 255.0));
+        return @min(1.0, @as(f64, @floatFromInt(total_diff)) / (@as(f64, count) * 255.0));
     }
 
     /// Validate visual state
