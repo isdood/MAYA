@@ -19,15 +19,280 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
-const mem = std.mem;
+const Allocator = std.mem.Allocator;
+const ThreadPool = std.Thread.Pool;
+const Thread = std.Thread;
+const Atomic = std.atomic.Value;
 const math = std.math;
-const crypto = std.crypto;
-const Allocator = mem.Allocator;
-
-// Internal modules
-const crystal_computing = @import("crystal_computing.zig");
-const pattern_recognition = @import("pattern_recognition");
+const testing = std.testing;
+const Complex = std.math.Complex;
+const simd = @import("simd.zig");
 const quantum_types = @import("quantum_types.zig");
+const crystal_computing = @import("crystal_computing.zig");
+const Cpu = std.Target.Cpu;
+const Target = std.Target;
+
+/// CPU vendor identifiers
+const CpuVendor = enum {
+    intel,
+    amd,
+    arm,
+    apple,
+    unknown,
+};
+
+/// CPU microarchitecture families
+const CpuArch = enum {
+    // Intel
+    nehalem,
+    sandybridge,
+    ivybridge,
+    haswell,
+    broadwell,
+    skylake,
+    cascade_lake,
+    ice_lake,
+    tiger_lake,
+    alder_lake,
+    raptor_lake,
+    
+    // AMD
+    bulldozer,
+    zen,
+    zen2,
+    zen3,
+    zen4,
+    
+    // ARM
+    cortex_a53,
+    cortex_a72,
+    cortex_a76,
+    neoverse_n1,
+    neoverse_v1,
+    
+    // Apple
+    icestorm,
+    firestorm,
+    avalanche,
+    blizzard,
+    
+    unknown,
+};
+
+/// Memory hierarchy configuration
+const MemoryHierarchy = struct {
+    has_smt: bool = false,                     // Simultaneous Multi-Threading
+    num_ccx: usize = 1,                        // CPU Complex count (AMD)
+    numa_nodes: usize = 1,                     // NUMA nodes
+    memory_channels: usize = 2,                // Memory channels
+    memory_bandwidth_gb: f64 = 25.6,           // GB/s
+    l1d_assoc: u8 = 8,                         // L1D associativity
+    l2_assoc: u8 = 8,                          // L2 associativity
+    l3_assoc: u8 = 16,                         // L3 associativity
+    l1d_prefetcher: bool = true,               // Hardware prefetcher
+    l2_prefetcher: bool = true,                // L2 hardware prefetcher
+};
+
+/// CPU-specific optimization parameters
+const CpuOptimizations = struct {
+    // Prefetch settings
+    prefetch_distance: usize = 2,
+    prefetch_level: u2 = 3,
+    prefetch_aggressiveness: f64 = 0.7,
+    
+    // Blocking parameters
+    min_block_size_ratio: f64 = 0.125,
+    max_block_size_ratio: f64 = 0.5,
+    block_size_aggression: f64 = 0.7,
+    
+    // Memory access patterns
+    spatial_locality: bool = true,
+    temporal_locality: bool = true,
+    stream_detection: bool = true,
+    
+    // SIMD settings
+    prefer_avx512: bool = false,
+    prefer_avx2: bool = true,
+    prefer_neon: bool = false,
+    
+    // Threading
+    thread_stride: usize = 1,  // Cache line stride for thread pinning
+};
+
+/// Architecture-specific optimizations
+const ArchOptimizations = struct {
+    const Self = @This();
+    
+    vendor: CpuVendor = .unknown,
+    arch: CpuArch = .unknown,
+    optimizations: CpuOptimizations = .{},
+    
+    /// Create optimizations based on CPU detection
+    pub fn detect() Self {
+        const target = Target.current;
+        const cpu = target.cpu;
+        
+        var optim = Self{
+            .vendor = detectCpuVendor(cpu),
+            .arch = detectCpuArch(cpu),
+        };
+        
+        // Apply architecture-specific optimizations
+        optim.applyArchitectureTuning();
+        return optim;
+    }
+    
+    /// Detect CPU vendor
+    fn detectCpuVendor(cpu: Cpu) CpuVendor {
+        // Check for Intel
+        if (std.mem.startsWith(u8, cpu.model.llvm_name, "intel") or
+            std.mem.startsWith(u8, cpu.model.llvm_name, "core") or
+            std.mem.startsWith(u8, cpu.model.llvm_name, "pentium") or
+            std.mem.startsWith(u8, cpu.model.llvm_name, "atom")) {
+            return .intel;
+        }
+        
+        // Check for AMD
+        if (std.mem.startsWith(u8, cpu.model.llvm_name, "amd") or
+            std.mem.startsWith(u8, cpu.model.llvm_name, "barcelona") or
+            std.mem.startsWith(u8, cpu.model.llvm_name, "zen")) {
+            return .amd;
+        }
+        
+        // Check for Apple Silicon
+        if (std.mem.startsWith(u8, cpu.model.llvm_name, "apple")) {
+            return .apple;
+        }
+        
+        // Check for ARM
+        if (std.mem.startsWith(u8, cpu.model.llvm_name, "cortex") or
+            std.mem.startsWith(u8, cpu.model.llvm_name, "neoverse") or
+            std.mem.startsWith(u8, cpu.model.llvm_name, "a7") or
+            std.mem.startsWith(u8, cpu.model.llvm_name, "a5")) {
+            return .arm;
+        }
+        
+        return .unknown;
+    }
+    
+    /// Detect CPU architecture
+    fn detectCpuArch(cpu: Cpu) CpuArch {
+        const name = cpu.model.llvm_name;
+        
+        // Intel architectures
+        if (std.mem.indexOf(u8, name, "nehalem") != null) return .nehalem;
+        if (std.mem.indexOf(u8, name, "sandy") != null) return .sandybridge;
+        if (std.mem.indexOf(u8, name, "ivy") != null) return .ivybridge;
+        if (std.mem.indexOf(u8, name, "haswell") != null) return .haswell;
+        if (std.mem.indexOf(u8, name, "broadwell") != null) return .broadwell;
+        if (std.mem.indexOf(u8, name, "skylake") != null) return .skylake;
+        if (std.mem.indexOf(u8, name, "cascade") != null) return .cascade_lake;
+        if (std.mem.indexOf(u8, name, "ice") != null) return .ice_lake;
+        if (std.mem.indexOf(u8, name, "tiger") != null) return .tiger_lake;
+        if (std.mem.indexOf(u8, name, "alder") != null) return .alder_lake;
+        if (std.mem.indexOf(u8, name, "raptor") != null) return .raptor_lake;
+        
+        // AMD architectures
+        if (std.mem.indexOf(u8, name, "bulldozer") != null) return .bulldozer;
+        if (std.mem.indexOf(u8, name, "znver1") != null) return .zen;
+        if (std.mem.indexOf(u8, name, "znver2") != null) return .zen2;
+        if (std.mem.indexOf(u8, name, "znver3") != null) return .zen3;
+        if (std.mem.indexOf(u8, name, "znver4") != null) return .zen4;
+        
+        // ARM architectures
+        if (std.mem.indexOf(u8, name, "cortex-a53") != null) return .cortex_a53;
+        if (std.mem.indexOf(u8, name, "cortex-a72") != null) return .cortex_a72;
+        if (std.mem.indexOf(u8, name, "cortex-a76") != null) return .cortex_a76;
+        if (std.mem.indexOf(u8, name, "neoverse-n1") != null) return .neoverse_n1;
+        if (std.mem.indexOf(u8, name, "neoverse-v1") != null) return .neoverse_v1;
+        
+        // Apple Silicon
+        if (std.mem.indexOf(u8, name, "m1") != null) return .firestorm; // M1
+        if (std.mem.indexOf(u8, name, "m2") != null) return .avalanche; // M2
+        
+        return .unknown;
+    }
+    
+    /// Apply architecture-specific tuning
+    fn applyArchitectureTuning(self: *Self) void {
+        switch (self.vendor) {
+            .intel => self.tuneIntel(),
+            .amd => self.tuneAmd(),
+            .arm, .apple => self.tuneArm(),
+            else => {},
+        }
+    }
+    
+    /// Tune for Intel CPUs
+    fn tuneIntel(self: *Self) void {
+        self.optimizations.prefetch_aggressiveness = 0.8;
+        self.optimizations.spatial_locality = true;
+        self.optimizations.temporal_locality = true;
+        
+        switch (self.arch) {
+            .skylake, .cascade_lake => {
+                self.optimizations.prefetch_distance = 3;
+                self.optimizations.prefer_avx512 = true;
+                self.optimizations.block_size_aggression = 0.75;
+            },
+            .ice_lake, .tiger_lake => {
+                self.optimizations.prefetch_distance = 4;
+                self.optimizations.prefer_avx512 = true;
+                self.optimizations.block_size_aggression = 0.8;
+            },
+            .alder_lake, .raptor_lake => {
+                self.optimizations.prefetch_distance = 3;
+                self.optimizations.prefer_avx512 = false; // Hybrid architecture
+                self.optimizations.prefer_avx2 = true;
+                self.optimizations.block_size_aggression = 0.7;
+            },
+            else => {},
+        }
+    }
+    
+    /// Tune for AMD CPUs
+    fn tuneAmd(self: *Self) void {
+        self.optimizations.prefetch_aggressiveness = 0.9;
+        self.optimizations.spatial_locality = true;
+        self.optimizations.temporal_locality = false; // Zen benefits less from temporal locality
+        
+        switch (self.arch) {
+            .zen, .zen2 => {
+                self.optimizations.prefetch_distance = 2;
+                self.optimizations.block_size_aggression = 0.6;
+                self.optimizations.min_block_size_ratio = 0.1;
+            },
+            .zen3, .zen4 => {
+                self.optimizations.prefetch_distance = 3;
+                self.optimizations.block_size_aggression = 0.7;
+                self.optimizations.min_block_size_ratio = 0.15;
+            },
+            else => {},
+        }
+    }
+    
+    /// Tune for ARM/Apple CPUs
+    fn tuneArm(self: *Self) void {
+        self.optimizations.prefetch_aggressiveness = 0.6; // ARM has aggressive hardware prefetching
+        self.optimizations.spatial_locality = true;
+        self.optimizations.temporal_locality = true;
+        self.optimizations.prefer_neon = true;
+        
+        switch (self.arch) {
+            .firestorm, .avalanche => {
+                // Apple M1/M2
+                self.optimizations.prefetch_distance = 1; // Very good hardware prefetcher
+                self.optimizations.block_size_aggression = 0.8;
+                self.optimizations.min_block_size_ratio = 0.2;
+            },
+            .cortex_a76, .neoverse_n1, .neoverse_v1 => {
+                self.optimizations.prefetch_distance = 2;
+                self.optimizations.block_size_aggression = 0.7;
+            },
+            else => {},
+        }
+    }
+};
 
 /// Quantum processor configuration
 pub const QuantumConfig = struct {
@@ -37,6 +302,180 @@ pub const QuantumConfig = struct {
     superposition_depth: usize = 8,       // Maximum superposition depth
     min_pattern_similarity: f64 = 0.8,   // Minimum similarity threshold for pattern matching
     max_parallel_qubits: usize = 16,      // Maximum qubits for parallel processing
+
+    /// Detect cache hierarchy and adjust configuration
+    pub fn detectCacheHierarchy(self: *QuantumConfig) void {
+        if (@import("builtin").target.cpu.arch != .x86_64 and 
+            @import("builtin").target.cpu.arch != .aarch64) {
+            // Use default values for unsupported architectures
+            return;
+        }
+
+        // Try to detect cache sizes using system-specific methods
+        if (@import("builtin").os.tag == .linux) {
+            // Read cache information from sysfs on Linux
+            self.detectLinuxCacheHierarchy() catch |_| {
+                // Fall back to defaults if detection fails
+            }
+        }
+        
+        // Sanity check and adjust block sizes
+        self.min_block_size = @max(64, self.min_block_size); // At least one cache line
+        self.max_block_size = @max(self.min_block_size * 4, self.max_block_size);
+    }
+    
+    /// Detect cache hierarchy on Linux using sysfs
+    fn detectLinuxCacheHierarchy(self: *QuantumConfig) !void {
+        const allocator = std.heap.page_allocator;
+        
+        // Look for cache information in /sys/devices/system/cpu/cpu0/cache/
+        var cache_dir = try std.fs.cwd().openDir("/sys/devices/system/cpu/cpu0/cache", .{});
+        defer cache_dir.close();
+        
+        var it = try cache_dir.iterate();
+        var level: usize = 0;
+        
+        while (try it.next()) |entry| : (level += 1) {
+            if (level >= self.cache_sizes.len) break;
+            
+            // Read cache size
+            if (cache_dir.openFile(entry.name ++ "/size", .{})) |file| {
+                defer file.close();
+                
+                var buf: [32]u8 = undefined;
+                const bytes_read = try file.readAll(&buf);
+                const line = std.mem.trim(u8, buf[0..bytes_read], " \n");
+                
+                if (std.mem.indexOfScalar(u8, line, 'K')) |k_pos| {
+                    const size_str = line[0..k_pos];
+                    if (std.fmt.parseInt(usize, size_str, 10)) |size_kb| {
+                        self.cache_sizes[level] = size_kb * 1024;
+                    } else |_| {}
+                }
+            } else |_| {}
+            
+            // Read cache line size
+            if (cache_dir.openFile(entry.name ++ "/coherency_line_size", .{})) |file| {
+                defer file.close();
+                
+                var buf: [32]u8 = undefined;
+                const bytes_read = try file.readAll(&buf);
+                const line = std.mem.trim(u8, buf[0..bytes_read], " \n");
+                
+                if (std.fmt.parseInt(usize, line, 10)) |line_size| {
+                    self.cache_line_sizes[level] = line_size;
+                } else |_| {}
+            } else |_| {}
+        }
+    }
+    
+    /// Calculate optimal block size based on problem size and cache hierarchy
+    pub fn calculateBlockSize(self: *const QuantumConfig, data_size: usize, element_size: usize) usize {
+        if (data_size == 0) return 1024; // Default block size for empty data
+        
+        const total_data_size = data_size * element_size;
+        var best_block_size = self.min_block_size;
+        var best_score: f64 = 0.0;
+        
+        // Calculate block size for each cache level
+        for (self.cache_sizes, 0..) |cache_size, level| {
+            if (cache_size == 0) continue;
+            
+            // Calculate effective cache size considering associativity and other processes
+            const effective_cache_size = @as(f64, @floatFromInt(cache_size)) * 
+                (1.0 - 0.2 * @as(f64, @floatFromInt(level))); // Penalize higher cache levels
+            
+            // Calculate block size range for this cache level
+            const min_block = @as(usize, @intFromFloat(effective_cache_size * self.min_block_size_ratio));
+            const max_block = @min(
+                @as(usize, @intFromFloat(effective_cache_size * self.max_block_size_ratio)),
+                self.max_block_size
+            );
+            
+            // Skip if no valid block size range
+            if (min_block >= max_block) continue;
+            
+            // Calculate block size based on data size relative to cache size
+            const data_ratio = @as(f64, @floatFromInt(total_data_size)) / effective_cache_size;
+            let block_size: usize = undefined;
+            
+            if (data_ratio < 0.25) {
+                // Small data: use larger blocks
+                block_size = @as(usize, @intFromFloat(
+                    @as(f64, @floatFromInt(max_block)) * 
+                    (0.7 + 0.3 * self.block_size_aggression)
+                ));
+            } else if (data_ratio < 1.0) {
+                // Medium data: balance block size
+                const t = (data_ratio - 0.25) / 0.75;
+                const scale = 0.7 - 0.4 * t * self.block_size_aggression;
+                block_size = @as(usize, @intFromFloat(
+                    @as(f64, @floatFromInt(max_block)) * scale
+                ));
+            } else {
+                // Large data: use smaller blocks
+                block_size = @as(usize, @intFromFloat(
+                    @as(f64, @floatFromInt(max_block)) * 
+                    (0.3 * (1.0 - self.block_size_aggression * 0.5))
+                ));
+            }
+            
+            // Apply cache line alignment
+            const cache_line_size = self.cache_line_sizes[level];
+            const aligned_block = std.math.max(
+                self.min_block_size,
+                std.math.min(
+                    max_block,
+                    (block_size / cache_line_size) * cache_line_size
+                )
+            );
+            
+            // Calculate score for this block size
+            const locality_score = if (self.spatial_locality) 1.2 else 1.0;
+            const temporal_score = if (self.temporal_locality) 1.1 else 1.0;
+            const score = @as(f64, @floatFromInt(aligned_block)) * locality_score * temporal_score;
+            
+            if (score > best_score) {
+                best_score = score;
+                best_block_size = aligned_block;
+            }
+        }
+        
+        // Ensure minimum size and alignment
+        best_block_size = std.math.max(best_block_size, self.min_block_size);
+        best_block_size = std.math.min(best_block_size, self.max_block_size);
+        
+        // Round to nearest power of two for better cache alignment
+        return std.math.ceilPowerOfTwo(usize, best_block_size) catch best_block_size;
+    }
+    
+    /// Calculate optimal prefetch distance based on memory latency and block size
+    pub fn calculatePrefetchDistance(self: *const QuantumConfig, block_size: usize, access_stride: usize) usize {
+        // Base prefetch distance on memory latency and processing speed
+        const latency_cycles: usize = 200; // Typical memory latency in cycles
+        const cycles_per_byte: f64 = 0.1;  // Rough estimate of processing speed
+        
+        // Calculate theoretical optimal distance
+        let distance = @as(usize, @intFromFloat(
+            @as(f64, @floatFromInt(latency_cycles)) * 
+            self.prefetch_aggressiveness / 
+            (cycles_per_byte * @as(f64, @floatFromInt(access_stride)))
+        ));
+        
+        // Apply architecture-specific adjustments
+        if (self.stream_detection) {
+            distance = @min(distance, 8); // Limit for stream detection
+        }
+        
+        // Ensure minimum distance
+        distance = @max(distance, 1);
+        
+        // Align to cache line boundaries
+        const cache_line_size = self.cache_line_sizes[0];
+        distance = ((distance + cache_line_size - 1) / cache_line_size) * cache_line_size;
+        
+        return distance;
+    }
 
     // Crystal computing parameters
     use_crystal_computing: bool = true,  // Enable crystal computing integration
@@ -59,8 +498,32 @@ pub const QuantumConfig = struct {
     // Cache settings
     cache_line_size: usize = 64,          // Size of a cache line in bytes
     prefetch_distance: usize = 2,         // Number of cache lines to prefetch
-    cache_block_size: usize = 4 * 1024,   // Size of cache blocks for blocking (4KB)
-    num_cache_blocks: usize = 4,          // Number of cache blocks to use for blocking
+    min_block_size: usize = 1024,         // Minimum block size (1KB)
+    max_block_size: usize = 64 * 1024,    // Maximum block size (64KB)
+    num_cache_levels: usize = 3,          // Number of cache levels to consider
+    cache_sizes: [3]usize = [3]usize{ 32 * 1024, 256 * 1024, 8 * 1024 * 1024 }, // L1, L2, L3 cache sizes
+    cache_line_sizes: [3]usize = [3]usize{ 64, 64, 64 }, // Cache line sizes per level
+    
+    // Cache optimization parameters
+    cache_associativity: usize = 8,       // Typical cache associativity
+    cache_write_allocate: bool = true,    // Whether cache uses write-allocate policy
+    cache_write_back: bool = true,        // Whether cache uses write-back policy
+    
+    // Block size tuning parameters
+    min_block_size_ratio: f64 = 0.125,     // Minimum block size as fraction of cache
+    max_block_size_ratio: f64 = 0.5,       // Maximum block size as fraction of cache
+    block_size_aggression: f64 = 0.7,      // Aggressiveness of block size scaling (0.0-1.0)
+    
+    // Prefetch tuning parameters
+    prefetch_distance: usize = 2,          // Number of cache lines to prefetch ahead
+    prefetch_level: u2 = 3,                // Cache level to prefetch into (1-3)
+    prefetch_aggressiveness: f64 = 0.7,    // Aggressiveness of prefetching (0.0-1.0)
+    
+    // Architecture-specific tuning
+    cache_line_prefetchers: u8 = 0b111,    // Bitmask of available hardware prefetchers
+    stream_detection: bool = true,         // Enable stream detection for prefetching
+    spatial_locality: bool = true,         // Optimize for spatial locality
+    temporal_locality: bool = true,        // Optimize for temporal locality
 };
 
 /// Quantum processor state
@@ -76,6 +539,33 @@ pub const QuantumProcessor = struct {
     
     /// Initialize a new quantum processor with performance optimizations
     pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
+        // Make config mutable for cache detection
+        var mutable_config = config;
+        mutable_config.detectCacheHierarchy();
+        
+        // Initialize thread pool if parallel execution is enabled
+        var thread_pool: ?*std.Thread.Pool = null;
+        if (mutable_config.use_parallel_execution) {
+            const num_threads = @min(
+                mutable_config.max_parallel_qubits, 
+                std.Thread.getCpuCount() catch 1
+            );
+            thread_pool = try allocator.create(std.Thread.Pool);
+            try thread_pool.?.init({
+                .allocator = allocator,
+                .n_jobs = num_threads,
+            });
+            
+            // Set thread affinity for better cache locality
+            if (builtin.os.tag == .linux) {
+                const cpu_set = std.os.linux.cpu_set{};
+                @memset(&cpu_set, 0);
+                for (0..num_threads) |i| {
+                    cpu_set.set(i % @as(usize, @intCast(std.Thread.getCpuCount() catch 1)));
+                }
+                // Note: Actual thread affinity setting would go here
+            }
+        }
         const self = try allocator.create(Self);
         
         // Initialize thread pool if parallel execution is enabled
@@ -194,15 +684,19 @@ pub const QuantumProcessor = struct {
         return match;
     }
     
-    /// Optimized pattern encoding with cache-blocking and prefetching
+    /// Optimized pattern encoding with adaptive cache-blocking and prefetching
     fn encodePatternOptimized(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
         const num_qubits = state.qubits.len;
         const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
-        
-        // Calculate block size based on cache configuration
         const complex_size = @sizeOf(quantum_types.Complex);
-        const elements_per_block = self.config.cache_block_size / complex_size;
+        
+        // Calculate adaptive block size based on cache hierarchy and data size
+        const elements_per_block = self.config.calculateBlockSize(num_states, complex_size);
         const num_blocks = (num_states + elements_per_block - 1) / elements_per_block;
+        
+        // Calculate prefetch distance based on access pattern
+        const prefetch_dist = self.config.calculatePrefetchDistance(elements_per_block, @sizeOf(f64));
+        const prefetch_blocks = @min(4, num_blocks / 8 + 1); // Prefetch up to 4 blocks ahead
         
         // Pre-calculate normalization factor with cache blocking
         var norm: f64 = 0.0;
@@ -283,37 +777,81 @@ pub const QuantumProcessor = struct {
         }
     }
     
-    /// Measure the quantum state with cache-optimized sampling
+    /// Measure the quantum state with adaptive cache-blocking and prefetching
     fn measurePatternOptimized(self: *Self, state: *quantum_types.QuantumState, 
                              pattern: []const u8) !quantum_types.PatternMatch {
         _ = pattern; // Not used in this simplified version
         
         const complex_size = @sizeOf(quantum_types.Complex);
-        const elements_per_block = self.config.cache_block_size / complex_size;
+        
+        // Calculate adaptive block size based on cache hierarchy and state size
+        const elements_per_block = self.config.calculateBlockSize(
+            state.amplitudes.len, 
+            complex_size
+        );
         const num_blocks = (state.amplitudes.len + elements_per_block - 1) / elements_per_block;
         
-        // Calculate probabilities with cache blocking
+        // Calculate probabilities with adaptive cache blocking
         var probabilities = try self.allocator.alloc(f64, state.amplitudes.len);
         defer self.allocator.free(probabilities);
         
+        // First pass: calculate probabilities and total probability
         var total_prob: f64 = 0.0;
         for (0..num_blocks) |block| {
             const start = block * elements_per_block;
             const end = @min(start + elements_per_block, state.amplitudes.len);
             
-            // Prefetch next block
-            if (block + 1 < num_blocks) {
-                const next_block_start = (block + 1) * elements_per_block;
-                const next_block_end = @min(next_block_start + elements_per_block, state.amplitudes.len);
-                @prefetch(&state.amplitudes[next_block_start], .{ .rw = .read, .locality = 2, .cache = .data });
-                @prefetch(&probabilities[next_block_start], .{ .rw = .write, .locality = 2, .cache = .data });
+            // Prefetch upcoming blocks based on calculated distance
+            for (1..prefetch_blocks + 1) |prefetch_block| {
+                const target_block = block + prefetch_block;
+                if (target_block >= num_blocks) break;
+                
+                const prefetch_start = target_block * elements_per_block;
+                const prefetch_end = @min(prefetch_start + elements_per_block, state.amplitudes.len);
+                
+                // Adjust prefetch locality based on distance
+                const locality: u2 = @intCast(@min(3, 4 - prefetch_block));
+                
+                // Prefetch with optimized stride and cache level
+                const stride = self.config.cache_line_sizes[0] / complex_size;
+                var i = prefetch_start;
+                while (i < prefetch_end) : (i += stride) {
+                    @prefetch(
+                        &state.amplitudes[i], 
+                        .{ .rw = .read, .locality = locality, .cache = .data }
+                    );
+                    
+                    if (i < probabilities.len) {
+                        @prefetch(
+                            &probabilities[i],
+                            .{ .rw = .write, .locality = locality, .cache = .data }
+                        );
+                    }
+                }
             }
             
-            // Process current block
+            // Process current block with potential SIMD optimization
             for (start..end) |i| {
                 const prob = state.amplitudes[i].norm2();
                 probabilities[i] = prob;
                 total_prob += prob;
+                
+                // Adaptive element prefetching
+                if (i + prefetch_dist < end) {
+                    const prefetch_idx = i + prefetch_dist;
+                    @prefetch(
+                        &state.amplitudes[prefetch_idx], 
+                        .{ .rw = .read, .locality = 1, .cache = .data }
+                    );
+                    
+                    // Prefetch for write if next block is being prefetched
+                    if (prefetch_idx < probabilities.len) {
+                        @prefetch(
+                            &probabilities[prefetch_idx],
+                            .{ .rw = .write, .locality = 1, .cache = .data }
+                        );
+                    }
+                }
             }
         }
         
@@ -370,12 +908,15 @@ pub const QuantumProcessor = struct {
         }
     }
     
-    /// Apply optimized quantum pattern matching algorithm with cache-aware processing
+    /// Apply optimized quantum pattern matching with adaptive cache-blocking
     fn applyOptimizedPatternMatching(self: *Self, circuit: *quantum_types.QuantumCircuit, 
                                    pattern: []const u8) !void {
         const num_qubits = circuit.num_qubits;
         const complex_size = @sizeOf(quantum_types.Complex);
-        const elements_per_block = self.config.cache_block_size / complex_size;
+        
+        // Calculate adaptive block size for qubit processing
+        const qubits_per_block = self.config.calculateBlockSize(num_qubits, @sizeOf(quantum_types.Qubit));
+        const num_blocks = (num_qubits + qubits_per_block - 1) / qubits_per_block;
         
         // Apply optimized gates with cache awareness
         if (self.config.use_simd) {
