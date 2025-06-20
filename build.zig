@@ -38,45 +38,24 @@ pub fn build(b: *std.Build) void {
     const memory_vis_step = b.step("memory-vis", "Run the memory visualization example");
     memory_vis_step.dependOn(&run_memory_vis.step);
 
-    // 🧠 Neural Pattern Recognition Modules
-    const pattern_recognition_mod = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/neural/pattern_recognition.zig" },
-        .imports = &.{
-            .{ .name = "starweave", .module = starweave_mod },
-        },
+    // Pattern Recognition Example
+    const pattern_recognition_exe = b.addExecutable(.{
+        .name = "pattern_recognition",
+        .root_source_file = .{ .cwd_relative = "examples/pattern_recognition.zig" },
+        .target = target,
+        .optimize = optimize,
     });
+    pattern_recognition_exe.root_module.addImport("neural", neural_mod);
+    b.installArtifact(pattern_recognition_exe);
+    
+    const run_pattern_recognition = b.addRunArtifact(pattern_recognition_exe);
+    const pattern_recognition_step = b.step("pattern-recognition", "Run the pattern recognition example");
+    pattern_recognition_step.dependOn(&run_pattern_recognition.step);
 
-    const quantum_processor_mod = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/neural/quantum_processor.zig" },
-        .imports = &.{
-            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
-        },
-    });
-
-    const visual_processor_mod = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/neural/visual_processor.zig" },
-        .imports = &.{
-            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
-        },
-    });
-
-    const neural_processor_mod = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/neural/neural_processor.zig" },
-        .imports = &.{
-            .{ .name = "pattern_recognition", .module = pattern_recognition_mod },
-            .{ .name = "quantum_processor", .module = quantum_processor_mod },
-            .{ .name = "visual_processor", .module = visual_processor_mod },
-        },
-    });
-
-    const neural_mod = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/neural/bridge.zig" },
-        .imports = &.{
-            .{ .name = "starweave", .module = starweave_mod },
-            .{ .name = "glimmer", .module = glimmer_mod },
-            .{ .name = "neural_processor", .module = neural_processor_mod },
-        },
-    });
+    // TODO: Add other neural modules as they're implemented
+    // const quantum_processor_mod = ...
+    // const visual_processor_mod = ...
+    // const neural_processor_mod = ...
 
     const colors_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/glimmer/colors.zig" },

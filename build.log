@@ -1,0 +1,60 @@
+/usr/bin/zig build-exe -ODebug --dep glimmer -Mroot=examples/memory_visualization.zig --dep starweave -Mglimmer=src/glimmer/mod.zig -Mstarweave=src/starweave/protocol.zig --cache-dir .zig-cache --global-cache-dir /home/shimmer/.cache/zig --name memory_visualization --zig-lib-dir /usr/lib/zig/ --listen=- 
+./.zig-cache/o/2dd724a4b08cf00ec7ada4c6102529bf/memory_visualization 
+Warning: Terminal may not support ANSI colors. Visualization may not display correctly.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[H[2J[HMAYA Memory Visualization (4 nodes, 4 edges)
+
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                        [92m♥Likes: Pr[94m📁Project: MAYA[0m                
+                                        →                                       
+                                        →                                       
+                                        →                                       
+                                        →                                       
+                                        →                                       
+                                        →                                       
+                                        →                                       
+                                        →                                       
+                                        →                                       
+
+Controls: [Arrows/HJKL] Pan  [+/-] Zoom  [R] Reset  [Q] Quit
+Press Enter after each command
+No node selected. Use arrow keys to navigate.
+Frame: 0
