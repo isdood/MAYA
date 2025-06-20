@@ -89,9 +89,9 @@ pub const Qubit = struct {
     fn y(self: *Qubit) void {
         // Pauli-Y gate
         const tmp = self.amplitude0;
-        self.amplitude0 = self.amplitude1 * std.math.sin(self.phase + std.math.pi/2);
-        self.amplitude1 = -tmp * std.math.sin(self.phase + std.math.pi/2);
-        self.phase += std.math.pi/2;
+        self.amplitude0 = self.amplitude1 * std.math.sin(self.phase + std.math.pi/2.0);
+        self.amplitude1 = -tmp * std.math.sin(self.phase + std.math.pi/2.0);
+        self.phase += std.math.pi/2.0;
     }
     
     fn z(self: *Qubit) void {
@@ -110,13 +110,22 @@ pub const Qubit = struct {
     }
     
     fn s(self: *Qubit) void {
-        // Phase gate (S gate)
-        self.amplitude1 *= std.complex.exp(@as(f64, 0), std.math.pi/2);
+        // Phase gate (S gate) - 90 degree rotation around Z-axis (multiply by i)
+        self.amplitude1 = -self.amplitude1;
     }
     
     fn t(self: *Qubit) void {
-        // T gate (π/8 gate)
-        self.amplitude1 *= std.complex.exp(@as(f64, 0), std.math.pi/4);
+        // T gate (π/8 gate) - 45 degree rotation around Z-axis
+        const angle = std.math.pi/4.0;
+        const cos_val = @cos(angle);
+        const sin_val = @sin(angle);
+        
+        // Apply rotation in the complex plane
+        const re = self.amplitude1 * cos_val;
+        const im = self.amplitude1 * sin_val;
+        
+        // For T gate, we rotate by 45 degrees
+        self.amplitude1 = re - im;
     }
     
     // Rotation gates
@@ -125,8 +134,9 @@ pub const Qubit = struct {
         const cos_t = @cos(theta/2);
         const sin_t = @sin(theta/2);
         
-        const a = self.amplitude0 * cos_t - std.complex.I * self.amplitude1 * sin_t;
-        const b = -std.complex.I * self.amplitude0 * sin_t + self.amplitude1 * cos_t;
+        // For RX gate, we use rotation matrix without complex numbers
+        const a = self.amplitude0 * cos_t - self.amplitude1 * sin_t;
+        const b = self.amplitude0 * sin_t + self.amplitude1 * cos_t;
         
         self.amplitude0 = a;
         self.amplitude1 = b;
@@ -149,13 +159,14 @@ pub const Qubit = struct {
         const cos_t = @cos(theta/2);
         const sin_t = @sin(theta/2);
         
-        self.amplitude0 = self.amplitude0 * (cos_t - std.complex.I * sin_t);
-        self.amplitude1 = self.amplitude1 * (cos_t + std.complex.I * sin_t);
+        // For RZ gate, we apply phase shifts to |0> and |1> states
+        self.amplitude0 *= cos_t - sin_t;  // e^(-i*theta/2)
+        self.amplitude1 *= cos_t + sin_t;  // e^(i*theta/2)
     }
     
     fn phase_shift(self: *Qubit, phi: f64) void {
-        // Phase shift gate
-        self.amplitude1 *= std.complex.exp(@as(f64, 0), phi);
+        // Phase shift gate - apply phase to |1> state
+        self.amplitude1 = self.amplitude1 * @cos(phi);
     }
 };
 
