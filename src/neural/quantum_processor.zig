@@ -403,39 +403,22 @@ pub const QuantumProcessor = struct {
         return std.math.clamp((normalized_entropy + unique_ratio) / 2.0, 0.0, 1.0);
     }
     
-    /// Validate that a quantum state is physically valid
-    fn isValidState(_: *const Self, state: quantum_types.QuantumState) bool {
-        // Check coherence bounds
-        if (state.coherence < 0.0 or state.coherence > 1.0) {
-            return false;
-        }
+    /// Check if the quantum state is valid
+    pub fn isValidState(_: *const Self, state: quantum_types.QuantumState) bool {
+        // Check coherence, entanglement, and superposition values
+        if (state.coherence < 0.0 or state.coherence > 1.0) return false;
+        if (state.entanglement < 0.0 or state.entanglement > 1.0) return false;
+        if (state.superposition < 0.0 or state.superposition > 1.0) return false;
         
-        // Check entanglement bounds
-        if (state.entanglement < 0.0 or state.entanglement > 1.0) {
-            return false;
-        }
-        
-        // Check superposition bounds
-        if (state.superposition < 0.0 or state.superposition > 1.0) {
-            return false;
-        }
-        
-        // Check qubit states
-        for (state.qubits) |qubit| {
-            // Check normalization
-            const prob = qubit.amplitude0 * qubit.amplitude0 + 
-                        qubit.amplitude1 * qubit.amplitude1;
+        // Check qubit normalization if qubits are present
+        if (state.qubits.len > 0) {
+            var norm: f64 = 0.0;
+            for (state.qubits) |qubit| {
+                norm += qubit.amplitude0 * qubit.amplitude0 + qubit.amplitude1 * qubit.amplitude1;
+            }
             
             // Allow for small floating point errors
-            if (@abs(prob - 1.0) > 1e-10) {
-                return false;
-            }
-            
-            // Check for NaN or infinite values
-            if (std.math.isNan(qubit.amplitude0) or std.math.isInf(qubit.amplitude0) or
-                std.math.isNan(qubit.amplitude1) or std.math.isInf(qubit.amplitude1)) {
-                return false;
-            }
+            return @abs(norm - 1.0) < 1e-10;
         }
         
         return true;
