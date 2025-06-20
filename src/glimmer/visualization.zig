@@ -79,6 +79,26 @@ pub const MemoryGraph = struct {
         self.nodes.deinit();
         self.edges.deinit();
     }
+    
+    /// Create a deep copy of the graph
+    pub fn clone(self: *const MemoryGraph) !MemoryGraph {
+        var new_graph = MemoryGraph.init(self.allocator);
+        
+        // Clone nodes
+        var node_it = self.nodes.iterator();
+        while (node_it.next()) |entry| {
+            try new_graph.nodes.put(entry.key_ptr.*, entry.value_ptr.*);
+        }
+        
+        // Clone edges
+        try new_graph.edges.appendSlice(self.edges.items);
+        
+        // Copy other properties
+        new_graph.width = self.width;
+        new_graph.height = self.height;
+        
+        return new_graph;
+    }
 
     /// Add a new memory node to the graph
     pub fn addNode(self: *MemoryGraph, node: MemoryNode) !void {
@@ -146,6 +166,14 @@ pub const MemoryGraph = struct {
     }
 
     pub fn render(self: *const MemoryGraph, writer: anytype) !void {
+        // Add debug output
+        try writer.writeAll("\x1b[2J\x1b[H"); // Clear screen
+        try writer.writeAll("MAYA Memory Visualization (");
+        try std.fmt.formatInt(self.nodes.count(), 10, .lower, .{}, writer);
+        try writer.writeAll(" nodes, ");
+        try std.fmt.formatInt(self.edges.items.len, 10, .lower, .{}, writer);
+        try writer.writeAll(" edges)\n\n");
+
         // Create a 2D grid for rendering with color support
         const Cell = struct { char: u21 = ' ', fg: ?[]const u8 = null };
         var grid = try std.ArrayList(std.ArrayList(Cell)).initCapacity(self.allocator, self.height);
@@ -214,12 +242,15 @@ pub const MemoryGraph = struct {
                         const xi = @as(i32, @intFromFloat(x));
                         const yi = @as(i32, @intFromFloat(y));
                         
-                        if (xi >= 0 and yi >= 0 and 
-                            xi < self.width and yi < self.height) {
+                        if (xi >= 0 and yi >= 0 and xi < self.width and yi < self.height) {
                             // Only draw line if the cell is empty or already has a line character
-                            if (grid.items[@intCast(yi)].items[@intCast(xi)].char == ' ' or 
-                                grid.items[@intCast(yi)].items[@intCast(xi)].char == line_char) {
-                                grid.items[@intCast(yi)].items[@intCast(xi)] = .{ .char = line_char, .fg = null };
+                            const yi_usize = @as(usize, @intCast(yi));
+                            const xi_usize = @as(usize, @intCast(xi));
+                            if (xi_usize < grid.items[yi_usize].items.len) {
+                                const cell_char = grid.items[yi_usize].items[xi_usize].char;
+                                if (cell_char == ' ' or cell_char == line_char) {
+                                    grid.items[yi_usize].items[xi_usize] = .{ .char = line_char, .fg = null };
+                                }
                             }
                         }
                         
@@ -259,13 +290,24 @@ pub const MemoryGraph = struct {
         }
 
         // Output the grid with colors
+        // Render the grid to the writer
+        var current_fg: ?[]const u8 = null;
+        
         for (grid.items) |row| {
-            var current_fg: ?[]const u8 = null;
+            // Skip if row is empty
+            if (row.items.len == 0) {
+                try writer.writeAll("\n");
+                continue;
+            }
             
             for (row.items) |cell| {
                 // Only change color if needed
-                if (!std.mem.eql(u8, current_fg orelse "", cell.fg orelse "")) {
-                    if (cell.fg) |fg| {
+                const cell_fg = cell.fg;
+                if ((cell_fg == null and current_fg != null) or 
+                    (cell_fg != null and current_fg == null) or
+                    (cell_fg != null and current_fg != null and 
+                     !std.mem.eql(u8, cell_fg.?, current_fg.?))) {
+                    if (cell_fg) |fg| {
                         try writer.writeAll(fg);
                     } else {
                         try writer.writeAll(Color.Reset);
@@ -274,11 +316,10 @@ pub const MemoryGraph = struct {
                 }
                 
                 // Write the character
-                var utf8_buf: [4]u8 = undefined;
-                const utf8_len = std.unicode.utf8Encode(cell.char, &utf8_buf) catch 0;
-                try writer.writeAll(utf8_buf[0..utf8_len]);
+                var buf: [4]u8 = undefined;
+                const len = std.unicode.utf8Encode(cell.char, &buf) catch 0;
+                try writer.writeAll(buf[0..len]);
             }
-            
             // Reset color at the end of the line
             if (current_fg != null) {
                 try writer.writeAll(Color.Reset);

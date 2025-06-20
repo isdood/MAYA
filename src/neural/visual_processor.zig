@@ -67,12 +67,6 @@ pub const VisualProcessor = struct {
     fn processVisualState(self: *VisualProcessor, state: *pattern_recognition.VisualState, pattern_data: []const u8) !void {
         // Calculate visual contrast
         state.contrast = self.calculateContrast(pattern_data);
-
-        // Calculate visual noise
-        state.noise = self.calculateNoise(pattern_data);
-
-        // Calculate visual resolution
-        state.resolution = self.calculateResolution(pattern_data);
     }
 
     /// Calculate visual contrast
@@ -92,39 +86,9 @@ pub const VisualProcessor = struct {
         return @min(1.0, @as(f64, total_diff) / (@as(f64, count) * 255.0));
     }
 
-    /// Calculate visual noise
-    fn calculateNoise(_: *VisualProcessor, pattern_data: []const u8) f64 {
-        // Simple noise calculation based on local variations
-        var noise: f64 = 0.0;
-        var count: usize = 0;
-
-        var i: usize = 2;
-        while (i < pattern_data.len) : (i += 1) {
-            const center = @as(f64, pattern_data[i - 1]);
-            const left = @as(f64, pattern_data[i - 2]);
-            const right = @as(f64, pattern_data[i]);
-            const local_noise = @abs(center - (left + right) / 2.0);
-            noise += local_noise;
-            count += 1;
-        }
-
-        if (count == 0) return 0.0;
-        return @min(1.0, noise / (@as(f64, count) * 255.0));
-    }
-
-    /// Calculate visual resolution
-    fn calculateResolution(self: *VisualProcessor, pattern_data: []const u8) usize {
-        // Simple resolution calculation based on pattern size
-        const base_resolution = @as(usize, std.math.sqrt(@as(f64, pattern_data.len)));
-        return @min(self.config.resolution, base_resolution);
-    }
-
     /// Validate visual state
     fn isValidState(self: *VisualProcessor, state: pattern_recognition.VisualState) bool {
-        return state.contrast >= self.config.min_contrast and
-               state.noise <= self.config.max_noise and
-               state.resolution > 0 and
-               state.resolution <= self.config.resolution;
+        return state.contrast >= self.config.min_contrast;
     }
 };
 
@@ -149,8 +113,4 @@ test "visual pattern processing" {
 
     try std.testing.expect(state.contrast >= 0.0);
     try std.testing.expect(state.contrast <= 1.0);
-    try std.testing.expect(state.noise >= 0.0);
-    try std.testing.expect(state.noise <= 1.0);
-    try std.testing.expect(state.resolution > 0);
-    try std.testing.expect(state.resolution <= processor.config.resolution);
 } 

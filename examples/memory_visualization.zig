@@ -5,8 +5,40 @@ const MemoryNode = glimmer.visualization.MemoryNode;
 const MemoryEdge = glimmer.visualization.MemoryEdge;
 const MemoryType = glimmer.visualization.MemoryType;
 const MemoryRelationship = glimmer.visualization.MemoryRelationship;
+const InteractiveVisualizer = glimmer.interactive_visualizer.InteractiveVisualizer;
+
+// ANSI color codes
+const Color = struct {
+    pub const Reset = "\x1b[0m";
+    pub const Red = "\x1b[31m";
+    pub const Green = "\x1b[32m";
+    pub const Yellow = "\x1b[33m";
+    pub const Blue = "\x1b[34m";
+    pub const Magenta = "\x1b[35m";
+    pub const Cyan = "\x1b[36m";
+    pub const White = "\x1b[37m";
+    pub const BrightRed = "\x1b[91m";
+    pub const BrightGreen = "\x1b[92m";
+    pub const BrightYellow = "\x1b[93m";
+    pub const BrightBlue = "\x1b[94m";
+    pub const BrightMagenta = "\x1b[95m";
+    pub const BrightCyan = "\x1b[96m";
+    pub const BrightWhite = "\x1b[97m";
+};
 
 pub fn main() !void {
+    // Set up stdout with line buffering for better performance
+    const stdout_file = std.io.getStdOut();
+    const stdout_writer = stdout_file.writer();
+    
+    // Check if we're in a terminal that supports ANSI colors
+    const is_tty = stdout_file.isTty();
+    const supports_ansi = is_tty; // Simple check - assume TTY supports ANSI
+    
+    if (!supports_ansi) {
+        try stdout_writer.writeAll("Warning: Terminal may not support ANSI colors. Visualization may not display correctly.\n");
+    }
+    
     // Initialize memory
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -17,21 +49,21 @@ pub fn main() !void {
     defer graph.deinit();
     
     // Set graph dimensions
-    graph.width = 100;
-    graph.height = 40;
+    graph.width = 80;  // Smaller width for better compatibility
+    graph.height = 20; // Smaller height for better compatibility
 
     // Create a simple graph with a few nodes and edges
     const nodes = [_]struct {
-        id: u32,
+        id: u64,
         content: []const u8,
         mem_type: MemoryType,
         x: f32,
         y: f32,
     } {
-        .{ .id = 1, .content = "Alice", .mem_type = .UserDetail, .x = 20.0, .y = 10.0 },
-        .{ .id = 2, .content = "Likes: Programming", .mem_type = .Preference, .x = 10.0, .y = 5.0 },
-        .{ .id = 3, .content = "Project: MAYA", .mem_type = .Project, .x = 30.0, .y = 5.0 },
-        .{ .id = 4, .content = "Task: Memory Viz", .mem_type = .Task, .x = 20.0, .y = 20.0 },
+        .{ .id = 1, .content = "Alice", .mem_type = .UserDetail, .x = 0.0, .y = 0.0 },
+        .{ .id = 2, .content = "Likes: Programming", .mem_type = .Preference, .x = -10.0, .y = -5.0 },
+        .{ .id = 3, .content = "Project: MAYA", .mem_type = .Project, .x = 10.0, .y = -5.0 },
+        .{ .id = 4, .content = "Task: Memory Viz", .mem_type = .Task, .x = 0.0, .y = 10.0 },
     };
 
     // Add nodes
@@ -50,7 +82,7 @@ pub fn main() !void {
     }
 
     // Add edges
-    const edges = [_]struct { source: u32, target: u32, rel: MemoryRelationship } {
+    const edges = [_]struct { source: u64, target: u64, rel: MemoryRelationship } {
         .{ .source = 1, .target = 2, .rel = .RelatedTo },
         .{ .source = 1, .target = 3, .rel = .RelatedTo },
         .{ .source = 1, .target = 4, .rel = .LeadsTo },
@@ -67,17 +99,30 @@ pub fn main() !void {
         try graph.edges.append(edge);
     }
 
-    // Set up terminal for raw mode (non-blocking input)
-    const stdout = std.io.getStdOut().writer();
-    
     // Animation loop
     var frame: u32 = 0;
-    while (true) {
+    var running = true;
+    
+    while (running) {
         // Clear screen and move cursor to top-left
-        try stdout.writeAll("\x1b[2J\x1b[H");
+        if (supports_ansi) {
+            try stdout_writer.writeAll("\x1b[2J\x1b[H");
+        } else {
+            // Simple newlines for terminals without ANSI support
+            for (0..30) |_| {
+                try stdout_writer.writeAll("\n");
+            }
+            try stdout_writer.writeAll("\x1b[H");
+        }
         
         // Update title and frame counter
-        try std.fmt.format(stdout, "MAYA Memory Visualization (Frame: {})\n\n", .{frame});
+        try stdout_writer.writeAll("MAYA Memory Visualization (Frame: ");
+        try std.fmt.formatInt(frame, 10, .lower, .{}, stdout_writer);
+        try stdout_writer.writeAll(")\nTerminal: ");
+        try stdout_writer.writeAll(if (is_tty) "TTY" else "Not a TTY");
+        try stdout_writer.writeAll("  ANSI: ");
+        try stdout_writer.writeAll(if (supports_ansi) "Yes" else "No");
+        try stdout_writer.writeAll("\n\n");
         
         // Update node positions with force-directed layout
         graph.updateLayout();
@@ -90,19 +135,28 @@ pub fn main() !void {
             }
         }
         
-        // Render the graph
-        try graph.render(stdout);
+        // Print frame counter
+        try stdout_writer.print("Frame: {}\n", .{frame});
         
-        // Print simple controls
-        try stdout.writeAll("\n\nPress 'q' to quit\n");
+        // Check for input (non-blocking)
+        var input_buf: [16]u8 = undefined;
+        if (stdin.read(&input_buf) catch null) |bytes_read| {
+            const input = input_buf[0..bytes_read];
+            if (!visualizer.handleInput(input)) {
+                running = false; // Quit if handleInput returns false
+            }
+        }
         
-        // Check for user input
+        // Small delay to control frame rate
+        std.time.sleep(50 * std.time.ns_per_ms);
         frame += 1;
-        std.time.sleep(50_000_000); // 50ms delay (20 FPS)
-        
-        // Non-blocking input check
-        var buffer: [1]u8 = undefined;
-        const read = std.io.getStdIn().read(&buffer) catch 0;
-        if (read > 0 and buffer[0] == 'q') break;
+    }
+    
+    // Clean up
+    if (supports_ansi) {
+        try stdout_writer.writeAll("\x1b[?25h"); // Show cursor
+        try stdout_writer.writeAll("\x1b[0m");   // Reset colors
+        try stdout_writer.writeAll("\x1b[2J");   // Clear screen
+        try stdout_writer.writeAll("\x1b[H");    // Move cursor to top-left
     }
 }

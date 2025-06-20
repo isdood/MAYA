@@ -106,14 +106,14 @@ pub const QuantumProcessor = struct {
         state.entanglement = @max(state.entanglement, crystal_state.entanglement);
 
         // Enhance superposition based on crystal depth
-        const depth_factor = @as(f64, crystal_state.depth) / @as(f64, self.config.superposition_depth);
+        const depth_factor = @as(f64, @floatFromInt(crystal_state.depth)) / @as(f64, @floatFromInt(self.config.superposition_depth));
         state.superposition = @max(state.superposition, depth_factor);
     }
 
     /// Calculate quantum coherence
     fn calculateCoherence(self: *QuantumProcessor, pattern_data: []const u8) f64 {
-        const base_coherence = @as(f64, pattern_data.len) / 100.0;
-        return @min(@as(f64, 1.0), base_coherence);
+        const base_coherence = @as(f64, @floatFromInt(pattern_data.len)) / 100.0;
+        return @min(1.0, base_coherence);
     }
 
     /// Calculate quantum entanglement
@@ -122,7 +122,7 @@ pub const QuantumProcessor = struct {
         for (pattern_data) |byte| {
             complexity += @popCount(byte);
         }
-        return @min(@as(f64, 1.0), @as(f64, complexity) / 100.0);
+        return @min(1.0, @as(f64, @floatFromInt(complexity)) / 100.0);
     }
 
     /// Calculate quantum superposition
@@ -136,15 +136,15 @@ pub const QuantumProcessor = struct {
         }
 
         // Calculate entropy
-        const len = @as(f64, pattern_data.len);
+        const len = @as(f64, @floatFromInt(pattern_data.len));
         for (counts) |count| {
             if (count > 0) {
-                const p = @as(f64, count) / len;
+                const p = @as(f64, @floatFromInt(count)) / len;
                 entropy -= p * std.math.log2(p);
             }
         }
 
-        return @min(@as(f64, 1.0), entropy / 8.0); // Normalize to [0,1]
+        return @min(1.0, entropy / 8.0); // Normalize to [0,1]
     }
 
     /// Validate quantum state
