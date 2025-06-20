@@ -51,12 +51,11 @@ pub const QuantumProcessor = struct {
     const Self = @This();
 
     // System state
-    config: QuantumConfig,
     allocator: Allocator,
+    config: QuantumConfig,
     crystal: ?*crystal_computing.CrystalProcessor,
-    
-    // Thread pool for parallel execution
     thread_pool: ?*std.Thread.Pool,
+    state: quantum_types.QuantumState,
     
     /// Initialize a new quantum processor
     pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
@@ -83,10 +82,16 @@ pub const QuantumProcessor = struct {
         }
         
         self.* = .{
-            .config = config,
             .allocator = allocator,
+            .config = config,
             .crystal = crystal,
             .thread_pool = thread_pool,
+            .state = quantum_types.QuantumState{
+                .coherence = 1.0,
+                .entanglement = 0.0,
+                .superposition = 0.0,
+                .qubits = &[0]quantum_types.Qubit{},
+            },
         };
         
         return self;
@@ -298,169 +303,117 @@ pub const QuantumProcessor = struct {
         }
     }
     
-    /// Context for parallel batch processing
-    const BatchContext = struct {
-        processor: *QuantumProcessor,
-        patterns: []const []const u8,
-        results: []quantum_types.PatternMatch,
-    };
-    
-    /// Calculate quantum coherence based on pattern data
-    fn calculateCoherence(_: *const Self, pattern_data: []const u8) f64 {
-        if (pattern_data.len < 2) return 0.0;
-        
-        // Calculate variance of the pattern as a simple coherence metric
-        var sum: f64 = 0.0;
-        var sum_sq: f64 = 0.0;
-        
-        for (pattern_data) |byte| {
-            const val = @as(f64, @floatFromInt(byte));
-            sum += val;
-            sum_sq += val * val;
-        }
-        
-        const mean = sum / @as(f64, @floatFromInt(pattern_data.len));
-        const variance = (sum_sq / @as(f64, @floatFromInt(pattern_data.len))) - (mean * mean);
-        
-        // Normalize variance to [0, 1] range
-        const max_variance = 255.0 * 255.0 / 4.0; // Max variance for 8-bit values
-        const normalized = @sqrt(variance / max_variance);
-        
-        // Ensure within bounds
-        return std.math.clamp(normalized, 0.0, 1.0);
-    }
-    
-    /// Calculate quantum entanglement between pattern elements
-    fn calculateEntanglement(_: *const Self, pattern_data: []const u8) f64 {
-        if (pattern_data.len < 2) return 0.0;
-        
-        // Calculate mutual information between adjacent bytes
-        var mi: f64 = 0.0;
-        var hist = [_]usize{0} ** 256;
-        var joint_hist = [_][256]usize{[0]usize{0} ** 256} ** 256;
-        
-        // Build histograms
-        for (0..pattern_data.len - 1) |i| {
-            const a = pattern_data[i];
-            const b = pattern_data[i + 1];
-            hist[a] += 1;
-            joint_hist[a][b] += 1;
-        }
-        
-        // Calculate mutual information
-        const n = @as(f64, @floatFromInt(pattern_data.len - 1));
-        for (0..256) |a| {
-            for (0..256) |b| {
-                if (joint_hist[a][b] > 0) {
-                    const p_ab = @as(f64, @floatFromInt(joint_hist[a][b])) / n;
-                    const p_a = @as(f64, @floatFromInt(hist[a])) / n;
-                    const p_b = @as(f64, @floatFromInt(hist[b])) / n;
-                    mi += p_ab * @log2(p_ab / (p_a * p_b));
-                }
-            }
-        }
-        
-        // Normalize to [0, 1] range
-        const max_mi = @log2(256.0); // Maximum possible MI for 8-bit values
-        return std.math.clamp(mi / max_mi, 0.0, 1.0);
-    }
-    
-    /// Calculate quantum superposition metric
-    fn calculateSuperposition(self: *const Self, pattern_data: []const u8) f64 {
-        if (pattern_data.len == 0) return 0.0;
-        
-        // Calculate entropy as a superposition metric
-        var hist = [_]usize{0} ** 256;
-        var unique_bytes = std.AutoHashMap(u8, void).init(self.allocator);
-        defer unique_bytes.deinit();
-        
-        // Count byte frequencies
-        for (pattern_data) |byte| {
-            hist[byte] += 1;
-            unique_bytes.put(byte, {}) catch {};
-        }
-        
-        // Calculate entropy
-        var entropy: f64 = 0.0;
-        const n = @as(f64, @floatFromInt(pattern_data.len));
-        
-        for (hist) |count| {
-            if (count > 0) {
-                const p = @as(f64, @floatFromInt(count)) / n;
-                entropy -= p * @log2(p);
-            }
-        }
-        
-        // Normalize by maximum possible entropy
-        const max_entropy = @log2(@min(256.0, n));
-        const normalized_entropy = if (max_entropy > 0) entropy / max_entropy else 0.0;
-        
-        // Also consider the ratio of unique bytes to total bytes
-        const unique_ratio = @as(f64, @floatFromInt(unique_bytes.count())) / 
-                           @as(f64, @floatFromInt(pattern_data.len));
-        
-        // Combine metrics
-        return std.math.clamp((normalized_entropy + unique_ratio) / 2.0, 0.0, 1.0);
-    }
-    
-    /// Check if the quantum state is valid
-    pub fn isValidState(_: *const Self, state: quantum_types.QuantumState) bool {
-        // Check coherence, entanglement, and superposition values
-        if (state.coherence < 0.0 or state.coherence > 1.0) return false;
-        if (state.entanglement < 0.0 or state.entanglement > 1.0) return false;
-        if (state.superposition < 0.0 or state.superposition > 1.0) return false;
-        
-        // Check qubit normalization if qubits are present
-        if (state.qubits.len > 0) {
-            var norm: f64 = 0.0;
-            for (state.qubits) |qubit| {
-                norm += qubit.amplitude0 * qubit.amplitude0 + qubit.amplitude1 * qubit.amplitude1;
-            }
-            
-            // Allow for small floating point errors
-            return @abs(norm - 1.0) < 1e-10;
-        }
-        
-        return true;
-    }
-    
-    /// Reset the quantum processor to its initial state
-    pub fn reset(self: *Self) void {
-        // Reset all qubits to |0> state
-        for (self.state.qubits) |*qubit| {
-            qubit.amplitude0 = 1.0;
-            qubit.amplitude1 = 0.0;
-        }
-        
-        // Reset coherence metrics
-        self.state.coherence = 1.0;
-        self.state.entanglement = 0.0;
-        self.state.superposition = 0.0;
-    }
-    
-    /// Get the current quantum state
-    pub fn getState(_: *const Self) quantum_types.QuantumState {
-        // Return a default state for testing
-        const qubits = [_]quantum_types.Qubit{
-            .{ .amplitude0 = 1.0, .amplitude1 = 0.0 },
-        };
-        
-        return quantum_types.QuantumState{
-            .coherence = 1.0,
-            .entanglement = 0.0,
-            .superposition = 0.0,
-            .qubits = &qubits,
-        };
-    }
-    
     /// Set the quantum state (use with caution)
-    pub fn setState(_: *Self, new_state: quantum_types.QuantumState) !void {
-        // In a real implementation, we would copy the state here
-        // For now, we just validate the state
+    pub fn setState(self: *Self, new_state: quantum_types.QuantumState) !void {
+        // Validate the state
         if (new_state.coherence < 0.0 or new_state.coherence > 1.0 or
             new_state.entanglement < 0.0 or new_state.entanglement > 1.0 or
             new_state.superposition < 0.0 or new_state.superposition > 1.0) {
             return error.InvalidQuantumState;
+        }
+        
+        // Check qubit normalization if qubits are present
+        if (new_state.qubits.len > 0) {
+            var norm: f64 = 0.0;
+            for (new_state.qubits) |qubit| {
+                norm += qubit.amplitude0 * qubit.amplitude0 + 
+                       qubit.amplitude1 * qubit.amplitude1;
+            }
+            
+            // Allow for small floating point errors
+            if (@abs(norm - 1.0) > 1e-10) {
+                return error.InvalidQuantumState;
+            }
+        }
+        
+        // Create a deep copy of the state
+        const new_qubits = try self.allocator.alloc(quantum_types.Qubit, new_state.qubits.len);
+        @memcpy(new_qubits, new_state.qubits);
+        
+        // Free old qubits if they exist
+        if (self.state.qubits.len > 0) {
+            self.allocator.free(self.state.qubits);
+        }
+        
+        self.state = quantum_types.QuantumState{
+            .coherence = new_state.coherence,
+            .entanglement = new_state.entanglement,
+            .superposition = new_state.superposition,
+            .qubits = new_qubits,
+        };
+    }
+    
+    /// Reset the quantum processor to its initial state
+    pub fn reset(self: *Self) void {
+        // Free old qubits if they exist
+        if (self.state.qubits.len > 0) {
+            self.allocator.free(self.state.qubits);
+        }
+        
+        // Create new qubits
+        const qubit = quantum_types.Qubit{ .amplitude0 = 1.0, .amplitude1 = 0.0 };
+        const qubits = self.allocator.alloc(quantum_types.Qubit, 1) catch unreachable;
+        qubits[0] = qubit;
+        
+        self.state = quantum_types.QuantumState{
+            .coherence = 1.0,
+            .entanglement = 0.0,
+            .superposition = 0.0,
+            .qubits = qubits,
+        };
+    }
+    
+    /// Get the current quantum state
+    pub fn getState(self: *const Self) quantum_types.QuantumState {
+        return self.state;
+    }
+    
+    /// Process a quantum state with the given pattern
+    fn processQuantumState(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
+        // Simple quantum state processing - in a real implementation, this would use quantum gates
+        // For now, we'll just set some basic properties
+        state.coherence = 0.9;
+        state.entanglement = 0.7;
+        state.superposition = 0.8;
+        
+        // Calculate metrics based on pattern
+        if (pattern.len > 0) {
+            // Simple pattern analysis
+            var sum: f64 = 0.0;
+            for (pattern) |b| sum += @as(f64, @floatFromInt(b));
+            const avg = sum / @as(f64, @floatFromInt(pattern.len));
+            
+            // Update state based on pattern
+            state.coherence = @min(1.0, avg / 255.0 + 0.5);
+            state.entanglement = @min(1.0, @as(f64, @floatFromInt(pattern.len)) / 100.0);
+        }
+        
+        // Simple pattern processing
+        if (pattern.len > 0) {
+            // Set qubit state based on first character of pattern
+            const first_char = @as(f64, @floatFromInt(pattern[0])) / 255.0;
+            
+            // Initialize qubits if needed
+            if (state.qubits.len == 0) {
+                // Add a single qubit for this simple example
+                const qubit = quantum_types.Qubit{ 
+                    .amplitude0 = @sqrt(first_char), 
+                    .amplitude1 = @sqrt(1.0 - first_char) 
+                };
+                state.qubits = &[1]quantum_types.Qubit{qubit};
+            } else {
+                // Update existing qubit
+                state.qubits[0].amplitude0 = @sqrt(first_char);
+                state.qubits[0].amplitude1 = @sqrt(1.0 - first_char);
+            }
+        }
+        
+        // Apply crystal computing enhancement if enabled
+        if (self.crystal) |crystal| {
+            const crystal_state = try crystal.process(pattern);
+            state.coherence = @max(state.coherence, crystal_state.coherence);
+            state.entanglement = @min(state.entanglement + 0.1, 1.0);
+            state.superposition = @min(state.superposition + 0.1, 1.0);
         }
     }
 };
@@ -545,14 +498,17 @@ test "quantum state management" {
     try std.testing.expect(initialState.entanglement == 0.0);
     try std.testing.expect(initialState.superposition == 0.0);
     
-    // Create a test state
+    // Create a test state with dynamically allocated qubits
+    const qubit = quantum_types.Qubit{ .amplitude0 = 0.6, .amplitude1 = 0.8 };
+    const qubits = try allocator.alloc(quantum_types.Qubit, 1);
+    defer allocator.free(qubits);
+    qubits[0] = qubit;
+    
     var testState = quantum_types.QuantumState{
         .coherence = 0.8,
         .entanglement = 0.5,
         .superposition = 0.3,
-        .qubits = &[1]quantum_types.Qubit{
-            .{ .amplitude0 = 0.6, .amplitude1 = 0.8 },
-        },
+        .qubits = qubits,
     };
     
     // Test setState
