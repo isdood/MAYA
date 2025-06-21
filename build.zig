@@ -84,6 +84,61 @@ pub fn build(b: *std.Build) void {
     const run_simple_vis = b.addRunArtifact(simple_vis);
     const simple_vis_step = b.step("simple-vis", "Run the simple visualization example");
     simple_vis_step.dependOn(&run_simple_vis.step);
+    
+    // Quantum Processor Demo
+    const qp_demo = b.addExecutable(.{
+        .name = "quantum_processor_demo",
+        .root_source_file = .{ .cwd_relative = "examples/quantum_processor_demo.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add the src directory to the module search path
+    qp_demo.addIncludePath(.{ .path = "src" });
+    
+    // Add the neural module
+    const neural_mod = b.addModule("neural", .{
+        .source_file = .{ .path = "src/neural/neural.zig" },
+    });
+    
+    // Add the quantum processor module
+    const quantum_processor_mod = b.addModule("neural/quantum_processor", .{
+        .source_file = .{ .path = "src/neural/quantum_processor.zig" },
+        .dependencies = &.{
+            .{ .name = "neural", .module = neural_mod },
+        },
+    });
+    
+    // Add the quantum types module
+    const quantum_types_mod = b.addModule("neural/quantum_types", .{
+        .source_file = .{ .path = "src/neural/quantum_types.zig" },
+        .dependencies = &.{
+            .{ .name = "neural", .module = neural_mod },
+        },
+    });
+    
+    // Add module dependencies
+    qp_demo.root_module.addImport("neural/quantum_processor", quantum_processor_mod);
+    qp_demo.root_module.addImport("neural/quantum_types", quantum_types_mod);
+    
+    b.installArtifact(qp_demo);
+
+    const run_qp_demo = b.addRunArtifact(qp_demo);
+    const qp_demo_step = b.step("qp-demo", "Run the quantum processor demo");
+    qp_demo_step.dependOn(&run_qp_demo.step);
+    
+    // Simple Quantum Demo (self-contained example)
+    const simple_q_demo = b.addExecutable(.{
+        .name = "simple_quantum_demo",
+        .root_source_file = .{ .cwd_relative = "examples/simple_quantum_demo.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(simple_q_demo);
+
+    const run_simple_q_demo = b.addRunArtifact(simple_q_demo);
+    const simple_q_demo_step = b.step("simple-q-demo", "Run the simple quantum demo");
+    simple_q_demo_step.dependOn(&run_simple_q_demo.step);
 
     // Memory Visualization Example
     const memory_vis_exe = b.addExecutable(.{
