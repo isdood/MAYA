@@ -99,7 +99,7 @@ pub const QuantumProcessor = struct {
     }
 
     /// Measure the quantum state and return a pattern match
-    pub fn measurePattern(self: *@This(), state: *quantum_types.QuantumState, _: []const u8) !quantum_types.PatternMatch {
+    pub fn measurePattern(_: *@This(), state: *quantum_types.QuantumState, _: []const u8) !quantum_types.PatternMatch {
         // Simple measurement - in a real implementation, this would use amplitude estimation
         const measurement = state.measure(0);
         

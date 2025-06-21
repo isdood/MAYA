@@ -59,62 +59,62 @@ pub const PatternMetrics = struct {
         self.f1_score = try self.calculateF1Score(pattern);
     }
 
-    fn calculateComplexity(self: *PatternMetrics, pattern: Pattern) !f64 {
+    fn calculateComplexity(self: *PatternMetrics, _: Pattern) !f64 {
         // Implement complexity calculation
         return 0.0;
     }
 
-    fn calculateStability(self: *PatternMetrics, pattern: Pattern) !f64 {
+    fn calculateStability(self: *PatternMetrics, _: Pattern) !f64 {
         // Implement stability calculation
         return 0.0;
     }
 
-    fn calculateCoherence(self: *PatternMetrics, pattern: Pattern) !f64 {
+    fn calculateCoherence(self: *PatternMetrics, _: Pattern) !f64 {
         // Implement coherence calculation
         return 0.0;
     }
 
-    fn calculateAdaptability(self: *PatternMetrics, pattern: Pattern) !f64 {
+    fn calculateAdaptability(self: *PatternMetrics, _: Pattern) !f64 {
         // Implement adaptability calculation
         return 0.0;
     }
 
-    fn calculateProcessingTime(self: *PatternMetrics, pattern: Pattern) !u32 {
+    fn calculateProcessingTime(self: *PatternMetrics, _: Pattern) !u32 {
         // Implement processing time calculation
         return 0;
     }
 
-    fn calculateMemoryUsage(self: *PatternMetrics, pattern: Pattern) !usize {
+    fn calculateMemoryUsage(self: *PatternMetrics, _: Pattern) !usize {
         // Implement memory usage calculation
         return 0;
     }
 
-    fn calculateErrorCount(self: *PatternMetrics, pattern: Pattern) !u32 {
+    fn calculateErrorCount(self: *PatternMetrics, _: Pattern) !u32 {
         // Implement error count calculation
         return 0;
     }
 
-    fn calculateSuccessCount(self: *PatternMetrics, pattern: Pattern) !u32 {
+    fn calculateSuccessCount(self: *PatternMetrics, _: Pattern) !u32 {
         // Implement success count calculation
         return 0;
     }
 
-    fn calculateAccuracy(self: *PatternMetrics, pattern: Pattern) !f64 {
+    fn calculateAccuracy(self: *PatternMetrics, _: Pattern) !f64 {
         // Implement accuracy calculation
         return 0.0;
     }
 
-    fn calculatePrecision(self: *PatternMetrics, pattern: Pattern) !f64 {
+    fn calculatePrecision(self: *PatternMetrics, _: Pattern) !f64 {
         // Implement precision calculation
         return 0.0;
     }
 
-    fn calculateRecall(self: *PatternMetrics, pattern: Pattern) !f64 {
+    fn calculateRecall(self: *PatternMetrics, _: Pattern) !f64 {
         // Implement recall calculation
         return 0.0;
     }
 
-    fn calculateF1Score(self: *PatternMetrics, pattern: Pattern) !f64 {
+    fn calculateF1Score(self: *PatternMetrics, _: Pattern) !f64 {
         // Implement F1 score calculation
         return 0.0;
     }
@@ -139,9 +139,9 @@ pub const PatternMetrics = struct {
             .total_metrics = 12,
             .valid_metrics = if (self.isValid()) 12 else 0,
             .average_quality = (self.accuracy + self.precision + self.recall + self.f1_score) / 4.0,
-            .average_performance = @intToFloat(f64, self.processing_time_ms) / 1000.0,
+            .average_performance = @as(f64, @floatFromInt(self.processing_time_ms)) / 1000.0,
             .success_rate = if (self.success_count + self.error_count > 0)
-                @intToFloat(f64, self.success_count) / @intToFloat(f64, self.success_count + self.error_count)
+                @as(f64, @floatFromInt(self.success_count)) / @as(f64, @floatFromInt(self.success_count + self.error_count))
             else
                 0.0,
         };

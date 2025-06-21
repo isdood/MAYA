@@ -21,6 +21,7 @@ pub const VisualProcessor = @import("visual_processor.zig").VisualProcessor;
 pub const Bridge = @import("bridge.zig").Bridge;
 pub const QuantumProcessor = @import("quantum_processor.zig").QuantumProcessor;
 pub const NeuralProcessor = @import("neural_processor.zig").NeuralProcessor;
+pub const NeuralBridge = @import("neural_bridge.zig").NeuralBridge;
 
 /// Initialize all neural components
 pub fn init(allocator: std.mem.Allocator) !void {
