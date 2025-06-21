@@ -125,40 +125,69 @@ Enhance MAYA's neural bridge capabilities by developing a unified pattern synthe
      - Caching system for computed states
      - Advanced memory management
 
-## Recent Quantum Processor & Visualization Updates (2025-06-20)
+## Quantum Circuit Builder & Visualization (2025-06-21)
 
-### Quantum Processor Enhancements
-- **Quantum State Visualization**
-  - Implemented terminal-based quantum state visualization
-  - Added probability distribution histograms
-  - Included measurement result sampling
-  - Created example demonstrating quantum entanglement
+### Interactive Quantum Circuit Builder
+- **Command-Line Interface**
+  - Interactive REPL for quantum circuit construction
+  - Real-time state visualization and feedback
+  - Comprehensive help system with command documentation
 
-- **Core Quantum Operations**
-  - Implemented Hadamard and CNOT gates
-  - Added quantum state measurement
-  - Created quantum state manipulation utilities
-  - Implemented basic quantum circuit simulation
+- **Quantum Circuit Features**
+  - Support for multiple qubits
+  - Full set of standard quantum gates (X, Y, Z, H, S, T)
+  - Controlled operations (CNOT)
+  - Measurement and state collapse simulation
+  - Circuit saving/loading functionality
 
-- **Performance & Usability**
-  - Optimized state representation for small qubit counts
-  - Added clear visualization of quantum states
-  - Implemented measurement statistics
-  - Created self-contained demonstration examples
+- **State Visualization**
+  - Real-time state vector display
+  - Probability distribution visualization
+  - Dirac notation output
+  - Interactive state inspection
 
-### Example Implementation
-Created `simple_quantum_demo.zig` demonstrating:
-- Quantum state initialization
-- Quantum gate application (H, CNOT)
-- Quantum entanglement visualization
-- Measurement statistics collection
-- Clear terminal-based visualization
+### Implementation Details
+- **Core Components**
+  - `QubitState`: Represents quantum state with complex amplitudes
+  - `QuantumCircuit`: Manages multiple qubits and operations
+  - `Command` Parser: Handles user input and commands
+  - File I/O: For circuit persistence
 
-### Integration Status
-- Successfully integrated with existing quantum processor
-- Maintained compatibility with Zig 0.15.0
-- Added build system support for examples
-- Created comprehensive documentation
+- **Documentation**
+  - `docs/quantum/QUANTUM_CIRCUIT_BUILDER.md`: Comprehensive user guide
+  - `docs/quantum/IMPLEMENTATION.md`: Technical implementation details
+  - Example scripts in `examples/quantum/`
+  - API documentation in code comments
+
+### Example Usage
+```bash
+# Start the quantum circuit builder
+zig build quantum-circuit-builder
+
+# Example session:
+add 2           # Add 2 qubits
+gate h 0        # Apply Hadamard to qubit 0
+cnot 0 1        # Apply CNOT with control 0, target 1
+show            # View current state
+save bell.qc    # Save circuit to file
+```
+
+### Integration & Compatibility
+- **Dependencies**: None (pure Zig implementation)
+- **Zig Version**: 0.15.0+
+- **Platforms**: Cross-platform (tested on Linux, macOS, Windows)
+- **Performance**: Optimized for interactive use with small to medium circuits
+
+### Documentation Structure
+```
+docs/
+  quantum/
+    QUANTUM_CIRCUIT_BUILDER.md  # User guide
+    IMPLEMENTATION.md           # Technical details
+    CIRCUIT_FORMAT.md          # File format specification
+    EXAMPLES.md                # Example circuits
+    API_REFERENCE.md           # API documentation
+```
 
 3. **System Integration**
    - [ ] Develop API for external system integration

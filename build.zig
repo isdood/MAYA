@@ -162,6 +162,20 @@ pub fn build(b: *std.Build) void {
     const quantum_viz_demo_step = b.step("quantum-viz-demo", "Run the quantum visualization demo");
     quantum_viz_demo_step.dependOn(&run_quantum_viz_demo.step);
 
+    // Quantum Circuit Builder
+    const quantum_circuit_builder = b.addExecutable(.{
+        .name = "quantum_circuit_builder",
+        .root_source_file = .{ .cwd_relative = "examples/quantum_circuit_builder.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    b.installArtifact(quantum_circuit_builder);
+
+    const run_quantum_circuit_builder = b.addRunArtifact(quantum_circuit_builder);
+    const quantum_circuit_builder_step = b.step("quantum-circuit-builder", "Run the interactive quantum circuit builder");
+    quantum_circuit_builder_step.dependOn(&run_quantum_circuit_builder.step);
+
     // Memory Visualization Example
     const memory_vis_exe = b.addExecutable(.{
         .name = "memory_visualization",
