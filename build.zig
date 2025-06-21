@@ -139,6 +139,28 @@ pub fn build(b: *std.Build) void {
     const run_simple_q_demo = b.addRunArtifact(simple_q_demo);
     const simple_q_demo_step = b.step("simple-q-demo", "Run the simple quantum demo");
     simple_q_demo_step.dependOn(&run_simple_q_demo.step);
+    
+    // Quantum Visualization Demo
+    const quantum_viz_demo = b.addExecutable(.{
+        .name = "quantum_viz_demo",
+        .root_source_file = .{ .cwd_relative = "examples/quantum_viz_demo.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add the quantum_viz module
+    const quantum_viz_mod = b.addModule("visualization/quantum_viz", .{
+        .source_file = .{ .path = "src/visualization/quantum_viz.zig" },
+    });
+    
+    quantum_viz_demo.root_module.addImport("visualization/quantum_viz", quantum_viz_mod);
+    quantum_viz_demo.addIncludePath(.{ .path = "src" });
+    
+    b.installArtifact(quantum_viz_demo);
+
+    const run_quantum_viz_demo = b.addRunArtifact(quantum_viz_demo);
+    const quantum_viz_demo_step = b.step("quantum-viz-demo", "Run the quantum visualization demo");
+    quantum_viz_demo_step.dependOn(&run_quantum_viz_demo.step);
 
     // Memory Visualization Example
     const memory_vis_exe = b.addExecutable(.{
