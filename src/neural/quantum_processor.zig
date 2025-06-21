@@ -950,14 +950,14 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
         }
         
         // Crystal depth can increase effective qubit count
-        const depth_boost = @as(f64, @floatFromInt(crystal_state.depth)) / 
+        const depth_factor = @as(f64, @floatFromInt(crystal_state.depth)) / 
                            @as(f64, @floatFromInt(self.config.max_circuit_depth));
         
         // Apply depth boost to all qubits
         for (state.qubits) |*qubit| {
             // Increase superposition based on crystal depth
-            qubit.amplitude0 *= (1.0 + depth_boost * 0.1);
-            qubit.amplitude1 *= (1.0 + depth_boost * 0.1);
+            qubit.amplitude0 *= (1.0 + depth_factor * 0.1);
+            qubit.amplitude1 *= (1.0 + depth_factor * 0.1);
             
             // Normalize
             const norm = @sqrt(
@@ -969,6 +969,30 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
                 qubit.amplitude0 /= norm;
                 qubit.amplitude1 /= norm;
             }
+        }
+    }
+    
+    /// Apply resonance effects from crystal state to quantum state
+    fn applyResonanceEffects(
+        self: *Self,
+        state: *quantum_types.QuantumState,
+        resonance: crystal_computing.ResonanceAnalysis,
+    ) !void {
+        // Simple resonance effect: boost amplitudes at resonant frequencies
+        for (resonance.resonance_frequencies, resonance.q_factors) |freq, q_factor| {
+            // Skip invalid frequencies
+            if (freq <= 0.0 or freq >= 1.0) continue;
+            
+            // Calculate the index in the state vector
+            const idx = @min(
+                state.amplitudes.len - 1,
+                @as(usize, @intFromFloat(freq * @as(f64, @floatFromInt(state.amplitudes.len - 1))))
+            );
+            
+            // Apply resonance boost based on Q-factor (quality factor)
+            const boost = 1.0 + (0.1 * q_factor);  // Up to 10% boost per Q-factor unit
+            state.amplitudes[idx].re *= boost;
+            state.amplitudes[idx].im *= boost;
         }
     }
     

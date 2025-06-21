@@ -20,6 +20,29 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // Visualization module
+    const visualization_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/visualization/quantum_visualizer.zig" },
+        .imports = &.{
+            .{ .name = "crystal_computing", .module = b.createModule(.{
+                .root_source_file = .{ .cwd_relative = "src/neural/crystal_computing.zig" },
+            }) },
+        },
+    });
+
+    // Metrics module
+    const metrics_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/monitoring/metrics.zig" },
+    });
+
+    // Monitoring module
+    const monitoring_mod = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/monitoring/dashboard.zig" },
+        .imports = &.{
+            .{ .name = "metrics", .module = metrics_mod },
+        },
+    });
+
     // Quantum processor module
     const quantum_processor_mod = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/neural/quantum_processor.zig" },
@@ -30,6 +53,8 @@ pub fn build(b: *std.Build) void {
             .{ .name = "crystal_computing", .module = b.createModule(.{
                 .root_source_file = .{ .cwd_relative = "src/neural/crystal_computing.zig" },
             }) },
+            .{ .name = "visualization", .module = visualization_mod },
+            .{ .name = "monitoring", .module = monitoring_mod },
         },
     });
 
@@ -46,6 +71,19 @@ pub fn build(b: *std.Build) void {
     const run_benchmark = b.addRunArtifact(benchmark_exe);
     const benchmark_step = b.step("benchmark", "Run quantum processor benchmarks");
     benchmark_step.dependOn(&run_benchmark.step);
+
+    // Simple Visualization Example
+    const simple_vis = b.addExecutable(.{
+        .name = "simple_vis",
+        .root_source_file = .{ .cwd_relative = "examples/simple_vis.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(simple_vis);
+
+    const run_simple_vis = b.addRunArtifact(simple_vis);
+    const simple_vis_step = b.step("simple-vis", "Run the simple visualization example");
+    simple_vis_step.dependOn(&run_simple_vis.step);
 
     // Memory Visualization Example
     const memory_vis_exe = b.addExecutable(.{
@@ -174,8 +212,8 @@ pub fn build(b: *std.Build) void {
     neural_tests.root_module.addImport("neural", neural_mod);
     
     const run_neural_tests = b.addRunArtifact(neural_tests);
-    const test_step = b.step("test-neural", "Run neural module tests");
-    test_step.dependOn(&run_neural_tests.step);
+    const neural_test_step = b.step("test-neural", "Run neural module tests");
+    neural_test_step.dependOn(&run_neural_tests.step);
 
     // Pattern visualization example
     const pattern_visualization_exe = b.addExecutable(.{
