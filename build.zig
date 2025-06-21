@@ -15,28 +15,26 @@ pub fn build(b: *std.Build) void {
 
     // Add include paths
     exe.addIncludePath(.{ .path = "src" });
-    
-    // Add source files directly
-    exe.addCSourceFile(.{
-        .file = .{ .path = "src/starweave/protocol.zig" },
-        .flags = &[0][]const u8{},
+
+    // Create and add modules
+    const starweave_mod = b.createModule(.{
+        .source_file = .{ .path = "src/starweave/protocol.zig" },
     });
-    exe.addCSourceFile(.{
-        .file = .{ .path = "src/neural/quantum_processor.zig" },
-        .flags = &[0][]const u8{},
+    const glimmer_mod = b.createModule(.{
+        .source_file = .{ .path = "src/glimmer/mod.zig" },
     });
-    exe.addCSourceFile(.{
-        .file = .{ .path = "src/glimmer/mod.zig" },
-        .flags = &[0][]const u8{},
+    const neural_mod = b.createModule(.{
+        .source_file = .{ .path = "src/neural/mod.zig" },
     });
-    exe.addCSourceFile(.{
-        .file = .{ .path = "src/neural/mod.zig" },
-        .flags = &[0][]const u8{},
+    const colors_mod = b.createModule(.{
+        .source_file = .{ .path = "src/glimmer/colors.zig" },
     });
-    exe.addCSourceFile(.{
-        .file = .{ .path = "src/glimmer/colors.zig" },
-        .flags = &[0][]const u8{},
-    });
+
+    // Add modules to the executable
+    exe.addModule("starweave", starweave_mod);
+    exe.addModule("glimmer", glimmer_mod);
+    exe.addModule("neural", neural_mod);
+    exe.addModule("colors", colors_mod);
 
     // Install the executable
     b.installArtifact(exe);
@@ -44,7 +42,6 @@ pub fn build(b: *std.Build) void {
     // Run step
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
-
     if (b.args) |args| {
         run_cmd.addArgs(args);
     }
