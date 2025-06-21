@@ -1,0 +1,36 @@
+{
+  "name": "maya-quantum-viz",
+  "version": "1.0.0",
+  "description": "3D Visualization for MAYA Quantum States",
+  "private": true,
+  "scripts": {
+    "start": "webpack serve --open",
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "quantum",
+    "visualization",
+    "threejs",
+    "bloch-sphere"
+  ],
+  "author": "MAYA Team",
+  "license": "MIT",
+  "dependencies": {
+    "dat.gui": "^0.7.9",
+    "three": "^0.155.0"
+  },
+  "devDependencies": {
+    "@types/dat.gui": "^0.7.13",
+    "@types/three": "^0.155.1",
+    "css-loader": "^6.8.1",
+    "html-webpack-plugin": "^5.5.3",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.2.2",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  }
+}

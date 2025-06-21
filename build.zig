@@ -44,7 +44,7 @@ pub fn build(b: *std.Build) void {
     });
 
     // Quantum processor module
-    const quantum_processor_mod = b.createModule(.{
+    const quantum_processor_mod = b.createModule({
         .root_source_file = .{ .cwd_relative = "src/neural/quantum_processor.zig" },
         .imports = &.{
             .{ .name = "quantum_types", .module = b.createModule(.{
@@ -55,6 +55,9 @@ pub fn build(b: *std.Build) void {
             }) },
             .{ .name = "visualization", .module = visualization_mod },
             .{ .name = "monitoring", .module = monitoring_mod },
+            .{ .name = "neural", .module = b.createModule(.{
+                .root_source_file = .{ .cwd_relative = "src/neural/neural.zig" },
+            }) },
         },
     });
 
@@ -96,18 +99,8 @@ pub fn build(b: *std.Build) void {
     // Add the src directory to the module search path
     qp_demo.addIncludePath(.{ .path = "src" });
     
-    // Add the neural module
-    const neural_mod = b.addModule("neural", .{
-        .source_file = .{ .path = "src/neural/neural.zig" },
-    });
-    
-    // Add the quantum processor module
-    const quantum_processor_mod = b.addModule("neural/quantum_processor", .{
-        .source_file = .{ .path = "src/neural/quantum_processor.zig" },
-        .dependencies = &.{
-            .{ .name = "neural", .module = neural_mod },
-        },
-    });
+    // Add the quantum processor module to the demo
+    qp_demo.root_module.addImport("quantum_processor", quantum_processor_mod);
     
     // Add the quantum types module
     const quantum_types_mod = b.addModule("neural/quantum_types", .{
@@ -175,6 +168,44 @@ pub fn build(b: *std.Build) void {
     const run_quantum_circuit_builder = b.addRunArtifact(quantum_circuit_builder);
     const quantum_circuit_builder_step = b.step("quantum-circuit-builder", "Run the interactive quantum circuit builder");
     quantum_circuit_builder_step.dependOn(&run_quantum_circuit_builder.step);
+
+    // 3D Visualization Server
+    const viz_3d = b.addExecutable(.{
+        .name = "quantum_viz_3d",
+        .root_source_file = .{ .cwd_relative = "src/visualization/quantum_viz_3d.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    b.installArtifact(viz_3d);
+
+    const run_viz_3d = b.addRunArtifact(viz_3d);
+    const viz_3d_step = b.step("viz-3d", "Run the 3D quantum visualization server");
+    viz_3d_step.dependOn(&run_viz_3d.step);
+
+    // Web UI Build
+    const web_ui_dir = "src/visualization/web";
+    const web_build_step = b.step("web-ui", "Build the web-based 3D visualization UI");
+    
+    // Note: This assumes Node.js and npm are installed on the system
+    const npm_install = b.addSystemCommand(&.{
+        "npm", "install"
+    });
+    npm_install.cwd = web_ui_dir;
+    
+    const npm_build = b.addSystemCommand(&.{
+        "npm", "run", "build"
+    });
+    npm_build.cwd = web_ui_dir;
+    npm_build.step.dependOn(&npm_install.step);
+    
+    web_build_step.dependOn(&npm_build.step);
+    
+    // Combined step to build everything
+    const build_all = b.step("build-all", "Build all components");
+    build_all.dependOn(quantum_circuit_builder_step);
+    build_all.dependOn(viz_3d_step);
+    build_all.dependOn(web_build_step);
 
     // Memory Visualization Example
     const memory_vis_exe = b.addExecutable(.{

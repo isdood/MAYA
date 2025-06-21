@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAYA Quantum 3D Visualization</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            background-color: rgba(0,0,0,0.5);
+            padding: 5px;
+            z-index: 100;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .dg.ac {
+            z-index: 200 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">MAYA Quantum 3D Visualization - Loading...</div>
+    <div id="container"></div>
+    <script type="module" src="/dist/main.js"></script>
+</body>
+</html>
