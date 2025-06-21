@@ -1,6 +1,4 @@
 .{
-    .fingerprint = 0x6555c2a448597fd4,
-    .paths = .{},
     .name = .maya,
     .version = "0.1.0",
     .dependencies = .{
