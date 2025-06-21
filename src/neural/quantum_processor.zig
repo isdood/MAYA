@@ -94,29 +94,408 @@ const MemoryHierarchy = struct {
 };
 
 /// CPU-specific optimization parameters
-const CpuOptimizations = struct {
+const ArchOptimizations = struct {
+    const Self = @This();
+    
+    vendor: CpuVendor = .unknown,
+    arch: CpuArch = .unknown,
+    
     // Prefetch settings
     prefetch_distance: usize = 2,
     prefetch_level: u2 = 3,
     prefetch_aggressiveness: f64 = 0.7,
     
-    // Blocking parameters
-    min_block_size_ratio: f64 = 0.125,
-    max_block_size_ratio: f64 = 0.5,
-    block_size_aggression: f64 = 0.7,
+    // Blocking and tiling
+    block_size_aggression: f64 = 0.5,  // 0.0 = conservative, 1.0 = aggressive
+    min_block_size_ratio: f64 = 0.1,   // Min block size as fraction of cache size
+    max_block_size_ratio: f64 = 0.8,   // Max block size as fraction of cache size
     
     // Memory access patterns
-    spatial_locality: bool = true,
-    temporal_locality: bool = true,
-    stream_detection: bool = true,
+    spatial_locality: bool = true,     // Optimize for spatial locality
+    temporal_locality: bool = true,    // Optimize for temporal locality
     
-    // SIMD settings
+    // Vectorization
     prefer_avx512: bool = false,
-    prefer_avx2: bool = true,
+    prefer_avx2: bool = false,
     prefer_neon: bool = false,
     
-    // Threading
-    thread_stride: usize = 1,  // Cache line stride for thread pinning
+    /// Create optimizations based on CPU detection
+    pub fn detect() Self {
+        const target = Target.current;
+        const cpu = target.cpu;
+        
+        var optim = Self{
+            .vendor = detectCpuVendor(cpu),
+            .arch = detectCpuArch(cpu),
+        };
+        
+        // Apply architecture-specific optimizations
+        optim.applyArchitectureTuning();
+        return optim;
+    }
+    
+    /// Apply architecture-specific tuning
+    fn applyArchitectureTuning(self: *Self) void {
+        switch (self.vendor) {
+            .intel => self.tuneIntel(),
+            .amd => self.tuneAmd(),
+            .arm, .apple => self.tuneArm(),
+            else => {},
+        }
+    }
+    
+    /// Tune for Intel CPUs
+    fn tuneIntel(self: *Self) void {
+        self.prefetch_aggressiveness = 0.8;
+        self.prefetch_level = 3;
+        self.spatial_locality = true;
+        self.temporal_locality = true;
+        
+        switch (self.arch) {
+            .skylake, .cascade_lake, .ice_lake, .tiger_lake => {
+                self.prefetch_distance = 4;
+                self.prefetch_aggressiveness = 0.9;
+                self.prefer_avx512 = true;
+            },
+            .alder_lake, .raptor_lake => {
+                self.prefetch_distance = 3;
+                self.prefer_avx512 = false; // Hybrid architecture
+                self.prefer_avx2 = true;
+                self.block_size_aggression = 0.7;
+            },
+            .haswell, .broadwell => {
+                self.prefetch_distance = 3;
+                self.prefer_avx2 = true;
+            },
+            else => {
+                self.prefetch_distance = 2;
+                self.prefer_avx2 = true;
+            },
+        }
+    }
+    
+    /// Tune for AMD CPUs
+    fn tuneAmd(self: *Self) void {
+        self.prefetch_aggressiveness = 0.9;
+        self.spatial_locality = true;
+        self.temporal_locality = false; // Zen benefits less from temporal locality
+        
+        switch (self.arch) {
+            .zen, .zen2 => {
+                self.prefetch_distance = 2;
+                self.block_size_aggression = 0.6;
+                self.min_block_size_ratio = 0.1;
+            },
+            .zen3, .zen4 => {
+                self.prefetch_distance = 3;
+                self.block_size_aggression = 0.7;
+                self.min_block_size_ratio = 0.15;
+            },
+            else => {},
+        }
+    }
+    
+    /// Tune for ARM/Apple CPUs
+    fn tuneArm(self: *Self) void {
+        self.prefetch_aggressiveness = 0.6; // ARM has aggressive hardware prefetching
+        self.spatial_locality = true;
+        self.temporal_locality = false;
+        
+        switch (self.arch) {
+            .cortex_a53, .cortex_a72, .cortex_a76 => {
+                self.prefetch_distance = 1;
+                self.block_size_aggression = 0.4;
+                self.prefer_neon = true;
+            },
+            .neoverse_n1, .neoverse_v1 => {
+                self.prefetch_distance = 2;
+                self.block_size_aggression = 0.5;
+                self.prefer_neon = true;
+            },
+            .firestorm, .avalanche => {
+                // Apple M1/M2 performance cores
+                self.prefetch_distance = 3;
+                self.block_size_aggression = 0.7;
+                self.prefer_neon = true;
+            },
+            .icestorm, .blizzard => {
+                // Apple M1/M2 efficiency cores
+                self.prefetch_distance = 2;
+                self.block_size_aggression = 0.5;
+                self.prefer_neon = true;
+            },
+            else => {
+                self.prefetch_distance = 1;
+                self.prefer_neon = true;
+            },
+        }
+        self.spatial_locality = true;
+        self.temporal_locality = true;
+        self.prefer_neon = true;
+        
+        switch (self.arch) {
+            .firestorm, .avalanche => {
+                // Apple M1/M2
+                self.prefetch_distance = 1; // Very good hardware prefetcher
+                self.block_size_aggression = 0.8;
+                self.min_block_size_ratio = 0.2;
+            },
+            .cortex_a76, .neoverse_n1, .neoverse_v1 => {
+                self.prefetch_distance = 2;
+                self.block_size_aggression = 0.7;
+            },
+            else => {},
+        }
+    }
+};
+
+/// Quantum Processor for advanced pattern recognition and quantum state manipulation
+pub const QuantumProcessor = struct {
+    allocator: Allocator,
+    config: QuantumConfig,
+    rng: std.rand.Xoshiro256,
+    thread_pool: ?*ThreadPool = null,
+    crystal: ?*crystal_computing.CrystalProcessor = null,
+    state: quantum_types.QuantumState = .{},
+    state_size: usize = 0,
+    memory_hierarchy: MemoryHierarchy = .{},
+    arch_optimizations: ArchOptimizations = .{},
+    vendor: CpuVendor = .unknown,
+    arch: CpuArch = .unknown,
+
+    const Self = @This();
+
+    /// Initialize a new quantum processor with the given configuration
+    pub fn init(allocator: Allocator, config: QuantumConfig) !*QuantumProcessor {
+        var self = try allocator.create(QuantumProcessor);
+        errdefer allocator.destroy(self);
+        
+        self.allocator = allocator;
+        self.config = config;
+        self.rng = std.rand.DefaultPrng.init(@intCast(std.time.milliTimestamp()));
+        
+        // Initialize thread pool
+        const default_threads = std.Thread.getCpuCount() catch 1;
+        self.thread_pool = try ThreadPool.init(.{
+            .allocator = allocator,
+            .n_jobs = default_threads,
+        });
+        
+        // Initialize crystal computing if enabled
+        if (config.use_crystal_computing) {
+            self.crystal = try crystal_computing.CrystalProcessor.init(allocator);
+        }
+        
+        // Detect CPU architecture and apply optimizations
+        self.vendor = detectCpuVendor();
+        self.arch = detectCpuArch();
+        self.arch_optimizations = ArchOptimizations{
+            .vendor = self.vendor,
+            .arch = self.arch,
+        };
+        self.arch_optimizations.applyArchitectureTuning();
+        
+        // Initialize memory hierarchy
+        self.memory_hierarchy = MemoryHierarchy{};
+        self.config.detectCacheHierarchy();
+        
+        // Initialize quantum state
+        self.state = quantum_types.QuantumState{
+            .coherence = 1.0,
+            .entanglement = 0.0,
+            .superposition = 0.0,
+            .qubits = &[0]quantum_types.Qubit{},
+        };
+        
+        return self;
+    }
+    
+    /// Clean up resources used by the quantum processor
+    pub fn deinit(self: *QuantumProcessor) void {
+        if (self.thread_pool) |pool| {
+            pool.deinit();
+            self.allocator.destroy(pool);
+        }
+        
+        if (self.crystal) |crystal| {
+            crystal.deinit();
+            self.allocator.destroy(crystal);
+        }
+        
+        if (self.state.qubits.len > 0) {
+            self.allocator.free(self.state.qubits);
+        }
+        
+        self.allocator.destroy(self);
+    }
+    
+    /// Process a batch of patterns in parallel
+    pub fn processBatch(self: *QuantumProcessor, patterns: []const []const u8) ![]quantum_types.PatternMatch {
+        const results = try self.allocator.alloc(quantum_types.PatternMatch, patterns.len);
+        errdefer self.allocator.free(results);
+        
+        // Process patterns in parallel using the thread pool
+        if (self.thread_pool) |pool| {
+            // Parallel processing
+            var context = struct {
+                processor: *QuantumProcessor,
+                patterns: []const []const u8,
+                results: []quantum_types.PatternMatch,
+                
+                fn process(
+                    ctx: *@This(),
+                    i: usize,
+                    _: *ThreadPool.Node,
+                ) void {
+                    ctx.results[i] = ctx.processor.processPattern(ctx.patterns[i]) catch |err| {
+                        // Handle error - store an error result
+                        ctx.results[i] = .{
+                            .similarity = 0.0,
+                            .confidence = 0.0,
+                            .pattern_id = "error",
+                            .qubits_used = 0,
+                            .depth = 0,
+                        };
+                    };
+                }
+            }{
+                .processor = self,
+                .patterns = patterns,
+                .results = results,
+            };
+            
+            // Dispatch tasks to thread pool
+            var nodes = try self.allocator.alloc(ThreadPool.Node, patterns.len);
+            defer self.allocator.free(nodes);
+            
+            for (patterns, 0..) |_, i| {
+                nodes[i] = ThreadPool.Node{
+                    .data = &context,
+                    .next = undefined,
+                };
+                pool.spawn(&nodes[i], context.process);
+            }
+            
+            // Wait for all tasks to complete
+            pool.waitAndWork();
+        } else {
+            // Fallback to sequential processing
+            for (patterns, 0..) |pattern, i| {
+                results[i] = try self.processPattern(pattern);
+            }
+        }
+        
+        return results;
+    }
+    
+    /// Get the current quantum state
+    pub fn getState(self: *const QuantumProcessor) quantum_types.QuantumState {
+        return self.state;
+    }
+    
+    /// Set the quantum state
+    pub fn setState(self: *QuantumProcessor, new_state: quantum_types.QuantumState) !void {
+        // Validate the new state
+        if (new_state.coherence < 0.0 or new_state.coherence > 1.0 or
+            new_state.entanglement < 0.0 or new_state.entanglement > 1.0 or
+            new_state.superposition < 0.0 or new_state.superposition > 1.0) {
+            return error.InvalidQuantumState;
+        }
+        
+        // Free old qubits if they exist
+        if (self.state.qubits.len > 0) {
+            self.allocator.free(self.state.qubits);
+        }
+        
+        // Allocate new qubits and copy the state
+        const new_qubits = try self.allocator.alloc(quantum_types.Qubit, new_state.qubits.len);
+        @memcpy(new_qubits, new_state.qubits);
+        
+        // Update the state
+        self.state = .{
+            .coherence = new_state.coherence,
+            .entanglement = new_state.entanglement,
+            .superposition = new_state.superposition,
+            .qubits = new_qubits,
+        };
+        
+        // Update state size
+        self.state_size = @as(usize, 1) << @as(u6, @intCast(new_qubits.len));
+    }
+    
+    /// Reset the quantum processor to its initial state
+    pub fn reset(self: *QuantumProcessor) void {
+        // Reset the quantum state to |0...0>
+        if (self.state.qubits.len > 0) {
+            // Reset all qubits to |0>
+            for (self.state.qubits) |*qubit| {
+                qubit.* = .{ .amplitude0 = 1.0, .amplitude1 = 0.0 };
+            }
+        }
+        
+        // Reset state properties
+        self.state.coherence = 1.0;
+        self.state.entanglement = 0.0;
+        self.state.superposition = 0.0;
+    }
+    
+    /// Internal method to detect CPU vendor
+    fn detectCpuVendor() CpuVendor {
+        if (@hasDecl(std.Target.x86, "featureSet")) {
+            if (comptime std.Target.x86.featureSetHas(builtin.cpu.features, .intel)) {
+                return .intel;
+            } else if (comptime std.Target.x86.featureSetHas(builtin.cpu.features, .amd)) {
+                return .amd;
+            }
+        } else if (@hasDecl(std.Target.arm, "featureSet")) {
+            if (comptime std.Target.arm.featureSetHas(builtin.cpu.features, .aarch64)) {
+                if (builtin.target.os.tag == .macos) {
+                    return .apple;
+                }
+                return .arm;
+            }
+        }
+        return .unknown;
+    }
+    
+    /// Internal method to detect CPU architecture
+    fn detectCpuArch() CpuArch {
+        const cpu = builtin.cpu;
+        
+        // Check for Intel architectures
+        if (cpu.model == .skylake) return .skylake;
+        if (cpu.model == .icelake) return .ice_lake;
+        if (cpu.model == .tigerlake) return .tiger_lake;
+        if (cpu.model == .alderlake) return .alder_lake;
+        
+        // Check for AMD architectures
+        if (cpu.model == .zen) return .zen;
+        if (cpu.model == .zen2) return .zen2;
+        if (cpu.model == .zen3) return .zen3;
+        if (cpu.model == .zen4) return .zen4;
+        
+        // Check for Apple Silicon
+        if (cpu.model == .apple_m1) return .firestorm;
+        if (cpu.model == .apple_m2) return .avalanche;
+        
+        return .unknown;
+    }
+    
+    /// Internal method to measure a pattern and return the match result
+    fn measurePattern(self: *const QuantumProcessor, state: *quantum_types.QuantumState, pattern: []const u8) !quantum_types.PatternMatch {
+        _ = self; // Use self to avoid unused parameter warning
+        _ = pattern; // Use pattern to avoid unused parameter warning
+        
+        // In a real implementation, this would perform quantum measurement
+        // and return the result. For now, return a simple pattern match.
+        return quantum_types.PatternMatch{
+            .similarity = 0.9,
+            .confidence = 0.95,
+            .pattern_id = try std.fmt.allocPrint(self.allocator, "pattern_{d}", .{std.time.milliTimestamp()}),
+            .qubits_used = @intCast(state.qubits.len),
+            .depth = state.qubits.len,
+        };
+    }
 };
 
 /// Architecture-specific optimizations
@@ -214,7 +593,7 @@ const ArchOptimizations = struct {
     }
     
     /// Apply architecture-specific tuning
-    fn applyArchitectureTuning(self: *Self) void {
+    fn applyArchitectureTuning(self: *ArchOptimizations) void {
         switch (self.vendor) {
             .intel => self.tuneIntel(),
             .amd => self.tuneAmd(),
@@ -224,7 +603,7 @@ const ArchOptimizations = struct {
     }
     
     /// Tune for Intel CPUs
-    fn tuneIntel(self: *Self) void {
+    fn tuneIntel(self: *ArchOptimizations) void {
         self.optimizations.prefetch_aggressiveness = 0.8;
         self.optimizations.spatial_locality = true;
         self.optimizations.temporal_locality = true;
@@ -251,7 +630,7 @@ const ArchOptimizations = struct {
     }
     
     /// Tune for AMD CPUs
-    fn tuneAmd(self: *Self) void {
+    fn tuneAmd(self: *ArchOptimizations) void {
         self.optimizations.prefetch_aggressiveness = 0.9;
         self.optimizations.spatial_locality = true;
         self.optimizations.temporal_locality = false; // Zen benefits less from temporal locality
@@ -272,7 +651,7 @@ const ArchOptimizations = struct {
     }
     
     /// Tune for ARM/Apple CPUs
-    fn tuneArm(self: *Self) void {
+    fn tuneArm(self: *ArchOptimizations) void {
         self.optimizations.prefetch_aggressiveness = 0.6; // ARM has aggressive hardware prefetching
         self.optimizations.spatial_locality = true;
         self.optimizations.temporal_locality = true;
@@ -302,6 +681,34 @@ pub const QuantumConfig = struct {
     superposition_depth: usize = 8,       // Maximum superposition depth
     min_pattern_similarity: f64 = 0.8,   // Minimum similarity threshold for pattern matching
     max_parallel_qubits: usize = 16,      // Maximum qubits for parallel processing
+    use_crystal_computing: bool = false,  // Enable crystal computing enhancements
+    use_parallel_execution: bool = true,  // Enable parallel execution
+    batch_size: usize = 16,               // Default batch size for batch processing
+    
+    // Cache configuration
+    min_block_size: usize = 64,           // Minimum block size in bytes
+    max_block_size: usize = 4096,         // Maximum block size in bytes
+    cache_sizes: [3]usize = .{32 * 1024, 256 * 1024, 8 * 1024 * 1024}, // L1, L2, L3 in bytes
+    cache_line_sizes: [3]usize = .{64, 64, 64}, // Cache line sizes in bytes
+    
+    // Architecture optimizations
+    arch_optimizations: ArchOptimizations = .{},
+    
+    // Memory hierarchy
+    memory_hierarchy: MemoryHierarchy = .{},
+    
+    // Prefetch settings
+    prefetch_distance: usize = 2,         // Default prefetch distance
+    prefetch_level: u2 = 1,               // Default prefetch level (0=L1, 1=L2, 2=L3, 3=RAM)
+    
+    // Blocking and tiling
+    block_size_aggression: f64 = 0.5,     // Aggressiveness of block size selection
+    min_block_size_ratio: f64 = 0.1,      // Minimum block size as fraction of cache size
+    max_block_size_ratio: f64 = 0.8,      // Maximum block size as fraction of cache size
+    
+    // Memory access patterns
+    spatial_locality: bool = true,        // Optimize for spatial locality
+    temporal_locality: bool = true,       // Optimize for temporal locality
 
     /// Detect cache hierarchy and adjust configuration
     pub fn detectCacheHierarchy(self: *QuantumConfig) void {
@@ -475,7 +882,7 @@ pub const QuantumConfig = struct {
     }
     
     /// Get the optimal prefetch distance based on memory latency and access pattern
-    pub fn calculatePrefetchDistance(self: *const Self, block_size: usize, element_size: usize) usize {
+    pub fn calculatePrefetchDistance(self: *const QuantumConfig, block_size: usize, element_size: usize) usize {
         // Get architecture-specific base prefetch distance
         var prefetch_dist: usize = 8; // Default value
         
@@ -507,7 +914,7 @@ pub const QuantumConfig = struct {
     }
 
     /// Get the prefetch level (0=L1, 1=L2, 2=L3, 3=RAM)
-    pub fn getPrefetchLevel(self: *const Self) u2 {
+    pub fn getPrefetchLevel(self: *const QuantumConfig) u2 {
         // For very small qubit counts (1-2 qubits), no prefetching
         if (self.state_size <= 4) { // 1-2 qubits (2-4 states)
             return 0; // No prefetching for very small states
@@ -533,30 +940,32 @@ pub const QuantumConfig = struct {
         
         return 3; // RAM prefetch (minimal benefit)
     }
+    
+    /// Normalize the quantum state to ensure the sum of probabilities is 1
+    fn normalizeState(state: *quantum_types.QuantumState) !void {
+        var norm: f64 = 0.0;
+        const num_qubits = state.qubits.len;
+        const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
         
-/// Normalize the quantum state vector
-fn normalizeState(self: *Self, state: *quantum_types.QuantumState) !void {
-    var norm: f64 = 0.0;
-    const num_states = @as(usize, 1) << @as(u6, @intCast(state.qubits.len));
-            
-    // Calculate norm
-    for (0..num_states) |i| {
-        const amp = state.amplitudes[i];
-        norm += amp.re * amp.re + amp.im * amp.im;
-    }
-            
-    // Normalize if needed
-    if (norm > 0.0) {
-        const inv_norm = 1.0 / @sqrt(norm);
+        // Calculate norm
         for (0..num_states) |i| {
-            state.amplitudes[i].re *= inv_norm;
-            state.amplitudes[i].im *= inv_norm;
+            const amp = state.amplitudes[i];
+            norm += amp.re * amp.re + amp.im * amp.im;
+        }
+        
+        // Normalize if norm is greater than 0
+        if (norm > 0.0) {
+            const inv_norm = 1.0 / @sqrt(norm);
+            for (0..num_states) |i| {
+                state.amplitudes[i].re *= inv_norm;
+                state.amplitudes[i].im *= inv_norm;
+            }
         }
     }
-}
-        
+};
+
 /// Apply optimized pattern matching algorithm
-fn applyOptimizedPatternMatching(self: *Self, circuit: *quantum_types.QuantumCircuit, 
+fn applyOptimizedPatternMatching(self: *QuantumProcessor, circuit: *quantum_types.QuantumCircuit, 
                                pattern: []const u8) !void {
     // Apply Hadamard to create superposition
     for (0..circuit.qubits.len) |i| {
@@ -572,8 +981,8 @@ fn applyOptimizedPatternMatching(self: *Self, circuit: *quantum_types.QuantumCir
 }
 
 /// Initialize a new quantum processor with the given configuration
-pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
-    var self = try allocator.create(Self);
+pub fn init(allocator: Allocator, config: QuantumConfig) !*QuantumProcessor {
+    var self = try allocator.create(QuantumProcessor);
     errdefer allocator.destroy(self);
         
         self.allocator = allocator;
@@ -609,7 +1018,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Adjust thread pool size based on problem size (qubit count)
-    fn adjustThreadPool(self: *Self, num_qubits: usize) void {
+    fn adjustThreadPool(self: *QuantumProcessor, num_qubits: usize) void {
         if (self.thread_pool) |pool| {
             const optimal_threads = self.config.calculateOptimalThreads(num_qubits);
             if (pool.workers.len != optimal_threads) {
@@ -621,7 +1030,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Specialized encoding for very small qubit counts (1-2 qubits)
-    fn encodeSmallPattern(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
+    fn encodeSmallPattern(self: *QuantumProcessor, state: *quantum_types.QuantumState, pattern: []const u8) !void {
         const num_qubits = state.qubits.len;
         const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
         
@@ -635,11 +1044,11 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
         }
         
         // Use optimized normalization for small states
-        try self.normalizeStateSmall(state);
+        try normalizeStateSmall(state);
     }
     
     /// Optimized normalization for small quantum states (≤4 qubits)
-    fn normalizeStateSmall(self: *Self, state: *quantum_types.QuantumState) !void {
+    fn normalizeStateSmall(state: *quantum_types.QuantumState) !void {
         var norm: f64 = 0.0;
         const num_states = @as(usize, 1) << @as(u6, @intCast(state.qubits.len));
         
@@ -666,7 +1075,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Simple encoding that uses the first qubit for pattern representation
-    fn encodeSimplePattern(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) void {
+    fn encodeSimplePattern(self: *QuantumProcessor, state: *quantum_types.QuantumState, pattern: []const u8) void {
         if (pattern.len > 0) {
             const norm = @as(f64, @floatFromInt(pattern[0])) / 255.0;
             state.qubits[0].amplitude0 = norm;
@@ -675,7 +1084,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Apply optimized quantum pattern matching with adaptive cache-blocking
-    fn applyOptimizedPatternMatching(self: *Self, circuit: *quantum_types.QuantumCircuit, 
+    fn applyOptimizedPatternMatching(self: *QuantumProcessor, circuit: *quantum_types.QuantumCircuit, 
                                    pattern: []const u8) !void {
         const num_qubits = circuit.num_qubits;
         const complex_size = @sizeOf(quantum_types.Complex);
@@ -753,7 +1162,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Measure the quantum state to get pattern matching results
-    fn measurePattern(self: *Self, state: *quantum_types.QuantumState, _: []const u8) !quantum_types.PatternMatch {
+    fn measurePattern(self: *QuantumProcessor, state: *quantum_types.QuantumState, _: []const u8) !quantum_types.PatternMatch {
         // Simple measurement - in a real implementation, this would use amplitude estimation
         const measurement = state.measure(0);
         
@@ -775,7 +1184,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     
     /// Process a batch of patterns in parallel
     pub fn processBatch(
-        self: *Self,
+        self: *QuantumProcessor,
         patterns: []const []const u8,
     ) ![]quantum_types.PatternMatch {
         if (patterns.len == 0) return &[0]quantum_types.PatternMatch{};
@@ -791,7 +1200,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Process a single pattern through the quantum processor
-    pub fn processPattern(self: *Self, pattern: []const u8) !quantum_types.PatternMatch {
+    pub fn processPattern(self: *QuantumProcessor, pattern: []const u8) !quantum_types.PatternMatch {
         if (pattern.len == 0) return error.InvalidPattern;
 
         // Calculate optimal number of qubits for the pattern length
@@ -831,8 +1240,8 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
         return self.measurePattern(&state, pattern);
     }
     
-    /// Encode a pattern into a quantum state (general case)
-    fn encodePattern(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
+    /// Encode a pattern into the quantum state
+    fn encodePattern(state: *quantum_types.QuantumState, pattern: []const u8) !void {
         const num_qubits = state.qubits.len;
         const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
         
@@ -854,7 +1263,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Process quantum state with the pattern
-    fn processQuantumState(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
+    fn processQuantumState(self: *QuantumProcessor, state: *quantum_types.QuantumState, pattern: []const u8) !void {
         const num_qubits = state.qubits.len;
         
         // Apply Hadamard to all qubits to create superposition
@@ -869,11 +1278,11 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
         }
         
         // Apply inverse QFT for pattern matching
-        try self.applyInverseQFT(state);
+        try applyInverseQFT(state);
     }
     
-    /// Apply inverse Quantum Fourier Transform
-    fn applyInverseQFT(self: *Self, state: *quantum_types.QuantumState) !void {
+    /// Apply inverse Quantum Fourier Transform to the quantum state
+    fn applyInverseQFT(state: *quantum_types.QuantumState) !void {
         const n = state.qubits.len;
         
         // Apply inverse QFT by applying QFT in reverse order with negative phases
@@ -898,7 +1307,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     
     /// Enhance quantum state with advanced crystal computing results
     fn enhanceWithCrystalState(
-        self: *Self,
+        self: *QuantumProcessor,
         state: *quantum_types.QuantumState,
         crystal_state: crystal_computing.CrystalState,
     ) !void {
@@ -939,7 +1348,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
         
         // Apply resonance effects if available
         if (crystal_state.resonance) |resonance| {
-            try self.applyResonanceEffects(state, resonance);
+            try applyResonanceEffects(state, resonance);
         }
         
         // Crystal depth can increase effective qubit count
@@ -967,7 +1376,6 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     
     /// Apply resonance effects from crystal state to quantum state
     fn applyResonanceEffects(
-        self: *Self,
         state: *quantum_types.QuantumState,
         resonance: crystal_computing.ResonanceAnalysis,
     ) !void {
@@ -990,7 +1398,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Set the quantum state (use with caution)
-    pub fn setState(self: *Self, new_state: quantum_types.QuantumState) !void {
+    pub fn setState(self: *QuantumProcessor, new_state: quantum_types.QuantumState) !void {
         // Validate the state
         if (new_state.coherence < 0.0 or new_state.coherence > 1.0 or
             new_state.entanglement < 0.0 or new_state.entanglement > 1.0 or
@@ -1007,7 +1415,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
             }
             
             // Allow for small floating point errors
-            if (@abs(norm - 1.0) > 1e-10) {
+            if (std.math.fabs(norm - 1.0) > 1e-10) {
                 return error.InvalidQuantumState;
             }
         }
@@ -1030,7 +1438,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Reset the quantum processor to its initial state
-    pub fn reset(self: *Self) void {
+    pub fn reset(self: *QuantumProcessor) void {
         // Reuse the existing qubits array if possible
         if (self.state.qubits.len > 0) {
             // Reset the existing qubit to |0⟩
@@ -1050,59 +1458,11 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
     }
     
     /// Get the current quantum state
-    pub fn getState(self: *const Self) quantum_types.QuantumState {
+    pub fn getState(self: *const QuantumProcessor) quantum_types.QuantumState {
         return self.state;
     }
     
-    /// Process a quantum state with the given pattern
-    fn processQuantumState(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
-        // Simple quantum state processing - in a real implementation, this would use quantum gates
-        // For now, we'll just set some basic properties
-        state.coherence = 0.9;
-        state.entanglement = 0.7;
-        state.superposition = 0.8;
-        
-        // Calculate metrics based on pattern
-        if (pattern.len > 0) {
-            // Simple pattern analysis
-            var sum: f64 = 0.0;
-            for (pattern) |b| sum += @as(f64, @floatFromInt(b));
-            const avg = sum / @as(f64, @floatFromInt(pattern.len));
-            
-            // Update state based on pattern
-            state.coherence = @min(1.0, avg / 255.0 + 0.5);
-            state.entanglement = @min(1.0, @as(f64, @floatFromInt(pattern.len)) / 100.0);
-        }
-        
-        // Simple pattern processing
-        if (pattern.len > 0) {
-            // Set qubit state based on first character of pattern
-            const first_char = @as(f64, @floatFromInt(pattern[0])) / 255.0;
-            
-            // Initialize qubits if needed
-            if (state.qubits.len == 0) {
-                // Add a single qubit for this simple example
-                const qubit = quantum_types.Qubit{ 
-                    .amplitude0 = @sqrt(first_char), 
-                    .amplitude1 = @sqrt(1.0 - first_char) 
-                };
-                state.qubits = &[1]quantum_types.Qubit{qubit};
-            } else {
-                // Update existing qubit
-                state.qubits[0].amplitude0 = @sqrt(first_char);
-                state.qubits[0].amplitude1 = @sqrt(1.0 - first_char);
-            }
-        }
-        
-        // Apply crystal computing enhancement if enabled
-        if (self.crystal) |crystal| {
-            const crystal_state = try crystal.process(pattern);
-            state.coherence = @max(state.coherence, crystal_state.coherence);
-            state.entanglement = @min(state.entanglement + 0.1, 1.0);
-            state.superposition = @min(state.superposition + 0.1, 1.0);
-        }
-    }
-};
+
 
 // Tests
 test "quantum processor initialization" {
