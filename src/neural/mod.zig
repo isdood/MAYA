@@ -18,6 +18,7 @@ pub const PatternProcessor = pattern_processor.PatternProcessor;
 // Core neural components
 pub const VisualState = @import("visual_processor.zig").VisualState;
 pub const VisualProcessor = @import("visual_processor.zig").VisualProcessor;
+pub const Bridge = @import("bridge.zig").Bridge;
 pub const QuantumProcessor = @import("quantum_processor.zig").QuantumProcessor;
 pub const NeuralProcessor = @import("neural_processor.zig").NeuralProcessor;
 

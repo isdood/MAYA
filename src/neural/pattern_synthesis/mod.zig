@@ -90,7 +90,8 @@ pub const PatternSynthesizer = struct {
     
     /// Initialize a new pattern synthesizer
     pub fn init(allocator: Allocator, config: SynthesisConfig) !PatternSynthesizer {
-        const seed = if (config.seed != 0) config.seed else @intCast(u64, std.time.milliTimestamp());
+        const timestamp = @as(i64, @intCast(std.time.milliTimestamp()));
+        const seed = if (config.seed != 0) config.seed else @as(u64, @intCast(timestamp));
         var prng = try allocator.create(std.rand.Xoshiro256);
         prng.* = std.rand.Xoshiro256.init(seed);
         

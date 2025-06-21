@@ -314,9 +314,10 @@ pub const QuantumConfig = struct {
         // Try to detect cache sizes using system-specific methods
         if (@import("builtin").os.tag == .linux) {
             // Read cache information from sysfs on Linux
-            self.detectLinuxCacheHierarchy() catch |_| {
+            _ = self.detectLinuxCacheHierarchy() catch |err| {
                 // Fall back to defaults if detection fails
-            }
+                std.debug.print("Warning: Failed to detect Linux cache hierarchy: {s}\n", .{@errorName(err)});
+            };
         }
         
         // Sanity check and adjust block sizes
@@ -397,7 +398,7 @@ pub const QuantumConfig = struct {
             
             // Calculate block size based on data size relative to cache size
             const data_ratio = @as(f64, @floatFromInt(total_data_size)) / effective_cache_size;
-            let block_size: usize = undefined;
+            var block_size: usize = undefined;
             
             if (data_ratio < 0.25) {
                 // Small data: use larger blocks
@@ -588,13 +589,20 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
         });
         
         // Set thread pool size based on default problem size (8 qubits)
-        self.adjustThreadPool(8);            
-                    // Prefetch for write if next block is being prefetched
-                    if (prefetch_idx < probabilities.len) {
-                        @prefetch(
-                            &probabilities[prefetch_idx],
-                            .{ .rw = .write, .locality = 1, .cache = .data }
-{{ ... }}
+        self.adjustThreadPool(8);
+        
+        // Prefetch for write if next block is being prefetched
+        if (prefetch_idx < probabilities.len) {
+            @prefetch(
+                &probabilities[prefetch_idx],
+                .{ .rw = .write, .locality = 1, .cache = .data }
+            );
+        }
+        
+        // Process probabilities here
+        // ...
+        
+        return quantum_types.PatternMatch{
             .confidence = 1.0, // Placeholder
             .measurement = measurement,
         };
@@ -619,24 +627,10 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
         
         // For very small patterns, use a simple sequential approach
         for (0..num_states) |i| {
-            const val = if (i < pattern.len) @as(f64, @floatFromInt(pattern[i])) / 255.0 else 0.0;
-            state.amplitudes[i] = .{ .re = val, .im = 0.0 };
-        }
-        
-        // Use optimized normalization for very small states
-        try self.normalizeStateSmall(state);
-    }
-    
-    /// Specialized encoding for medium qubit counts (3-4 qubits)
-    fn encodeMediumPattern(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) !void {
-        const num_qubits = state.qubits.len;
-        const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
-        
-        // Optimized path for 3-4 qubits with minimal branching
-        for (0..num_states) |i| {
             const val = if (i < pattern.len) 
                 @as(f64, @floatFromInt(pattern[i])) / 255.0 
-                else 0.0;
+            else 
+                0.0;
             state.amplitudes[i] = .{ .re = val, .im = 0.0 };
         }
         
@@ -669,15 +663,14 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*Self {
                 state.amplitudes[i].im *= inv_norm;
             }
         }
-    }        const idx = i % pattern.len;
-            const amplitude = if (norm > 0) @as(f64, @floatFromInt(pattern[idx])) / norm else 0.0;
-            
-            // Simple encoding: use first qubit for pattern
-            if (i < pattern.len) {
-                state.qubits[0].amplitude0 = amplitude;
-{{ ... }}
-                state.qubits[0].amplitude1 = 1.0 - amplitude;
-            }
+    }
+    
+    /// Simple encoding that uses the first qubit for pattern representation
+    fn encodeSimplePattern(self: *Self, state: *quantum_types.QuantumState, pattern: []const u8) void {
+        if (pattern.len > 0) {
+            const norm = @as(f64, @floatFromInt(pattern[0])) / 255.0;
+            state.qubits[0].amplitude0 = norm;
+            state.qubits[0].amplitude1 = 1.0 - norm;
         }
     }
     

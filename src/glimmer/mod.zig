@@ -15,6 +15,7 @@ pub const MemoryGraph = visualization.MemoryGraph;
 pub const MemoryType = visualization.MemoryType;
 pub const MemoryRelationship = visualization.MemoryRelationship;
 pub const InteractiveVisualizer = interactive_visualizer.InteractiveVisualizer;
+pub const Pattern = patterns.Pattern;
 
 /// Initialize the GLIMMER system
 pub fn init(allocator: std.mem.Allocator) !void {

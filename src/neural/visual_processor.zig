@@ -101,7 +101,7 @@ pub const VisualProcessor = struct {
 
         var i: usize = 1;
         while (i < data.len) : (i += 1) {
-            const diff = @abs(@as(i32, data[i]) - @as(i32, data[i - 1]));
+            const diff = try std.math.absInt(@as(i32, data[i]) - @as(i32, data[i - 1]));
             total_diff += @as(usize, @intCast(diff));
             count += 1;
         }

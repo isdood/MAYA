@@ -203,8 +203,8 @@ pub const MemoryGraph = struct {
                     const y1 = @as(i32, @intFromFloat(target.y));
                     
                     // Simple DDA line drawing algorithm
-                    const dx = @abs(x1 - x0);
-                    const dy = @abs(y1 - y0);
+                    const dx = try std.math.absInt(x1 - x0);
+                    const dy = try std.math.absInt(y1 - y0);
                     const steps = @max(dx, dy);
                     
                     if (steps == 0) {
