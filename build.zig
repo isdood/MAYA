@@ -48,4 +48,35 @@ pub fn build(b: *std.Build) void {
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
+
+    // Test step
+    const test_step = b.step("test", "Run unit tests");
+    
+    // Main tests
+    const main_tests = b.addTest(.{
+        .root_source_file = .{ .path = "test/neural_bridge_test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add modules to tests
+    main_tests.addModule("neural", neural_mod);
+    
+    // Add include paths
+    main_tests.addIncludePath(.{ .path = "src" });
+    
+    // Create test run step
+    const run_main_tests = b.addRunArtifact(main_tests);
+    test_step.dependOn(&run_main_tests.step);
+    
+    // Add neural bridge unit tests
+    const neural_bridge_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/neural/neural_bridge.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    neural_bridge_tests.addModule("neural", neural_mod);
+    neural_bridge_tests.addIncludePath(.{ .path = "src" });
+    const run_neural_bridge_tests = b.addRunArtifact(neural_bridge_tests);
+    test_step.dependOn(&run_neural_bridge_tests.step);
 }

@@ -30,7 +30,14 @@ const quantum_types = @import("quantum_types.zig");
 const QuantumProcessor = quantum_processor.QuantumProcessor;
 const VisualProcessor = visual_synthesis.VisualProcessor;
 const Pattern = pattern_recognition.Pattern;
-const PatternType = pattern_recognition.PatternType;
+
+/// Pattern type for processing
+pub const PatternType = enum {
+    Quantum,    // Process using quantum processor only
+    Visual,     // Process using visual processor only
+    Neural,     // Process using both quantum and visual processors
+    Universal,  // Try all available processors
+};
 
 /// Bridge configuration
 pub const BridgeConfig = struct {
@@ -125,7 +132,7 @@ pub const ProtocolState = struct {
     is_active: bool = false,
     start_time: i64 = 0,
     end_time: i64 = 0,
-    error: ?[]const u8 = null,
+    err: ?[]const u8 = null,
     
     // Performance metrics
     success_count: u32 = 0,
@@ -135,7 +142,7 @@ pub const ProtocolState = struct {
     pub fn start(self: *@This()) void {
         self.is_active = true;
         self.start_time = std.time.milliTimestamp();
-        self.error = null;
+        self.err = null;
     }
     
     pub fn finish(self: *@This(), success: bool, err: ?[]const u8) void {
@@ -147,7 +154,7 @@ pub const ProtocolState = struct {
             self.success_count += 1;
         } else {
             self.error_count += 1;
-            self.error = err;
+            self.err = err;
         }
     }
     
@@ -237,6 +244,7 @@ pub const NeuralBridge = struct {
     // Thread pool for concurrent operations
     thread_pool: ?*std.Thread.Pool,
     
+    /// Initialize a new NeuralBridge instance
     pub fn init(allocator: Allocator, config: BridgeConfig) !*@This() {
         // Validate configuration
         try config.validate();
@@ -252,9 +260,9 @@ pub const NeuralBridge = struct {
         }
         
         // Initialize processors based on configuration
-        var quantum_processor: ?*QuantumProcessor = null;
+        var q_processor: ?*QuantumProcessor = null;
         if (config.enable_quantum) {
-            quantum_processor = try QuantumProcessor.init(allocator, .{});
+            q_processor = try QuantumProcessor.init(allocator, .{});
         }
         
         var visual_processor: ?*VisualProcessor = null;
@@ -268,7 +276,7 @@ pub const NeuralBridge = struct {
             .allocator = allocator,
             .config = config,
             .state = .{},
-            .quantum_processor = quantum_processor,
+            .quantum_processor = q_processor,
             .visual_processor = visual_processor,
             .active_protocols = std.AutoHashMap(ProtocolType, ProtocolState).init(allocator),
             .protocol_stats = std.AutoHashMap(ProtocolType, ProtocolStats).init(allocator),
@@ -278,6 +286,7 @@ pub const NeuralBridge = struct {
         return bridge;
     }
     
+    /// Clean up resources
     pub fn deinit(self: *@This()) void {
         // Clean up processors
         if (self.quantum_processor) |qp| {
