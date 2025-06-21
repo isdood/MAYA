@@ -35,9 +35,13 @@ const SimpleVisualizer = struct {
                 @as(usize, @intFromFloat(@as(f64, @floatCast(bar_width * (prob / max_prob)))))
                 else 0;
             
-            try stdout.print("|{b:0>2} | {s:<5.3} |", .{
+            // Format the probability with 3 decimal places
+            const prob_str = try std.fmt.allocPrint(std.heap.page_allocator, "{d:.3}", .{prob});
+            defer std.heap.page_allocator.free(prob_str);
+            
+            try stdout.print("|{b:0>2} | {s:<5} |", .{
                 i,
-                std.fmt.fmtFloatDecimal(prob, .{}),
+                prob_str,
             });
             
             // Print bar
