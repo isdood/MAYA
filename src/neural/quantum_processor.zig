@@ -1,4 +1,3 @@
-
 //! 🧠 MAYA Quantum Processor
 //! ✨ Version: 2.1.0
 //! 📅 Created: 2025-06-18
@@ -94,6 +93,71 @@ const MemoryHierarchy = struct {
 };
 
 /// CPU-specific optimization parameters
+const CpuOptimizations = struct {
+    vector_width: usize = 1,
+    prefetch_distance: usize = 1,
+    unroll_factor: usize = 1,
+    use_simd: bool = false,
+};
+
+/// Detect CPU vendor from CPU features
+fn detectCpuVendor(cpu: std.Target.Cpu) CpuVendor {
+    if (cpu.arch == .x86_64 or cpu.arch == .x86) {
+        if (std.Target.x86.featureSetHasAll(cpu.features, .{ .intel })) {
+            return .intel;
+        } else if (std.Target.x86.featureSetHasAll(cpu.features, .{ .amd })) {
+            return .amd;
+        }
+    } else if (cpu.arch.isARM() or cpu.arch == .aarch64) {
+        if (std.Target.arm.featureSetHasAll(cpu.features, .{ .apple })) {
+            return .apple;
+        }
+        return .arm;
+    }
+    return .unknown;
+}
+
+/// Detect CPU architecture
+fn detectCpuArch(cpu: std.Target.Cpu) CpuArch {
+    if (cpu.arch == .x86_64) {
+        // Intel CPUs
+        if (std.Target.x86.featureSetHasAll(cpu.features, .{ .intel })) {
+            if (std.Target.x86.featureSetHasAll(cpu.features, .{ .avx512f })) {
+                if (std.Target.x86.featureSetHasAll(cpu.features, .{ .avx512vnni })) {
+                    return .ice_lake;
+                }
+                return .skylake;
+            } else if (std.Target.x86.featureSetHasAll(cpu.features, .{ .avx2 })) {
+                return .haswell;
+            }
+            return .sandybridge;
+        } 
+        // AMD CPUs
+        else if (std.Target.x86.featureSetHasAll(cpu.features, .{ .amd })) {
+            if (std.Target.x86.featureSetHasAll(cpu.features, .{ .avx2 })) {
+                if (std.Target.x86.featureSetHasAll(cpu.features, .{ .avx512f })) {
+                    return .zen4;
+                }
+                return .zen3;
+            }
+            return .zen;
+        }
+    } else if (cpu.arch == .aarch64 or cpu.arch.isARM()) {
+        // Apple Silicon
+        if (std.Target.arm.featureSetHasAll(cpu.features, .{ .apple })) {
+            return .firestorm;  // Default to firestorm for Apple Silicon
+        }
+        // ARM Cortex
+        if (std.Target.arm.featureSetHasAll(cpu.features, .{ .v8_1a })) {
+            return .cortex_a76;
+        }
+        return .cortex_a53;
+    }
+    
+    return .unknown;
+}
+
+/// CPU-specific optimization parameters
 const ArchOptimizations = struct {
     const Self = @This();
     
@@ -147,15 +211,19 @@ const ArchOptimizations = struct {
     /// Tune for Intel CPUs
     fn tuneIntel(self: *Self) void {
         self.prefetch_aggressiveness = 0.8;
-        self.prefetch_level = 3;
         self.spatial_locality = true;
         self.temporal_locality = true;
         
         switch (self.arch) {
-            .skylake, .cascade_lake, .ice_lake, .tiger_lake => {
-                self.prefetch_distance = 4;
-                self.prefetch_aggressiveness = 0.9;
+            .skylake, .cascade_lake => {
+                self.prefetch_distance = 3;
                 self.prefer_avx512 = true;
+                self.block_size_aggression = 0.75;
+            },
+            .ice_lake, .tiger_lake => {
+                self.prefetch_distance = 4;
+                self.prefer_avx512 = true;
+                self.block_size_aggression = 0.8;
             },
             .alder_lake, .raptor_lake => {
                 self.prefetch_distance = 3;
@@ -163,14 +231,7 @@ const ArchOptimizations = struct {
                 self.prefer_avx2 = true;
                 self.block_size_aggression = 0.7;
             },
-            .haswell, .broadwell => {
-                self.prefetch_distance = 3;
-                self.prefer_avx2 = true;
-            },
-            else => {
-                self.prefetch_distance = 2;
-                self.prefer_avx2 = true;
-            },
+            else => {},
         }
     }
     
@@ -188,8 +249,8 @@ const ArchOptimizations = struct {
             },
             .zen3, .zen4 => {
                 self.prefetch_distance = 3;
-                self.block_size_aggression = 0.7;
-                self.min_block_size_ratio = 0.15;
+                self.block_size_aggression = 0.8;
+                self.prefetch_level = 2;
             },
             else => {},
         }
@@ -200,37 +261,6 @@ const ArchOptimizations = struct {
         self.prefetch_aggressiveness = 0.6; // ARM has aggressive hardware prefetching
         self.spatial_locality = true;
         self.temporal_locality = false;
-        
-        switch (self.arch) {
-            .cortex_a53, .cortex_a72, .cortex_a76 => {
-                self.prefetch_distance = 1;
-                self.block_size_aggression = 0.4;
-                self.prefer_neon = true;
-            },
-            .neoverse_n1, .neoverse_v1 => {
-                self.prefetch_distance = 2;
-                self.block_size_aggression = 0.5;
-                self.prefer_neon = true;
-            },
-            .firestorm, .avalanche => {
-                // Apple M1/M2 performance cores
-                self.prefetch_distance = 3;
-                self.block_size_aggression = 0.7;
-                self.prefer_neon = true;
-            },
-            .icestorm, .blizzard => {
-                // Apple M1/M2 efficiency cores
-                self.prefetch_distance = 2;
-                self.block_size_aggression = 0.5;
-                self.prefer_neon = true;
-            },
-            else => {
-                self.prefetch_distance = 1;
-                self.prefer_neon = true;
-            },
-        }
-        self.spatial_locality = true;
-        self.temporal_locality = true;
         self.prefer_neon = true;
         
         switch (self.arch) {
@@ -498,179 +528,99 @@ pub const QuantumProcessor = struct {
     }
 };
 
-/// Architecture-specific optimizations
-const ArchOptimizations = struct {
-    const Self = @This();
-    
-    vendor: CpuVendor = .unknown,
-    arch: CpuArch = .unknown,
-    optimizations: CpuOptimizations = .{},
-    
-    /// Create optimizations based on CPU detection
-    pub fn detect() Self {
-        const target = Target.current;
-        const cpu = target.cpu;
-        
-        var optim = Self{
-            .vendor = detectCpuVendor(cpu),
-            .arch = detectCpuArch(cpu),
-        };
-        
-        // Apply architecture-specific optimizations
-        optim.applyArchitectureTuning();
-        return optim;
+// CPU detection helper functions
+fn detectCpuVendor(cpu: std.Target.Cpu) CpuVendor {
+    // Check for Intel
+    if (std.mem.startsWith(u8, cpu.model.llvm_name, "intel") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "core") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "nehalem") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "sandy") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "ivy") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "haswell") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "broadwell") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "skylake") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "cannonlake") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "icelake") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "tigerlake") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "alderlake") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "raptor")) 
+    {
+        return .intel;
     }
     
-    /// Detect CPU vendor
-    fn detectCpuVendor(cpu: Cpu) CpuVendor {
-        // Check for Intel
-        if (std.mem.startsWith(u8, cpu.model.llvm_name, "intel") or
-            std.mem.startsWith(u8, cpu.model.llvm_name, "core") or
-            std.mem.startsWith(u8, cpu.model.llvm_name, "pentium") or
-            std.mem.startsWith(u8, cpu.model.llvm_name, "atom")) {
-            return .intel;
-        }
-        
-        // Check for AMD
-        if (std.mem.startsWith(u8, cpu.model.llvm_name, "amd") or
-            std.mem.startsWith(u8, cpu.model.llvm_name, "barcelona") or
-            std.mem.startsWith(u8, cpu.model.llvm_name, "zen")) {
-            return .amd;
-        }
-        
-        // Check for Apple Silicon
-        if (std.mem.startsWith(u8, cpu.model.llvm_name, "apple")) {
-            return .apple;
-        }
-        
-        // Check for ARM
-        if (std.mem.startsWith(u8, cpu.model.llvm_name, "cortex") or
-            std.mem.startsWith(u8, cpu.model.llvm_name, "neoverse") or
-            std.mem.startsWith(u8, cpu.model.llvm_name, "a7") or
-            std.mem.startsWith(u8, cpu.model.llvm_name, "a5")) {
-            return .arm;
-        }
-        
-        return .unknown;
+    // Check for AMD
+    if (std.mem.startsWith(u8, cpu.model.llvm_name, "amd") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "barcelona") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "zen")) 
+    {
+        return .amd;
     }
     
-    /// Detect CPU architecture
-    fn detectCpuArch(cpu: Cpu) CpuArch {
-        const name = cpu.model.llvm_name;
-        
-        // Intel architectures
-        if (std.mem.indexOf(u8, name, "nehalem") != null) return .nehalem;
-        if (std.mem.indexOf(u8, name, "sandy") != null) return .sandybridge;
-        if (std.mem.indexOf(u8, name, "ivy") != null) return .ivybridge;
-        if (std.mem.indexOf(u8, name, "haswell") != null) return .haswell;
-        if (std.mem.indexOf(u8, name, "broadwell") != null) return .broadwell;
-        if (std.mem.indexOf(u8, name, "skylake") != null) return .skylake;
-        if (std.mem.indexOf(u8, name, "cascade") != null) return .cascade_lake;
-        if (std.mem.indexOf(u8, name, "ice") != null) return .ice_lake;
-        if (std.mem.indexOf(u8, name, "tiger") != null) return .tiger_lake;
-        if (std.mem.indexOf(u8, name, "alder") != null) return .alder_lake;
-        if (std.mem.indexOf(u8, name, "raptor") != null) return .raptor_lake;
-        
-        // AMD architectures
-        if (std.mem.indexOf(u8, name, "bulldozer") != null) return .bulldozer;
-        if (std.mem.indexOf(u8, name, "znver1") != null) return .zen;
-        if (std.mem.indexOf(u8, name, "znver2") != null) return .zen2;
-        if (std.mem.indexOf(u8, name, "znver3") != null) return .zen3;
-        if (std.mem.indexOf(u8, name, "znver4") != null) return .zen4;
-        
-        // ARM architectures
-        if (std.mem.indexOf(u8, name, "cortex-a53") != null) return .cortex_a53;
-        if (std.mem.indexOf(u8, name, "cortex-a72") != null) return .cortex_a72;
-        if (std.mem.indexOf(u8, name, "cortex-a76") != null) return .cortex_a76;
-        if (std.mem.indexOf(u8, name, "neoverse-n1") != null) return .neoverse_n1;
-        if (std.mem.indexOf(u8, name, "neoverse-v1") != null) return .neoverse_v1;
-        
-        // Apple Silicon
-        if (std.mem.indexOf(u8, name, "m1") != null) return .firestorm; // M1
-        if (std.mem.indexOf(u8, name, "m2") != null) return .avalanche; // M2
-        
-        return .unknown;
+    // Check for Apple Silicon
+    if (std.mem.startsWith(u8, cpu.model.llvm_name, "apple")) {
+        return .apple;
     }
     
-    /// Apply architecture-specific tuning
-    fn applyArchitectureTuning(self: *ArchOptimizations) void {
-        switch (self.vendor) {
-            .intel => self.tuneIntel(),
-            .amd => self.tuneAmd(),
-            .arm, .apple => self.tuneArm(),
-            else => {},
-        }
+    // Check for ARM
+    if (std.mem.startsWith(u8, cpu.model.llvm_name, "cortex") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "neoverse") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "a7") or
+        std.mem.startsWith(u8, cpu.model.llvm_name, "a5")) 
+    {
+        return .arm;
     }
     
+    // Default to unknown
+    return .unknown;
+}
+
+/// Detect CPU architecture from CPU features
+fn detectCpuArch(cpu: std.Target.Cpu) CpuArch {
+    return switch (cpu.arch) {
+        .x86_64, .x86 => .x86_64,
+        .aarch64, .aarch64_be, .aarch64_32 => .aarch64,
+        .arm, .armeb, .thumb, .thumbeb => .arm,
+        .riscv64 => .riscv64,
+        .wasm32 => .wasm32,
+        .wasm64 => .wasm64,
+        .mips, .mipsel, .mips64, .mips64el => .mips,
+        .powerpc => .powerpc,
+        .powerpc64, .powerpc64le => .powerpc64,
+        .sparc, .sparcel => .sparc,
+        .sparc64 => .sparc64,
+        .s390x => .s390x,
+        else => .generic,  // Default to generic architecture
+    };
+}
+
     /// Tune for Intel CPUs
-    fn tuneIntel(self: *ArchOptimizations) void {
-        self.optimizations.prefetch_aggressiveness = 0.8;
-        self.optimizations.spatial_locality = true;
-        self.optimizations.temporal_locality = true;
+    fn tuneIntel(self: *Self) void {
+        self.prefetch_aggressiveness = 0.8;
+        self.spatial_locality = true;
+        self.temporal_locality = true;
         
         switch (self.arch) {
             .skylake, .cascade_lake => {
-                self.optimizations.prefetch_distance = 3;
-                self.optimizations.prefer_avx512 = true;
-                self.optimizations.block_size_aggression = 0.75;
+                self.prefetch_distance = 3;
+                self.prefer_avx512 = true;
+                self.block_size_aggression = 0.75;
             },
             .ice_lake, .tiger_lake => {
-                self.optimizations.prefetch_distance = 4;
-                self.optimizations.prefer_avx512 = true;
-                self.optimizations.block_size_aggression = 0.8;
+                self.prefetch_distance = 4;
+                self.prefer_avx512 = true;
+                self.block_size_aggression = 0.8;
             },
             .alder_lake, .raptor_lake => {
-                self.optimizations.prefetch_distance = 3;
-                self.optimizations.prefer_avx512 = false; // Hybrid architecture
-                self.optimizations.prefer_avx2 = true;
-                self.optimizations.block_size_aggression = 0.7;
+                self.prefetch_distance = 3;
+                self.prefer_avx512 = false; // Hybrid architecture
+                self.prefer_avx2 = true;
+                self.block_size_aggression = 0.7;
             },
             else => {},
         }
     }
     
-    /// Tune for AMD CPUs
-    fn tuneAmd(self: *ArchOptimizations) void {
-        self.optimizations.prefetch_aggressiveness = 0.9;
-        self.optimizations.spatial_locality = true;
-        self.optimizations.temporal_locality = false; // Zen benefits less from temporal locality
-        
-        switch (self.arch) {
-            .zen, .zen2 => {
-                self.optimizations.prefetch_distance = 2;
-                self.optimizations.block_size_aggression = 0.6;
-                self.optimizations.min_block_size_ratio = 0.1;
-            },
-            .zen3, .zen4 => {
-                self.optimizations.prefetch_distance = 3;
-                self.optimizations.block_size_aggression = 0.7;
-                self.optimizations.min_block_size_ratio = 0.15;
-            },
-            else => {},
-        }
-    }
-    
-    /// Tune for ARM/Apple CPUs
-    fn tuneArm(self: *ArchOptimizations) void {
-        self.optimizations.prefetch_aggressiveness = 0.6; // ARM has aggressive hardware prefetching
-        self.optimizations.spatial_locality = true;
-        self.optimizations.temporal_locality = true;
-        self.optimizations.prefer_neon = true;
-        
-        switch (self.arch) {
-            .firestorm, .avalanche => {
-                // Apple M1/M2
-                self.optimizations.prefetch_distance = 1; // Very good hardware prefetcher
-                self.optimizations.block_size_aggression = 0.8;
-                self.optimizations.min_block_size_ratio = 0.2;
-            },
-            .cortex_a76, .neoverse_n1, .neoverse_v1 => {
-                self.optimizations.prefetch_distance = 2;
-                self.optimizations.block_size_aggression = 0.7;
-            },
-            else => {},
-        }
-    }
+
 };
 
 /// Quantum processor configuration
@@ -964,58 +914,35 @@ pub const QuantumConfig = struct {
     }
 };
 
-/// Apply optimized pattern matching algorithm
-fn applyOptimizedPatternMatching(self: *QuantumProcessor, circuit: *quantum_types.QuantumCircuit, 
-                               pattern: []const u8) !void {
-    // Apply Hadamard to create superposition
-    for (0..circuit.qubits.len) |i| {
-        try circuit.h(i);
-    }
-            
-    // Apply pattern-dependent gates
-    for (pattern, 0..) |_, i| {
-        // Simple pattern encoding - customize based on your needs
-        try circuit.x(i % circuit.qubits.len);
-        try circuit.h(i % circuit.qubits.len);
-    }
-}
 
 /// Initialize a new quantum processor with the given configuration
 pub fn init(allocator: Allocator, config: QuantumConfig) !*QuantumProcessor {
     var self = try allocator.create(QuantumProcessor);
     errdefer allocator.destroy(self);
-        
-        self.allocator = allocator;
-        self.config = config;
-        self.rng = std.rand.DefaultPrng.init(@intCast(std.time.milliTimestamp()));
-        
-        // Initialize with default thread count, will be adjusted per-operation
-        // based on problem size
-        const default_threads = std.Thread.getCpuCount() catch 1;
-        self.thread_pool = try ThreadPool.init(.{
-            .allocator = allocator,
-            .n_jobs = default_threads,
-        });
-        
-        // Set thread pool size based on default problem size (8 qubits)
-        self.adjustThreadPool(8);
-        
-        // Prefetch for write if next block is being prefetched
-        if (prefetch_idx < probabilities.len) {
-            @prefetch(
-                &probabilities[prefetch_idx],
-                .{ .rw = .write, .locality = 1, .cache = .data }
-            );
-        }
-        
-        // Process probabilities here
-        // ...
-        
-        return quantum_types.PatternMatch{
-            .confidence = 1.0, // Placeholder
-            .measurement = measurement,
-        };
+    
+    self.allocator = allocator;
+    self.config = config;
+    self.rng = std.rand.DefaultPrng.init(@intCast(std.time.milliTimestamp()));
+    
+    // Initialize with default thread count, will be adjusted per-operation
+    // based on problem size
+    const default_threads = std.Thread.getCpuCount() catch 1;
+    self.thread_pool = try ThreadPool.init(.{
+        .allocator = allocator,
+        .n_jobs = default_threads,
+    });
+    
+    // Set thread pool size based on default problem size (8 qubits)
+    self.adjustThreadPool(8);
+    
+    // Initialize crystal computing if enabled
+    if (config.use_crystal_computing) {
+        self.crystal = try crystal_computing.CrystalProcessor.init(allocator);
+    } else {
+        self.crystal = null;
     }
+    
+    return self;
     
     /// Adjust thread pool size based on problem size (qubit count)
     fn adjustThreadPool(self: *QuantumProcessor, num_qubits: usize) void {
@@ -1086,7 +1013,7 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*QuantumProcessor {
     /// Apply optimized quantum pattern matching with adaptive cache-blocking
     fn applyOptimizedPatternMatching(self: *QuantumProcessor, circuit: *quantum_types.QuantumCircuit, 
                                    pattern: []const u8) !void {
-        const num_qubits = circuit.num_qubits;
+        const num_qubits = circuit.qubits.len;
         const complex_size = @sizeOf(quantum_types.Complex);
         
         // Calculate adaptive block size for qubit processing
@@ -1096,21 +1023,23 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*QuantumProcessor {
         // Apply optimized gates with cache awareness
         if (self.config.use_simd) {
             // Process qubits in blocks that fit in cache
-            var qubit = @as(usize, 0);
+            var qubit: usize = 0;
             while (qubit < num_qubits) {
-                const block_end = @min(qubit + elements_per_block, num_qubits);
+                const block_end = @min(qubit + qubits_per_block, num_qubits);
                 
                 // Prefetch next block of qubits
                 if (block_end < num_qubits) {
                     const next_block_start = block_end;
-                    const next_block_end = @min(next_block_start + elements_per_block, num_qubits);
+                    const next_block_end = @min(next_block_start + qubits_per_block, num_qubits);
                     for (next_block_start..next_block_end) |i| {
                         @prefetch(&circuit.qubits[i], .{ .rw = .read, .locality = 3, .cache = .data });
                     }
                 }
                 
                 // Process current block with SIMD
-                try circuit.applyParallelGates(.H, qubit, block_end);
+                for (qubit..block_end) |i| {
+                    try circuit.h(i);
+                }
                 qubit = block_end;
             }
         } else {
@@ -1120,13 +1049,15 @@ pub fn init(allocator: Allocator, config: QuantumConfig) !*QuantumProcessor {
                 if (i + 4 < num_qubits) {
                     @prefetch(&circuit.qubits[i + 4], .{ .rw = .read, .locality = 2, .cache = .data });
                 }
-                try circuit.applyGate(.H, i);
+                try circuit.h(i);
             }
         }
         
-        // Apply Hadamard to all qubits to create superposition
-        for (0..num_qubits) |i| {
-            try circuit.addGate(.h, i, null);
+        // Apply pattern-dependent gates
+        for (pattern, 0..) |_, i| {
+            const target_qubit = i % num_qubits;
+            try circuit.x(target_qubit);
+            try circuit.h(target_qubit);
         }
         
         // Oracle for pattern matching (simplified)
