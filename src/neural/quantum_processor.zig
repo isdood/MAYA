@@ -208,7 +208,7 @@ const ArchOptimizations = struct {
         }
     }
     
-    /// Tune for Intel CPUs
+        /// Tune for Intel CPUs
     fn tuneIntel(self: *Self) void {
         self.prefetch_aggressiveness = 0.8;
         self.spatial_locality = true;
@@ -231,7 +231,7 @@ const ArchOptimizations = struct {
                 self.prefer_avx2 = true;
                 self.block_size_aggression = 0.7;
             },
-            else => {},
+            else => {}
         }
     }
     
@@ -591,37 +591,9 @@ fn detectCpuArch(cpu: std.Target.Cpu) CpuArch {
         .s390x => .s390x,
         else => .generic,  // Default to generic architecture
     };
+    return .generic;  // Default to generic architecture if no match
 }
 
-    /// Tune for Intel CPUs
-    fn tuneIntel(self: *Self) void {
-        self.prefetch_aggressiveness = 0.8;
-        self.spatial_locality = true;
-        self.temporal_locality = true;
-        
-        switch (self.arch) {
-            .skylake, .cascade_lake => {
-                self.prefetch_distance = 3;
-                self.prefer_avx512 = true;
-                self.block_size_aggression = 0.75;
-            },
-            .ice_lake, .tiger_lake => {
-                self.prefetch_distance = 4;
-                self.prefer_avx512 = true;
-                self.block_size_aggression = 0.8;
-            },
-            .alder_lake, .raptor_lake => {
-                self.prefetch_distance = 3;
-                self.prefer_avx512 = false; // Hybrid architecture
-                self.prefer_avx2 = true;
-                self.block_size_aggression = 0.7;
-            },
-            else => {},
-        }
-    }
-    
-
-};
 
 /// Quantum processor configuration
 pub const QuantumConfig = struct {
