@@ -1,4 +1,3 @@
-
 // 🎯 MAYA Pattern Synthesis Core
 // ✨ Version: 1.0.0
 // 📅 Created: 2025-06-18
@@ -41,13 +40,13 @@ pub const SynthesisState = struct {
 
     pub fn isValid(self: *const SynthesisState) bool {
         return self.coherence >= 0.0 and
-               self.coherence <= 1.0 and
-               self.stability >= 0.0 and
-               self.stability <= 1.0 and
-               self.evolution >= 0.0 and
-               self.evolution <= 1.0 and
-               self.confidence >= 0.0 and
-               self.confidence <= 1.0;
+            self.coherence <= 1.0 and
+            self.stability >= 0.0 and
+            self.stability <= 1.0 and
+            self.evolution >= 0.0 and
+            self.evolution <= 1.0 and
+            self.confidence >= 0.0 and
+            self.confidence <= 1.0;
     }
 };
 
@@ -218,4 +217,4 @@ test "pattern synthesis" {
     try std.testing.expect(state.evolution <= 1.0);
     try std.testing.expect(state.confidence >= 0.0);
     try std.testing.expect(state.confidence <= 1.0);
-} 
+}

@@ -1,4 +1,3 @@
-
 // 🎨 MAYA Visual Synthesis
 // ✨ Version: 1.0.0
 // 📅 Created: 2025-06-18
@@ -34,15 +33,15 @@ pub const VisualState = struct {
 
     pub fn isValid(self: *const VisualState) bool {
         return self.quality >= 0.0 and
-               self.quality <= 1.0 and
-               self.resolution > 0 and
-               self.color_depth > 0 and
-               self.brightness >= 0.0 and
-               self.brightness <= 1.0 and
-               self.contrast >= 0.0 and
-               self.contrast <= 1.0 and
-               self.saturation >= 0.0 and
-               self.saturation <= 1.0;
+            self.quality <= 1.0 and
+            self.resolution > 0 and
+            self.color_depth > 0 and
+            self.brightness >= 0.0 and
+            self.brightness <= 1.0 and
+            self.contrast >= 0.0 and
+            self.contrast <= 1.0 and
+            self.saturation >= 0.0 and
+            self.saturation <= 1.0;
     }
 };
 
@@ -119,7 +118,7 @@ pub const VisualProcessor = struct {
     /// Calculate visual quality
     fn calculateQuality(self: *VisualProcessor, pattern_data: []const u8) f64 {
         // Simple quality calculation based on pattern length
-        const base_quality = @intToFloat(f64, pattern_data.len) / 100.0;
+        const base_quality = @as(f64, @floatFromInt(pattern_data.len)) / 100.0;
         return @min(1.0, base_quality);
     }
 
@@ -138,23 +137,23 @@ pub const VisualProcessor = struct {
         // Simple color depth calculation based on pattern entropy
         var entropy: f64 = 0.0;
         var counts = [_]usize{0} ** 256;
-        
+
         // Count byte frequencies
         for (pattern_data) |byte| {
             counts[byte] += 1;
         }
 
         // Calculate entropy
-        const len = @intToFloat(f64, pattern_data.len);
+        const len = @as(f64, @floatFromInt(pattern_data.len));
         for (counts) |count| {
             if (count > 0) {
-                const p = @intToFloat(f64, count) / len;
+                const p = @as(f64, @floatFromInt(count)) / len;
                 entropy -= p * std.math.log2(p);
             }
         }
 
         // Map entropy to color depth
-        return @min(self.config.color_depth, @floatToInt(usize, entropy * 4.0));
+        return @min(self.config.color_depth, @as(usize, @intFromFloat(entropy * 4.0)));
     }
 
     /// Calculate brightness
@@ -164,7 +163,7 @@ pub const VisualProcessor = struct {
         for (pattern_data) |byte| {
             sum += byte;
         }
-        return @intToFloat(f64, sum) / (@intToFloat(f64, pattern_data.len) * 255.0);
+        return @as(f64, @floatFromInt(sum)) / (@as(f64, @floatFromInt(pattern_data.len)) * 255.0);
     }
 
     /// Calculate contrast
@@ -173,20 +172,20 @@ pub const VisualProcessor = struct {
         const mean = self.calculateBrightness(pattern_data);
         var variance: f64 = 0.0;
         for (pattern_data) |byte| {
-            const diff = @intToFloat(f64, byte) / 255.0 - mean;
+            const diff = @as(f64, @floatFromInt(byte)) / 255.0 - mean;
             variance += diff * diff;
         }
-        return @min(1.0, variance / @intToFloat(f64, pattern_data.len));
+        return @min(1.0, variance / @as(f64, @floatFromInt(pattern_data.len)));
     }
 
     /// Calculate saturation
     fn calculateSaturation(self: *VisualProcessor, pattern_data: []const u8) f64 {
         // Simple saturation calculation based on pattern color distribution
         var color_distribution: [3]f64 = .{ 0.0, 0.0, 0.0 };
-        for (pattern_data) |byte, i| {
-            color_distribution[i % 3] += @intToFloat(f64, byte) / 255.0;
+        for (pattern_data, 0..) |byte, i| {
+            color_distribution[i % 3] += @as(f64, @floatFromInt(byte)) / 255.0;
         }
-        
+
         // Calculate saturation from color distribution
         const max = @max(color_distribution[0], @max(color_distribution[1], color_distribution[2]));
         const min = @min(color_distribution[0], @min(color_distribution[1], color_distribution[2]));
@@ -225,4 +224,4 @@ test "visual pattern processing" {
     try std.testing.expect(state.contrast <= 1.0);
     try std.testing.expect(state.saturation >= 0.0);
     try std.testing.expect(state.saturation <= 1.0);
-} 
+}

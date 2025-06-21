@@ -1,4 +1,3 @@
-
 const std = @import("std");
 const Pattern = @import("pattern.zig").Pattern;
 
@@ -121,17 +120,17 @@ pub const PatternMetrics = struct {
 
     pub fn isValid(self: *const PatternMetrics) bool {
         return self.complexity >= 0.0 and
-               self.stability >= 0.0 and
-               self.coherence >= 0.0 and
-               self.adaptability >= 0.0 and
-               self.accuracy >= 0.0 and
-               self.accuracy <= 1.0 and
-               self.precision >= 0.0 and
-               self.precision <= 1.0 and
-               self.recall >= 0.0 and
-               self.recall <= 1.0 and
-               self.f1_score >= 0.0 and
-               self.f1_score <= 1.0;
+            self.stability >= 0.0 and
+            self.coherence >= 0.0 and
+            self.adaptability >= 0.0 and
+            self.accuracy >= 0.0 and
+            self.accuracy <= 1.0 and
+            self.precision >= 0.0 and
+            self.precision <= 1.0 and
+            self.recall >= 0.0 and
+            self.recall <= 1.0 and
+            self.f1_score >= 0.0 and
+            self.f1_score <= 1.0;
     }
 
     pub fn getSummary(self: *const PatternMetrics) PatternMetricsSummary {
@@ -190,4 +189,4 @@ test "pattern metrics summary" {
     try std.testing.expect(summary.average_quality == 0.0);
     try std.testing.expect(summary.average_performance == 0.0);
     try std.testing.expect(summary.success_rate == 0.0);
-} 
+}

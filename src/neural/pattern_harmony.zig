@@ -1,4 +1,3 @@
-
 // 🎯 MAYA Pattern Harmony
 // ✨ Version: 1.0.0
 // 📅 Created: 2025-06-18
@@ -66,23 +65,23 @@ pub const HarmonyState = struct {
 
     pub fn isValid(self: *const HarmonyState) bool {
         return self.coherence >= 0.0 and
-               self.coherence <= 1.0 and
-               self.stability >= 0.0 and
-               self.stability <= 1.0 and
-               self.balance >= 0.0 and
-               self.balance <= 1.0 and
-               self.resonance >= 0.0 and
-               self.resonance <= 1.0 and
-               self.alignment_score >= 0.0 and
-               self.alignment_score <= 1.0 and
-               self.balance_score >= 0.0 and
-               self.balance_score <= 1.0 and
-               self.resonance_score >= 0.0 and
-               self.resonance_score <= 1.0 and
-               self.synchronization_score >= 0.0 and
-               self.synchronization_score <= 1.0 and
-               self.unity_score >= 0.0 and
-               self.unity_score <= 1.0;
+            self.coherence <= 1.0 and
+            self.stability >= 0.0 and
+            self.stability <= 1.0 and
+            self.balance >= 0.0 and
+            self.balance <= 1.0 and
+            self.resonance >= 0.0 and
+            self.resonance <= 1.0 and
+            self.alignment_score >= 0.0 and
+            self.alignment_score <= 1.0 and
+            self.balance_score >= 0.0 and
+            self.balance_score <= 1.0 and
+            self.resonance_score >= 0.0 and
+            self.resonance_score <= 1.0 and
+            self.synchronization_score >= 0.0 and
+            self.synchronization_score <= 1.0 and
+            self.unity_score >= 0.0 and
+            self.unity_score <= 1.0;
     }
 };
 
@@ -170,8 +169,8 @@ pub const PatternHarmony = struct {
     pub fn deinit(self: *PatternHarmony) void {
         self.states.deinit();
         self.harmony_history.deinit();
-        for (self.error_log.items) |error| {
-            self.allocator.free(error);
+        for (self.error_log.items) |err| {
+            self.allocator.free(err);
         }
         self.error_log.deinit();
         self.pattern_alignments.deinit();
@@ -212,7 +211,7 @@ pub const PatternHarmony = struct {
         while (retries < self.config.max_retries) {
             result = try self.executeProtocolLogic(protocol, patterns);
             const end_time = std.time.milliTimestamp();
-            const latency = @intCast(u32, end_time - start_time);
+            const latency = @as(u32, @intCast(end_time - start_time));
 
             // Update protocol state
             var new_state = state;
@@ -249,7 +248,7 @@ pub const PatternHarmony = struct {
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
-        for (patterns) |pattern, i| {
+        for (patterns, 0..) |pattern, i| {
             result[i] = try self.alignPattern(pattern);
         }
 
@@ -262,7 +261,7 @@ pub const PatternHarmony = struct {
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
-        for (patterns) |pattern, i| {
+        for (patterns, 0..) |pattern, i| {
             result[i] = try self.balancePattern(pattern);
         }
 
@@ -275,7 +274,7 @@ pub const PatternHarmony = struct {
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
-        for (patterns) |pattern, i| {
+        for (patterns, 0..) |pattern, i| {
             result[i] = try self.resonatePattern(pattern);
         }
 
@@ -288,7 +287,7 @@ pub const PatternHarmony = struct {
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
-        for (patterns) |pattern, i| {
+        for (patterns, 0..) |pattern, i| {
             result[i] = try self.synchronizePattern(pattern);
         }
 
@@ -301,7 +300,7 @@ pub const PatternHarmony = struct {
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
-        for (patterns) |pattern, i| {
+        for (patterns, 0..) |pattern, i| {
             result[i] = try self.unifyPattern(pattern);
         }
 
@@ -425,11 +424,11 @@ pub const PatternHarmony = struct {
         }
 
         if (stats.active_protocols > 0) {
-            stats.average_alignment = alignment_sum / @intToFloat(f64, stats.active_protocols);
-            stats.average_balance = balance_sum / @intToFloat(f64, stats.active_protocols);
-            stats.average_resonance = resonance_sum / @intToFloat(f64, stats.active_protocols);
-            stats.average_synchronization = synchronization_sum / @intToFloat(f64, stats.active_protocols);
-            stats.average_unity = unity_sum / @intToFloat(f64, stats.active_protocols);
+            stats.average_alignment = alignment_sum / @as(f64, @floatFromInt(stats.active_protocols));
+            stats.average_balance = balance_sum / @as(f64, @floatFromInt(stats.active_protocols));
+            stats.average_resonance = resonance_sum / @as(f64, @floatFromInt(stats.active_protocols));
+            stats.average_synchronization = synchronization_sum / @as(f64, @floatFromInt(stats.active_protocols));
+            stats.average_unity = unity_sum / @as(f64, @floatFromInt(stats.active_protocols));
         }
 
         return stats;
@@ -489,4 +488,4 @@ test "pattern harmony protocols" {
     try std.testing.expect(stats.average_synchronization == 1.0);
     try std.testing.expect(stats.average_unity == 1.0);
     try std.testing.expect(stats.total_patterns == 2);
-} 
+}

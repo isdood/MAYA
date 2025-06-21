@@ -5,7 +5,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // Neural module
-// [GLIMMER-DEBUG] COMMENTED:     const neural_mod = b.addModule("neural", .{
+    const neural_mod = b.addModule("neural", .{
         .root_source_file = b.path("src/neural/mod.zig")
     });
 
@@ -16,7 +16,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize
     });
-// [GLIMMER-DEBUG] COMMENTED:     exe.addModule("neural", neural_mod);
+    exe.addModule("neural", neural_mod);
     
     b.installArtifact(exe);
 
@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = .ReleaseFast
     });
-// [GLIMMER-DEBUG] COMMENTED:     bench_exe.addModule("neural", neural_mod);
+    bench_exe.addModule("neural", neural_mod);
     
     const bench_run = b.addRunArtifact(bench_exe);
     const bench_step = b.step("bench", "Run benchmarks");

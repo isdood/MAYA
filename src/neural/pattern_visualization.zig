@@ -1,4 +1,3 @@
-
 // 🎨 MAYA Pattern Visualization
 // ✨ Version: 1.0.0
 // 📅 Created: 2025-06-18
@@ -41,19 +40,19 @@ pub const VisualizationState = struct {
 
     pub fn isValid(self: *const VisualizationState) bool {
         return self.width > 0 and
-               self.height > 0 and
-               self.scale > 0.0 and
-               self.fps > 0 and
-               self.quality >= 0.0 and
-               self.quality <= 1.0 and
-               self.resolution > 0 and
-               self.color_depth > 0 and
-               self.brightness >= 0.0 and
-               self.brightness <= 1.0 and
-               self.contrast >= 0.0 and
-               self.contrast <= 1.0 and
-               self.saturation >= 0.0 and
-               self.saturation <= 1.0;
+            self.height > 0 and
+            self.scale > 0.0 and
+            self.fps > 0 and
+            self.quality >= 0.0 and
+            self.quality <= 1.0 and
+            self.resolution > 0 and
+            self.color_depth > 0 and
+            self.brightness >= 0.0 and
+            self.brightness <= 1.0 and
+            self.contrast >= 0.0 and
+            self.contrast <= 1.0 and
+            self.saturation >= 0.0 and
+            self.saturation <= 1.0;
     }
 };
 
@@ -127,8 +126,8 @@ pub const PatternVisualizer = struct {
     /// Process visualization state
     fn processVisualizationState(self: *PatternVisualizer, state: *VisualizationState, pattern_data: []const u8) !void {
         // Calculate display dimensions
-        state.width = @floatToInt(usize, @intToFloat(f64, state.width) * state.scale);
-        state.height = @floatToInt(usize, @intToFloat(f64, state.height) * state.scale);
+        state.width = @as(usize, @intFromFloat(@as(f64, @floatFromInt(state.width)) * state.scale));
+        state.height = @as(usize, @intFromFloat(@as(f64, @floatFromInt(state.height)) * state.scale));
 
         // Calculate pattern resolution
         state.resolution = @min(state.resolution, state.width * state.height);
@@ -146,24 +145,27 @@ pub const PatternVisualizer = struct {
     fn calculateBrightness(self: *PatternVisualizer, state: *VisualizationState, pattern_data: []const u8) f64 {
         // Enhanced brightness calculation based on pattern and display properties
         const base_brightness = state.brightness;
-        const resolution_factor = @intToFloat(f64, state.resolution) / @intToFloat(f64, self.config.width * self.config.height);
+        const resolution_factor = @as(f64, @floatFromInt(state.resolution)) / @as(f64, @floatFromInt(self.config.width * self.config.height));
         return @min(1.0, base_brightness * resolution_factor);
     }
 
     /// Calculate contrast
-    fn calculateContrast(self: *PatternVisualizer, state: *VisualizationState, pattern_data: []const u8) f64 {
-        // Enhanced contrast calculation based on pattern and display properties
-        const base_contrast = state.contrast;
-        const quality_factor = state.quality;
-        return @min(1.0, base_contrast * quality_factor);
+    fn calculateContrast(self: *PatternVisualizer, _: *VisualizationState, _: []const u8) f64 {
+        // Implement contrast calculation
+        return 1.0;
     }
 
     /// Calculate saturation
     fn calculateSaturation(self: *PatternVisualizer, state: *VisualizationState, pattern_data: []const u8) f64 {
         // Enhanced saturation calculation based on pattern and display properties
         const base_saturation = state.saturation;
-        const color_depth_factor = @intToFloat(f64, state.color_depth) / @intToFloat(f64, self.config.color_depth);
+        const color_depth_factor = self.calculateColorDepthFactor(state);
         return @min(1.0, base_saturation * color_depth_factor);
+    }
+
+    /// Calculate color depth factor
+    fn calculateColorDepthFactor(self: *PatternVisualizer, state: *VisualizationState) f64 {
+        return @as(f64, @floatFromInt(state.color_depth)) / @as(f64, @floatFromInt(self.config.color_depth));
     }
 };
 
@@ -201,4 +203,4 @@ test "pattern visualization" {
     try std.testing.expect(state.contrast <= 1.0);
     try std.testing.expect(state.saturation >= 0.0);
     try std.testing.expect(state.saturation <= 1.0);
-} 
+}

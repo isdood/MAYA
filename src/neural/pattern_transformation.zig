@@ -1,4 +1,3 @@
-
 // 🎯 MAYA Pattern Transformation
 // ✨ Version: 1.0.0
 // 📅 Created: 2025-06-18
@@ -38,11 +37,11 @@ pub const TransformationState = struct {
 
     pub fn isValid(self: *const TransformationState) bool {
         return self.quality >= 0.0 and
-               self.quality <= 1.0 and
-               self.iterations > 0 and
-               self.iterations <= 100 and
-               self.convergence >= 0.0 and
-               self.convergence <= 1.0;
+            self.quality <= 1.0 and
+            self.iterations > 0 and
+            self.iterations <= 100 and
+            self.convergence >= 0.0 and
+            self.convergence <= 1.0;
     }
 };
 
@@ -158,7 +157,7 @@ pub const PatternTransformer = struct {
         const source_complexity = self.calculatePatternComplexity(state.source_pattern);
         const target_complexity = self.calculatePatternComplexity(state.target_pattern);
         const complexity = @max(source_complexity, target_complexity);
-        return @min(self.config.max_iterations, @floatToInt(usize, complexity * 10.0));
+        return @min(self.config.max_iterations, @as(usize, @intFromFloat(complexity * 10.0)));
     }
 
     /// Calculate transformation convergence
@@ -173,17 +172,17 @@ pub const PatternTransformer = struct {
         // Calculate pattern complexity based on entropy
         var entropy: f64 = 0.0;
         var counts = [_]usize{0} ** 256;
-        
+
         // Count byte frequencies
         for (pattern_data) |byte| {
             counts[byte] += 1;
         }
 
         // Calculate entropy
-        const len = @intToFloat(f64, pattern_data.len);
+        const len = @as(f64, @floatFromInt(pattern_data.len));
         for (counts) |count| {
             if (count > 0) {
-                const p = @intToFloat(f64, count) / len;
+                const p = @as(f64, @floatFromInt(count)) / len;
                 entropy -= p * std.math.log2(p);
             }
         }
@@ -196,7 +195,7 @@ pub const PatternTransformer = struct {
         // Calculate pattern similarity based on edit distance
         const distance = self.calculateEditDistance(source_data, target_data);
         const max_length = @max(source_data.len, target_data.len);
-        return 1.0 - (@intToFloat(f64, distance) / @intToFloat(f64, max_length));
+        return 1.0 - (@as(f64, @floatFromInt(distance)) / @as(f64, @floatFromInt(max_length)));
     }
 
     /// Calculate edit distance
@@ -258,4 +257,4 @@ test "pattern transformation" {
     try std.testing.expect(state.iterations <= transformer.config.max_iterations);
     try std.testing.expect(state.convergence >= 0.0);
     try std.testing.expect(state.convergence <= 1.0);
-} 
+}
