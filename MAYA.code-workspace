@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../GLIMMER"
+		},
+		{
+			"path": "../SOUNDQR"
+		},
+		{
+			"path": "../SCRIBBLE"
+		}
+	],
+	"settings": {}
+}

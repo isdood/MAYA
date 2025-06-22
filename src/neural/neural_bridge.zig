@@ -271,7 +271,7 @@ pub const NeuralBridge = struct {
         }
         
         // Create and initialize the bridge
-        var bridge = try allocator.create(@This());
+        const bridge = try allocator.create(@This());
         bridge.* = .{
             .allocator = allocator,
             .config = config,

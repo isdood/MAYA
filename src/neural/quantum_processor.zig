@@ -36,7 +36,7 @@ pub const QuantumProcessor = struct {
     thread_pool: ?*ThreadPool = null,
 
     pub fn init(allocator: Allocator, config: QuantumConfig) !*@This() {
-        var self = try allocator.create(@This());
+        const self = try allocator.create(@This());
         errdefer allocator.destroy(self);
 
         // Initialize quantum state

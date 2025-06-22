@@ -65,7 +65,7 @@ pub const PatternVisualizer = struct {
     visual_processor: *visual_synthesis.VisualProcessor,
 
     pub fn init(allocator: std.mem.Allocator) !*PatternVisualizer {
-        var visualizer = try allocator.create(PatternVisualizer);
+        const visualizer = try allocator.create(PatternVisualizer);
         visualizer.* = PatternVisualizer{
             .config = VisualizationConfig{},
             .allocator = allocator,
@@ -143,6 +143,7 @@ pub const PatternVisualizer = struct {
 
     /// Calculate brightness
     fn calculateBrightness(self: *PatternVisualizer, state: *VisualizationState, pattern_data: []const u8) f64 {
+        _ = pattern_data; // Only mark truly unused
         // Enhanced brightness calculation based on pattern and display properties
         const base_brightness = state.brightness;
         const resolution_factor = @as(f64, @floatFromInt(state.resolution)) / @as(f64, @floatFromInt(self.config.width * self.config.height));
@@ -150,13 +151,13 @@ pub const PatternVisualizer = struct {
     }
 
     /// Calculate contrast
-    fn calculateContrast(self: *PatternVisualizer, _: *VisualizationState, _: []const u8) f64 {
-        // Implement contrast calculation
-        return 1.0;
+    fn calculateContrast(_: *PatternVisualizer, _: *VisualizationState, _: []const u8) f64 {
+        return 0.5; // Placeholder
     }
 
     /// Calculate saturation
     fn calculateSaturation(self: *PatternVisualizer, state: *VisualizationState, pattern_data: []const u8) f64 {
+        _ = pattern_data; // Only mark truly unused
         // Enhanced saturation calculation based on pattern and display properties
         const base_saturation = state.saturation;
         const color_depth_factor = self.calculateColorDepthFactor(state);
@@ -172,7 +173,7 @@ pub const PatternVisualizer = struct {
 // Tests
 test "pattern visualizer initialization" {
     const allocator = std.testing.allocator;
-    var visualizer = try PatternVisualizer.init(allocator);
+    const visualizer = try PatternVisualizer.init(allocator);
     defer visualizer.deinit();
 
     try std.testing.expect(visualizer.config.width == 1024);
@@ -183,7 +184,7 @@ test "pattern visualizer initialization" {
 
 test "pattern visualization" {
     const allocator = std.testing.allocator;
-    var visualizer = try PatternVisualizer.init(allocator);
+    const visualizer = try PatternVisualizer.init(allocator);
     defer visualizer.deinit();
 
     const pattern_data = "test pattern";

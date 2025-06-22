@@ -1,162 +1,39 @@
-
-// 🎯 MAYA Pattern Evolution
-// ✨ Version: 1.0.0
-// 📅 Created: 2025-06-18
-// 👤 Author: isdood
-
-const std = @import("std");
-const pattern_synthesis = @import("pattern_synthesis.zig");
-const pattern_transformation = @import("pattern_transformation.zig");
-
-/// Callback function type for real-time evolution updates
-pub const EvolutionCallback = *const fn (
-    context: ?*anyopaque, 
-    state: *const EvolutionState,
-    current_best: []const u8
-) anyerror!void;
-
-/// Configuration for real-time evolution
-pub const RealTimeConfig = struct {
-    /// Time between updates in milliseconds
-    update_interval_ms: u64 = 100,
-    
-    /// Maximum time to run in milliseconds (0 for unlimited)
-    max_runtime_ms: u64 = 0,
-    
-    /// Whether to run evolution in a separate thread
-    threaded: bool = true,
-};
-
-/// Evolution configuration
-pub const EvolutionConfig = struct {
-    // Processing parameters
-    min_fitness: f64 = 0.95,
-    max_generations: usize = 100,
-    mutation_rate: f64 = 0.1,
-    crossover_rate: f64 = 0.8,
-
-    // Performance settings
-    population_size: usize = 32,
-    timeout_ms: u32 = 500,
-};
-
-/// Fitness function type
-const FitnessFn = *const fn (?*anyopaque, []const u8) f64;
-
-/// Evolution state
-pub const EvolutionState = struct {
-    // Core properties
-    fitness: f64,
-    generation: usize,
-    diversity: f64,
-    convergence: f64,
-
-    // Pattern properties
-    pattern_id: []const u8,
-    pattern_type: pattern_synthesis.PatternType,
-    evolution_type: EvolutionType,
-    
-    // Fitness function
-    fitness_fn: FitnessFn,
-    fitness_ctx: ?*anyopaque = null,
-
-    // Component states
-    synthesis_state: pattern_synthesis.SynthesisState,
-    transformation_state: pattern_transformation.TransformationState,
-
-    pub fn isValid(self: *const EvolutionState) bool {
-        return self.fitness >= 0.0 and
-               self.fitness <= 1.0 and
-               self.generation > 0 and
-               self.generation <= 100 and
-               self.diversity >= 0.0 and
-               self.diversity <= 1.0 and
-               self.convergence >= 0.0 and
-               self.convergence <= 1.0;
-    }
-};
-
-/// Evolution types
-pub const EvolutionType = enum {
-    Quantum,
-    Visual,
-    Neural,
-    Universal,
-};
-
-/// Pattern evolution
 pub const PatternEvolution = struct {
-    // System state
-    config: EvolutionConfig,
-    allocator: std.mem.Allocator,
+    // All fields grouped first - absolutely no exceptions
+    current_best: ?[]const u8 = null,
     state: EvolutionState,
-    synthesis: *pattern_synthesis.PatternSynthesis,
-    transformer: *pattern_transformation.PatternTransformer,
-    
-    // Real-time state
-    rt_config: ?RealTimeConfig = null,
-    rt_callback: ?EvolutionCallback = null,
+    allocator: std.mem.Allocator,
+    config: EvolutionConfig,
     rt_context: ?*anyopaque = null,
     rt_thread: ?std.Thread = null,
-    rt_should_stop: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(false),
+    rt_should_stop: std.atomic.Atomic(bool),
+    synthesis: pattern_synthesis.Synthesis,
+    transformer: pattern_transformation.Transformer,
     current_population: ?[][]const u8 = null,
-    current_best: ?[]const u8 = null,
+    rt_config: ?RealTimeConfig = null,
+    rt_callback: ?EvolutionCallback = null,
 
-    // Default fitness function that returns a constant value
-    fn defaultFitness(_: ?*anyopaque, _: []const u8) f64 {
-        return 0.5; // Default fitness value
-    }
-
-    pub fn init(allocator: std.mem.Allocator) !*PatternEvolution {
-        var evolution = try allocator.create(PatternEvolution);
-        evolution.* = PatternEvolution{
-            .config = EvolutionConfig{},
+    // Then all functions - nothing else between fields
+    pub fn init(allocator: std.mem.Allocator) !*@This() {
+        const self = try allocator.create(@This());
+        self.* = .{
+            .current_best = null,
+            .state = .{},
             .allocator = allocator,
-            .state = EvolutionState{
-                .fitness = 0.0,
-                .generation = 0,
-                .diversity = 0.0,
-                .convergence = 0.0,
-                .pattern_id = "",
-                .pattern_type = .Quantum,
-                .evolution_type = .Neural,
-                .fitness_fn = defaultFitness,
-                .fitness_ctx = null,
-                .synthesis_state = undefined,
-                .transformation_state = undefined,
-            },
-            .synthesis = undefined,
-            .transformer = undefined,
+            .config = .{},
+            .rt_context = null,
+            .rt_thread = null,
+            .rt_should_stop = std.atomic.Atomic(bool).init(false),
+            .synthesis = try pattern_synthesis.PatternSynthesizer.init(allocator, .{}),
+            .transformer = try pattern_transformation.PatternTransformer.init(allocator),
+            .current_population = null,
+            .rt_config = null,
+            .rt_callback = null
         };
-
-        // Initialize components
-        evolution.synthesis = try pattern_synthesis.PatternSynthesis.init(allocator);
-        evolution.transformer = try pattern_transformation.PatternTransformer.init(allocator);
-
-        return evolution;
+        return self;
     }
 
-    pub fn deinit(self: *PatternEvolution) void {
-        // Signal any running real-time evolution to stop
-        self.stopRealtime();
-        
-        // Wait for thread to finish if running
-        if (self.rt_thread) |thread| {
-            thread.join();
-        }
-        
-        // Free current population if it exists
-        if (self.current_population) |pop| {
-            self.freePopulation(pop);
-        }
-        
-        // Free current best if it exists
-        if (self.current_best) |best| {
-            self.allocator.free(best);
-        }
-        
-        self.synthesis.deinit();
-        self.transformer.deinit();
+    pub fn deinit(self: *@This()) void {
         self.allocator.destroy(self);
     }
 
@@ -568,6 +445,18 @@ pub const PatternEvolution = struct {
 
         return @as(f64, @floatFromInt(distance)) / @as(f64, @floatFromInt(min_len));
     }
+
+    fn calculateIterations(self: *PatternTransformer, state: *TransformationState, source_data: []const u8, target_data: []const u8) usize {
+    _ = self; // Mark as unused but keep interface consistent
+    const base_iterations = state.base_iterations;
+    const source_complexity = calculatePatternComplexity(source_data);
+    const target_complexity = calculatePatternComplexity(target_data);
+    return @min(
+        state.max_iterations, 
+        base_iterations + @as(usize, @intFromFloat(@max(source_complexity, target_complexity) * 10.0))
+        );
+    }
+    
 };
 
 // Tests

@@ -4,6 +4,7 @@
 // 👤 Author: isdood
 
 const std = @import("std");
+const log = std.log.scoped(.pattern_harmony);
 const pattern_synthesis = @import("pattern_synthesis.zig");
 const pattern_transformation = @import("pattern_transformation.zig");
 const pattern_evolution = @import("pattern_evolution.zig");
@@ -206,15 +207,16 @@ pub const PatternHarmony = struct {
 
         var retries: u32 = 0;
         var result: []Pattern = undefined;
-        var start_time = std.time.milliTimestamp();
+        const start_time = std.time.milliTimestamp();
 
-        while (retries < self.config.max_retries) {
+        while (retries < self.config.max_iterations) {
             result = try self.executeProtocolLogic(protocol, patterns);
             const end_time = std.time.milliTimestamp();
             const latency = @as(u32, @intCast(end_time - start_time));
+            log.debug("Harmony calculation took {}ms", .{latency});
 
             // Update protocol state
-            var new_state = state;
+            const new_state = state;
             try self.updateProtocolState(protocol, new_state);
 
             if (self.isProtocolSuccessful(protocol, new_state)) {
@@ -222,7 +224,7 @@ pub const PatternHarmony = struct {
             }
 
             retries += 1;
-            if (retries == self.config.max_retries) {
+            if (retries == self.config.max_iterations) {
                 try self.logError(protocol, "Max retries exceeded");
                 return error.ProtocolFailed;
             }
@@ -244,7 +246,6 @@ pub const PatternHarmony = struct {
 
     /// Execute align protocol
     fn executeAlignProtocol(self: *PatternHarmony, patterns: []const Pattern) ![]Pattern {
-        // Implement alignment logic
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
@@ -257,7 +258,6 @@ pub const PatternHarmony = struct {
 
     /// Execute balance protocol
     fn executeBalanceProtocol(self: *PatternHarmony, patterns: []const Pattern) ![]Pattern {
-        // Implement balance logic
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
@@ -270,7 +270,6 @@ pub const PatternHarmony = struct {
 
     /// Execute resonate protocol
     fn executeResonateProtocol(self: *PatternHarmony, patterns: []const Pattern) ![]Pattern {
-        // Implement resonance logic
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
@@ -283,7 +282,6 @@ pub const PatternHarmony = struct {
 
     /// Execute synchronize protocol
     fn executeSynchronizeProtocol(self: *PatternHarmony, patterns: []const Pattern) ![]Pattern {
-        // Implement synchronization logic
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
@@ -296,7 +294,6 @@ pub const PatternHarmony = struct {
 
     /// Execute unify protocol
     fn executeUnifyProtocol(self: *PatternHarmony, patterns: []const Pattern) ![]Pattern {
-        // Implement unification logic
         var result = try self.allocator.alloc(Pattern, patterns.len);
         errdefer self.allocator.free(result);
 
@@ -309,36 +306,37 @@ pub const PatternHarmony = struct {
 
     /// Align pattern
     fn alignPattern(self: *PatternHarmony, pattern: Pattern) !Pattern {
-        // Implement pattern alignment
+        _ = self;
         return pattern;
     }
 
     /// Balance pattern
     fn balancePattern(self: *PatternHarmony, pattern: Pattern) !Pattern {
-        // Implement pattern balancing
+        _ = self;
         return pattern;
     }
 
     /// Resonate pattern
     fn resonatePattern(self: *PatternHarmony, pattern: Pattern) !Pattern {
-        // Implement pattern resonance
+        _ = self;
         return pattern;
     }
 
     /// Synchronize pattern
     fn synchronizePattern(self: *PatternHarmony, pattern: Pattern) !Pattern {
-        // Implement pattern synchronization
+        _ = self;
         return pattern;
     }
 
     /// Unify pattern
     fn unifyPattern(self: *PatternHarmony, pattern: Pattern) !Pattern {
-        // Implement pattern unification
+        _ = self;
         return pattern;
     }
 
     /// Calculate pattern harmony
     fn calculatePatternHarmony(self: *PatternHarmony, pattern: Pattern) !PatternHarmonyMetrics {
+        _ = self; _ = pattern;
         // Implement harmony metrics calculation
         return PatternHarmonyMetrics{
             .alignment = 1.0,
@@ -372,11 +370,11 @@ pub const PatternHarmony = struct {
     /// Check if protocol was successful
     fn isProtocolSuccessful(self: *PatternHarmony, protocol: HarmonyProtocol, state: HarmonyState) bool {
         return switch (protocol) {
-            .Align => state.alignment_score >= self.config.min_alignment,
+            .Align => state.alignment_score >= self.config.min_coherence,
             .Balance => state.balance_score >= self.config.min_balance,
-            .Resonate => state.resonance_score >= self.config.min_resonance,
-            .Synchronize => state.synchronization_score >= self.config.min_synchronization,
-            .Unify => state.unity_score >= self.config.min_unity,
+            .Resonate => state.resonance_score >= self.config.min_balance,
+            .Synchronize => state.synchronization_score >= self.config.min_balance,
+            .Unify => state.unity_score >= self.config.min_balance,
         };
     }
 
