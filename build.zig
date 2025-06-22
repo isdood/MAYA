@@ -47,7 +47,7 @@ pub fn build(b: *std.Build) void {
         else
             "/opt/rocm/include";
             
-        // For Zig 0.14.1 - use addIncludePath with the path directly
+        // For Zig 0.14.1 - use addIncludePath with a direct path string
         gpu_mod.addIncludePath(.{ .path = rocm_include });
         
         // Link against ROCm libraries
