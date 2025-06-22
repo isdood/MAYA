@@ -34,16 +34,24 @@ pub const PatternPool = struct {
         return self;
     }
     
-    /// Deinitialize the pattern pool
+    /// Deinitialize the pattern pool and free all memory
     pub fn deinit(self: *@This()) void {
-        self.lock();
-        defer self.unlock();
+        const allocator = self.allocator;
         
-        for (self.free_lists.items) |block| {
-            self.allocator.free(block);
+        // Only lock if we're in multi-threaded mode and thread safety is enabled
+        if (!builtin.single_threaded and self.config.thread_safe) {
+            self.mutex.lock();
+            defer self.mutex.unlock();
         }
-        self.free_lists.deinit(self.allocator);
-        self.allocator.destroy(self);
+        
+        // Free all blocks in the free list
+        for (self.free_lists.items) |block| {
+            allocator.free(block);
+        }
+        self.free_lists.deinit(allocator);
+        
+        // Free the pool itself
+        allocator.destroy(self);
     }
     
     /// Get a pattern from the pool or allocate a new one
@@ -59,22 +67,27 @@ pub const PatternPool = struct {
         defer self.unlock();
         
         // Try to find a suitable block in the free list
-        if (self.free_lists.popOrNull()) |block| {
-            if (block.len >= size) {
-                const pattern = try self.allocator.create(Pattern);
-                pattern.* = .{
-                    .data = block[0..size],
-                    .width = width,
-                    .height = height,
-                    .pattern_type = .Visual,
-                    .complexity = 0.0,
-                    .stability = 0.0,
-                    .allocator = self.allocator,
-                };
-                return pattern;
+        if (self.free_lists.items.len > 0) {
+            const maybe_block = self.free_lists.pop();
+            if (maybe_block) |block| {
+                if (block.len >= size) {
+                    const pattern = try self.allocator.create(Pattern);
+                    pattern.* = .{
+                        .data = try self.allocator.dupe(u8, block[0..size]),
+                        .width = width,
+                        .height = height,
+                        .pattern_type = .Visual,
+                        .complexity = 0.0,
+                        .stability = 0.0,
+                        .allocator = self.allocator,
+                    };
+                    // Return the block to the free list since we made a copy
+                    try self.free_lists.append(self.allocator, block);
+                    return pattern;
+                }
+                // Block is too small, free it
+                self.allocator.free(block);
             }
-            // Block is too small, free it
-            self.allocator.free(block);
         }
         
         // No suitable block found, allocate a new one
@@ -144,8 +157,8 @@ pub const ZeroCopyOps = struct {
         pattern: *Pattern,
         transform_fn: fn ([]u8) void
     ) !*Pattern {
-        // Check if we can modify in-place
-        if (std.meta.isReadOnly(pattern.data.ptr)) {
+        // Check if we can modify in-place (simplified check)
+        if (false) { // Skip read-only check for now as it's not available in all Zig versions
             // Can't modify in-place, create a copy
             const new_pattern = try Pattern.init(
                 pattern.allocator,

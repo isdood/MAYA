@@ -48,12 +48,13 @@ pub const Pattern = struct {
     };
 
     /// Initialize a new pattern with the given data and dimensions
-    /// Uses the global memory pool if available, falls back to direct allocation
+    /// Uses the global memory pool if available and appropriate
     pub fn init(allocator: std.mem.Allocator, data: []const u8, width: usize, height: usize) !*Pattern {
         const pool = global_pool;
+        const size = width * height * 4; // Assuming 4 channels (RGBA)
         
-        // For large patterns or if pool is not available, allocate directly
-        if (pool == null or data.len > pool.?.config.max_pattern_size) {
+        // For large patterns or if pool is disabled, allocate directly
+        if (pool == null or size > pool.?.config.max_pattern_size) {
             const self = try allocator.create(Pattern);
             self.* = .{
                 .data = try allocator.dupe(u8, data),
@@ -68,17 +69,59 @@ pub const Pattern = struct {
         }
         
         // Use memory pool
-        const self = try pool.?.getPattern(width, height, 4); // Assuming 4 channels
-        std.mem.copy(u8, self.data, data);
+        const self = try pool.?.getPattern(width, height, 4);
+        @memcpy(self.data[0..data.len], data);
         self.pattern_type = .Unknown;
         self.complexity = 0.0;
         self.stability = 0.0;
         return self;
     }
+    
+    /// Create a zero-copy view of this pattern
+    /// The view shares the same underlying data as the original pattern
+    pub fn createView(self: *const Pattern, x: usize, y: usize, width: usize, height: usize) Pattern {
+        const start = (y * self.width + x) * 4; // Assuming 4 channels (RGBA)
+        const end = start + (width * height * 4);
+        
+        std.debug.assert(end <= self.data.len);
+        
+        return .{
+            .data = self.data[start..end],
+            .width = width,
+            .height = height,
+            .pattern_type = self.pattern_type,
+            .complexity = self.complexity,
+            .stability = self.stability,
+            .allocator = self.allocator,
+        };
+    }
+    
+    /// Apply a transformation in-place if possible, or create a new pattern if necessary
+    pub fn transformInPlace(
+        self: *Pattern,
+        transform_fn: fn ([]u8) void
+    ) !*Pattern {
+        // Check if we can modify in-place
+        if (false) { // Skip read-only check for now as it's not available in all Zig versions
+            // Can't modify in-place, create a copy
+            const new_pattern = try Pattern.init(
+                self.allocator,
+                self.data,
+                self.width,
+                self.height
+            );
+            transform_fn(new_pattern.data);
+            return new_pattern;
+        }
+        
+        // Modify in-place
+        transform_fn(self.data);
+        return self;
+    }
 
     /// Initialize a new pattern with the given dimensions and channels
     /// Uses the global memory pool if available
-    pub fn initPattern(allocator: std.mem.Allocator, width: u32, height: u32, channels: u8) !*Pattern {
+    pub fn initPattern(allocator: std.mem.Allocator, width: u32, height: u32, channels: u8) error{OutOfMemory}!*Pattern {
         const pool = global_pool;
         const w = @as(usize, @intCast(width));
         const h = @as(usize, @intCast(height));

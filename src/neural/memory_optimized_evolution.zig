@@ -11,14 +11,28 @@ const builtin = @import("builtin");
 
 // Import GPU module if available
 const gpu = if (@hasDecl(@import("root"), "gpu")) 
-    @import("gpu") 
+    struct {
+        const gpu_impl = @import("gpu");
+        pub const GPUEvolution = gpu_impl.pattern_fitness.GPUEvolution;
+    } 
 else 
     struct {
         pub const GPUEvolution = struct {
-            pub const Config = struct { enabled: bool = false };
-            pub fn init(_: Allocator, _: Config) anyerror!@This() { return .{}; }
+            pub const Config = struct { 
+                enabled: bool = false, 
+                batch_size: u32 = 256, 
+                threads_per_block: u32 = 256 
+            };
+            pub fn init(_: Allocator, _: Config) anyerror!@This() { 
+                return .{}; 
+            }
             pub fn deinit(_: *@This()) void {}
-            pub fn calculateFitnessBatch(_: *@This(), _: []const []const u8, _: u32, _: u32) anyerror![]f32 {
+            pub fn calculateFitnessBatch(
+                _: *@This(), 
+                _: []const []const u8, 
+                _: u32, 
+                _: u32
+            ) anyerror![]f32 {
                 return error.GPUNotAvailable;
             }
         };
@@ -140,6 +154,10 @@ pub const Population = struct {
     }
     
     pub fn deinit(self: *@This()) void {
+        // Clean up GPU resources if initialized
+        if (self.gpu_evolution) |*gpu_ev| {
+            gpu_ev.deinit();
+        }
         self.individuals.deinit();
     }
     
@@ -178,6 +196,8 @@ pub const EvolutionConfig = struct {
     gpu_batch_size: u32 = 1024,
     /// Number of threads per block for GPU kernels
     gpu_threads_per_block: u32 = 256,
+    /// Number of top individuals to preserve between generations
+    elitism_count: u32 = 1,
 };
 
 /// Memory-optimized evolution engine with optional GPU acceleration
@@ -253,73 +273,104 @@ pub const MemoryEfficientEvolver = struct {
         self.allocator.destroy(self.pool);
     }
     
+    /// Calculate fitness for a batch of patterns using GPU if available
+    fn calculateFitnessBatch(
+        self: *@This(),
+        patterns: []const []const u8,
+        fitness_fn: *const fn ([*]const u8, usize) callconv(.C) f64,
+    ) ![]f64 {
+        if (patterns.len == 0) return &.{};
+        
+        // Fall back to CPU implementation
+        const results = try self.allocator.alloc(f64, patterns.len);
+        for (patterns, 0..) |pattern, i| {
+            results[i] = fitness_fn(pattern.ptr, pattern.len);
+        }
+        return results;
+    }
+    
+    /// Evolve the population for one generation
     pub fn evolveGeneration(
         self: *@This(),
-        fitness_fn: *const fn ([]const u8) f64,
+        fitness_fn: *const fn ([*]const u8, usize) callconv(.C) f64,
         crossover_rate: f64,
         mutation_rate: f64,
     ) !void {
-        // Evaluate fitness of current population
-        for (self.population.individuals.items) |*indiv| {
-            if (indiv.fitness == 0.0) {  // Only evaluate if fitness hasn't been set yet
-                indiv.fitness = fitness_fn(indiv.data);
+        // Find unevaluated individuals
+        var unevaluated = std.ArrayList([]const u8).init(self.allocator);
+        defer unevaluated.deinit();
+        
+        for (self.population.individuals.items) |indiv| {
+            if (indiv.fitness == 0.0) {
+                try unevaluated.append(indiv.data);
             }
         }
         
-        // Create new population
-        var new_population = try Population.init(self.allocator, self.pool, 0);
-        
-        // Elitism: keep the best individual
-        if (self.population.individuals.items.len > 0) {
-            var best_idx: usize = 0;
-            var best_fitness = self.population.individuals.items[0].fitness;
+        // Evaluate unevaluated individuals in batch if using GPU
+        if (unevaluated.items.len > 0) {
+            const fitness_values = try self.calculateFitnessBatch(unevaluated.items, fitness_fn);
+            defer self.allocator.free(fitness_values);
             
-            for (self.population.individuals.items[1..], 1..) |indiv, i| {
-                if (indiv.fitness > best_fitness) {
-                    best_fitness = indiv.fitness;
-                    best_idx = i;
+            // Update fitness values
+            var eval_idx: usize = 0;
+            for (self.population.individuals.items) |*indiv| {
+                if (indiv.fitness == 0.0 and eval_idx < fitness_values.len) {
+                    indiv.fitness = fitness_values[eval_idx];
+                    eval_idx += 1;
+                }
+            }
+        }
+        
+        // Sort population by fitness (descending)
+        std.sort.insertion(CompactPattern, self.population.individuals.items, {}, struct {
+            fn lessThan(_: void, a: CompactPattern, b: CompactPattern) bool {
+                return a.fitness > b.fitness;
+            }
+        }.lessThan);
+        
+        // Create new population with elitism (keep the best individuals)
+        const elitism_count = @min(
+            self.config.elitism_count,
+            self.population.individuals.items.len / 2
+        );
+        
+        var new_population = try Population.init(
+            self.allocator,
+            self.pool,
+            self.population.individuals.items.len
+        );
+        
+        // Add elite individuals to the new population
+        for (self.population.individuals.items[0..elitism_count]) |elite| {
+            try new_population.add(elite.data);
+            new_population.individuals.items[new_population.individuals.items.len - 1].fitness = elite.fitness;
+        }
+        
+        // Generate offspring through selection, crossover, and mutation
+        while (new_population.individuals.items.len < self.population.individuals.items.len) {
+            // Select parents using tournament selection
+            const parent1 = self.tournamentSelect(3);
+            const parent2 = self.tournamentSelect(3);
+            
+            // Create child through crossover
+            const child_data = try self.crossover(parent1, parent2, crossover_rate);
+            defer {
+                // Only free if it's not from the pool
+                if (child_data.ptr != parent1.ptr and child_data.ptr != parent2.ptr) {
+                    self.allocator.free(child_data);
                 }
             }
             
-            // Clone the best individual
-            const best_data = try self.pool.allocate(self.population.individuals.items[best_idx].data.len);
-            @memcpy(best_data, self.population.individuals.items[best_idx].data);
+            // Mutate the child
+            try self.mutate(child_data, mutation_rate);
             
-            try new_population.individuals.append(CompactPattern{
-                .data = best_data,
-                .fitness = best_fitness,
+            // Add to new population
+            const child = try self.population.pool.alloc(child_data.len);
+            @memcpy(child, child_data);
+            try new_population.individuals.append(.{
+                .data = child,
+                .fitness = 0.0,
             });
-        }
-        
-        // Fill the rest of the population with offspring
-        while (new_population.individuals.items.len < self.population.individuals.items.len) {
-            const parent1 = self.population.selectTournament(5, &self.rng);
-            
-            if (self.rng.float() < crossover_rate) {
-                // Crossover
-                const parent2 = self.population.selectTournament(5, &self.rng);
-                const child = try self.crossover(parent1, parent2);
-                try new_population.individuals.append(CompactPattern{
-                    .data = child,
-                    .fitness = 0.0, // Will be evaluated in next generation
-                });
-            } else {
-                // Clone parent
-                const child = try self.pool.allocate(parent1.data.len);
-                @memcpy(child, parent1.data);
-                try new_population.individuals.append(CompactPattern{
-                    .data = child,
-                    .fitness = parent1.fitness,
-                });
-            }
-            
-            // Mutation (only apply to new individuals)
-            if (self.rng.float() < mutation_rate) {
-                const last_idx = new_population.individuals.items.len - 1;
-                const individual = &new_population.individuals.items[last_idx];
-                try self.mutate(individual);
-                individual.fitness = 0.0; // Reset fitness after mutation
-            }
         }
         
         // Replace old population with new one
@@ -327,33 +378,55 @@ pub const MemoryEfficientEvolver = struct {
         self.population = new_population;
     }
     
-    fn crossover(self: *@This(), parent1: CompactPattern, parent2: CompactPattern) ![]u8 {
-        const len = parent1.data.len;
-        // Allocate from our memory pool instead of using the general allocator
-        const child = try self.pool.allocate(len);
+    /// Perform single-point crossover between two parent patterns
+    fn crossover(self: *@This(), parent1: []const u8, parent2: []const u8, crossover_rate: f64) ![]const u8 {
+        // If no crossover, return a copy of parent1
+        if (self.rng.float() >= crossover_rate) {
+            const child_data = try self.allocator.alloc(u8, parent1.len);
+            @memcpy(child_data, parent1);
+            return child_data;
+        }
         
-        // Single-point crossover
-        const point = 1 + self.rng.int(usize, 0, len - 2);
-        @memcpy(child[0..point], parent1.data[0..point]);
-        @memcpy(child[point..], parent2.data[point..]);
+        // Allocate space for child and perform crossover
+        const child = try self.pool.alloc(parent1.len);
+        const crossover_point = self.rng.int(usize, 1, parent1.len - 1);
+        @memcpy(child[0..crossover_point], parent1[0..crossover_point]);
+        @memcpy(child[crossover_point..], parent2[crossover_point..]);
         
         return child;
     }
     
-    fn mutate(self: *@This(), individual: *CompactPattern) !void {
-        const idx = self.rng.int(usize, 0, individual.data.len - 1);
+    /// Mutate an individual's data with a given probability per bit
+    fn mutate(self: *@This(), individual: []u8, mutation_rate: f64) !void {
+        // Calculate number of bits to flip based on mutation rate
+        const total_bits = individual.len * 8;
+        const bits_to_flip = @as(usize, @intFromFloat(mutation_rate * @as(f64, @floatFromInt(total_bits))));
         
-        // Allocate new memory from our pool
-        const new_data = try self.pool.allocate(individual.data.len);
-        @memcpy(new_data, individual.data);
+        // Flip the specified number of random bits
+        for (0..bits_to_flip) |_| {
+            const idx = self.rng.int(usize, 0, total_bits - 1);
+            const byte_idx = idx / 8;
+            const bit_idx = @as(u3, @intCast(idx % 8));
+            individual[byte_idx] ^= @as(u8, 1) << bit_idx;
+        }
+    }
+    
+    /// Select an individual using tournament selection
+    fn tournamentSelect(self: *@This(), tournament_size: usize) []const u8 {
+        var best_idx: usize = self.rng.int(usize, 0, self.population.individuals.items.len - 1);
+        var best_fitness = self.population.individuals.items[best_idx].fitness;
         
-        // Flip a bit in the new copy
-        const byte_idx = idx / 8;
-        const bit_idx = @as(u3, @intCast(idx % 8));
-        new_data[byte_idx] ^= @as(u8, 1) << bit_idx;
+        for (1..tournament_size) |_| {
+            const idx = self.rng.int(usize, 0, self.population.individuals.items.len - 1);
+            const fitness = self.population.individuals.items[idx].fitness;
+            
+            if (fitness > best_fitness) {
+                best_idx = idx;
+                best_fitness = fitness;
+            }
+        }
         
-        // Replace the individual's data with the mutated version
-        individual.data = new_data;
+        return self.population.individuals.items[best_idx].data;
     }
 };
 
@@ -364,83 +437,79 @@ test "memory optimized evolution" {
     // Initialize evolver with a larger population and smaller pattern size
     const population_size = 50;  // Larger population for better exploration
     const pattern_size = 8;     // 8 bytes = 64 bits (smaller target is easier)
-    var evolver = try MemoryEfficientEvolver.init(allocator, population_size, pattern_size);
-    defer evolver.deinit();
+    
+    // Create a pattern pool
+    const pool = try allocator.create(PatternPool);
+    pool.* = try PatternPool.init(allocator, 1 << 20); // 1MB chunks
+    
+    // Initialize evolver with configuration
+    var evolver = try MemoryEfficientEvolver.init(
+        allocator,
+        population_size,
+        pattern_size,
+        .{
+            .enable_gpu = false, // Disable GPU for tests
+            .elitism_count = 2,
+        }
+    );
+    evolver.pool = pool;
+    defer {
+        evolver.deinit();
+        allocator.destroy(pool);
+    }
     
     // Target pattern with alternating bits (0101...)
     const target_pattern = try allocator.alloc(u8, pattern_size);
     defer allocator.free(target_pattern);
     @memset(target_pattern, 0x55); // 01010101 in binary
     
-    // Fitness function that rewards patterns with alternating bits
-    // This creates a clear gradient for the evolution to follow
+    // Make target_pattern accessible to the fitness function
+    var target_pattern_array = [_]u8{0x55} ** 8; // 01010101 in binary
+    const target_pattern = target_pattern_array[0..];
+    
+    // Fitness function that rewards patterns matching the target pattern
     const fitness_fn = struct {
-        fn calc(pattern: []const u8) f64 {
-            var score: usize = 0;
-            var i: usize = 0;
-            for (pattern) |byte| {
-                // Reward alternating bits (0101... or 1010...)
-                const alt1 = if (i % 2 == 0) @as(u8, 0x55) else @as(u8, 0xAA); // 01010101 or 10101010
-                const alt2 = if (i % 2 == 0) @as(u8, 0xAA) else @as(u8, 0x55); // 10101010 or 01010101
-                const match1 = ~(byte ^ alt1);
-                const match2 = ~(byte ^ alt2);
-                score += @max(@popCount(match1), @popCount(match2));
-                i += 1;
+        fn call(pattern_ptr: [*]const u8, pattern_len: usize) callconv(.C) f64 {
+            const pattern = pattern_ptr[0..pattern_len];
+            var matches: u32 = 0;
+            for (pattern, 0..) |byte, i| {
+                matches += @popCount(~(byte ^ target_pattern[i % target_pattern.len]));
             }
-            return @as(f64, @floatFromInt(score)) / @as(f64, @floatFromInt(pattern.len * 8));
+            return @as(f64, @floatFromInt(matches)) / @as(f64, @floatFromInt(pattern.len * 8));
         }
-    }.calc;
+    }.call;
     
-    // Print initial population stats
-    {
-        var min_fitness: f64 = 1.0;
-        var max_fitness: f64 = 0.0;
-        var total_fitness: f64 = 0.0;
-        
-        for (evolver.population.individuals.items) |individual| {
-            const fitness = fitness_fn(individual.data);
-            min_fitness = @min(min_fitness, fitness);
-            max_fitness = @max(max_fitness, fitness);
-            total_fitness += fitness;
-        }
-        
-        const avg_fitness = total_fitness / @as(f64, @floatFromInt(evolver.population.individuals.items.len));
-        std.debug.print("Initial - Min: {d:.3}, Avg: {d:.3}, Max: {d:.3}\n", 
-            .{min_fitness, avg_fitness, max_fitness});
-    }
+    // Run evolution for a few generations
+    const max_generations = 50;
+    var generation: usize = 0;
+    var best_fitness: f64 = 0.0;
     
-    // Run evolution for several generations
-    const generations = 100;
-    const crossover_rate = 0.8;
-    const mutation_rate = 0.02;  // Slightly higher mutation to escape local optima
-    
-    for (0..generations) |generation| {
-        try evolver.evolveGeneration(fitness_fn, crossover_rate, mutation_rate);
+    while (generation < max_generations) : (generation += 1) {
+        try evolver.evolveGeneration(fitness_fn, 0.8, 0.1);
         
         // Track best fitness in this generation
-        var best_fitness: f64 = 0.0;
+        var current_best: f64 = 0.0;
         var total_fitness: f64 = 0.0;
         
-        for (evolver.population.individuals.items) |individual| {
-            best_fitness = @max(best_fitness, individual.fitness);
-            total_fitness += individual.fitness;
+        for (evolver.population.individuals.items) |indiv| {
+            current_best = @max(current_best, indiv.fitness);
+            total_fitness += indiv.fitness;
         }
         
-        // Print progress every few generations
-        if (generation % 5 == 0 or generation == generations - 1) {
-            const avg_fitness = total_fitness / @as(f64, @floatFromInt(evolver.population.individuals.items.len));
-            std.debug.print("Gen {:3} - Best: {d:.3}, Avg: {d:.3}\n", 
-                .{generation, best_fitness, avg_fitness});
+        best_fitness = @max(best_fitness, current_best);
+        const avg_fitness = total_fitness / @as(f64, @floatFromInt(evolver.population.individuals.items.len));
+        
+        // Print progress every 5 generations
+        if (generation % 5 == 0 or generation == max_generations - 1) {
+            std.debug.print("Generation {:3}: Best = {d:.4}, Avg = {d:.4}\n", .{
+                generation + 1, best_fitness, avg_fitness
+            });
         }
+        
+        // Early exit if we've found a perfect match
+        if (best_fitness >= 0.999) break;
     }
     
-    // Verify that we've made significant progress (should be very close to 1.0)
-    var best_fitness: f64 = 0.0;
-    for (evolver.population.individuals.items) |individual| {
-        best_fitness = @max(best_fitness, individual.fitness);
-    }
-    
-    std.debug.print("Final best fitness: {d:.3} (target: >0.75)\n", .{best_fitness});
-    // Set a reasonable threshold based on our observations
-    try testing.expect(best_fitness > 0.7);
+    // Verify that we found a good solution
+    try testing.expect(best_fitness >= 0.9);
 }

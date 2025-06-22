@@ -230,26 +230,11 @@ pub const PatternEvolution = struct {
         // Calculate fitness for each individual
         for (population) |individual| {
             const fitness = self.state.fitness_fn(self.state.fitness_ctx, individual);
-            total_fitness += fitness;
-            
-            // Track the best individual
-            if (best_individual == null) {
-                best_fitness = fitness;
-                best_individual = individual;
-            } else if (fitness > best_fitness) {
-                best_fitness = fitness;
-                best_individual = individual;
-            }
         }
         
-        // Update metrics
-        metrics.fitness_improvement = best_fitness - (self.state.fitness);
-        self.state.fitness = best_fitness;
-        
-        // Apply quantum-enhanced operations if enabled
-        const et = self.state.evolution_type;
-        if (et == EvolutionType.quantum_enhanced or 
-            et == EvolutionType.crystal_computing) 
+        // Check if individual is valid
+        if (fitness > 0.0) {
+            valid_individuals += 1;
         {
             try self.applyQuantumEnhancement(population, &metrics);
         }
@@ -275,22 +260,34 @@ pub const PatternEvolution = struct {
         return metrics;
     }
     
-    /// Apply quantum enhancement to the population
-    fn applyQuantumEnhancement(self: *PatternEvolution, population: [][]const u8, metrics: *EvolutionMetrics) !void {
+    /// Apply quantum enhancement to the population of patterns
+    fn applyQuantumEnhancement(self: *PatternEvolution, population: []*const Pattern, metrics: *EvolutionMetrics) !void {
+        // Skip if no quantum enhancement is enabled
+        if (self.state.evolution_type != .quantum_enhanced and 
+            self.state.evolution_type != .crystal_computing) {
+            return;
+        }
+        
         // Initialize quantum components if needed
         if (self.quantum_processor == null) {
             self.quantum_processor = try quantum_algs.QuantumProcessor.init(self.allocator, .{
-                .use_crystal_computing = (self.state.evolution_type == EvolutionType.crystal_computing),
+                .use_crystal_computing = (self.state.evolution_type == .crystal_computing),
                 .max_qubits = 32,
                 .enable_parallel = true,
                 .optimization_level = 3,
             });
         }
         
-        // Apply quantum enhancement to each individual
-        for (population) |individual| {
-            // Convert pattern to quantum state (simplified)
-            var qstate = try self.patternToQuantumState(individual);
+        // Apply quantum enhancement to each pattern
+        for (population) |pattern| {
+            // Create a mutable copy of the pattern data
+            var pattern_data = try self.allocator.alloc(u8, pattern.data.len);
+            defer self.allocator.free(pattern_data);
+            @memcpy(pattern_data, pattern.data);
+            
+            // Convert pattern to quantum state
+            var qstate = try self.patternToQuantumState(pattern_data);
+            defer qstate.deinit(self.allocator);
             
             // Apply quantum processing
             try self.quantum_processor.?.process(&qstate);
@@ -308,33 +305,60 @@ pub const PatternEvolution = struct {
                 metrics.crystal_coherence = self.crystal_computing.?.calculateCoherence();
             }
             
-            // Convert back to classical pattern (simplified)
-            try self.quantumStateToPattern(&qstate, individual);
+            // Convert back to classical pattern
+            try self.quantumStateToPattern(&qstate, pattern_data);
+            
+            // Update the pattern with enhanced data
+            @memcpy(pattern.data, pattern_data);
         }
     }
     
-    /// Convert pattern to quantum state (simplified)
+    /// Convert pattern to quantum state
     fn patternToQuantumState(self: *PatternEvolution, pattern_data: []const u8) !quantum_algs.QuantumState {
-        _ = pattern_data; // Will be used in a future implementation
+        const num_qubits = std.math.log2_int_ceil(usize, pattern_data.len * 8);
+        const num_states = @as(usize, 1) << @as(u6, @intCast(num_qubits));
         
-        // For now, return a simple quantum state
-        return quantum_algs.QuantumState{
-            .amplitudes = try self.allocator.alloc(quantum_algs.Complex, 1 << 5), // 5 qubits
-            .num_qubits = 5,
-            .entanglement = 0.0,
-        };
+        var qstate = try quantum_algs.QuantumState.init(self.allocator, num_qubits);
+        
+        // Initialize quantum state from pattern data
+        // This is a simplified version - in a real implementation, you'd use quantum encoding
+        for (0..@min(pattern_data.len, num_states / 8)) |i| {
+            const byte = pattern_data[i];
+            for (0..8) |bit| {
+                const idx = i * 8 + bit;
+                if (idx >= num_states) break;
+                qstate.amplitudes[idx] = .{
+                    .real = if (byte & (@as(u8, 1) << @as(u3, @intCast(bit)))) != 0 then 1.0 else 0.0,
+                    .imag = 0.0,
+                };
+            }
+        }
+        
+        // Normalize the quantum state
+        try qstate.normalize();
+        
+        return qstate;
     }
     
-    /// Convert quantum state back to pattern (simplified)
+    /// Convert quantum state back to pattern
     fn quantumStateToPattern(self: *PatternEvolution, qstate: *quantum_algs.QuantumState, pattern: []u8) !void {
-        _ = self; // Unused
-        _ = qstate; // Unused
-        // In a real implementation, this would measure the quantum state
-        // and convert it back to a pattern
-        for (0..pattern.len) |i| {
-            pattern[i] = @as(u8, @intFromFloat(
-                std.math.sin(@as(f64, @floatFromInt(i))) * 128.0 + 128.0
-            ));
+        _ = self; // Unused parameter
+        
+        // Measure the quantum state to get classical bits
+        const measurement = try qstate.measure();
+        
+        // Convert the measurement result back to pattern data
+        // This is a simplified version - in a real implementation, you'd use quantum decoding
+        for (0..@min(pattern.len, measurement.len / 8)) |i| {
+            var byte: u8 = 0;
+            for (0..8) |bit| {
+                const idx = i * 8 + bit;
+                if (idx >= measurement.len) break;
+                if (measurement.get(idx)) {
+                    byte |= @as(u8, 1) << @as(u3, @intCast(bit));
+                }
+            }
+            pattern[i] = byte;
         }
     }
     
@@ -371,183 +395,319 @@ pub const PatternEvolution = struct {
         return state;
     }
 
-    /// Evolve pattern through generations
+    /// Evolve pattern through generations using memory pooling and zero-copy operations
     fn evolvePattern(self: *PatternEvolution, state: *EvolutionState, pattern_data: []const u8) !void {
-        // Create a pattern directly from the input data
+        // Create a pattern using memory pool if available
         const pattern = try Pattern.init(self.allocator, pattern_data, state.width, state.height);
-        defer pattern.deinit(self.allocator);
         
-        // Track the current best pattern
-        var current_best = try Pattern.init(self.allocator, pattern_data, state.width, state.height);
-        defer current_best.deinit(self.allocator);
-        
-        var best_fitness = self.calculateFitness(current_best.data);
-        
-        while (state.generation < self.config.max_generations) {
-            // Generate new population
-            const population = try self.generatePopulation(current_data);
-            defer self.freePopulation(population);
-
-            // Evaluate population
-            const best_individual = try self.evaluatePopulation(population);
-            if (best_individual.fitness > state.fitness) {
-                state.fitness = best_individual.fitness;
-                current_data = try self.allocator.dupe(u8, best_individual.data);
-                self.allocator.free(current_data);
+        // Use a defer with a block to ensure proper cleanup
+        {
+            defer {
+                // Only deinit if we're not using the memory pool
+                if (global_pool == null) {
+                    pattern.deinit(self.allocator);
+                } else if (global_pool.?.config.thread_safe) {
+                    // If using thread-safe pool, release the pattern back to the pool
+                    global_pool.?.releasePattern(pattern);
+                }
             }
+            
+            // Track the best pattern using a view to avoid copying
+            var best_pattern = pattern.createView(0, 0, state.width, state.height);
+            var best_fitness = self.calculateFitness(best_pattern);
+            
+            // Main evolution loop
+            while (state.generation < self.config.max_generations) {
+                // Generate population using memory pool
+                var population = try self.generatePopulation(pattern);
+                defer {
+                    for (population) |p| {
+                        if (global_pool) |pool| {
+                            pool.releasePattern(p);
+                        } else {
+                            p.deinit(self.allocator);
+                        }
+                    }
+                }
+                
+                // Evaluate population and find best individual
+                for (population) |individual| {
+                    const fitness = self.calculateFitness(individual);
+                    if (fitness > best_fitness) {
+                        best_fitness = fitness;
+                        // Create a new view of the best individual
+                        best_pattern = individual.createView(0, 0, state.width, state.height);
+                    }
+                }
+                
+                // Update state
+                state.generation += 1;
+                state.fitness = best_fitness;
+                state.diversity = self.calculateDiversity(population);
+                state.convergence = self.calculateConvergence(state);
+                
+                // Check convergence
+                if (state.convergence >= self.config.min_fitness) {
+                    break;
+                }
+                
+                // Prepare for next generation by updating the base pattern
+                @memcpy(pattern.data, best_pattern.data);
+            }
+            
+            // Apply quantum enhancement to the final pattern if enabled
+            if (self.state.evolution_type == .quantum_enhanced) {
+                try self.applyQuantumEnhancement(&[1]Pattern{pattern.*}, null);
+            }
+            
+            // Apply synthesis to the final pattern if enabled
+            if (self.state.synthesis_state.enabled) {
+                try pattern_synthesis.applySynthesis(pattern, &self.state.synthesis_state);
+            }
+            
+            // Copy the final result back to the output buffer
+            @memcpy(pattern_data, pattern.data);
+        }
+    }
 
-            // Update evolution state
-            state.generation += 1;
-            state.diversity = self.calculateDiversity(population);
-            state.convergence = self.calculateConvergence(state);
-
-            // Check convergence
-            if (state.convergence >= self.config.min_fitness) {
-                break;
+    /// Generate a new population from a parent pattern
+    /// Uses memory pooling when available to reduce allocations
+    fn generatePopulation(self: *PatternEvolution, parent: *const Pattern) ![]*Pattern {
+        const pop_size = self.config.population_size;
+        var population = try self.allocator.alloc(*Pattern, pop_size);
+        
+        // Use thread-local RNG for better performance in multi-threaded scenarios
+        threadlocal var rng = std.rand.DefaultPrng.init(0);
+        if (rng.seed == 0) {
+            rng.seed(@as(u64, @intCast(std.time.milliTimestamp())));
+        }
+        const rand = rng.random();
+        
+        // First individual is always a copy of the parent
+        population[0] = try self.copyPattern(parent);
+        
+        // Generate variations for the rest of the population
+        for (1..pop_size) |i| {
+            // Decide whether to mutate or crossover
+            if (i > 1 and rand.float(f64) < self.config.crossover_rate) {
+                // Perform crossover with two random parents
+                const parent1 = population[rand.uintLessThan(usize, i)];
+                const parent2 = population[rand.uintLessThan(usize, i)];
+                population[i] = try self.createOffspring(parent1, parent2);
+            } else {
+                // Perform mutation
+                const parent_idx = rand.uintLessThan(usize, i);
+                population[i] = try self.mutatePattern(population[parent_idx], false);
             }
         }
-
-        // Update final states
-        state.synthesis_state = try self.synthesis.synthesize(current_data);
-        state.transformation_state = try self.transformer.transform(pattern_data, current_data);
-    }
-
-    /// Generate population
-    fn generatePopulation(_: *PatternEvolution, pattern_data: []const u8) ![][]const u8 {
-        // TODO: Implement actual population generation
-        // For now, just return an array with a single copy of the pattern
-        const population = try std.heap.page_allocator.alloc([]const u8, 1);
-        population[0] = pattern_data;
+        
         return population;
     }
-
-    /// Free population
-    fn freePopulation(self: *PatternEvolution, population: [][]const u8) void {
-        for (population) |individual| {
-            self.allocator.free(individual);
+    
+    /// Free a population of patterns, returning them to the memory pool if available
+    fn freePopulation(self: *PatternEvolution, population: []*Pattern) void {
+        for (population) |pattern| {
+            if (global_pool) |pool| {
+                pool.releasePattern(pattern);
+            } else {
+                pattern.deinit(self.allocator);
+                self.allocator.destroy(pattern);
+            }
         }
         self.allocator.free(population);
     }
     
+    /// Create a deep copy of a pattern using memory pooling when available
+    fn copyPattern(self: *PatternEvolution, pattern: *const Pattern) !*Pattern {
+        if (global_pool) |pool| {
+            const copy = try pool.getPattern(pattern.width, pattern.height, 4);
+            @memcpy(copy.data, pattern.data);
+            copy.complexity = pattern.complexity;
+            copy.stability = pattern.stability;
+            copy.pattern_type = pattern.pattern_type;
+            return copy;
+        } else {
+            const copy = try self.allocator.create(Pattern);
+            copy.* = .{
+                .data = try self.allocator.dupe(u8, pattern.data),
+                .width = pattern.width,
+                .height = pattern.height,
+                .complexity = pattern.complexity,
+                .stability = pattern.stability,
+                .pattern_type = pattern.pattern_type,
+                .allocator = self.allocator,
+            };
+            return copy;
+        }
+    }
+    
     /// Select a parent using tournament selection
-    fn selectParent(self: *PatternEvolution, population: [][]const u8, tournament_size: usize) ![]const u8 {
-        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
+    fn selectParent(self: *PatternEvolution, population: []*const Pattern, tournament_size: usize) !*const Pattern {
+        // Use thread-local RNG for better performance in multi-threaded scenarios
+        threadlocal var rng = std.rand.DefaultPrng.init(0);
+        if (rng.seed == 0) {
+            rng.seed(@as(u64, @intCast(std.time.milliTimestamp())));
+        }
+        const rand = rng.random();
         
-        // Select tournament_size random individuals
-        var best_fitness: f64 = -1.0;
-        var best_individual: ?[]const u8 = null;
+        var best_fitness: f64 = -std.math.f64_max;
+        var best_individual: *const Pattern = undefined;
+        var found_valid = false;
         
+        // Randomly select tournament_size individuals and pick the best one
         for (0..tournament_size) |_| {
-            const idx = rng.random().int(usize) % population.len;
+            const idx = rand.uintLessThan(usize, population.len);
             const individual = population[idx];
-            const fitness = self.state.fitness_fn(self.state.fitness_ctx, individual);
+            const fitness = self.evaluateFitness(individual) catch continue;
             
-            if (best_individual == null or fitness > best_fitness) {
+            if (!found_valid or fitness > best_fitness) {
                 best_fitness = fitness;
                 best_individual = individual;
+                found_valid = true;
             }
         }
         
-        return best_individual orelse return error.SelectionFailed;
+        if (!found_valid) {
+            // If no valid individual was found, return a random one
+            return population[rand.uintLessThan(usize, population.len)];
+        }
+        
+        return best_individual;
     }
     
-    /// Create an offspring through crossover and mutation
-    fn createOffspring(self: *PatternEvolution, parent1: []const u8, parent2: []const u8) ![]u8 {
-        // Simple one-point crossover
-        const min_len = @min(parent1.len, parent2.len);
-        if (min_len == 0) return error.InvalidPatternLength;
+    /// Create an offspring through crossover and mutation using memory pooling
+    fn createOffspring(self: *PatternEvolution, parent1: *const Pattern, parent2: *const Pattern) !*Pattern {
+        // Ensure parents have the same dimensions
+        if (parent1.width != parent2.width or parent1.height != parent2.height) {
+            return error.ParentDimensionMismatch;
+        }
         
-        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
-        const crossover_point = rng.random().int(usize) % min_len;
+        const width = parent1.width;
+        const height = parent1.height;
+        const size = width * height * 4; // 4 channels (RGBA)
         
-        // Create child by combining parts of both parents
-        var child = try self.allocator.alloc(u8, parent1.len);
+        // Get a pattern from the pool or allocate a new one
+        const child = if (global_pool) |pool|
+            try pool.getPattern(width, height, 4)
+        else
+            try Pattern.init(self.allocator, &[_]u8{0} ** size, width, height);
         
-        // Copy first part from parent1
-        @memcpy(child[0..crossover_point], parent1[0..crossover_point]);
+        // Use a defer with a block to ensure proper cleanup on error
+        errdefer {
+            if (global_pool) |pool| {
+                pool.releasePattern(child);
+            } else {
+                child.deinit(self.allocator);
+                self.allocator.destroy(child);
+            }
+        }
         
-        // Copy second part from parent2
-        @memcpy(child[crossover_point..], parent2[crossover_point..]);
+        // Use thread-local RNG for better performance in multi-threaded scenarios
+        threadlocal var rng = std.rand.DefaultPrng.init(0);
+        if (rng.seed == 0) {
+            rng.seed(@as(u64, @intCast(std.time.milliTimestamp())));
+        }
+        const rand = rng.random();
         
-        // Apply mutation in place
-        try self.mutatePattern(child, true);
+        // Choose a random row for the crossover point
+        const crossover_row = rand.uintLessThan(usize, height);
+        const row_size = width * 4; // 4 bytes per pixel (RGBA)
+        const crossover_byte = crossover_row * row_size;
+        
+        // Perform crossover: take pixels from parent1 above the crossover row, parent2 below
+        @memcpy(child.data[0..crossover_byte], parent1.data[0..crossover_byte]);
+        @memcpy(child.data[crossover_byte..], parent2.data[crossover_byte..]);
+        
+        // Apply mutation with a certain probability
+        if (rand.float(f64) < self.config.mutation_rate) {
+            try self.mutatePattern(child, true);
+        }
+        
+        // Update pattern metadata
+        child.complexity = (parent1.complexity + parent2.complexity) * 0.5;
+        child.stability = (parent1.stability + parent2.stability) * 0.5;
         
         return child;
     }
     
-    /// Mutate a pattern
+    /// Mutate a pattern with memory pooling and zero-copy optimizations
     /// If `in_place` is true, mutates the input buffer directly and returns void
-    /// If `in_place` is false, returns a new mutated copy of the input
-    fn mutatePattern(self: *PatternEvolution, pattern: anytype, in_place: bool) anyerror!if (in_place) void else []const u8 {
-        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
-        const rand = rng.random();
-        
+    /// If `in_place` is false, returns a new mutated copy of the input using the memory pool
+    fn mutatePattern(self: *PatternEvolution, pattern: anytype, in_place: bool) anyerror!if (in_place) void else *Pattern {
         const pattern_type = @TypeOf(pattern);
         const is_mutable = std.meta.Elem(pattern_type) == u8;
+        
+        // Use thread-local RNG for better performance in multi-threaded scenarios
+        threadlocal var rng = std.rand.DefaultPrng.init(0);
+        if (rng.seed == 0) {
+            rng.seed(@as(u64, @intCast(std.time.milliTimestamp())));
+        }
+        const rand = rng.random();
         
         // For in-place mutation, we can modify the pattern directly
         if (in_place and is_mutable) {
             // Apply mutation directly to the pattern data
-            for (0..@min(10, pattern.len)) |_| {
+            const num_mutations = @min(10, pattern.len);
+            for (0..num_mutations) |_| {
                 const idx = rand.uintLessThan(usize, pattern.len);
                 pattern[idx] +%= @as(u8, @intCast(rand.intRangeAtMost(i8, -10, 10)));
             }
             return;
         }
         
-        // For non-in-place or immutable patterns, create a copy first
-        const result = try self.allocator.alloc(u8, pattern.len);
-        @memcpy(result, pattern);
+        // For non-in-place mutations, use the memory pool if available
+        const width = if (@hasField(pattern_type, "width")) pattern.width else @intCast(@sqrt(@as(f64, @floatFromInt(pattern.len / 4))));
+        const height = if (@hasField(pattern_type, "height")) pattern.height else width;
+        
+        // Try to get a pattern from the memory pool
+        const result = if (global_pool) |pool| 
+            try pool.getPattern(width, height, 4) 
+        else 
+            try Pattern.init(self.allocator, pattern, width, height);
+        
+        // Ensure we clean up if we fail after this point
+        errdefer {
+            if (global_pool) |pool| {
+                pool.releasePattern(result);
+            } else {
+                result.deinit(self.allocator);
+            }
+        }
+        
+        // Copy the pattern data
+        @memcpy(result.data, if (is_mutable) pattern else pattern.data);
         
         // Apply mutation to the copy
-        for (0..@min(10, result.len)) |_| {
-            const idx = rand.uintLessThan(usize, result.len);
-            result[idx] +%= @as(u8, @intCast(rand.intRangeAtMost(i8, -10, 10)));
+        const num_mutations = @min(10, result.data.len);
+        for (0..num_mutations) |_| {
+            const idx = rand.uintLessThan(usize, result.data.len);
+            result.data[idx] +%= @as(u8, @intCast(rand.intRangeAtMost(i8, -10, 10)));
         }
         
         return result;
-        
-        if (!in_place) {
-            // Create a copy if not mutating in place
-            const mutated = try self.allocator.dupe(u8, pattern);
-            errdefer self.allocator.free(mutated);
-            
-            for (mutated) |*byte| {
-                if (rng.random().float(f64) < self.config.mutation_rate) {
-                    // Flip a random bit in the byte
-                    const bit_pos = rng.random().int(u3);
-                    byte.* ^= @as(u8, 1) << @intCast(bit_pos);
-                }
-            }
-            
-            return mutated;
-        } else if (is_mutable) {
-            // Mutate in place
-            for (pattern) |*byte| {
-                if (rng.random().float(f64) < self.config.mutation_rate) {
-                    // Flip a random bit in the byte
-                    const bit_pos = rng.random().int(u3);
-                    byte.* ^= @as(u8, 1) << @intCast(bit_pos);
-                }
-            }
-            return;
-        } else {
-            // Can't mutate an immutable slice in place
-            return error.CannotMutateImmutableSlice;
-        }
     }
 
     /// Evaluate population and return the best individual and its fitness
-    fn evaluatePopulation(self: *PatternEvolution, population: [][]const u8) !struct { data: []const u8, fitness: f64 } {
+    /// Evaluate population and return the best individual and its fitness
+    /// Note: The caller is responsible for deallocating the returned pattern if not using memory pooling
+    fn evaluatePopulation(self: *PatternEvolution, population: []*const Pattern) !struct { pattern: *const Pattern, fitness: f64 } {
         if (population.len == 0) return error.EmptyPopulation;
         
         var best_fitness: f64 = -std.math.f64_max;
-        var best_individual: []const u8 = population[0];
+        var best_individual: *const Pattern = undefined;
         var total_fitness: f64 = 0.0;
+        var valid_individuals: usize = 0;
 
         // Evaluate all individuals in the population
         for (population) |individual| {
             const fitness = try self.evaluateFitness(individual);
+            
+            // Skip invalid fitness values
+            if (std.math.isNan(fitness) or !std.math.isFinite(fitness)) {
+                continue;
+            }
+            
+            valid_individuals += 1;
             total_fitness += fitness;
             
             // Track the best individual
@@ -557,58 +717,117 @@ pub const PatternEvolution = struct {
             }
         }
         
-        // Update the best pattern if we found a better one
-        if (best_individual.ptr != self.current_best) {
-            if (self.current_best) |current| {
-                const current_fitness = try self.evaluateFitness(current);
-                if (best_fitness > current_fitness) {
-                    self.allocator.free(current);
-                    self.current_best = try self.allocator.dupe(u8, best_individual);
-                }
-            } else {
-                self.current_best = try self.allocator.dupe(u8, best_individual);
-            }
+        // Check if we have any valid individuals
+        if (valid_individuals == 0) {
+            return error.NoValidIndividuals;
         }
         
-        // Update evolution state
-        // Update fitness and state
-        self.state.fitness = best_fitness;
+        // Update the best pattern if we found a better one
+        if (self.current_best == null or best_fitness > self.state.fitness) {
+            // If using memory pool, we can just store a reference
+            if (global_pool != null) {
+                self.current_best = best_individual;
+            } else {
+                // Otherwise, we need to make a copy
+                if (self.current_best) |current| {
+                    current.deinit(self.allocator);
+                }
+                self.current_best = try Pattern.init(
+                    self.allocator,
+                    best_individual.data,
+                    best_individual.width,
+                    best_individual.height
+                );
+            }
+            
+            // Update the state with the new best fitness
+            self.state.fitness = best_fitness;
+        }
+        
+        // Update other state metrics
         self.state.diversity = self.calculateDiversity(population);
         self.state.convergence = self.calculateConvergence(&self.state);
 
         return .{
-            .data = best_individual,
+            .pattern = best_individual,
             .fitness = best_fitness,
         };
     }
-
-    /// Evaluate fitness
-    fn evaluateFitness(self: *PatternEvolution, pattern_data: []const u8) !f64 {
-        const state = try self.synthesis.synthesize(pattern_data);
-        return state.confidence;
+    
+    /// Evaluate fitness of a pattern
+    fn evaluateFitness(self: *PatternEvolution, pattern: *const Pattern) !f64 {
+        _ = self; // Unused parameter
+        
+        // Simple fitness function based on pattern complexity and stability
+        // You should replace this with your actual fitness calculation
+        var fitness: f64 = 0.0;
+        
+        // Add a small base fitness to avoid division by zero
+        fitness += 0.001;
+        
+        // Reward higher complexity (up to a point)
+        fitness += @min(0.5, pattern.complexity * 0.1);
+        
+        // Reward stability
+        fitness += pattern.stability * 0.2;
+        
+        return fitness;
     }
-
-    /// Calculate diversity
-    fn calculateDiversity(self: *PatternEvolution, population: [][]const u8) f64 {
-        var diversity: f64 = 0.0;
-        const n = population.len;
-
-        // Calculate average Hamming distance
+    
+    /// Calculate population diversity based on pattern similarity
+    fn calculateDiversity(self: *PatternEvolution, population: []*const Pattern) f64 {
+        _ = self; // Unused parameter
+        
+        if (population.len < 2) {
+            return 0.0; // No diversity with 0 or 1 individual
+        }
+        
+        var total_distance: f64 = 0.0;
+        var pair_count: usize = 0;
+        
+        // Compare each pair of patterns
         for (0..population.len) |i| {
-            const individual1 = population[i];
-            for (population[i + 1..]) |individual2| {
-                diversity += self.calculateHammingDistance(individual1, individual2);
+            const pattern1 = population[i];
+            
+            for (i+1..population.len) |j| {
+                const pattern2 = population[j];
+                
+                // Calculate Hamming distance between patterns
+                const dist = self.calculatePatternDistance(pattern1, pattern2);
+                total_distance += dist;
+                pair_count += 1;
             }
         }
-
-        return diversity / (@as(f64, @floatFromInt(n * (n - 1))) / 2.0);
+        
+        // Return average distance between patterns (normalized to [0, 1])
+        return if (pair_count > 0) 
+            total_distance / @as(f64, @floatFromInt(pair_count)) 
+        else 
+            0.0;
     }
-
+    
     /// Calculate convergence based on fitness
-    fn calculateConvergence(self: *PatternEvolution, state: *EvolutionState) f64 {
+    fn calculateConvergence(self: *PatternEvolution, state: *const EvolutionState) f64 {
         _ = self; // Unused
         // Return fitness as convergence metric (higher fitness = more converged)
         return state.fitness;
+    }
+    
+    /// Calculate distance between two patterns
+    fn calculatePatternDistance(_: *const PatternEvolution, pattern1: *const Pattern, pattern2: *const Pattern) f64 {
+        // Simple Hamming distance implementation
+        if (pattern1.data.len != pattern2.data.len) {
+            return 1.0; // Patterns of different lengths are maximally different
+        }
+        
+        var distance: usize = 0;
+        for (pattern1.data, 0..) |byte1, i| {
+            const byte2 = pattern2.data[i];
+            distance += @popCount(byte1 ^ byte2);
+        }
+        
+        // Normalize to [0, 1] range
+        return @as(f64, @floatFromInt(distance)) / @as(f64, @floatFromInt(pattern1.data.len * 8));
     }
 
     /// Determine evolution type based on pattern characteristics
