@@ -1,5 +1,10 @@
 const std = @import("std");
 const pattern_synthesis = @import("pattern_synthesis.zig");
+const pattern_ops = @import("pattern_operations.zig");
+const quantum_algs = @import("quantum_algorithms.zig");
+const math = std.math;
+const Allocator = std.mem.Allocator;
+const Complex = std.math.Complex(f64);
 
 pub const PatternEvolution = struct {
     // First: All type declarations
@@ -47,6 +52,17 @@ pub const PatternEvolution = struct {
         particle_swarm,
         simulated_annealing,
         random_search,
+        quantum_enhanced,
+        crystal_computing,
+    };
+    
+    pub const EvolutionMetrics = struct {
+        diversity: f64 = 0.0,
+        convergence: f64 = 0.0,
+        quantum_entanglement: f64 = 0.0,
+        crystal_coherence: f64 = 0.0,
+        fitness_improvement: f64 = 0.0,
+        generation_time_ms: u64 = 0,
     };
     
     // All container fields must be declared first in Zig
@@ -62,8 +78,8 @@ pub const PatternEvolution = struct {
     synthesis: type = @import("pattern_synthesis.zig").PatternSynthesis,
     config: EvolutionConfig = .{},
     
-    // Then all methods
-    pub fn init(allocator: std.mem.Allocator) !*@This() {
+    // Initialize evolution with specific type
+    pub fn initWithType(allocator: std.mem.Allocator, evo_type: EvolutionType) !*@This() {
         const self = try allocator.create(@This());
         errdefer allocator.destroy(self);
         
@@ -72,10 +88,16 @@ pub const PatternEvolution = struct {
             .state = .{
                 .fitness_fn = undefined, // Must be set by the caller
                 .fitness_ctx = null,
+                .evolution_type = evo_type,
             },
         };
         
         return self;
+    }
+    
+    // Initialize with default configuration
+    pub fn init(allocator: std.mem.Allocator) !*@This() {
+        return try initWithType(allocator, .genetic_algorithm);
     }
 
     pub fn deinit(self: *@This()) void {
@@ -156,8 +178,11 @@ pub const PatternEvolution = struct {
         try callback(self.rt_context, &self.state, self.state.pattern_id);
     }
     
-    /// Evolve a single step
-    pub fn evolveStep(self: *PatternEvolution) !void {
+    /// Evolve a single step with enhanced operations
+    pub fn evolveStep(self: *PatternEvolution) !EvolutionMetrics {
+        const start_time = std.time.milliTimestamp();
+        var metrics = EvolutionMetrics{};
+        
         // Initialize population if this is the first step
         if (self.current_population == null) {
             if (self.current_best == null) {
@@ -165,6 +190,161 @@ pub const PatternEvolution = struct {
             }
             self.current_population = try self.generatePopulation(self.current_best.?);
         }
+        
+        const population = self.current_population orelse return error.NoPopulation;
+        if (population.len == 0) return error.EmptyPopulation;
+        
+        // Initialize pattern operations
+        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.timestamp())));
+        var mutator = pattern_ops.PatternMutator.init(self.allocator, rng.random().int(u64));
+        var crossover = pattern_ops.PatternCrossover.init(self.allocator, rng.random().int(u64));
+        var fitness_calc = pattern_ops.PatternFitness.init(self.allocator);
+        
+        // Track metrics
+        var total_fitness: f64 = 0.0;
+        var best_fitness: f64 = 0.0;
+        var best_individual: ?[]const u8 = null;
+        
+        // Calculate fitness for each individual
+        for (population) |individual| {
+            const fitness = self.state.fitness_fn(self.state.fitness_ctx, individual);
+            total_fitness += fitness;
+            
+            // Track the best individual
+            if (best_individual == null || fitness > best_fitness) {
+                best_fitness = fitness;
+                best_individual = individual;
+            }
+        }
+        
+        // Update metrics
+        metrics.fitness_improvement = best_fitness - (self.state.fitness);
+        self.state.fitness = best_fitness;
+        
+        // Apply quantum-enhanced operations if enabled
+        if (self.state.evolution_type == .quantum_enhanced || 
+            self.state.evolution_type == .crystal_computing) 
+        {
+            try self.applyQuantumEnhancement(population, &metrics);
+        }
+        
+        // Update the best pattern if we found a better one
+        if (best_individual) |best| {
+            if (self.current_best) |current| {
+                const current_fitness = self.state.fitness_fn(self.state.fitness_ctx, current);
+                if (best_fitness > current_fitness) {
+                    self.allocator.free(current);
+                    self.current_best = try self.allocator.dupe(u8, best);
+                }
+            } else {
+                self.current_best = try self.allocator.dupe(u8, best);
+            }
+        }
+        
+        // Calculate diversity and convergence metrics
+        metrics.diversity = try self.calculateDiversity(population);
+        metrics.convergence = try self.calculateConvergence(population);
+        metrics.generation_time_ms = @as(u64, @intCast(std.time.milliTimestamp() - start_time));
+        
+        return metrics;
+    }
+    
+    /// Apply quantum enhancement to the population
+    fn applyQuantumEnhancement(self: *PatternEvolution, population: [][]const u8, metrics: *EvolutionMetrics) !void {
+        // Initialize quantum components if needed
+        if (self.quantum_processor == null) {
+            self.quantum_processor = try quantum_algs.QuantumProcessor.init(self.allocator, .{
+                .use_crystal_computing = (self.state.evolution_type == .crystal_computing),
+                .max_qubits = 32,
+                .enable_parallel = true,
+                .optimization_level = 3,
+            });
+        }
+        
+        // Apply quantum enhancement to each individual
+        for (population) |individual| {
+            // Convert pattern to quantum state (simplified)
+            var qstate = try self.patternToQuantumState(individual);
+            
+            // Apply quantum processing
+            try self.quantum_processor.?.process(&qstate);
+            
+            // Update quantum metrics
+            metrics.quantum_entanglement = qstate.entanglement;
+            
+            // Apply crystal computing if enabled
+            if (self.state.evolution_type == .crystal_computing) {
+                if (self.crystal_computing == null) {
+                    self.crystal_computing = try quantum_algs.CrystalComputing.init(
+                        self.allocator, 4, 4, 4); // 4x4x4 crystal lattice
+                }
+                try self.crystal_computing.?.applyCrystalEffects(&qstate);
+                metrics.crystal_coherence = self.crystal_computing.?.calculateCoherence();
+            }
+            
+            // Convert back to classical pattern (simplified)
+            try self.quantumStateToPattern(&qstate, individual);
+        }
+    }
+    
+    /// Convert pattern to quantum state (simplified)
+    fn patternToQuantumState(self: *PatternEvolution, pattern: []const u8) !quantum_algs.QuantumState {
+        _ = self; // Unused
+        // In a real implementation, this would convert the pattern to a quantum state
+        // For now, return a simple state
+        return quantum_algs.QuantumState{
+            .amplitudes = try self.allocator.alloc(Complex, 1 << 5), // 5 qubits
+            .num_qubits = 5,
+            .entanglement = 0.0,
+        };
+    }
+    
+    /// Convert quantum state back to pattern (simplified)
+    fn quantumStateToPattern(self: *PatternEvolution, qstate: *quantum_algs.QuantumState, pattern: []u8) !void {
+        _ = self; // Unused
+        _ = qstate; // Unused
+        // In a real implementation, this would measure the quantum state
+        // and convert it back to a pattern
+        for (0..pattern.len) |i| {
+            pattern[i] = @as(u8, @intFromFloat(
+                std.math.sin(@as(f64, @floatFromInt(i))) * 128.0 + 128.0
+            ));
+        }
+    }
+    
+    /// Calculate population diversity
+    fn calculateDiversity(self: *PatternEvolution, population: [][]const u8) !f64 {
+        if (population.len <= 1) return 0.0;
+        
+        var total_distance: f64 = 0.0;
+        var count: usize = 0;
+        
+        for (0..population.len-1) |i| {
+            for (i+1..population.len) |j| {
+                total_distance += self.calculateHammingDistance(population[i], population[j]);
+                count += 1;
+            }
+        }
+        
+        return if (count > 0) total_distance / @as(f64, @floatFromInt(count)) else 0.0;
+    }
+    
+    /// Calculate population convergence
+    fn calculateConvergence(self: *PatternEvolution, population: [][]const u8) !f64 {
+        if (population.len == 0) return 0.0;
+        
+        // Calculate average distance to best individual
+        if (self.current_best == null) return 0.0;
+        
+        var total_distance: f64 = 0.0;
+        for (population) |individual| {
+            total_distance += self.calculateHammingDistance(individual, self.current_best.?);
+        }
+        
+        // Normalize to [0,1] range (lower is more converged)
+        const avg_distance = total_distance / @as(f64, @floatFromInt(population.len));
+        return 1.0 / (1.0 + avg_distance);
+    }
         
         const population = self.current_population orelse return error.NoPopulation;
         if (population.len == 0) return error.EmptyPopulation;
@@ -482,7 +662,7 @@ pub const PatternEvolution = struct {
     }
 
     /// Calculate Hamming distance
-    fn calculateHammingDistance(_: *PatternEvolution, data1: []const u8, data2: []const u8) f64 {
+    fn calculateHammingDistance(_: *const PatternEvolution, data1: []const u8, data2: []const u8) f64 {
         var distance: usize = 0;
         const min_len = @min(data1.len, data2.len);
 

@@ -5,15 +5,23 @@
 // 👤 Author: isdood
 
 const std = @import("std");
-const neural = @import("neural");
-const pattern_recognition = neural.pattern_recognition;
-const quantum_processor = neural.quantum_processor;
-const visual_synthesis = neural.visual_synthesis;
-const pattern_visualization = neural.pattern_visualization;
-const pattern_generator = neural.pattern_generator;
-const PatternGenerator = pattern_generator.PatternGenerator;
-const GeneratorConfig = pattern_generator.GeneratorConfig;
-const PatternAlgorithm = pattern_generator.PatternAlgorithm;
+const math = std.math;
+const mem = std.mem;
+const Allocator = std.mem.Allocator;
+
+// Import neural modules
+const neural = @import("../neural.zig");
+const pattern_recognition = @import("pattern_recognition.zig");
+const quantum_processor = @import("quantum_processor.zig");
+const visual_synthesis = @import("visual_synthesis.zig");
+const pattern_visualization = @import("pattern_visualization.zig");
+const pattern_generator = @import("pattern_generator.zig");
+
+// Re-export commonly used types
+pub const PatternGenerator = pattern_generator.PatternGenerator;
+pub const GeneratorConfig = pattern_generator.GeneratorConfig;
+pub const PatternAlgorithm = pattern_generator.PatternAlgorithm;
+pub const Pattern = pattern_generator.Pattern;
 
 /// Pattern synthesis configuration
 pub const SynthesisConfig = struct {
@@ -84,7 +92,12 @@ pub const PatternSynthesis = struct {
                 .visual_state = undefined,
                 .visualization_state = undefined,
             },
-            .quantum = try quantum_processor.QuantumProcessor.init(allocator),
+            .quantum = try quantum_processor.QuantumProcessor.init(allocator, .{
+                .use_crystal_computing = true,
+                .max_qubits = 32,
+                .enable_parallel = true,
+                .optimization_level = 3,
+            }),
             .visual = try visual_synthesis.VisualProcessor.init(allocator),
             .visualizer = try pattern_visualization.PatternVisualizer.init(allocator),
         };
@@ -113,7 +126,7 @@ pub const PatternSynthesis = struct {
         defer pattern.deinit();
         
         // TODO: Process the generated pattern through quantum and visual synthesis
-        _ = pattern; // Temporary to avoid unused variable warning
+        // The pattern is used in the defer statement above
     }
     
     /// Synthesize pattern data

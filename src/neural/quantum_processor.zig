@@ -15,8 +15,13 @@ const Thread = std.Thread;
 const Atomic = std.atomic.Value;
 const math = std.math;
 const testing = std.testing;
+const Random = std.Random;
+const Xoshiro256 = @import("std").Random.Xoshiro256;
 const Complex = std.math.Complex;
 const quantum_types = @import("quantum_types.zig");
+
+// Re-export QuantumState for use in other modules
+pub const QuantumState = quantum_types.QuantumState;
 
 /// Quantum processor configuration
 pub const QuantumConfig = struct {
@@ -32,7 +37,8 @@ pub const QuantumProcessor = struct {
     allocator: Allocator,
     config: QuantumConfig,
     state: quantum_types.QuantumState,
-    rng: std.rand.Xoshiro256,
+    rng: Xoshiro256,
+    random: Random,
     thread_pool: ?*ThreadPool = null,
 
     pub fn init(allocator: Allocator, config: QuantumConfig) !*@This() {
@@ -41,6 +47,10 @@ pub const QuantumProcessor = struct {
 
         // Initialize quantum state
         const state = try quantum_types.QuantumState.init(allocator, config.max_qubits);
+
+        // Initialize random number generator with a fixed seed for now
+        var rng = Xoshiro256.init(42);
+        const random = rng.random();
 
         // Initialize thread pool if parallel processing is enabled
         var thread_pool: ?*ThreadPool = null;
@@ -56,7 +66,8 @@ pub const QuantumProcessor = struct {
             .allocator = allocator,
             .config = config,
             .state = state,
-            .rng = std.rand.DefaultPrng.init(@intCast(std.time.milliTimestamp())),
+            .rng = rng,
+            .random = random,
             .thread_pool = thread_pool,
         };
 
