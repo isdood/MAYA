@@ -1,39 +1,87 @@
+const std = @import("std");
+const pattern_synthesis = @import("pattern_synthesis.zig");
+
 pub const PatternEvolution = struct {
-    // All fields grouped first - absolutely no exceptions
+    // First: All type declarations
+    pub const EvolutionState = struct {
+        generation: u64 = 0,
+        fitness: f64 = 0.0,
+        diversity: f64 = 0.0,
+        convergence: f64 = 0.0,
+        pattern_id: []const u8 = "",
+        fitness_fn: *const fn (ctx: ?*anyopaque, data: []const u8) f64 = undefined,
+        fitness_ctx: ?*anyopaque = null,
+        evolution_type: EvolutionType = .gradient_descent,
+        synthesis_state: pattern_synthesis.SynthesisState = undefined,
+        transformation_state: void = {},
+        
+        pub fn isValid(self: *const @This()) bool {
+            return self.fitness >= 0.0 and self.fitness <= 1.0 and
+                   self.diversity >= 0.0 and self.diversity <= 1.0 and
+                   self.convergence >= 0.0 and self.convergence <= 1.0;
+        }
+    };
+    
+    pub const EvolutionConfig = struct {
+        population_size: usize = 100,
+        mutation_rate: f64 = 0.01,
+        crossover_rate: f64 = 0.8,
+        elitism: bool = true,
+        max_generations: u64 = 1000,
+    };
+    
+    pub const RealTimeConfig = struct {
+        update_interval_ms: u64 = 1000,
+        max_runtime_ms: u64 = 0, // 0 = no limit
+        max_generations: u64 = 0, // 0 = no limit
+        target_fitness: f64 = 1.0,
+        threaded: bool = true,
+    };
+    
+    pub const EvolutionCallback = *const fn (ctx: ?*anyopaque, state: *const EvolutionState, best_pattern: []const u8) anyerror!void;
+    
+    /// Type of evolution to perform
+    pub const EvolutionType = enum {
+        gradient_descent,
+        genetic_algorithm,
+        particle_swarm,
+        simulated_annealing,
+        random_search,
+    };
+    
+    // All container fields must be declared first in Zig
     current_best: ?[]const u8 = null,
     state: EvolutionState,
     allocator: std.mem.Allocator,
-    config: EvolutionConfig,
+    rt_callback: ?EvolutionCallback = null,
+    rt_should_stop: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(false),
+    rt_config: RealTimeConfig = .{},
     rt_context: ?*anyopaque = null,
     rt_thread: ?std.Thread = null,
-    rt_should_stop: std.atomic.Atomic(bool),
-    synthesis: pattern_synthesis.Synthesis,
-    transformer: pattern_transformation.Transformer,
-    current_population: ?[][]const u8 = null,
-    rt_config: ?RealTimeConfig = null,
-    rt_callback: ?EvolutionCallback = null,
-
-    // Then all functions - nothing else between fields
+    current_population: ?[]const []const u8 = null,
+    synthesis: type = @import("pattern_synthesis.zig").PatternSynthesis,
+    config: EvolutionConfig = .{},
+    
+    // Then all methods
     pub fn init(allocator: std.mem.Allocator) !*@This() {
         const self = try allocator.create(@This());
+        errdefer allocator.destroy(self);
+        
         self.* = .{
-            .current_best = null,
-            .state = .{},
             .allocator = allocator,
-            .config = .{},
-            .rt_context = null,
-            .rt_thread = null,
-            .rt_should_stop = std.atomic.Atomic(bool).init(false),
-            .synthesis = try pattern_synthesis.PatternSynthesizer.init(allocator, .{}),
-            .transformer = try pattern_transformation.PatternTransformer.init(allocator),
-            .current_population = null,
-            .rt_config = null,
-            .rt_callback = null
+            .state = .{
+                .fitness_fn = undefined, // Must be set by the caller
+                .fitness_ctx = null,
+            },
         };
+        
         return self;
     }
 
     pub fn deinit(self: *@This()) void {
+        if (self.current_best) |best| {
+            self.allocator.free(best);
+        }
         self.allocator.destroy(self);
     }
 
@@ -199,7 +247,6 @@ pub const PatternEvolution = struct {
         
         // Update current population
         self.current_population = new_population;
-        }
         
         // Update evolution state
         self.state.generation += 1;
@@ -275,17 +322,11 @@ pub const PatternEvolution = struct {
     }
 
     /// Generate population
-    fn generatePopulation(self: *PatternEvolution, pattern_data: []const u8) ![][]const u8 {
-        // Initialize the population with random patterns
-        var population = try self.allocator.alloc([]const u8, self.config.population_size);
-        var seed = @as(u64, @intCast(std.time.milliTimestamp()));
-        var rng = std.rand.DefaultPrng.init(seed);
-        for (population) |*individual| {
-            individual.* = try self.allocator.alloc(u8, self.config.pattern_size);
-            for (individual.*) |*byte| {
-                byte.* = rng.random().int(u8);
-            }
-        }
+    fn generatePopulation(_: *PatternEvolution, pattern_data: []const u8) ![][]const u8 {
+        // TODO: Implement actual population generation
+        // For now, just return an array with a single copy of the pattern
+        const population = try std.heap.page_allocator.alloc([]const u8, 1);
+        population[0] = pattern_data;
         return population;
     }
 
@@ -337,22 +378,48 @@ pub const PatternEvolution = struct {
         // Copy second part from parent2
         @memcpy(child[crossover_point..], parent2[crossover_point..]);
         
-        // Apply mutation
-        try self.mutatePattern(child);
+        // Apply mutation in place
+        try self.mutatePattern(child, true);
         
         return child;
     }
     
-    /// Mutate a pattern in-place
-    fn mutatePattern(self: *PatternEvolution, pattern: []u8) !void {
+    /// Mutate a pattern
+    /// If `in_place` is true, mutates the input buffer directly and returns void
+    /// If `in_place` is false, returns a new mutated copy of the input
+    fn mutatePattern(self: *PatternEvolution, pattern: anytype, in_place: bool) anyerror!if (in_place) void else []const u8 {
         var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
         
-        for (pattern) |*byte| {
-            if (rng.random().float(f64) < self.config.mutation_rate) {
-                // Flip a random bit in the byte
-                const bit_pos = rng.random().int(u3);
-                byte.* ^= @as(u8, 1) << @intCast(bit_pos);
+        const pattern_type = @TypeOf(pattern);
+        const is_mutable = std.meta.Elem(pattern_type) == u8;
+        
+        if (!in_place) {
+            // Create a copy if not mutating in place
+            const mutated = try self.allocator.dupe(u8, pattern);
+            errdefer self.allocator.free(mutated);
+            
+            for (mutated) |*byte| {
+                if (rng.random().float(f64) < self.config.mutation_rate) {
+                    // Flip a random bit in the byte
+                    const bit_pos = rng.random().int(u3);
+                    byte.* ^= @as(u8, 1) << @intCast(bit_pos);
+                }
             }
+            
+            return mutated;
+        } else if (is_mutable) {
+            // Mutate in place
+            for (pattern) |*byte| {
+                if (rng.random().float(f64) < self.config.mutation_rate) {
+                    // Flip a random bit in the byte
+                    const bit_pos = rng.random().int(u3);
+                    byte.* ^= @as(u8, 1) << @intCast(bit_pos);
+                }
+            }
+            return;
+        } else {
+            // Can't mutate an immutable slice in place
+            return error.CannotMutateImmutableSlice;
         }
     }
 
@@ -373,21 +440,6 @@ pub const PatternEvolution = struct {
             .data = best_individual,
             .fitness = best_fitness,
         };
-    }
-
-    /// Mutate pattern
-    fn mutatePattern(self: *PatternEvolution, pattern_data: []const u8) ![]const u8 {
-        const mutated = try self.allocator.dupe(u8, pattern_data);
-        errdefer self.allocator.free(mutated);
-
-        // Apply mutations based on mutation rate
-        for (mutated) |*byte| {
-            if (self.shouldMutate()) {
-                byte.* = @as(u8, @truncate(std.crypto.random.int(u8)));
-            }
-        }
-
-        return mutated;
     }
 
     /// Evaluate fitness
@@ -417,14 +469,11 @@ pub const PatternEvolution = struct {
         return state.fitness;
     }
 
-    /// Determine evolution type
-    fn determineEvolutionType(_: *PatternEvolution, state: pattern_synthesis.SynthesisState) EvolutionType {
-        return switch (state.pattern_type) {
-            .Quantum => .Quantum,
-            .Visual => .Visual,
-            .Neural => .Neural,
-            .Universal => .Universal,
-        };
+    /// Determine evolution type based on pattern characteristics
+    fn determineEvolutionType(_: *PatternEvolution, state: pattern_synthesis.PatternSynthesis.SynthesisState) EvolutionType {
+        _ = state; // Silence unused parameter warning
+        // TODO: Implement actual evolution type determination
+        return .gradient_descent;
     }
 
     /// Should mutate
@@ -444,17 +493,6 @@ pub const PatternEvolution = struct {
         }
 
         return @as(f64, @floatFromInt(distance)) / @as(f64, @floatFromInt(min_len));
-    }
-
-    fn calculateIterations(self: *PatternTransformer, state: *TransformationState, source_data: []const u8, target_data: []const u8) usize {
-    _ = self; // Mark as unused but keep interface consistent
-    const base_iterations = state.base_iterations;
-    const source_complexity = calculatePatternComplexity(source_data);
-    const target_complexity = calculatePatternComplexity(target_data);
-    return @min(
-        state.max_iterations, 
-        base_iterations + @as(usize, @intFromFloat(@max(source_complexity, target_complexity) * 10.0))
-        );
     }
     
 };

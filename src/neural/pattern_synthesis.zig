@@ -1,13 +1,19 @@
 // 🎯 MAYA Pattern Synthesis Core
-// ✨ Version: 1.0.0
+// ✨ Version: 1.1.0
 // 📅 Created: 2025-06-18
+// 📝 Updated: 2025-06-21
 // 👤 Author: isdood
 
 const std = @import("std");
-const pattern_recognition = @import("pattern_recognition.zig");
-const quantum_processor = @import("quantum_processor.zig");
-const visual_synthesis = @import("visual_synthesis.zig");
-const pattern_visualization = @import("pattern_visualization.zig");
+const neural = @import("neural");
+const pattern_recognition = neural.pattern_recognition;
+const quantum_processor = neural.quantum_processor;
+const visual_synthesis = neural.visual_synthesis;
+const pattern_visualization = neural.pattern_visualization;
+const pattern_generator = neural.pattern_generator;
+const PatternGenerator = pattern_generator.PatternGenerator;
+const GeneratorConfig = pattern_generator.GeneratorConfig;
+const PatternAlgorithm = pattern_generator.PatternAlgorithm;
 
 /// Pattern synthesis configuration
 pub const SynthesisConfig = struct {
@@ -92,6 +98,24 @@ pub const PatternSynthesis = struct {
         self.allocator.destroy(self);
     }
 
+    /// Generate a new pattern using the specified algorithm
+    pub fn generatePattern(self: *PatternSynthesis, algorithm: PatternAlgorithm) !void {
+        const config = GeneratorConfig{
+            .width = 512,
+            .height = 512,
+            .algorithm = algorithm,
+        };
+        
+        var gen = try PatternGenerator.init(self.allocator, config);
+        defer gen.deinit();
+        
+        const pattern = try gen.generate();
+        defer pattern.deinit();
+        
+        // TODO: Process the generated pattern through quantum and visual synthesis
+        _ = pattern; // Temporary to avoid unused variable warning
+    }
+    
     /// Synthesize pattern data
     pub fn synthesize(self: *PatternSynthesis, pattern_data: []const u8) !SynthesisState {
         // Process pattern through quantum processor

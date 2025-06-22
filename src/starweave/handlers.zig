@@ -48,7 +48,7 @@ pub const HandlerContext = struct {
 
 /// Handler for quantum state messages
 pub fn handleQuantumState(ctx: *anyopaque, message: protocol.Message) !void {
-    const handler_ctx = @ptrCast(*HandlerContext, ctx);
+    const handler_ctx = @as(*HandlerContext, @ptrCast(ctx));
     const state = message.data.quantum_state;
     
     // Update neural bridge with new quantum state
@@ -68,7 +68,7 @@ pub fn handleQuantumState(ctx: *anyopaque, message: protocol.Message) !void {
 
 /// Handler for neural activity messages
 pub fn handleNeuralActivity(ctx: *anyopaque, message: protocol.Message) !void {
-    const handler_ctx = @ptrCast(*HandlerContext, ctx);
+    const handler_ctx = @as(*HandlerContext, @ptrCast(ctx));
     const activity = message.data.neural_activity;
     
     // Process neural activity
@@ -88,7 +88,7 @@ pub fn handleNeuralActivity(ctx: *anyopaque, message: protocol.Message) !void {
 
 /// Handler for pattern update messages
 pub fn handlePatternUpdate(ctx: *anyopaque, message: protocol.Message) !void {
-    const handler_ctx = @ptrCast(*HandlerContext, ctx);
+    const handler_ctx = @as(*HandlerContext, @ptrCast(ctx));
     const pattern = message.data.pattern_update;
     
     // Update pattern system
@@ -111,7 +111,7 @@ pub fn handlePatternUpdate(ctx: *anyopaque, message: protocol.Message) !void {
 
 /// Handler for system status messages
 pub fn handleSystemStatus(ctx: *anyopaque, message: protocol.Message) !void {
-    const handler_ctx = @ptrCast(*HandlerContext, ctx);
+    const handler_ctx = @as(*HandlerContext, @ptrCast(ctx));
     const status = message.data.system_status;
     
     // Update system status
@@ -125,7 +125,7 @@ pub fn handleSystemStatus(ctx: *anyopaque, message: protocol.Message) !void {
 
 /// Handler for error report messages
 pub fn handleErrorReport(ctx: *anyopaque, message: protocol.Message) !void {
-    const handler_ctx = @ptrCast(*HandlerContext, ctx);
+    const handler_ctx = @as(*HandlerContext, @ptrCast(ctx));
     const report = message.data.error_report;
     
     // Log error based on severity
@@ -148,24 +148,24 @@ pub fn handleErrorReport(ctx: *anyopaque, message: protocol.Message) !void {
 }
 
 /// Register all handlers with the protocol
-pub fn registerHandlers(protocol: *protocol.StarweaveProtocol, ctx: *HandlerContext) !void {
-    try protocol.registerHandler(.quantum_state, handleQuantumState);
-    try protocol.registerHandler(.neural_activity, handleNeuralActivity);
-    try protocol.registerHandler(.pattern_update, handlePatternUpdate);
-    try protocol.registerHandler(.system_status, handleSystemStatus);
-    try protocol.registerHandler(.error_report, handleErrorReport);
+pub fn registerHandlers(proto: *protocol.StarweaveProtocol, _: *HandlerContext) !void {
+    try proto.registerHandler(.quantum_state, handleQuantumState);
+    try proto.registerHandler(.neural_activity, handleNeuralActivity);
+    try proto.registerHandler(.pattern_update, handlePatternUpdate);
+    try proto.registerHandler(.system_status, handleSystemStatus);
+    try proto.registerHandler(.error_report, handleErrorReport);
 }
 
 /// Logging functions
-fn logInfo(ctx: *HandlerContext, comptime fmt: []const u8, args: anytype) !void {
+fn logInfo(_: *HandlerContext, comptime fmt: []const u8, args: anytype) !void {
     std.log.info(fmt, args);
 }
 
-fn logWarning(ctx: *HandlerContext, comptime fmt: []const u8, args: anytype) !void {
+fn logWarning(_: *HandlerContext, comptime fmt: []const u8, args: anytype) !void {
     std.log.warn(fmt, args);
 }
 
-fn logError(ctx: *HandlerContext, comptime fmt: []const u8, args: anytype) !void {
+fn logError(_: *HandlerContext, comptime fmt: []const u8, args: anytype) !void {
     std.log.err(fmt, args);
 }
 

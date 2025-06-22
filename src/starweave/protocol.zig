@@ -322,8 +322,8 @@ test "GLIMMER protocol integration" {
     };
     
     // Basic protocol tests
-    var node_id = [_]u8{0} ** 32;
-    const handshake = Handshake.init(node_id);
+    const node_id = [_]u8{0} ** 32;
+    const handshake = Handshake.init(&node_id);
     try testing.expect(handshake.version == VERSION);
     
     var header = MessageHeader.init(.ping, 0);

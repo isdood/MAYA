@@ -5,9 +5,12 @@ const std = @import("std");
 const testing = std.testing;
 
 // Core neural modules
-pub const pattern_recognition = @import("pattern_recognition/mod.zig");
-pub const pattern_synthesis = @import("pattern_synthesis/mod.zig");
-pub const pattern_processor = @import("pattern_processor/mod.zig");
+pub const pattern_recognition = @import("pattern_recognition.zig");
+pub const pattern_synthesis = @import("pattern_synthesis.zig");
+pub const pattern_processor = @import("pattern_processor.zig");
+pub const pattern_generator = @import("pattern_generator.zig");
+pub const visual_synthesis = @import("visual_synthesis.zig");
+pub const pattern_visualization = @import("pattern_visualization.zig");
 
 // Re-export common types for convenience
 pub const Pattern = pattern_recognition.Pattern;
@@ -18,7 +21,15 @@ pub const PatternProcessor = pattern_processor.PatternProcessor;
 // Core neural components
 pub const VisualState = @import("visual_processor.zig").VisualState;
 pub const VisualProcessor = @import("visual_processor.zig").VisualProcessor;
-pub const Bridge = @import("bridge.zig").Bridge;
+
+/// Bridge provides connectivity between neural components and the rest of the system.
+pub const Bridge = struct {
+    /// Connect to the neural bridge.
+    pub fn connect() !void {
+        // TODO: Implement actual bridge connection logic
+        return;
+    }
+};
 pub const QuantumProcessor = @import("quantum_processor.zig").QuantumProcessor;
 pub const NeuralProcessor = @import("neural_processor.zig").NeuralProcessor;
 pub const NeuralBridge = @import("neural_bridge.zig").NeuralBridge;

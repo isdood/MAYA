@@ -13,6 +13,7 @@ pub const TransformationConfig = struct {
     min_quality: f64 = 0.95,
     max_iterations: usize = 100,
     convergence_threshold: f64 = 0.001,
+    complexity_factor: f64 = 10.0,
 
     // Performance settings
     batch_size: usize = 32,
@@ -34,6 +35,8 @@ pub const TransformationState = struct {
     // Component states
     source_state: pattern_synthesis.SynthesisState,
     target_state: pattern_synthesis.SynthesisState,
+
+    max_iterations: usize,
 
     base_iterations: usize, // New field
 
@@ -77,6 +80,7 @@ pub const PatternTransformer = struct {
                 .transformation_type = .Universal,
                 .source_state = undefined,
                 .target_state = undefined,
+                .max_iterations = 100,
                 .base_iterations = 0, // Initialize new field
             },
             .synthesis = try pattern_synthesis.PatternSynthesis.init(allocator),
@@ -107,6 +111,7 @@ pub const PatternTransformer = struct {
             .transformation_type = self.determineTransformationType(source_state, target_state),
             .source_state = source_state,
             .target_state = target_state,
+            .max_iterations = self.config.max_iterations,
             .base_iterations = 0, // Initialize new field
         };
 
@@ -140,7 +145,7 @@ pub const PatternTransformer = struct {
 
     /// Determine transformation type
     fn determineTransformationType(
-        self: *PatternTransformer,
+        _: *PatternTransformer,
         source_state: pattern_synthesis.SynthesisState,
         target_state: pattern_synthesis.SynthesisState
     ) TransformationType {
@@ -163,12 +168,13 @@ pub const PatternTransformer = struct {
 
     /// Calculate transformation iterations
     fn calculateIterations(self: *PatternTransformer, state: *TransformationState, source_data: []const u8, target_data: []const u8) usize {
+        const complexity_factor = self.config.complexity_factor;
         const base_iterations = state.base_iterations;
         const source_complexity = self.calculatePatternComplexity(source_data);
         const target_complexity = self.calculatePatternComplexity(target_data);
         return @min(
-            self.config.max_iterations,
-            base_iterations + @as(usize, @intFromFloat(@max(source_complexity, target_complexity) * 10.0))
+            state.max_iterations,
+            base_iterations + @as(usize, @intFromFloat(@max(source_complexity, target_complexity) * complexity_factor))
         );
     }
 
