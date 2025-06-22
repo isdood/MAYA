@@ -3,10 +3,10 @@
 ## Quantum-Coherent Predictive Caching for Pattern Processing
 
 ```ascii
-  Data Crystal   →   Shattered Form
-      ▲           →    ▲ ▲ ▲  
-     /|\         →    |/|\|
-    ▲-▲-▲        →   ▲-▲-▲   
+  Data Crystal    →   Shattered Form
+      ▲           →       ▲ ▲ ▲  
+     /|\          →       |/|\|
+    ▲-▲-▲         →       ▲-▲-▲   
 ```
 
 **Version**: 0.1.0  

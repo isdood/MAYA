@@ -87,7 +87,9 @@ pub const QuantumFourierTransform = struct {
         const target_mask = @as(usize, 1) << target;
         
         for (0..n) |i| {
-            if ((i & control_mask) != 0 && (i & target_mask) != 0) {
+            const control_set = (i & control_mask) != 0;
+            const target_set = (i & target_mask) != 0;
+            if (control_set and target_set) {
                 const phase = Complex(f64).init(@cos(angle), @sin(angle));
                 state[i] = state[i].mul(phase);
             }
@@ -117,7 +119,7 @@ pub const GroverSearch = struct {
         const n = @as(usize, 1) << num_qubits;
         
         // Initialize uniform superposition
-        var state = try self.allocator.alloc(Complex(f64), n);
+        const state = try self.allocator.alloc(Complex(f64), n);
         defer self.allocator.free(state);
         
         const amplitude = 1.0 / @sqrt(@as(f64, @floatFromInt(n)));
@@ -252,7 +254,9 @@ pub const CrystalComputing = struct {
         var count: usize = 0;
         
         // Check correlations between neighboring sites
-        const [dim_x, dim_y, dim_z] = self.dimensions;
+        const dim_x = self.dimensions[0];
+        const dim_y = self.dimensions[1];
+        const dim_z = self.dimensions[2];
         
         for (0..dim_x) |x| {
             for (0..dim_y) |y| {
@@ -285,7 +289,8 @@ pub const CrystalComputing = struct {
     }
     
     fn getIndex(self: *const @This(), x: usize, y: usize, z: usize) usize {
-        const [dim_x, dim_y, _] = self.dimensions;
+        const dim_x = self.dimensions[0];
+        const dim_y = self.dimensions[1];
         return x + y * dim_x + z * dim_x * dim_y;
     }
 };

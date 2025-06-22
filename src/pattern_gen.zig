@@ -6,7 +6,7 @@
 const std = @import("std");
 const neural = @import("neural");
 const PatternSynthesis = neural.pattern_synthesis.PatternSynthesis;
-const PatternAlgorithm = neural.pattern_generator.PatternAlgorithm;
+const Algorithm = neural.pattern_generator.Algorithm;
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
@@ -22,7 +22,7 @@ pub fn main() !void {
     defer synthesis.deinit();
 
     // List of algorithms to test
-    const algorithms = [_]struct { name: []const u8, algo: PatternAlgorithm }{
+    const algorithms = [_]struct { name: []const u8, algo: Algorithm }{
         .{ .name = "Random", .algo = .Random },
         .{ .name = "Gradient", .algo = .Gradient },
         .{ .name = "Wave", .algo = .Wave },

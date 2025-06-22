@@ -194,12 +194,6 @@ pub const PatternEvolution = struct {
         const population = self.current_population orelse return error.NoPopulation;
         if (population.len == 0) return error.EmptyPopulation;
         
-        // Initialize pattern operations
-        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.timestamp())));
-        var mutator = pattern_ops.PatternMutator.init(self.allocator, rng.random().int(u64));
-        var crossover = pattern_ops.PatternCrossover.init(self.allocator, rng.random().int(u64));
-        var fitness_calc = pattern_ops.PatternFitness.init(self.allocator);
-        
         // Track metrics
         var total_fitness: f64 = 0.0;
         var best_fitness: f64 = 0.0;
@@ -211,7 +205,10 @@ pub const PatternEvolution = struct {
             total_fitness += fitness;
             
             // Track the best individual
-            if (best_individual == null || fitness > best_fitness) {
+            if (best_individual == null) {
+                best_fitness = fitness;
+                best_individual = individual;
+            } else if (fitness > best_fitness) {
                 best_fitness = fitness;
                 best_individual = individual;
             }
@@ -222,8 +219,9 @@ pub const PatternEvolution = struct {
         self.state.fitness = best_fitness;
         
         // Apply quantum-enhanced operations if enabled
-        if (self.state.evolution_type == .quantum_enhanced || 
-            self.state.evolution_type == .crystal_computing) 
+        const et = self.state.evolution_type;
+        if (et == EvolutionType.quantum_enhanced or 
+            et == EvolutionType.crystal_computing) 
         {
             try self.applyQuantumEnhancement(population, &metrics);
         }
@@ -254,7 +252,7 @@ pub const PatternEvolution = struct {
         // Initialize quantum components if needed
         if (self.quantum_processor == null) {
             self.quantum_processor = try quantum_algs.QuantumProcessor.init(self.allocator, .{
-                .use_crystal_computing = (self.state.evolution_type == .crystal_computing),
+                .use_crystal_computing = (self.state.evolution_type == EvolutionType.crystal_computing),
                 .max_qubits = 32,
                 .enable_parallel = true,
                 .optimization_level = 3,
@@ -288,12 +286,12 @@ pub const PatternEvolution = struct {
     }
     
     /// Convert pattern to quantum state (simplified)
-    fn patternToQuantumState(self: *PatternEvolution, pattern: []const u8) !quantum_algs.QuantumState {
-        _ = self; // Unused
-        // In a real implementation, this would convert the pattern to a quantum state
-        // For now, return a simple state
+    fn patternToQuantumState(self: *PatternEvolution, pattern_data: []const u8) !quantum_algs.QuantumState {
+        _ = pattern_data; // Will be used in a future implementation
+        
+        // For now, return a simple quantum state
         return quantum_algs.QuantumState{
-            .amplitudes = try self.allocator.alloc(Complex, 1 << 5), // 5 qubits
+            .amplitudes = try self.allocator.alloc(quantum_algs.Complex, 1 << 5), // 5 qubits
             .num_qubits = 5,
             .entanglement = 0.0,
         };
@@ -312,131 +310,9 @@ pub const PatternEvolution = struct {
         }
     }
     
-    /// Calculate population diversity
-    fn calculateDiversity(self: *PatternEvolution, population: [][]const u8) !f64 {
-        if (population.len <= 1) return 0.0;
-        
-        var total_distance: f64 = 0.0;
-        var count: usize = 0;
-        
-        for (0..population.len-1) |i| {
-            for (i+1..population.len) |j| {
-                total_distance += self.calculateHammingDistance(population[i], population[j]);
-                count += 1;
-            }
-        }
-        
-        return if (count > 0) total_distance / @as(f64, @floatFromInt(count)) else 0.0;
-    }
+
     
-    /// Calculate population convergence
-    fn calculateConvergence(self: *PatternEvolution, population: [][]const u8) !f64 {
-        if (population.len == 0) return 0.0;
-        
-        // Calculate average distance to best individual
-        if (self.current_best == null) return 0.0;
-        
-        var total_distance: f64 = 0.0;
-        for (population) |individual| {
-            total_distance += self.calculateHammingDistance(individual, self.current_best.?);
-        }
-        
-        // Normalize to [0,1] range (lower is more converged)
-        const avg_distance = total_distance / @as(f64, @floatFromInt(population.len));
-        return 1.0 / (1.0 + avg_distance);
-    }
-        
-        const population = self.current_population orelse return error.NoPopulation;
-        if (population.len == 0) return error.EmptyPopulation;
-        
-        // Evaluate all individuals in the population
-        var total_fitness: f64 = 0.0;
-        var best_fitness: f64 = 0.0;
-        var best_individual: ?[]const u8 = null;
-        
-        // Calculate fitness for each individual
-        for (population) |individual| {
-            const fitness = self.state.fitness_fn(self.state.fitness_ctx, individual);
-            total_fitness += fitness;
-            
-            // Track the best individual
-            if (best_individual == null or fitness > best_fitness) {
-                best_fitness = fitness;
-                best_individual = individual;
-            }
-        }
-        
-        // Update the best pattern if we found a better one
-        if (best_individual) |best| {
-            if (self.current_best) |current| {
-                const current_fitness = self.state.fitness_fn(self.state.fitness_ctx, current);
-                if (best_fitness > current_fitness) {
-                    self.allocator.free(current);
-                    self.current_best = try self.allocator.dupe(u8, best);
-                }
-            } else {
-                self.current_best = try self.allocator.dupe(u8, best);
-            }
-        }
-        
-        // Calculate population statistics
-        const avg_fitness = total_fitness / @as(f64, @floatFromInt(population.len));
-        
-        // Simple diversity metric (standard deviation of fitness values)
-        var variance: f64 = 0.0;
-        for (population) |individual| {
-            const diff = self.state.fitness_fn(self.state.fitness_ctx, individual) - avg_fitness;
-            variance += diff * diff;
-        }
-        variance /= @as(f64, @floatFromInt(population.len));
-        const diversity = @sqrt(variance);
-        
-        // Update state
-        self.state.generation += 1;
-        self.state.fitness = best_fitness;
-        self.state.diversity = if (diversity > 1.0) 1.0 else if (diversity < 0.0) 0.0 else diversity;
-        self.state.convergence = 1.0 - (diversity / @max(1.0, best_fitness));
-        
-        // Create new population through selection, crossover, and mutation
-        var new_population = try self.allocator.alloc([]const u8, population.len);
-        errdefer {
-            for (new_population) |ind| self.allocator.free(ind);
-            self.allocator.free(new_population);
-        }
-        
-        // Keep the best individual (elitism)
-        if (self.current_best) |best| {
-            new_population[0] = try self.allocator.dupe(u8, best);
-        } else {
-            new_population[0] = try self.allocator.dupe(u8, population[0]);
-        }
-        
-        // Fill the rest of the population with offspring
-        for (new_population[1..]) |*individual| {
-            // Select parents (tournament selection)
-            const parent1 = try self.selectParent(population, 3);
-            const parent2 = try self.selectParent(population, 3);
-            
-            // Create offspring through crossover and mutation
-            individual.* = try self.createOffspring(parent1, parent2);
-        }
-        
-        // Free old population
-        for (population) |ind| self.allocator.free(ind);
-        self.allocator.free(population);
-        
-        // Update current population
-        self.current_population = new_population;
-        
-        // Update evolution state
-        self.state.generation += 1;
-        self.state.diversity = self.calculateDiversity(population);
-        self.state.convergence = self.calculateConvergence(&self.state);
-        
-        // Generate next generation
-        self.freePopulation(population);
-        self.current_population = try self.generatePopulation(self.current_best.?);
-    }
+
     
     /// Evolve pattern data (blocking)
     pub fn evolve(self: *PatternEvolution, pattern_data: []const u8) !EvolutionState {
@@ -603,18 +479,44 @@ pub const PatternEvolution = struct {
         }
     }
 
-    /// Evaluate population
+    /// Evaluate population and return the best individual and its fitness
     fn evaluatePopulation(self: *PatternEvolution, population: [][]const u8) !struct { data: []const u8, fitness: f64 } {
-        var best_fitness: f64 = 0.0;
-        var best_individual: []const u8 = undefined;
+        if (population.len == 0) return error.EmptyPopulation;
+        
+        var best_fitness: f64 = -std.math.f64_max;
+        var best_individual: []const u8 = population[0];
+        var total_fitness: f64 = 0.0;
 
+        // Evaluate all individuals in the population
         for (population) |individual| {
             const fitness = try self.evaluateFitness(individual);
+            total_fitness += fitness;
+            
+            // Track the best individual
             if (fitness > best_fitness) {
                 best_fitness = fitness;
                 best_individual = individual;
             }
         }
+        
+        // Update the best pattern if we found a better one
+        if (best_individual.ptr != self.current_best) {
+            if (self.current_best) |current| {
+                const current_fitness = try self.evaluateFitness(current);
+                if (best_fitness > current_fitness) {
+                    self.allocator.free(current);
+                    self.current_best = try self.allocator.dupe(u8, best_individual);
+                }
+            } else {
+                self.current_best = try self.allocator.dupe(u8, best_individual);
+            }
+        }
+        
+        // Update evolution state
+        // Update fitness and state
+        self.state.fitness = best_fitness;
+        self.state.diversity = self.calculateDiversity(population);
+        self.state.convergence = self.calculateConvergence(&self.state);
 
         return .{
             .data = best_individual,
@@ -644,8 +546,10 @@ pub const PatternEvolution = struct {
         return diversity / (@as(f64, @floatFromInt(n * (n - 1))) / 2.0);
     }
 
-    /// Calculate convergence
-    fn calculateConvergence(_: *PatternEvolution, state: *EvolutionState) f64 {
+    /// Calculate convergence based on fitness
+    fn calculateConvergence(self: *PatternEvolution, state: *EvolutionState) f64 {
+        _ = self; // Unused
+        // Return fitness as convergence metric (higher fitness = more converged)
         return state.fitness;
     }
 

@@ -11,6 +11,7 @@ pub const pattern_processor = @import("pattern_processor.zig");
 pub const pattern_generator = @import("pattern_generator.zig");
 pub const visual_synthesis = @import("visual_synthesis.zig");
 pub const pattern_visualization = @import("pattern_visualization.zig");
+pub const gpu_evolution = @import("gpu_evolution.zig");
 
 // Re-export common types for convenience
 pub const Pattern = pattern_recognition.Pattern;

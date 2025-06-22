@@ -20,8 +20,11 @@ const pattern_generator = @import("pattern_generator.zig");
 // Re-export commonly used types
 pub const PatternGenerator = pattern_generator.PatternGenerator;
 pub const GeneratorConfig = pattern_generator.GeneratorConfig;
-pub const PatternAlgorithm = pattern_generator.PatternAlgorithm;
+pub const Algorithm = pattern_generator.Algorithm;
 pub const Pattern = pattern_generator.Pattern;
+
+// For backward compatibility
+pub const PatternAlgorithm = Algorithm;
 
 /// Pattern synthesis configuration
 pub const SynthesisConfig = struct {
@@ -112,7 +115,7 @@ pub const PatternSynthesis = struct {
     }
 
     /// Generate a new pattern using the specified algorithm
-    pub fn generatePattern(self: *PatternSynthesis, algorithm: PatternAlgorithm) !void {
+    pub fn generatePattern(self: *PatternSynthesis, algorithm: Algorithm) !void {
         const config = GeneratorConfig{
             .width = 512,
             .height = 512,
@@ -122,8 +125,14 @@ pub const PatternSynthesis = struct {
         var gen = try PatternGenerator.init(self.allocator, config);
         defer gen.deinit();
         
-        const pattern = try gen.generate();
-        defer pattern.deinit();
+        const width = 512;  // Default width
+        const height = 512; // Default height
+        const channels = 4; // RGBA
+        const pattern = try gen.generate(width, height, channels);
+        defer {
+            pattern.allocator.free(pattern.data);
+            pattern.allocator.destroy(pattern);
+        }
         
         // TODO: Process the generated pattern through quantum and visual synthesis
         // The pattern is used in the defer statement above
