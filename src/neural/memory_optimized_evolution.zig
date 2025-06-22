@@ -102,7 +102,8 @@ const PatternPool = struct {
         self.chunks.deinit();
     }
     
-    pub fn allocate(self: *@This(), size: usize) ![]u8 {
+    /// Allocate a new pattern with the given size
+    pub fn alloc(self: *@This(), size: usize) ![]u8 {
         // If no chunks or current chunk is full, allocate a new one
         if (self.chunks.items.len == 0 or self.current_offset + size > self.chunk_size) {
             const new_chunk = try self.allocator.alloc(u8, @max(self.chunk_size, size));
@@ -113,12 +114,6 @@ const PatternPool = struct {
         const chunk = self.chunks.items[self.chunks.items.len - 1];
         const start = self.current_offset;
         const end = start + size;
-        
-        // Make sure we don't go out of bounds
-        if (end > chunk.len) {
-            return error.OutOfMemory;
-        }
-        
         self.current_offset = end;
         return chunk[start..end];
     }
@@ -130,7 +125,7 @@ pub const CompactPattern = struct {
     fitness: f64,
     
     pub fn init(pool: *PatternPool, data: []const u8) !@This() {
-        const storage = try pool.allocate(data.len);
+        const storage = try pool.alloc(data.len);
         @memcpy(storage, data);
         return .{
             .data = storage,
@@ -154,10 +149,6 @@ pub const Population = struct {
     }
     
     pub fn deinit(self: *@This()) void {
-        // Clean up GPU resources if initialized
-        if (self.gpu_evolution) |*gpu_ev| {
-            gpu_ev.deinit();
-        }
         self.individuals.deinit();
     }
     
@@ -352,25 +343,21 @@ pub const MemoryEfficientEvolver = struct {
             const parent1 = self.tournamentSelect(3);
             const parent2 = self.tournamentSelect(3);
             
-            // Create child through crossover
-            const child_data = try self.crossover(parent1, parent2, crossover_rate);
-            defer {
-                // Only free if it's not from the pool
-                if (child_data.ptr != parent1.ptr and child_data.ptr != parent2.ptr) {
-                    self.allocator.free(child_data);
-                }
-            }
+            // Create child through crossover (allocated from pool)
+            const child = try self.crossover(parent1, parent2, crossover_rate);
             
-            // Mutate the child
-            try self.mutate(child_data, mutation_rate);
+            // Make a mutable copy for mutation (also from pool)
+            const child_mut = try self.pool.alloc(parent1.len);
+            @memcpy(child_mut, child);
             
-            // Add to new population
-            const child = try self.population.pool.alloc(child_data.len);
-            @memcpy(child, child_data);
-            try new_population.individuals.append(.{
-                .data = child,
-                .fitness = 0.0,
-            });
+            // Mutate the child in place
+            try self.mutate(child_mut, mutation_rate);
+            
+            // Add to new population (this will make its own copy)
+            try new_population.add(child_mut);
+            
+            // No need to free child_mut as it's managed by the pool
+            // The pool will be reset when the population is replaced
         }
         
         // Replace old population with new one
@@ -380,15 +367,16 @@ pub const MemoryEfficientEvolver = struct {
     
     /// Perform single-point crossover between two parent patterns
     fn crossover(self: *@This(), parent1: []const u8, parent2: []const u8, crossover_rate: f64) ![]const u8 {
-        // If no crossover, return a copy of parent1
+        // Always allocate from the pool to ensure consistent memory management
+        const child = try self.pool.alloc(parent1.len);
+        
+        // If no crossover, copy parent1
         if (self.rng.float() >= crossover_rate) {
-            const child_data = try self.allocator.alloc(u8, parent1.len);
-            @memcpy(child_data, parent1);
-            return child_data;
+            @memcpy(child, parent1);
+            return child;
         }
         
-        // Allocate space for child and perform crossover
-        const child = try self.pool.alloc(parent1.len);
+        // Perform single-point crossover
         const crossover_point = self.rng.int(usize, 1, parent1.len - 1);
         @memcpy(child[0..crossover_point], parent1[0..crossover_point]);
         @memcpy(child[crossover_point..], parent2[crossover_point..]);
@@ -438,9 +426,9 @@ test "memory optimized evolution" {
     const population_size = 50;  // Larger population for better exploration
     const pattern_size = 8;     // 8 bytes = 64 bits (smaller target is easier)
     
-    // Create a pattern pool
-    const pool = try allocator.create(PatternPool);
-    pool.* = try PatternPool.init(allocator, 1 << 20); // 1MB chunks
+    // Create and initialize the pattern pool
+    var pool = try PatternPool.init(allocator, 1 << 16); // 64KB chunks
+    defer pool.deinit();
     
     // Initialize evolver with configuration
     var evolver = try MemoryEfficientEvolver.init(
@@ -452,20 +440,13 @@ test "memory optimized evolution" {
             .elitism_count = 2,
         }
     );
-    evolver.pool = pool;
-    defer {
-        evolver.deinit();
-        allocator.destroy(pool);
-    }
+    defer evolver.deinit();
     
-    // Target pattern with alternating bits (0101...)
-    const target_pattern = try allocator.alloc(u8, pattern_size);
-    defer allocator.free(target_pattern);
-    @memset(target_pattern, 0x55); // 01010101 in binary
+    // Set the pool after initialization
+    evolver.pool = &pool;
     
-    // Make target_pattern accessible to the fitness function
-    var target_pattern_array = [_]u8{0x55} ** 8; // 01010101 in binary
-    const target_pattern = target_pattern_array[0..];
+    // Create a target pattern to evolve towards (alternating bits: 01010101...)
+    const target_pattern = [_]u8{0x55} ** 8; // 01010101 in binary
     
     // Fitness function that rewards patterns matching the target pattern
     const fitness_fn = struct {
