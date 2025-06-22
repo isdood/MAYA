@@ -201,12 +201,15 @@ test "ZeroCopyOps in-place transformation" {
     // Fill with test data
     @memset(pattern.data, 100);
     
-    const transformed = try ZeroCopyOps.transformInPlace(pattern, struct {
+    const transform_fn = struct {
         fn transform(data: []u8) void {
             for (data) |*pixel| {
                 pixel.* +%= 50;
             }
-        }.transform);
+        }
+    }.transform;
+    
+    const transformed = try ZeroCopyOps.transformInPlace(pattern, transform_fn);
     
     // Verify transformation
     for (transformed.data) |pixel| {

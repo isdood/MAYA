@@ -7,6 +7,22 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 const testing = std.testing;
+const builtin = @import("builtin");
+
+// Import GPU module if available
+const gpu = if (@hasDecl(@import("root"), "gpu")) 
+    @import("gpu") 
+else 
+    struct {
+        pub const GPUEvolution = struct {
+            pub const Config = struct { enabled: bool = false };
+            pub fn init(_: Allocator, _: Config) anyerror!@This() { return .{}; }
+            pub fn deinit(_: *@This()) void {}
+            pub fn calculateFitnessBatch(_: *@This(), _: []const []const u8, _: u32, _: u32) anyerror![]f32 {
+                return error.GPUNotAvailable;
+            }
+        };
+    };
 
 // Simple PRNG using Xorshift64*
 const SimpleRng = struct {
@@ -154,14 +170,26 @@ pub const Population = struct {
     }
 };
 
-/// Memory-optimized evolution engine
+/// Configuration for memory-efficient evolution
+pub const EvolutionConfig = struct {
+    /// Enable GPU acceleration if available
+    enable_gpu: bool = true,
+    /// Batch size for GPU processing
+    gpu_batch_size: u32 = 1024,
+    /// Number of threads per block for GPU kernels
+    gpu_threads_per_block: u32 = 256,
+};
+
+/// Memory-optimized evolution engine with optional GPU acceleration
 pub const MemoryEfficientEvolver = struct {
     allocator: Allocator,
     population: Population,
     pool: *PatternPool,
     rng: SimpleRng,
+    gpu_evolution: ?gpu.GPUEvolution = null,
+    config: EvolutionConfig,
     
-    pub fn init(allocator: Allocator, population_size: usize, pattern_size: usize) !@This() {
+    pub fn init(allocator: Allocator, population_size: usize, pattern_size: usize, config: EvolutionConfig) !@This() {
         const pool = try allocator.create(PatternPool);
         pool.* = try PatternPool.init(allocator, 1 << 20); // 1MB chunks
         
@@ -174,7 +202,23 @@ pub const MemoryEfficientEvolver = struct {
             .pool = pool,
             .population = try Population.init(allocator, pool, population_size),
             .rng = rng,
+            .config = config,
         };
+        
+        // Initialize GPU evolution if enabled
+        if (config.enable_gpu) {
+            if (gpu.GPUEvolution.init(allocator, .{
+                .enabled = true,
+                .batch_size = config.gpu_batch_size,
+                .threads_per_block = config.gpu_threads_per_block,
+            })) |gpu_ev| {
+                self.gpu_evolution = gpu_ev;
+                std.debug.print("✅ GPU acceleration enabled\n", .{});
+            } else |err| {
+                std.debug.print("⚠️  GPU initialization failed: {s}\n", .{@errorName(err)});
+                self.gpu_evolution = null;
+            }
+        }
         
         // Initialize population with random patterns
         for (0..population_size) |_| {
@@ -192,6 +236,11 @@ pub const MemoryEfficientEvolver = struct {
     }
     
     pub fn deinit(self: *@This()) void {
+        // Free GPU resources if initialized
+        if (self.gpu_evolution) |*gpu_ev| {
+            gpu_ev.deinit();
+        }
+        
         // Free all individuals in the population
         for (self.population.individuals.items) |*individual| {
             // The memory for individual.data is managed by the pool

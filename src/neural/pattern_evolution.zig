@@ -2,9 +2,37 @@ const std = @import("std");
 const pattern_synthesis = @import("pattern_synthesis.zig");
 const pattern_ops = @import("pattern_operations.zig");
 const quantum_algs = @import("quantum_algorithms.zig");
+const pattern_memory = @import("pattern_memory.zig");
+const Pattern = @import("pattern.zig").Pattern;
 const math = std.math;
 const Allocator = std.mem.Allocator;
 const Complex = std.math.Complex(f64);
+
+// Re-export memory optimization utilities
+pub const MemoryOptimization = struct {
+    /// Initialize the global pattern memory pool
+    pub fn initMemoryPool(allocator: Allocator) !void {
+        try Pattern.initGlobalPool(allocator);
+    }
+    
+    /// Deinitialize the global pattern memory pool
+    pub fn deinitMemoryPool() void {
+        Pattern.deinitGlobalPool();
+    }
+    
+    /// Create a zero-copy view of a pattern
+    pub fn createPatternView(pattern: *const Pattern, x: usize, y: usize, width: usize, height: usize) Pattern {
+        return pattern.createView(x, y, width, height);
+    }
+    
+    /// Apply a transformation in-place if possible
+    pub fn transformPatternInPlace(
+        pattern: *Pattern,
+        transform_fn: fn ([]u8) void
+    ) !*Pattern {
+        return try pattern.transformInPlace(transform_fn);
+    }
+};
 
 pub const PatternEvolution = struct {
     // First: All type declarations
@@ -345,9 +373,16 @@ pub const PatternEvolution = struct {
 
     /// Evolve pattern through generations
     fn evolvePattern(self: *PatternEvolution, state: *EvolutionState, pattern_data: []const u8) !void {
-        var current_data = try self.allocator.dupe(u8, pattern_data);
-        defer self.allocator.free(current_data);
-
+        // Create a pattern directly from the input data
+        const pattern = try Pattern.init(self.allocator, pattern_data, state.width, state.height);
+        defer pattern.deinit(self.allocator);
+        
+        // Track the current best pattern
+        var current_best = try Pattern.init(self.allocator, pattern_data, state.width, state.height);
+        defer current_best.deinit(self.allocator);
+        
+        var best_fitness = self.calculateFitness(current_best.data);
+        
         while (state.generation < self.config.max_generations) {
             // Generate new population
             const population = try self.generatePopulation(current_data);
@@ -445,9 +480,32 @@ pub const PatternEvolution = struct {
     /// If `in_place` is false, returns a new mutated copy of the input
     fn mutatePattern(self: *PatternEvolution, pattern: anytype, in_place: bool) anyerror!if (in_place) void else []const u8 {
         var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
+        const rand = rng.random();
         
         const pattern_type = @TypeOf(pattern);
         const is_mutable = std.meta.Elem(pattern_type) == u8;
+        
+        // For in-place mutation, we can modify the pattern directly
+        if (in_place and is_mutable) {
+            // Apply mutation directly to the pattern data
+            for (0..@min(10, pattern.len)) |_| {
+                const idx = rand.uintLessThan(usize, pattern.len);
+                pattern[idx] +%= @as(u8, @intCast(rand.intRangeAtMost(i8, -10, 10)));
+            }
+            return;
+        }
+        
+        // For non-in-place or immutable patterns, create a copy first
+        const result = try self.allocator.alloc(u8, pattern.len);
+        @memcpy(result, pattern);
+        
+        // Apply mutation to the copy
+        for (0..@min(10, result.len)) |_| {
+            const idx = rand.uintLessThan(usize, result.len);
+            result[idx] +%= @as(u8, @intCast(rand.intRangeAtMost(i8, -10, 10)));
+        }
+        
+        return result;
         
         if (!in_place) {
             // Create a copy if not mutating in place
@@ -566,7 +624,31 @@ pub const PatternEvolution = struct {
     }
 
     /// Calculate Hamming distance
+    /// Calculate Hamming distance between two patterns using SIMD when possible
     fn calculateHammingDistance(_: *const PatternEvolution, data1: []const u8, data2: []const u8) f64 {
+        // Use SIMD for faster comparison if the data is aligned and large enough
+        if (std.simd.suggestVectorSize(u8)) |vector_size| {
+            const vector_count = data1.len / vector_size;
+            const remainder = data1.len % vector_size;
+            
+            var distance: usize = 0;
+            
+            // Process in chunks of vector_size
+            for (0..vector_count) |i| {
+                const start = i * vector_size;
+                const vec1 = @as(@Vector(vector_size, u8), data1[start..][0..vector_size].*);
+                const vec2 = @as(@Vector(vector_size, u8), data2[start..][0..vector_size].*);
+                const diff = vec1 != vec2;
+                distance += @popCount(@bitCast(diff));
+            }
+            
+            // Process remaining elements
+            for (data1[vector_count * vector_size ..], data2[vector_count * vector_size ..]) |a, b| {
+                distance += @intFromBool(a != b);
+            }
+            
+            return @as(f64, @floatFromInt(distance)) / @as(f64, @floatFromInt(data1.len));
+        }
         var distance: usize = 0;
         const min_len = @min(data1.len, data2.len);
 

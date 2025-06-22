@@ -1,5 +1,28 @@
 const std = @import("std");
 const pattern_serialization = @import("pattern_serialization.zig");
+const pattern_memory = @import("pattern_memory.zig");
+
+/// Global memory pool for pattern allocation
+var global_pool: ?*pattern_memory.PatternPool = null;
+
+/// Initialize the global pattern memory pool
+pub fn initGlobalPool(allocator: std.mem.Allocator) !void {
+    if (global_pool == null) {
+        global_pool = try pattern_memory.PatternPool.init(allocator, .{
+            .initial_capacity = 128,
+            .max_pattern_size = 4 * 1024 * 1024, // 4MB max pattern size
+            .thread_safe = true,
+        });
+    }
+}
+
+/// Deinitialize the global pattern memory pool
+pub fn deinitGlobalPool() void {
+    if (global_pool) |pool| {
+        pool.deinit();
+        global_pool = null;
+    }
+}
 
 pub const Pattern = struct {
     /// The pixel data of the pattern
@@ -25,30 +48,54 @@ pub const Pattern = struct {
     };
 
     /// Initialize a new pattern with the given data and dimensions
+    /// Uses the global memory pool if available, falls back to direct allocation
     pub fn init(allocator: std.mem.Allocator, data: []const u8, width: usize, height: usize) !*Pattern {
-        const self = try allocator.create(Pattern);
-        self.* = .{
-            .data = try allocator.dupe(u8, data),
-            .width = width,
-            .height = height,
-            .pattern_type = .Unknown,
-            .complexity = 0.0,
-            .stability = 0.0,
-            .allocator = allocator,
-        };
+        const pool = global_pool;
+        
+        // For large patterns or if pool is not available, allocate directly
+        if (pool == null or data.len > pool.?.config.max_pattern_size) {
+            const self = try allocator.create(Pattern);
+            self.* = .{
+                .data = try allocator.dupe(u8, data),
+                .width = width,
+                .height = height,
+                .pattern_type = .Unknown,
+                .complexity = 0.0,
+                .stability = 0.0,
+                .allocator = allocator,
+            };
+            return self;
+        }
+        
+        // Use memory pool
+        const self = try pool.?.getPattern(width, height, 4); // Assuming 4 channels
+        std.mem.copy(u8, self.data, data);
+        self.pattern_type = .Unknown;
+        self.complexity = 0.0;
+        self.stability = 0.0;
         return self;
     }
 
     /// Initialize a new pattern with the given dimensions and channels
+    /// Uses the global memory pool if available
     pub fn initPattern(allocator: std.mem.Allocator, width: u32, height: u32, channels: u8) !*Pattern {
-        const size = @as(usize, width) * @as(usize, height) * @as(usize, channels);
-        const data = try allocator.alloc(u8, size);
+        const pool = global_pool;
+        const w = @as(usize, @intCast(width));
+        const h = @as(usize, @intCast(height));
+        const size = w * h * @as(usize, channels);
         
+        // Use memory pool if available and pattern is not too large
+        if (pool != null and size <= pool.?.config.max_pattern_size) {
+            return pool.?.getPattern(w, h, channels);
+        }
+        
+        // Fall back to direct allocation
+        const data = try allocator.alloc(u8, size);
         const pattern = try allocator.create(Pattern);
         pattern.* = .{
             .data = data,
-            .width = @as(usize, @intCast(width)),
-            .height = @as(usize, @intCast(height)),
+            .width = w,
+            .height = h,
             .pattern_type = .Visual,
             .complexity = 0.0,
             .stability = 0.0,
@@ -59,8 +106,16 @@ pub const Pattern = struct {
     }
 
     pub fn deinit(self: *Pattern, allocator: std.mem.Allocator) void {
-        allocator.free(self.data);
-        allocator.destroy(self);
+        const pool = global_pool;
+        
+        // If using memory pool and pattern is within size limits
+        if (pool != null and self.data.len <= pool.?.config.max_pattern_size) {
+            pool.?.releasePattern(self);
+        } else {
+            // Direct deallocation
+            allocator.free(self.data);
+            allocator.destroy(self);
+        }
     }
 
     pub fn analyze(self: *Pattern) void {
@@ -93,6 +148,19 @@ pub const Pattern = struct {
         return try pattern_serialization.loadPatternFromFile(allocator, file_path);
     }
 
+    /// Create a zero-copy view of a portion of this pattern
+    pub fn createView(self: *const Pattern, x: usize, y: usize, width: usize, height: usize) Pattern {
+        return pattern_memory.ZeroCopyOps.createView(self, x, y, width, height);
+    }
+    
+    /// Apply a transformation in-place if possible, or create a new pattern if necessary
+    pub fn transformInPlace(
+        self: *Pattern,
+        transform_fn: fn ([]u8) void
+    ) !*Pattern {
+        return try pattern_memory.ZeroCopyOps.transformInPlace(self, transform_fn);
+    }
+    
     /// Serialize the pattern to a JSON string
     pub fn toJson(self: *const Pattern) ![]const u8 {
         return try pattern_serialization.serializeToJson(self.allocator, self);
