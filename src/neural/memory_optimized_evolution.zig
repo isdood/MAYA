@@ -207,17 +207,21 @@ pub const MemoryEfficientEvolver = struct {
     config: EvolutionConfig,
     
     pub fn init(allocator: Allocator, population_size: usize, pattern_size: usize, config: EvolutionConfig) !@This() {
-        const pool = try allocator.create(PatternPool);
-        pool.* = try PatternPool.init(allocator, 1 << 20); // 1MB chunks
+        // Create and initialize the pattern pool
+        const pool = try PatternPool.init(allocator, 1 << 16); // 64KB chunks
         
         // Initialize random number generator with timestamp
         const seed = @as(u64, @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())))) | 1; // Ensure seed is odd
         const rng = SimpleRng.init(seed);
         
+        // Create a managed pool pointer
+        const pool_ptr = try allocator.create(PatternPool);
+        pool_ptr.* = pool;
+        
         var self = @This(){
             .allocator = allocator,
-            .pool = pool,
-            .population = try Population.init(allocator, pool, population_size),
+            .pool = pool_ptr,
+            .population = try Population.init(allocator, pool_ptr, population_size),
             .rng = rng,
             .config = config,
         };
@@ -262,7 +266,10 @@ pub const MemoryEfficientEvolver = struct {
         // Deinitialize the population
         self.population.deinit();
         
-        // Note: We don't deinit the pool here as it's managed externally
+        // Deinitialize and free the pool
+        self.pool.deinit();
+        self.allocator.destroy(self.pool);
+        
         // Clear the random number generator state
         self.rng = undefined;
     }
@@ -430,10 +437,6 @@ test "memory optimized evolution" {
     const pattern_size = 4;      // 4 bytes = 32 bits (smaller target is easier)
     const max_generations = 20; // Fewer generations for testing
     
-    // Create and initialize the pattern pool with a small chunk size
-    var pool = try PatternPool.init(allocator, 1 << 16); // 64KB chunks
-    defer pool.deinit();
-    
     // Initialize evolver with configuration
     var evolver = try MemoryEfficientEvolver.init(
         allocator,
@@ -445,9 +448,6 @@ test "memory optimized evolution" {
         }
     );
     defer evolver.deinit();
-    
-    // Set the pool
-    evolver.pool = &pool;
     
     // Create a simple target pattern (alternating bits: 0101)
     const target_pattern = [_]u8{0x55} ** (pattern_size / 2);
