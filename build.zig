@@ -5,14 +5,20 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // Create the executable
-    const exe = b.addExecutable("test-patterns", null);
-    exe.addCSourceFile("src/quantum_cache/test_patterns.zig", &[_][]const u8{});
-    exe.setTarget(target);
-    exe.setBuildMode(optimize);
+    const exe = b.addExecutable(.{
+        .name = "test-patterns",
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "" } },
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.addCSourceFile(.{
+        .file = .{ .src_path = .{ .owner = b, .sub_path = "src/quantum_cache/test_patterns.zig" } },
+        .flags = &[_][]const u8{},
+    });
     
     // Add the neural module
     const neural_mod = b.createModule(.{
-        .source = .{ .path = "src/neural/mod.zig" },
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/neural/mod.zig" } },
     });
     exe.addModule("neural", neural_mod);
     
