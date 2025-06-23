@@ -1,7 +1,11 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const exe = b.addExecutable("test-patterns", "src/quantum_cache/test_patterns.zig");
+    const exe = b.addExecutable(.{
+        .name = "test-patterns",
+        .root_source_file = .{ .cwd_relative = "src/quantum_cache/test_patterns.zig" },
+    });
+    
     b.installArtifact(exe);
     
     const run_cmd = b.addRunArtifact(exe);
