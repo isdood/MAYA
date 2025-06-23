@@ -107,6 +107,7 @@ pub const PatternEvolution = struct {
     config: EvolutionConfig = .{},
     quantum_processor: ?*quantum_algs.QuantumProcessor = null,
     crystal_computing: ?*quantum_algs.CrystalComputing = null,
+    global_pool: ?*Pattern.PatternPool = null,
     
     // Initialize evolution with specific type
     pub fn initWithType(allocator: std.mem.Allocator, evo_type: EvolutionType) !*@This() {
@@ -120,6 +121,7 @@ pub const PatternEvolution = struct {
                 .fitness_ctx = null,
                 .evolution_type = evo_type,
             },
+            .global_pool = null,
         };
         
         return self;
@@ -290,7 +292,7 @@ pub const PatternEvolution = struct {
         // Apply quantum enhancement to each pattern
         for (population) |pattern| {
             // Create a mutable copy of the pattern data
-            var pattern_data = try self.allocator.alloc(u8, pattern.data.len);
+            const pattern_data = try self.allocator.alloc(u8, pattern.data.len);
             defer self.allocator.free(pattern_data);
             @memcpy(pattern_data, pattern.data);
             
@@ -415,11 +417,11 @@ pub const PatternEvolution = struct {
         {
             defer {
                 // Only deinit if we're not using the memory pool
-                if (global_pool == null) {
+                if (self.global_pool == null) {
                     pattern.deinit(self.allocator);
-                } else if (global_pool.?.config.thread_safe) {
+                } else if (self.global_pool.?.config.thread_safe) {
                     // If using thread-safe pool, release the pattern back to the pool
-                    global_pool.?.releasePattern(pattern);
+                    self.global_pool.?.releasePattern(pattern);
                 }
             }
             
@@ -433,7 +435,7 @@ pub const PatternEvolution = struct {
                 var population = try self.generatePopulation(pattern);
                 defer {
                     for (population) |p| {
-                        if (global_pool) |pool| {
+                        if (self.global_pool) |pool| {
                             pool.releasePattern(p);
                         } else {
                             p.deinit(self.allocator);
@@ -515,7 +517,7 @@ pub const PatternEvolution = struct {
     /// Free a population of patterns, returning them to the memory pool if available
     fn freePopulation(self: *PatternEvolution, population: []*Pattern) void {
         for (population) |pattern| {
-            if (global_pool) |pool| {
+            if (self.global_pool) |pool| {
                 pool.releasePattern(pattern);
             } else {
                 pattern.deinit(self.allocator);
@@ -592,14 +594,14 @@ pub const PatternEvolution = struct {
         const size = width * height * 4; // 4 channels (RGBA)
         
         // Get a pattern from the pool or allocate a new one
-        const child = if (global_pool) |pool|
+        const child = if (self.global_pool) |pool|
             try pool.getPattern(width, height, 4)
         else
             try Pattern.init(self.allocator, &[_]u8{0} ** size, width, height);
         
         // Use a defer with a block to ensure proper cleanup on error
         errdefer {
-            if (global_pool) |pool| {
+            if (self.global_pool) |pool| {
                 pool.releasePattern(child);
             } else {
                 child.deinit(self.allocator);
@@ -655,11 +657,11 @@ pub const PatternEvolution = struct {
         }
         
         // For non-in-place mutations, use the memory pool if available
-        const width = if (@hasField(pattern_type, "width")) pattern.width else @intCast(@sqrt(@as(f64, @floatFromInt(pattern.len / 4))));
+        const width = if (@hasField(pattern_type, "width")) pattern.width else @intCast(u32, @sqrt(@as(f64, @floatFromInt(pattern.len / 4))));
         const height = if (@hasField(pattern_type, "height")) pattern.height else width;
         
         // Try to get a pattern from the memory pool
-        const result = if (global_pool) |pool| 
+        const result = if (self.global_pool) |pool| 
             try pool.getPattern(width, height, 4) 
         else 
             try Pattern.init(self.allocator, pattern, width, height);
@@ -724,7 +726,7 @@ pub const PatternEvolution = struct {
         // Update the best pattern if we found a better one
         if (self.current_best == null or best_fitness > self.state.fitness) {
             // If using memory pool, we can just store a reference
-            if (global_pool != null) {
+            if (self.global_pool != null) {
                 self.current_best = best_individual;
             } else {
                 // Otherwise, we need to make a copy
@@ -792,6 +794,7 @@ pub const PatternEvolution = struct {
                 const pattern2 = population[j];
                 
                 // Calculate Hamming distance between patterns
+                _ = self; // Explicitly mark self as used
                 const dist = self.calculatePatternDistance(pattern1, pattern2);
                 total_distance += dist;
                 pair_count += 1;
@@ -857,7 +860,7 @@ pub const PatternEvolution = struct {
                 const vec1 = @as(@Vector(vector_size, u8), data1[start..][0..vector_size].*);
                 const vec2 = @as(@Vector(vector_size, u8), data2[start..][0..vector_size].*);
                 const diff = vec1 != vec2;
-                distance += @popCount(@bitCast(diff));
+                distance += @popCount(@bitCast(u32, diff));
             }
             
             // Process remaining elements

@@ -10,7 +10,7 @@ const mem = std.mem;
 const Allocator = std.mem.Allocator;
 
 // Import neural modules
-const neural = @import("../neural.zig");
+const neural = @import("mod.zig");
 const pattern_recognition = @import("pattern_recognition.zig");
 const quantum_processor = @import("quantum_processor.zig");
 const visual_synthesis = @import("visual_synthesis.zig");
