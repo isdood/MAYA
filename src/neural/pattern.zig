@@ -65,64 +65,78 @@ pub const Pattern = struct {
         const size = width * height * 4; // Assuming 4 channels (RGBA)
         
         // For large patterns or if pool is disabled, allocate directly
-        if (pool == null or size > pool.?.config.max_pattern_size) {
-            const self = try allocator.create(Pattern);
-            self.* = .{
-                .data = try allocator.dupe(u8, data),
-                .width = width,
-                .height = height,
-                .pattern_type = .Visual,
-                .metadata = .{
-                    .created_at = @as(i64, 0),
-                    .updated_at = @as(i64, 0),
-                    .source = "",
-                    .version = "1.0",
-                    .tags = &[_][]const u8{},
-                },
-                .complexity = 0.0,
-                .stability = 0.0,
-                .allocator = allocator,
-            };
+        if (pool == null) {
+            return try Pattern.allocAndInit(allocator, data, width, height);
+        }
+        
+        // Use memory pool if the pattern is small enough
+        if (size <= pool.?.config.max_pattern_size) {
+            const self = try pool.?.getPattern(width, height, 4);
+            @memcpy(self.data[0..data.len], data);
+            self.pattern_type = .Unknown;
+            self.complexity = 0.0;
+            self.stability = 0.0;
             return self;
         }
         
-        // Use memory pool
-        const self = try pool.?.getPattern(width, height, 4);
-        @memcpy(self.data[0..data.len], data);
-        self.pattern_type = .Unknown;
-        self.complexity = 0.0;
-        self.stability = 0.0;
+        // Pattern is too large for pool, allocate directly
+        return try Pattern.allocAndInit(allocator, data, width, height);
+    }
+    
+    /// Internal function to allocate and initialize a pattern without using the memory pool
+    fn allocAndInit(allocator: std.mem.Allocator, data: []const u8, width: usize, height: usize) !*Pattern {
+        const self = try allocator.create(Pattern);
+        self.* = .{
+            .data = try allocator.dupe(u8, data),
+            .width = width,
+            .height = height,
+            .pattern_type = .Visual,
+            .metadata = .{
+                .created_at = std.time.timestamp(),
+                .updated_at = std.time.timestamp(),
+                .source = "",
+                .version = "1.0",
+                .tags = &[_][]const u8{},
+            },
+            .complexity = 0.0,
+            .stability = 0.0,
+            .allocator = allocator,
+        };
         return self;
     }
     
     /// Initialize a new pattern with the given dimensions and channels
     /// Uses the global memory pool if available
     pub fn initPattern(allocator: std.mem.Allocator, width: u32, height: u32, channels: u8) error{OutOfMemory}!*Pattern {
-        const pool = global_pool;
         const w = @as(usize, @intCast(width));
         const h = @as(usize, @intCast(height));
         const size = w * h * @as(usize, channels);
         
-        // Use memory pool if available and pattern is not too large
-        if (pool != null and size <= pool.?.config.max_pattern_size) {
-            return pool.?.getPattern(w, h, channels);
-        }
-        
-        // Fall back to direct allocation
+        // Allocate memory directly to avoid potential deadlocks
         const data = try allocator.alloc(u8, size);
-        const pattern = try allocator.create(Pattern);
-        pattern.* = .{
+        errdefer allocator.free(data);
+        
+        const self = try allocator.create(Pattern);
+        errdefer allocator.destroy(self);
+        
+        self.* = .{
             .data = data,
             .width = w,
             .height = h,
-            .pattern_type = .Visual,
-            .metadata = .{},
+            .pattern_type = .Unknown,
+            .metadata = .{
+                .created_at = std.time.timestamp(),
+                .updated_at = std.time.timestamp(),
+                .source = "",
+                .version = "1.0",
+                .tags = &[_][]const u8{},
+            },
             .complexity = 0.0,
             .stability = 0.0,
             .allocator = allocator,
         };
         
-        return pattern;
+        return self;
     }
 
     pub fn deinit(self: *Pattern, allocator: std.mem.Allocator) void {
