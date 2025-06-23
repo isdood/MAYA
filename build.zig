@@ -20,7 +20,7 @@ pub fn build(b: *std.Build) void {
     const neural_mod = b.createModule(.{
         .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/neural/mod.zig" } },
     });
-    exe.addModule("neural", neural_mod);
+    exe.*.addModule("neural", neural_mod);
     
     // Install the executable
     b.installArtifact(exe);
