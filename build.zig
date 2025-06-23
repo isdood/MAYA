@@ -1,13 +1,15 @@
-const std = @import("std");
+const Builder = @import("std").build.Builder;
+const Step = @import("std").build.Step;
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *Builder) !void {
     // Standard target options
     const target = b.standardTargetOptions(.{});
+    
+    // Standard optimization options
     const mode = b.standardOptimizeOption(.{});
 
     // Create executable
-    const exe = b.addExecutable("test-patterns", null);
-    exe.addCSourceFile("src/quantum_cache/test_patterns.zig", &[0][]const u8{});
+    const exe = b.addExecutable("test-patterns", "src/quantum_cache/test_patterns.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
     
@@ -18,10 +20,10 @@ pub fn build(b: *std.Build) void {
     exe.linkLibC();
     
     // Install the executable
-    b.installArtifact(exe);
+    exe.install();
     
     // Create run step
-    const run_cmd = b.addRunArtifact(exe);
+    const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
     
     // Add command line arguments if provided
