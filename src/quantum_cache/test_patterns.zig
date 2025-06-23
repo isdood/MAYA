@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const neural = @import("neural");
 const Pattern = neural.Pattern;
+const Random = std.rand.DefaultPrng;
 
 // Use the PatternType from neural module
 const PatternType = neural.PatternType;
