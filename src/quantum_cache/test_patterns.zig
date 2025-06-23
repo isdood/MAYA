@@ -38,7 +38,6 @@ pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: 
 pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
     
-    const local_rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
     const pixel_count = width * height * 4; // RGBA
     var data = try allocator.alloc(u8, pixel_count);
     defer allocator.free(data); // Will be duplicated by Pattern.init
