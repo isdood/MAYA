@@ -77,8 +77,7 @@ pub fn createCheckerboardPattern(allocator: std.mem.Allocator, id: []const u8, w
     }
     
     const pattern = try Pattern.init(allocator, data, width, height);
-    const local_pattern_type = PatternType;
-    pattern.pattern_type = @intFromEnum(local_pattern_type.Hybrid);
+    pattern.pattern_type = .Hybrid;
     pattern.complexity = 0.7;
     pattern.stability = 0.6;
     

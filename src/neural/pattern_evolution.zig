@@ -849,7 +849,6 @@ pub const PatternEvolution = struct {
         // Use SIMD for faster comparison if the data is aligned and large enough
         if (std.simd.suggestVectorSize(u8)) |vector_size| {
             const vector_count = data1.len / vector_size;
-            const remainder = data1.len % vector_size;
             
             var distance: usize = 0;
             
