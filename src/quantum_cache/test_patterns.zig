@@ -6,6 +6,9 @@ const Pattern = neural.Pattern;
 // Use the PatternType from neural module
 const PatternType = neural.PatternType;
 
+// Initialize random number generator
+var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
+
 pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
     
