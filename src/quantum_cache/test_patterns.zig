@@ -6,6 +6,14 @@ const Random = std.rand.DefaultPrng;
 
 // Define pattern types if not already defined
 const PatternType = enum {
+    Visual,
+    Quantum,
+    Hybrid,
+    Unknown,
+};
+
+// Define pattern types if not already defined
+const PatternType = enum {
     Quantum,
     Visual,
     Hybrid,
