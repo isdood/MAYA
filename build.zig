@@ -9,7 +9,7 @@ const Options = struct {
 // Parse command line options
 fn parseOptions(b: *std.Build) Options {
     const options = b.option(bool, "enable-gpu", "Enable GPU acceleration (default: true)") orelse true;
-    const rocm_path = b.option([]const u8, "rocm-path", "Path to ROCm installation (default: /opt/rocm)");
+    const rocm_path = b.option([]const u8, "rocm-path", "Path to ROCm installation (default: /opt/rocm");
     
     return .{
         .enable_gpu = options,
@@ -22,119 +22,81 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const options = parseOptions(b);
 
-    // Create modules
+    // Create neural module
     const neural_mod = b.addModule("neural", .{
         .root_source_file = .{ .cwd_relative = "src/neural/mod.zig" },
     });
-    
-    const starweave_mod = b.addModule("starweave", .{
-        .root_source_file = .{ .cwd_relative = "src/starweave/starweave.zig" },
-    });
-    
-    const glimmer_mod = b.addModule("glimmer", .{
-        .root_source_file = .{ .cwd_relative = "src/glimmer/glimmer.zig" },
-    });
-    
+
     // GPU module (optional)
     if (options.enable_gpu) {
         const gpu_mod = b.addModule("gpu", .{
             .root_source_file = .{ .cwd_relative = "src/gpu/gpu.zig" },
         });
         
+        // Set ROCm paths
+        const rocm_path = options.rocm_path orelse "/opt/rocm";
+        
         // Add ROCm include path
-        const rocm_include = if (options.rocm_path) |path|
-            std.fs.path.join(b.allocator, &[_][]const u8{ path, "include" }) catch @panic("OOM")
-        else
-            "/opt/rocm/include";
-            
-        // For Zig 0.14.1 - use addIncludePath with a direct path string
-        gpu_mod.addIncludePath(.{ .path = rocm_include });
+        const include_path = std.fs.path.join(b.allocator, &[_][]const u8{rocm_path, "include"}) catch @panic("OOM");
+        gpu_mod.addSystemIncludePath(.{ .cwd_relative = include_path });
         
-        // Link against ROCm libraries
-        gpu_mod.linkSystemLibrary("hsa-runtime64");
-        gpu_mod.linkSystemLibrary("amdhip64");
+        // Add ROCm library path
+        const lib_path = std.fs.path.join(b.allocator, &[_][]const u8{rocm_path, "lib"}) catch @panic("OOM");
+        gpu_mod.addLibraryPath(.{ .cwd_relative = lib_path });
         
-        // Add compile flags for ROCm
+        // Link against ROCm system libraries with default options
+        const link_options = std.Build.Module.LinkSystemLibraryOptions{
+            .needed = true,
+            .use_pkg_config = .yes,
+            .preferred_link_mode = .dynamic,
+        };
+        
+        // Link system libraries with proper options
+        gpu_mod.linkSystemLibrary("hsa-runtime64", link_options);
+        gpu_mod.linkSystemLibrary("amdhip64", link_options);
+        gpu_mod.linkSystemLibrary("rocblas", link_options);
+        gpu_mod.linkSystemLibrary("hipblas", link_options);
+        gpu_mod.linkSystemLibrary("MIOpen", link_options);
+        
+        // Add rpath for ROCm libraries
+        gpu_mod.addRPath(.{ .cwd_relative = lib_path });
+        
+        // Set target-specific flags and define macros
         gpu_mod.addCSourceFlags(&.{
+            "-fPIC",
+            "-std=c++17",
+            "-O3",
+            "-DNDEBUG",
             "-D__HIP_PLATFORM_AMD__",
             "-D__HIP_ROCclr__",
-            "-fPIC",
+            "-lstdc++",  // Link C++ standard library
         });
         
-        // Make GPU module available to other modules
+        // Make GPU module available to neural module
         neural_mod.addImport("gpu", gpu_mod);
     }
 
-    // Main executable
-    const exe = b.addExecutable(.{
-        .name = "maya",
-        .root_source_file = .{ .cwd_relative = "src/main.zig" },
-        .target = target,
-        .optimize = optimize
-    });
-    
-    // Add module imports
-    exe.root_module.addImport("neural", neural_mod);
-    exe.root_module.addImport("starweave", starweave_mod);
-    exe.root_module.addImport("glimmer", glimmer_mod);
-    
-    // Add dependencies
-    exe.linkLibC();
-    
-    b.installArtifact(exe);
-
-    // Test step
-    const unit_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/main.zig" },
-        .target = target,
-        .optimize = optimize
-    });
-    
-    const test_run = b.addRunArtifact(unit_tests);
-    const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&test_run.step);
-    
-    // GPU Evolution Example
-    const gpu_evolution_example = b.addExecutable("gpu_evolution", .{
-        .root_source_file = .{ .cwd_relative = "examples/gpu_evolution.zig" },
+    // Test patterns executable
+    const test_patterns = b.addExecutable(.{
+        .name = "test-patterns",
+        .root_source_file = .{ .cwd_relative = "src/quantum_cache/test_patterns.zig" },
         .target = target,
         .optimize = optimize,
     });
     
-    gpu_evolution_example.root_module.addImport("neural", neural_mod);
-    gpu_evolution_example.root_module.addImport("starweave", starweave_mod);
-    gpu_evolution_example.root_module.addImport("glimmer", glimmer_mod);
+    // Add module dependencies
+    test_patterns.root_module.addImport("neural", neural_mod);
     
-    // Link against ROCm libraries if enabled
-    if (options.enable_gpu) {
-        gpu_evolution_example.linkSystemLibrary("hsa-runtime64");
-        gpu_evolution_example.linkSystemLibrary("amdhip64");
-    }
+    // Install the executable
+    b.installArtifact(test_patterns);
     
-    b.installArtifact(gpu_evolution_example);
-
-    // Pattern generator tool
-    const pattern_gen = b.addExecutable(.{
-        .name = "maya-pattern-gen",
-        .root_source_file = .{ .cwd_relative = "src/pattern_gen.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    // Create run step for test patterns
+    const run_test_patterns = b.addRunArtifact(test_patterns);
+    const run_test_patterns_step = b.step("test-patterns", "Run test patterns for QuantumCache");
+    run_test_patterns_step.dependOn(&run_test_patterns.step);
     
-    // Add module imports to pattern generator
-    pattern_gen.root_module.addImport("neural", neural_mod);
-    pattern_gen.root_module.addImport("starweave", starweave_mod);
-    pattern_gen.root_module.addImport("glimmer", glimmer_mod);
-    
-    // Install the pattern generator
-    b.installArtifact(pattern_gen);
-    
-    // Create a run step for the pattern generator
-    const pattern_gen_run = b.addRunArtifact(pattern_gen);
+    // Add command line arguments if provided
     if (b.args) |args| {
-        pattern_gen_run.addArgs(args);
+        run_test_patterns.addArgs(args);
     }
-    
-    const pattern_gen_step = b.step("pattern-gen", "Generate sample patterns");
-    pattern_gen_step.dependOn(&pattern_gen_run.step);
 }
