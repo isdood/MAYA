@@ -432,7 +432,7 @@ pub const PatternEvolution = struct {
             // Main evolution loop
             while (state.generation < self.config.max_generations) {
                 // Generate population using memory pool
-                var population = try self.generatePopulation(pattern);
+                const population = try self.generatePopulation(pattern);
                 defer {
                     for (population) |p| {
                         if (self.global_pool) |pool| {
@@ -529,7 +529,7 @@ pub const PatternEvolution = struct {
     
     /// Create a deep copy of a pattern using memory pooling when available
     fn copyPattern(self: *PatternEvolution, pattern: *const Pattern) !*Pattern {
-        if (global_pool) |pool| {
+        if (self.global_pool) |pool| {
             const copy = try pool.getPattern(pattern.width, pattern.height, 4);
             @memcpy(copy.data, pattern.data);
             copy.complexity = pattern.complexity;
@@ -657,7 +657,7 @@ pub const PatternEvolution = struct {
         }
         
         // For non-in-place mutations, use the memory pool if available
-        const width = if (@hasField(pattern_type, "width")) pattern.width else @intCast(u32, @sqrt(@as(f64, @floatFromInt(pattern.len / 4))));
+        const width = if (@hasField(pattern_type, "width")) pattern.width else @intCast(u32, @sqrt(@as(f64, pattern.len / 4)));
         const height = if (@hasField(pattern_type, "height")) pattern.height else width;
         
         // Try to get a pattern from the memory pool
@@ -668,7 +668,7 @@ pub const PatternEvolution = struct {
         
         // Ensure we clean up if we fail after this point
         errdefer {
-            if (global_pool) |pool| {
+            if (self.global_pool) |pool| {
                 pool.releasePattern(result);
             } else {
                 result.deinit(self.allocator);
@@ -794,7 +794,6 @@ pub const PatternEvolution = struct {
                 const pattern2 = population[j];
                 
                 // Calculate Hamming distance between patterns
-                _ = self; // Explicitly mark self as used
                 const dist = self.calculatePatternDistance(pattern1, pattern2);
                 total_distance += dist;
                 pair_count += 1;
