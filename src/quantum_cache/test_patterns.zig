@@ -1,6 +1,15 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const neural = @import("neural");
 const Pattern = neural.Pattern;
+
+// Define pattern types if not already defined
+const PatternType = enum {
+    Quantum,
+    Visual,
+    Hybrid,
+    Unknown,
+};
 
 pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
@@ -21,7 +30,7 @@ pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: 
     }
     
     const pattern = try Pattern.init(allocator, data, width, height);
-    pattern.pattern_type = .Visual;
+    pattern.pattern_type = @intFromEnum(PatternType.Visual);
     pattern.complexity = 0.5;
     pattern.stability = 0.8;
     
@@ -42,7 +51,7 @@ pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: 
     }
     
     const pattern = try Pattern.init(allocator, data, width, height);
-    pattern.pattern_type = .Quantum;
+    pattern.pattern_type = @intFromEnum(PatternType.Quantum);
     pattern.complexity = 0.9;
     pattern.stability = 0.1;
     
@@ -73,9 +82,10 @@ pub fn createCheckerboardPattern(allocator: std.mem.Allocator, id: []const u8, w
     }
     
     const pattern = try Pattern.init(allocator, data, width, height);
-    pattern.pattern_type = .Visual;
-    pattern.complexity = 0.3;
-    pattern.stability = 1.0;
+    const local_pattern_type = PatternType;
+    pattern.pattern_type = @intFromEnum(local_pattern_type.Hybrid);
+    pattern.complexity = 0.7;
+    pattern.stability = 0.6;
     
     return pattern;
 }

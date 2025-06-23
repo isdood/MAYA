@@ -4,31 +4,77 @@
 //! 👤 Author: isdood
 
 const std = @import("std");
-const c = @cImport({
-    @cInclude("hip/hip_runtime.h");
-});
+
+// Import build options
+const build_options = @import("build_options").options;
 
 /// Indicates if ROCm support is available
-pub const has_rocm_support = @hasDecl(c, "hipInit");
+pub const has_rocm_support = build_options.enable_gpu;
 
-// Re-export necessary types
-pub const hipError_t = c.hipError_t;
-pub const hipDeviceProp_t = c.hipDeviceProp_t;
+// Simple error type for GPU operations
+pub const hipError_t = enum(c_uint) {
+    hipSuccess = 0,
+    hipErrorInvalidValue = 1,
+    hipErrorOutOfMemory = 2,
+};
 
-// Re-export necessary functions
-pub const hipMalloc = c.hipMalloc;
-pub const hipFree = c.hipFree;
-pub const hipMemcpy = c.hipMemcpy;
-pub const hipGetLastError = c.hipGetLastError;
-pub const hipGetErrorString = c.hipGetErrorString;
-pub const hipInit = c.hipInit;
-pub const hipGetDeviceCount = c.hipGetDeviceCount;
-pub const hipGetDeviceProperties = c.hipGetDeviceProperties;
+/// Simple device properties structure
+pub const hipDeviceProp_t = extern struct {
+    name: [256]u8,
+    totalGlobalMem: usize,
+    sharedMemPerBlock: usize,
+    // Add other fields as needed
+};
+
+/// Stub implementations of ROCm functions
+pub fn hipMalloc(ptr: **anyopaque, size: usize) hipError_t {
+    _ = ptr;
+    _ = size;
+    return .hipErrorOutOfMemory;
+}
+
+pub fn hipFree(ptr: *anyopaque) hipError_t {
+    _ = ptr;
+    return .hipSuccess;
+}
+
+pub fn hipMemcpy(dst: *anyopaque, src: *const anyopaque, size: usize, kind: c_uint) hipError_t {
+    _ = dst;
+    _ = src;
+    _ = size;
+    _ = kind;
+    return .hipSuccess;
+}
+
+pub fn hipGetLastError() hipError_t {
+    return .hipSuccess;
+}
+
+pub fn hipGetErrorString(error: hipError_t) [*:0]const u8 {
+    _ = error;
+    return "GPU operations not supported";
+}
+
+pub fn hipInit(flags: c_uint) hipError_t {
+    _ = flags;
+    return .hipSuccess;
+}
+
+pub fn hipGetDeviceCount(count: *c_int) hipError_t {
+    count.* = 0;
+    return .hipSuccess;
+}
+
+pub fn hipGetDeviceProperties(prop: *hipDeviceProp_t, device: c_int) hipError_t {
+    _ = device;
+    @memset(@ptrCast([*]u8, prop), 0, @sizeOf(hipDeviceProp_t));
+    return .hipSuccess;
+}
 
 // HIP API error codes
-pub const hipSuccess = c.hipSuccess;
-pub const hipErrorInvalidValue = c.hipErrorInvalidValue;
-pub const hipErrorOutOfMemory: c_uint = 2;
+pub const hipSuccess = hipError_t.hipSuccess;
+pub const hipErrorInvalidValue = hipError_t.hipErrorInvalidValue;
+pub const hipErrorOutOfMemory = hipError_t.hipErrorOutOfMemory;
 // ... other error codes as needed
 
 // Memory copy kinds

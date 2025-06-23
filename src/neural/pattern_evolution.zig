@@ -105,6 +105,8 @@ pub const PatternEvolution = struct {
     current_population: ?[]const []const u8 = null,
     synthesis: type = @import("pattern_synthesis.zig").PatternSynthesis,
     config: EvolutionConfig = .{},
+    quantum_processor: ?*quantum_algs.QuantumProcessor = null,
+    crystal_computing: ?*quantum_algs.CrystalComputing = null,
     
     // Initialize evolution with specific type
     pub fn initWithType(allocator: std.mem.Allocator, evo_type: EvolutionType) !*@This() {
@@ -228,16 +230,23 @@ pub const PatternEvolution = struct {
         var best_individual: ?[]const u8 = null;
         
         // Calculate fitness for each individual
+        var valid_individuals: usize = 0;
         for (population) |individual| {
             const fitness = self.state.fitness_fn(self.state.fitness_ctx, individual);
+            
+            // Check if individual is valid
+            if (fitness > 0.0) {
+                valid_individuals += 1;
+                if (fitness > best_fitness) {
+                    best_fitness = fitness;
+                    best_individual = individual;
+                }
+            }
+            total_fitness += fitness;
         }
         
-        // Check if individual is valid
-        if (fitness > 0.0) {
-            valid_individuals += 1;
-        {
-            try self.applyQuantumEnhancement(population, &metrics);
-        }
+        // Apply quantum enhancement if enabled
+        try self.applyQuantumEnhancement(population, &metrics);
         
         // Update the best pattern if we found a better one
         if (best_individual) |best| {
@@ -253,8 +262,8 @@ pub const PatternEvolution = struct {
         }
         
         // Calculate diversity and convergence metrics
-        metrics.diversity = try self.calculateDiversity(population);
-        metrics.convergence = try self.calculateConvergence(population);
+        metrics.diversity = self.calculateDiversity(population);
+        metrics.convergence = self.calculateConvergence(&self.state);
         metrics.generation_time_ms = @as(u64, @intCast(std.time.milliTimestamp() - start_time));
         
         return metrics;
@@ -327,8 +336,10 @@ pub const PatternEvolution = struct {
             for (0..8) |bit| {
                 const idx = i * 8 + bit;
                 if (idx >= num_states) break;
+                const mask = @as(u8, 1) << @as(u3, @intCast(bit));
+                const is_set = (byte & mask) != 0;
                 qstate.amplitudes[idx] = .{
-                    .real = if (byte & (@as(u8, 1) << @as(u3, @intCast(bit)))) != 0 then 1.0 else 0.0,
+                    .real = if (is_set) 1.0 else 0.0,
                     .imag = 0.0,
                 };
             }
@@ -477,10 +488,7 @@ pub const PatternEvolution = struct {
         var population = try self.allocator.alloc(*Pattern, pop_size);
         
         // Use thread-local RNG for better performance in multi-threaded scenarios
-        threadlocal var rng = std.rand.DefaultPrng.init(0);
-        if (rng.seed == 0) {
-            rng.seed(@as(u64, @intCast(std.time.milliTimestamp())));
-        }
+        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
         const rand = rng.random();
         
         // First individual is always a copy of the parent
@@ -544,10 +552,7 @@ pub const PatternEvolution = struct {
     /// Select a parent using tournament selection
     fn selectParent(self: *PatternEvolution, population: []*const Pattern, tournament_size: usize) !*const Pattern {
         // Use thread-local RNG for better performance in multi-threaded scenarios
-        threadlocal var rng = std.rand.DefaultPrng.init(0);
-        if (rng.seed == 0) {
-            rng.seed(@as(u64, @intCast(std.time.milliTimestamp())));
-        }
+        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
         const rand = rng.random();
         
         var best_fitness: f64 = -std.math.f64_max;
@@ -603,10 +608,7 @@ pub const PatternEvolution = struct {
         }
         
         // Use thread-local RNG for better performance in multi-threaded scenarios
-        threadlocal var rng = std.rand.DefaultPrng.init(0);
-        if (rng.seed == 0) {
-            rng.seed(@as(u64, @intCast(std.time.milliTimestamp())));
-        }
+        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
         const rand = rng.random();
         
         // Choose a random row for the crossover point
@@ -638,10 +640,7 @@ pub const PatternEvolution = struct {
         const is_mutable = std.meta.Elem(pattern_type) == u8;
         
         // Use thread-local RNG for better performance in multi-threaded scenarios
-        threadlocal var rng = std.rand.DefaultPrng.init(0);
-        if (rng.seed == 0) {
-            rng.seed(@as(u64, @intCast(std.time.milliTimestamp())));
-        }
+        var rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp())));
         const rand = rng.random();
         
         // For in-place mutation, we can modify the pattern directly

@@ -4,6 +4,9 @@
 const std = @import("std");
 const testing = std.testing;
 
+// Import build options
+const gpu_options = @import("build_options").gpu_options;
+
 // Core neural modules
 pub const pattern_recognition = @import("pattern_recognition.zig");
 pub const pattern_synthesis = @import("pattern_synthesis.zig");
@@ -11,7 +14,17 @@ pub const pattern_processor = @import("pattern_processor.zig");
 pub const pattern_generator = @import("pattern_generator.zig");
 pub const visual_synthesis = @import("visual_synthesis.zig");
 pub const pattern_visualization = @import("pattern_visualization.zig");
-pub const gpu_evolution = @import("gpu_evolution.zig");
+
+// Export GPU options for other modules to use
+pub const gpu_options = @import("build_options").gpu_options;
+
+// Provide a dummy implementation for GPU evolution
+pub const gpu_evolution = struct {
+    pub const GPUEvolution = struct {
+        pub fn init() @This() { return .{}; }
+        pub fn deinit(self: *@This()) void { _ = self; }
+    };
+};
 
 // Re-export common types for convenience
 pub const Pattern = pattern_recognition.Pattern;
