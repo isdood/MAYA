@@ -7,13 +7,9 @@ pub fn build(b: *std.Build) void {
     // Create the executable
     const exe = b.addExecutable(.{
         .name = "test-patterns",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "" } },
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/quantum_cache/test_patterns.zig" } },
         .target = target,
         .optimize = optimize,
-    });
-    exe.addCSourceFile(.{
-        .file = .{ .src_path = .{ .owner = b, .sub_path = "src/quantum_cache/test_patterns.zig" } },
-        .flags = &[_][]const u8{},
     });
     
     // Add the neural module
