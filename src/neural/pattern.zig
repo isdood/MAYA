@@ -4,8 +4,8 @@ const pattern_memory = @import("pattern_memory.zig");
 
 /// Pattern metadata
 pub const PatternMetadata = struct {
-    created_at: i64 = std.time.timestamp(),
-    updated_at: i64 = std.time.timestamp(),
+    created_at: i64 = 0,
+    updated_at: i64 = 0,
     source: []const u8 = "",
     version: []const u8 = "1.0",
     tags: []const []const u8 = &[_][]const u8{},
