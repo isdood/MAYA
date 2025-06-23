@@ -265,7 +265,25 @@ pub const QuantumCoherenceMetrics = struct {
     }
 };
 
-// Tests
+//! Test suite for the metrics collection system.
+//! This includes both basic metric functionality and quantum-specific metrics.
+//! 
+//! The quantum coherence metrics are designed to measure various properties of quantum states:
+//! - Purity: Measures how pure a quantum state is (1.0 for pure states, lower for mixed states)
+//! - Coherence: Measures the amount of quantum superposition in the state
+//! - Entropy: Measures the amount of uncertainty or mixedness in the state
+//! - Per-qubit metrics: Additional metrics calculated for individual qubits
+//!
+//! The test cases cover a variety of quantum states to ensure correct behavior:
+//! 1. Basic metric functionality (recording, retrieval, formatting)
+//! 2. Bell states (maximally entangled 2-qubit states)
+//! 3. Product states (unentangled states)
+//! 4. GHZ states (N-qubit entangled states)
+//! 5. W states (specific type of entangled state)
+//! 6. Mixed states (classical probability distributions)
+//!
+//! Each test case verifies that the metrics match the expected theoretical values.
+
 const testing = std.testing;
 
 test "metrics recording and retrieval" {
@@ -320,8 +338,15 @@ test "metrics formatting" {
     try testing.expect(std.mem.containsAtLeast(u8, formatted, 1, "123.45"));
 }
 
+/// Tests quantum coherence metrics with a Bell state (|00> + |11>)/√2.
+/// 
+/// A Bell state is a maximally entangled two-qubit state with the following properties:
+/// - Purity: 0.5 (mixed state due to entanglement)
+/// - Coherence: Non-zero (exact value depends on basis)
+/// - Entropy: 1.0 (one bit of entanglement)
+///
+/// This test verifies that the quantum metrics correctly identify these properties.
 test "quantum coherence metrics - bell state" {
-    // Test with a Bell state (|00> + |11>)/√2
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -365,8 +390,15 @@ test "quantum coherence metrics - bell state" {
     try testing.expect(found_entropy);
 }
 
+/// Tests quantum coherence metrics with a product state |00>.
+///
+/// A product state is an unentangled quantum state with the following properties:
+/// - Purity: 1.0 (pure state)
+/// - Coherence: 0.0 (no superposition)
+/// - Entropy: 0.0 (no uncertainty)
+///
+/// This test verifies that the quantum metrics correctly identify these properties.
 test "quantum coherence metrics - product state" {
-    // Test with a product state |00>
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -397,8 +429,15 @@ test "quantum coherence metrics - product state" {
     }
 }
 
+/// Tests quantum coherence metrics with a 3-qubit GHZ state (|000> + |111>)/√2.
+///
+/// A GHZ (Greenberger-Horne-Zeilinger) state is a maximally entangled multi-qubit state with the following properties:
+/// - Purity: 0.5 (mixed state due to entanglement)
+/// - Entropy: 1.0 (one bit of entanglement across all qubits)
+/// - Shows genuine multipartite entanglement
+///
+/// This test verifies that the quantum metrics correctly identify these properties.
 test "quantum coherence metrics - ghz state" {
-    // Test with a 3-qubit GHZ state (|000> + |111>)/√2
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -431,8 +470,15 @@ test "quantum coherence metrics - ghz state" {
     }
 }
 
+/// Tests quantum coherence metrics with a 3-qubit W state (|001> + |010> + |100>)/√3.
+///
+/// A W state is a specific type of entangled state with the following properties:
+/// - Purity: 1/3 (due to equal superposition of three basis states)
+/// - Entropy: log2(3) ≈ 1.585 (higher than Bell/CHSH states)
+/// - Shows different entanglement properties than GHZ states
+///
+/// This test verifies that the quantum metrics correctly identify these properties.
 test "quantum coherence metrics - w state" {
-    // Test with a 3-qubit W state (|001> + |010> + |100>)/√3
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -467,8 +513,15 @@ test "quantum coherence metrics - w state" {
     }
 }
 
+/// Tests quantum coherence metrics with a classically mixed state (|00><00| + |11><11|)/2.
+///
+/// A classically mixed state represents a statistical mixture of quantum states with the following properties:
+/// - Purity: 0.5 (completely mixed state would be 0.25 for 2 qubits)
+/// - Entropy: 1.0 (one bit of classical uncertainty)
+/// - Coherence: 0.0 (no quantum superposition)
+///
+/// This test verifies that the quantum metrics correctly identify these properties.
 test "quantum coherence metrics - mixed state" {
-    // Test with a mixed state (|00><00| + |11><11|)/2
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
