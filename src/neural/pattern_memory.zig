@@ -77,6 +77,7 @@ pub const PatternPool = struct {
                         .width = width,
                         .height = height,
                         .pattern_type = .Visual,
+                        .metadata = .{},
                         .complexity = 0.0,
                         .stability = 0.0,
                         .allocator = self.allocator,
