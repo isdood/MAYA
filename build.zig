@@ -1,16 +1,13 @@
-const Builder = @import("std").build.Builder;
+const std = @import("std");
 
-pub fn build(b: *Builder) void {
-    // Standard target options allows the person running `zig build` to choose
-    // what target to build for. Here we do not override the defaults, which
-    // means any target is allowed, and the default is native.
+pub fn build(b: *std.Build) void {
+    // Standard target options
     const target = b.standardTargetOptions(.{});
+    const mode = b.standardOptimizeOption(.{});
 
-    // Standard optimization options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-    const mode = b.standardReleaseOptions();
-
-    const exe = b.addExecutable("test-patterns", "src/quantum_cache/test_patterns.zig");
+    // Create executable
+    const exe = b.addExecutable("test-patterns", null);
+    exe.addCSourceFile("src/quantum_cache/test_patterns.zig", &[0][]const u8{});
     exe.setTarget(target);
     exe.setBuildMode(mode);
     
@@ -20,14 +17,11 @@ pub fn build(b: *Builder) void {
     // Link against libc if needed
     exe.linkLibC();
     
-    // Set output directory
-    exe.setOutputDir("zig-out/bin");
-    
     // Install the executable
-    exe.install();
-
+    b.installArtifact(exe);
+    
     // Create run step
-    const run_cmd = exe.run();
+    const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     
     // Add command line arguments if provided
