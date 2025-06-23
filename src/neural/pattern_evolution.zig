@@ -657,7 +657,7 @@ pub const PatternEvolution = struct {
         }
         
         // For non-in-place mutations, use the memory pool if available
-        const width = if (@hasField(pattern_type, "width")) pattern.width else @intCast(@sqrt(@as(f64, @floatFromInt(pattern.data.len / 4)))); // Use proper integer division
+        const width = if (@hasField(pattern_type, "width")) pattern.width else @as(u32, @intFromFloat(@sqrt(@as(f64, @floatFromInt(pattern.data.len / 4))))); // Use proper integer division
         const height = if (@hasField(pattern_type, "height")) pattern.height else width;
         
         // Try to get a pattern from the memory pool
@@ -860,7 +860,7 @@ pub const PatternEvolution = struct {
                 const vec2 = @as(@Vector(vector_size, u8), data2[start..][0..vector_size].*);
                 const diff = vec1 ^ vec2;
                 const diff_u32 = @reduce(.Add, @as(@Vector(vector_size, u8), diff));
-                distance += @popCount(@bitCast(diff_u32));
+                distance += @popCount(@as(u32, @bitCast(diff_u32)));
             }
             
             // Process remaining elements

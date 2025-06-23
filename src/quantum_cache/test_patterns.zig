@@ -3,8 +3,6 @@ const builtin = @import("builtin");
 const neural = @import("neural");
 const Pattern = neural.Pattern;
 
-// Use the PatternType from neural module
-const PatternType = neural.PatternType;
 
 // Initialize random number generator
 var rng = std.Random.DefaultPrng.init(@as(u64, 0x123456789abcdef0));
@@ -48,7 +46,7 @@ pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: 
     }
     
     const pattern = try Pattern.init(allocator, data, width, height);
-    pattern.pattern_type = @intFromEnum(PatternType.Quantum);
+    pattern.pattern_type = .Quantum;
     pattern.complexity = 0.9;
     pattern.stability = 0.1;
     
