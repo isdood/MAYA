@@ -1,5 +1,6 @@
-const Builder = @import("std").build.Builder;
-const Step = @import("std").build.Step;
+const build = @import("std/build.zig");
+const Builder = build.Builder;
+const Step = build.Step;
 
 pub fn build(b: *Builder) !void {
     // Standard target options
