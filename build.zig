@@ -1,30 +1,31 @@
-const build = @import("std/build.zig");
-const Builder = build.Builder;
-const Step = build.Step;
+const std = @import("std");
 
-pub fn build(b: *Builder) !void {
+pub fn build(b: *std.Build) !void {
     // Standard target options
     const target = b.standardTargetOptions(.{});
     
     // Standard optimization options
-    const mode = b.standardOptimizeOption(.{});
+    const optimize = b.standardOptimizeOption(.{});
 
     // Create executable
-    const exe = b.addExecutable("test-patterns", "src/quantum_cache/test_patterns.zig");
-    exe.setTarget(target);
-    exe.setBuildMode(mode);
+    const exe = b.addExecutable(.{
+        .name = "test-patterns",
+        .root_source_file = .{ .path = "src/quantum_cache/test_patterns.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
     
     // Add include paths
-    exe.addIncludePath("src");
+    exe.addIncludePath(.{ .path = "src" });
     
     // Link against libc if needed
     exe.linkLibC();
     
     // Install the executable
-    exe.install();
+    b.installArtifact(exe);
     
     // Create run step
-    const run_cmd = exe.run();
+    const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     
     // Add command line arguments if provided
