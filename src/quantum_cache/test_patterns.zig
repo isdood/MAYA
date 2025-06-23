@@ -96,8 +96,8 @@ pub fn main() !void {
     const allocator = gpa.allocator();
     
     // Initialize global pattern pool
-    try neural.Pattern.initGlobalPool(allocator);
-    defer neural.Pattern.deinitGlobalPool();
+    try neural.initGlobalPool(allocator);
+    defer neural.deinitGlobalPool();
     
     std.debug.print("Generating test patterns...\n", .{});
     
