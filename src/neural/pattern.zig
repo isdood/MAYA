@@ -2,6 +2,15 @@ const std = @import("std");
 const pattern_serialization = @import("pattern_serialization.zig");
 const pattern_memory = @import("pattern_memory.zig");
 
+/// Pattern metadata
+pub const PatternMetadata = struct {
+    created_at: i64 = std.time.timestamp(),
+    updated_at: i64 = std.time.timestamp(),
+    source: []const u8 = "",
+    version: []const u8 = "1.0",
+    tags: []const []const u8 = &[_][]const u8{},
+};
+
 /// Global memory pool for pattern allocation
 var global_pool: ?*pattern_memory.PatternPool = null;
 
@@ -62,6 +71,9 @@ pub const Pattern = struct {
                 .data = try allocator.dupe(u8, data),
                 .width = width,
                 .height = height,
+                .pattern_type = .Visual,
+                .metadata = .{},
+                .allocator = allocator,
                 .pattern_type = .Unknown,
                 .complexity = 0.0,
                 .stability = 0.0,
