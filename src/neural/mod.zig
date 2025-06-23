@@ -27,7 +27,7 @@ pub const gpu_evolution = struct {
 };
 
 // Re-export common types for convenience
-pub const Pattern = pattern_recognition.Pattern;
+pub const Pattern = @import("pattern.zig").Pattern;
 pub const PatternFeedback = pattern_recognition.PatternFeedback;
 pub const SynthesizedPattern = pattern_synthesis.SynthesizedPattern;
 pub const PatternProcessor = pattern_processor.PatternProcessor;
