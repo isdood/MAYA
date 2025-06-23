@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 const mem = std.mem;
 const time = std.time;
 const math = std.math;
-const neural = @import("neural");
+const neural = @import("../neural/mod.zig");
 const Pattern = neural.Pattern;
 const profiling = neural.profiling;
 const ProfileSection = profiling.ProfileSection;
@@ -276,8 +276,10 @@ pub fn main() !void {
     }
     
     // Run benchmarks if not in quick mode
-    if (!std.mem.eql(u8, std.os.argv[0] \
-        [std.fs.path.basenamePosix(std.os.argv[0]).start..], "quick")) {
+    const argv0 = std.os.argv[0];
+    const base_name = std.fs.path.basenamePosix(argv0);
+    const is_quick = std.mem.eql(u8, base_name, "quick");
+    if (!is_quick) {
         try runBenchmarks(allocator);
         try runMemoryTests(allocator);
     }
