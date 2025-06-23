@@ -30,7 +30,7 @@ pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: 
     }
     
     const pattern = try Pattern.init(allocator, data, width, height);
-    pattern.pattern_type = @intFromEnum(PatternType.Visual);
+    pattern.pattern_type = .Visual;
     pattern.complexity = 0.5;
     pattern.stability = 0.8;
     

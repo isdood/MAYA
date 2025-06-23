@@ -116,6 +116,7 @@ pub const Pattern = struct {
             .width = w,
             .height = h,
             .pattern_type = .Visual,
+            .metadata = .{},
             .complexity = 0.0,
             .stability = 0.0,
             .allocator = allocator,
