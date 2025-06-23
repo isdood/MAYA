@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const testing = std.testing;
+const pattern = @import("pattern.zig");
 
 // Core neural modules
 pub const pattern_recognition = @import("pattern_recognition.zig");
@@ -26,8 +27,10 @@ pub const gpu_evolution = struct {
     };
 };
 
-// Re-export common types for convenience
+// Re-export common types and functions for convenience
 pub const Pattern = @import("pattern.zig").Pattern;
+pub const initGlobalPool = pattern.initGlobalPool;
+pub const deinitGlobalPool = pattern.deinitGlobalPool;
 pub const PatternFeedback = pattern_recognition.PatternFeedback;
 pub const SynthesizedPattern = pattern_synthesis.SynthesizedPattern;
 pub const PatternProcessor = pattern_processor.PatternProcessor;
