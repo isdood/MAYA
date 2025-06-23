@@ -31,6 +31,108 @@ pub const Pattern = struct {
     width: usize,
     /// Height of the pattern in pixels
     height: usize,
+    /// Pattern complexity score
+    complexity: f64 = 0.0,
+    /// Pattern stability score
+    stability: f64 = 0.0,
+    /// Pattern type
+    pattern_type: PatternType,
+    /// Pattern metadata
+    metadata: PatternMetadata,
+    /// Allocator for this pattern
+    allocator: std.mem.Allocator,
+
+    /// Initialize a new pattern
+    pub fn init(allocator: std.mem.Allocator, data: []u8, width: usize, height: usize) !*Pattern {
+        const self = try allocator.create(Pattern);
+        self.* = .{
+            .data = data,
+            .width = width,
+            .height = height,
+            .pattern_type = .Visual,
+            .metadata = .{
+                .created_at = std.time.timestamp(),
+                .updated_at = std.time.timestamp(),
+                .source = "",
+                .version = "1.0",
+                .tags = &[_][]const u8{},
+            },
+            .allocator = allocator,
+        };
+        return self;
+    }
+
+    /// Deinitialize the pattern
+    pub fn deinit(self: *Pattern) void {
+        self.allocator.free(self.data);
+        self.allocator.destroy(self);
+    }
+
+    /// Create a view of a pattern region
+    pub fn createView(self: *const Pattern, x: usize, y: usize, width: usize, height: usize) Pattern {
+        const start = y * self.width * 4 + x * 4;
+        const end = start + height * width * 4;
+        return .{
+            .data = self.data[start..end],
+            .width = width,
+            .height = height,
+            .pattern_type = self.pattern_type,
+            .metadata = self.metadata,
+            .allocator = self.allocator,
+        };
+    }
+
+    /// Transform pattern in place
+    pub fn transformInPlace(self: *Pattern, transform_fn: fn ([]u8) void) !*Pattern {
+        transform_fn(self.data);
+        return self;
+    }
+
+    /// Calculate Hamming distance between two patterns
+    pub fn calculateHammingDistance(data1: []const u8, data2: []const u8) f64 {
+        if (data1.len != data2.len) return 1.0;
+        
+        var distance: f64 = 0.0;
+        const vector_size = 16;
+        
+        // Process in chunks of vector_size
+        for (0..data1.len/vector_size) |i| {
+            const vec1 = @as(@Vector(vector_size, u8), data1[i*vector_size..][0..vector_size].*);
+            const vec2 = @as(@Vector(vector_size, u8), data2[i*vector_size..][0..vector_size].*);
+            const diff = vec1 != vec2;
+            distance += @popCount(@bitCast(u32, @as(u32, diff)));
+        }
+        
+        // Process remaining elements
+        const remaining = data1.len % vector_size;
+        if (remaining > 0) {
+            const vec1 = @as(@Vector(remaining, u8), data1[data1.len-remaining..].*);
+            const vec2 = @as(@Vector(remaining, u8), data2[data2.len-remaining..].*);
+            const diff = vec1 != vec2;
+            distance += @popCount(@bitCast(u32, @as(u32, diff)));
+        }
+        
+        return distance / data1.len;
+    }
+
+    /// Serialize pattern to JSON
+    pub fn toJson(self: *const Pattern) ![]const u8 {
+        return try pattern_serialization.serializeToJson(self.allocator, self);
+    }
+
+    /// Deserialize a pattern from a JSON string
+    pub fn fromJson(allocator: std.mem.Allocator, json: []const u8) !*Pattern {
+        return try pattern_serialization.deserializeFromJson(allocator, json);
+    }
+};
+
+pub const Pattern = struct {
+    /// The pixel data of the pattern
+    data: []u8,
+    /// Width of the pattern in pixels
+    width: usize,
+    /// Height of the pattern in pixels
+    height: usize,
     /// Type of the pattern
     pattern_type: PatternType,
     /// Complexity score of the pattern (0.0 to 1.0)
