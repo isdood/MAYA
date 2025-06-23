@@ -4,57 +4,30 @@
 //! 👤 Author: isdood
 
 const std = @import("std");
-const builtin = @import("builtin");
+const c = @cImport({
+    @cInclude("hip/hip_runtime.h");
+});
 
-// Export HIP/ROCm types and functions
-extern "C" {
-    // HIP runtime API
-    pub const hipError_t = c_uint;
-    pub const hipDeviceProp_t = extern struct {
-        name: [256]u8,
-        totalGlobalMem: usize,
-        sharedMemPerBlock: usize,
-        regsPerBlock: c_int,
-        warpSize: c_int,
-        maxThreadsPerBlock: c_int,
-        maxThreadsDim: [3]c_int,
-        maxGridSize: [3]c_int,
-        clockRate: c_int,
-        memoryClockRate: c_int,
-        memoryBusWidth: c_int,
-        totalConstMem: usize,
-        major: c_int,
-        minor: c_int,
-        multiProcessorCount: c_int,
-        l2CacheSize: c_int,
-        maxThreadsPerMultiProcessor: c_int,
-        computeMode: c_int,
-        clockInstructionRate: c_int,
-        concurrentKernels: c_int,
-        pciDomainID: c_int,
-        pciBusID: c_int,
-        pciDeviceID: c_int,
-        maxSharedMemoryPerMultiProcessor: usize,
-        isMultiGpuBoard: c_int,
-        canMapHostMemory: c_int,
-        gcnArch: c_int,
-        gcnArchName: [256]u8,
-        // ... other fields as needed
-    };
+/// Indicates if ROCm support is available
+pub const has_rocm_support = @hasDecl(c, "hipInit");
 
-    pub extern fn hipInit(flags: c_uint) hipError_t;
-    pub extern fn hipGetDeviceCount(count: *c_int) hipError_t;
-    pub extern fn hipGetDeviceProperties(prop: *hipDeviceProp_t, device: c_int) hipError_t;
-    pub extern fn hipMalloc(ptr: **anyopaque, size: usize) hipError_t;
-    pub extern fn hipFree(ptr: *anyopaque) hipError_t;
-    pub extern fn hipMemcpy(dst: *anyopaque, src: *const anyopaque, size: usize, kind: c_uint) hipError_t;
-    pub extern fn hipGetLastError() hipError_t;
-    pub extern fn hipGetErrorString(error: hipError_t) [*:0]const u8;
-}
+// Re-export necessary types
+pub const hipError_t = c.hipError_t;
+pub const hipDeviceProp_t = c.hipDeviceProp_t;
+
+// Re-export necessary functions
+pub const hipMalloc = c.hipMalloc;
+pub const hipFree = c.hipFree;
+pub const hipMemcpy = c.hipMemcpy;
+pub const hipGetLastError = c.hipGetLastError;
+pub const hipGetErrorString = c.hipGetErrorString;
+pub const hipInit = c.hipInit;
+pub const hipGetDeviceCount = c.hipGetDeviceCount;
+pub const hipGetDeviceProperties = c.hipGetDeviceProperties;
 
 // HIP API error codes
-pub const hipSuccess: c_uint = 0;
-pub const hipErrorInvalidValue: c_uint = 1;
+pub const hipSuccess = c.hipSuccess;
+pub const hipErrorInvalidValue = c.hipErrorInvalidValue;
 pub const hipErrorOutOfMemory: c_uint = 2;
 // ... other error codes as needed
 

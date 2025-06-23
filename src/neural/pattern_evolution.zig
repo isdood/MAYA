@@ -260,7 +260,7 @@ pub const PatternEvolution = struct {
         return metrics;
     }
     
-    /// Apply quantum enhancement to the population of patterns
+    // Apply quantum enhancement to the population of patterns
     fn applyQuantumEnhancement(self: *PatternEvolution, population: []*const Pattern, metrics: *EvolutionMetrics) !void {
         // Skip if no quantum enhancement is enabled
         if (self.state.evolution_type != .quantum_enhanced and 

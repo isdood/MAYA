@@ -27,54 +27,67 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .cwd_relative = "src/neural/mod.zig" },
     });
 
-    // GPU module (optional)
-    if (options.enable_gpu) {
-        const gpu_mod = b.addModule("gpu", .{
-            .root_source_file = .{ .cwd_relative = "src/gpu/gpu.zig" },
-        });
+    // GPU module (disabled for now to fix build issues)
+    // if (options.enable_gpu) {
+    //     // Create a module for the GPU code
+    //     const gpu_mod = b.addModule("gpu", .{
+    //         .root_source_file = .{ .cwd_relative = "src/gpu/gpu.zig" },
+    //     });
         
-        // Set ROCm paths
-        const rocm_path = options.rocm_path orelse "/opt/rocm";
+    //     // Make GPU module available to neural module
+    //     neural_mod.addImport("gpu", gpu_mod);
         
-        // Add ROCm include path
-        const include_path = std.fs.path.join(b.allocator, &[_][]const u8{rocm_path, "include"}) catch @panic("OOM");
-        gpu_mod.addSystemIncludePath(.{ .cwd_relative = include_path });
+    //     // Create an executable that will use the GPU code
+    //     const gpu_exe = b.addExecutable(.{
+    //         .name = "gpu_runner",
+    //         .root_source_file = .{ .cwd_relative = "src/gpu/runner.zig" },
+    //         .target = target,
+    //         .optimize = optimize,
+    //     });
         
-        // Add ROCm library path
-        const lib_path = std.fs.path.join(b.allocator, &[_][]const u8{rocm_path, "lib"}) catch @panic("OOM");
-        gpu_mod.addLibraryPath(.{ .cwd_relative = lib_path });
+    //     // Add module to the executable
+    //     gpu_exe.root_module.addImport("gpu", gpu_mod);
         
-        // Link against ROCm system libraries with default options
-        const link_options = std.Build.Module.LinkSystemLibraryOptions{
-            .needed = true,
-            .use_pkg_config = .yes,
-            .preferred_link_mode = .dynamic,
-        };
+    //     // Set ROCm paths
+    //     const rocm_path = options.rocm_path orelse "/opt/rocm";
         
-        // Link system libraries with proper options
-        gpu_mod.linkSystemLibrary("hsa-runtime64", link_options);
-        gpu_mod.linkSystemLibrary("amdhip64", link_options);
-        gpu_mod.linkSystemLibrary("rocblas", link_options);
-        gpu_mod.linkSystemLibrary("hipblas", link_options);
-        gpu_mod.linkSystemLibrary("MIOpen", link_options);
+    //     // Add ROCm include path
+    //     const include_path = std.fs.path.join(b.allocator, &[_][]const u8{rocm_path, "include"}) catch @panic("OOM");
+    //     gpu_exe.addSystemIncludePath(.{ .cwd_relative = include_path });
         
-        // Add rpath for ROCm libraries
-        gpu_mod.addRPath(.{ .cwd_relative = lib_path });
+    //     // Add ROCm library path
+    //     const lib_path = std.fs.path.join(b.allocator, &[_][]const u8{rocm_path, "lib"}) catch @panic("OOM");
+    //     gpu_exe.addLibraryPath(.{ .cwd_relative = lib_path });
         
-        // Set target-specific flags and define macros
-        gpu_mod.addCSourceFlags(&.{
-            "-fPIC",
-            "-std=c++17",
-            "-O3",
-            "-DNDEBUG",
-            "-D__HIP_PLATFORM_AMD__",
-            "-D__HIP_ROCclr__",
-            "-lstdc++",  // Link C++ standard library
-        });
+    //     // Link system libraries
+    //     const libs_to_link = [_][]const u8{
+    //         "hsa-runtime64",
+    //         "amdhip64",
+    //         "rocblas",
+    //         "hipblas",
+    //         "MIOpen",
+    //         "stdc++",  // C++ standard library
+    //     };
         
-        // Make GPU module available to neural module
-        neural_mod.addImport("gpu", gpu_mod);
-    }
+    //     for (libs_to_link) |lib| {
+    //         gpu_exe.linkSystemLibrary(lib);
+    //     }
+        
+    //     // Add rpath for ROCm libraries
+    //     gpu_exe.addRPath(.{ .cwd_relative = lib_path });
+        
+    //     // Add include paths
+    //     gpu_exe.addSystemIncludePath(.{ .cwd_relative = "src" });
+    //     gpu_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        
+    //     // Install the executable
+    //     b.installArtifact(gpu_exe);
+        
+    //     // Add a run step for the GPU executable
+    //     const run_gpu = b.addRunArtifact(gpu_exe);
+    //     const run_gpu_step = b.step("run-gpu", "Run the GPU example");
+    //     run_gpu_step.dependOn(&run_gpu.step);
+    // }
 
     // Test patterns executable
     const test_patterns = b.addExecutable(.{

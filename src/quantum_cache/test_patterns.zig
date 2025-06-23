@@ -1,5 +1,6 @@
 const std = @import("std");
-const Pattern = @import("../neural/pattern.zig").Pattern;
+const neural = @import("neural");
+const Pattern = neural.Pattern;
 
 pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
@@ -85,8 +86,8 @@ pub fn main() !void {
     const allocator = gpa.allocator();
     
     // Initialize global pattern pool
-    try @import("../neural/pattern.zig").initGlobalPool(allocator);
-    defer @import("../neural/pattern.zig").deinitGlobalPool();
+    try neural.pattern.initGlobalPool(allocator);
+    defer neural.pattern.deinitGlobalPool();
     
     std.debug.print("Generating test patterns...\n", .{});
     

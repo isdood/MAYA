@@ -77,48 +77,6 @@ pub const Pattern = struct {
         return self;
     }
     
-    /// Create a zero-copy view of this pattern
-    /// The view shares the same underlying data as the original pattern
-    pub fn createView(self: *const Pattern, x: usize, y: usize, width: usize, height: usize) Pattern {
-        const start = (y * self.width + x) * 4; // Assuming 4 channels (RGBA)
-        const end = start + (width * height * 4);
-        
-        std.debug.assert(end <= self.data.len);
-        
-        return .{
-            .data = self.data[start..end],
-            .width = width,
-            .height = height,
-            .pattern_type = self.pattern_type,
-            .complexity = self.complexity,
-            .stability = self.stability,
-            .allocator = self.allocator,
-        };
-    }
-    
-    /// Apply a transformation in-place if possible, or create a new pattern if necessary
-    pub fn transformInPlace(
-        self: *Pattern,
-        transform_fn: fn ([]u8) void
-    ) !*Pattern {
-        // Check if we can modify in-place
-        if (false) { // Skip read-only check for now as it's not available in all Zig versions
-            // Can't modify in-place, create a copy
-            const new_pattern = try Pattern.init(
-                self.allocator,
-                self.data,
-                self.width,
-                self.height
-            );
-            transform_fn(new_pattern.data);
-            return new_pattern;
-        }
-        
-        // Modify in-place
-        transform_fn(self.data);
-        return self;
-    }
-
     /// Initialize a new pattern with the given dimensions and channels
     /// Uses the global memory pool if available
     pub fn initPattern(allocator: std.mem.Allocator, width: u32, height: u32, channels: u8) error{OutOfMemory}!*Pattern {
