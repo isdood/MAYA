@@ -18,6 +18,9 @@ pub const pattern_visualization = @import("pattern_visualization.zig");
 // Export GPU options for other modules to use
 pub const gpu_options = @import("build_options").gpu_options;
 
+// Build options
+pub const build_options = @import("build_options").options;
+
 // Provide a dummy implementation for GPU evolution
 pub const gpu_evolution = struct {
     pub const GPUEvolution = struct {

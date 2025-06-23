@@ -6,10 +6,102 @@
 const std = @import("std");
 
 // Import build options
-const build_options = @import("build_options").options;
+const build_options = @import("build_options");
 
 /// Indicates if ROCm support is available
 pub const has_rocm_support = build_options.enable_gpu;
+
+// Provide dummy implementations when GPU is disabled
+if (!build_options.enable_gpu) {
+    pub const hipError_t = enum(c_uint) {
+        hipSuccess = 0,
+        hipErrorInvalidValue = 1,
+        hipErrorOutOfMemory = 2,
+        hipErrorNotInitialized = 3,
+        hipErrorDeinitialized = 4,
+        hipErrorNoDevice = 100,
+        hipErrorInvalidDevice = 101,
+    };
+    
+    pub const hipDeviceProp_t = extern struct {
+        name: [256]u8,
+        totalGlobalMem: usize,
+        sharedMemPerBlock: usize,
+        regsPerBlock: i32,
+        warpSize: i32,
+        memPitch: usize,
+        maxThreadsPerBlock: i32,
+        maxThreadsDim: [3]i32,
+        maxGridSize: [3]i32,
+        clockRate: i32,
+        totalConstMem: usize,
+        major: i32,
+        minor: i32,
+        textureAlignment: usize,
+        deviceOverlap: i32,
+        multiProcessorCount: i32,
+        kernelExecTimeoutEnabled: i32,
+        integrated: i32,
+        canMapHostMemory: i32,
+        computeMode: i32,
+        maxTexture1D: i32,
+        maxTexture2D: [2]i32,
+        maxTexture3D: [3]i32,
+        maxTexture1DLayered: [2]i32,
+        maxTexture2DLayered: [3]i32,
+        surfaceAlignment: usize,
+        concurrentKernels: i32,
+        ECCEnabled: i32,
+        pciBusID: i32,
+        pciDeviceID: i32,
+        pciDomainID: i32,
+        tccDriver: i32,
+        asyncEngineCount: i32,
+        unifiedAddressing: i32,
+        memoryClockRate: i32,
+        memoryBusWidth: i32,
+        l2CacheSize: i32,
+        maxThreadsPerMultiProcessor: i32,
+        streamPrioritiesSupported: i32,
+        globalL1CacheSupported: i32,
+        localL1CacheSupported: i32,
+        maxSharedMemoryPerMultiProcessor: usize,
+        isMultiGpuBoard: i32,
+        hmmUvmSupported: i32,
+        hmmUvmAccessSupported: i32,
+        isArchTuring: i32,
+        isArchAmpere: i32,
+        cooperativeLaunch: i32,
+        cooperativeMultiDeviceLaunch: i32,
+        pageableMemoryAccess: i32,
+        pageableMemoryAccessUsesHostPageTables: i32,
+    };
+    
+    // Dummy function implementations
+    pub fn hipGetDeviceProperties(prop: *hipDeviceProp_t, device: i32) hipError_t {
+        _ = prop;
+        _ = device;
+        return .hipSuccess;
+    }
+    
+    pub fn hipGetDeviceCount(count: *i32) hipError_t {
+        count.* = 0;
+        return .hipSuccess;
+    }
+    
+    pub fn hipSetDevice(device: i32) hipError_t {
+        _ = device;
+        return .hipSuccess;
+    }
+    
+    pub fn hipDeviceSynchronize() hipError_t {
+        return .hipSuccess;
+    }
+    
+    pub fn hipDeviceReset() hipError_t {
+        return .hipSuccess;
+    }
+}
 
 // Simple error type for GPU operations
 pub const hipError_t = enum(c_uint) {

@@ -6,8 +6,16 @@ const std = @import("std");
 // Import build options from the build system
 const build_options = @import("build_options");
 
-// Build configuration options
+// Re-export the build options
 pub const options = struct {
     /// Whether GPU support is enabled
     pub const enable_gpu = build_options.enable_gpu;
 };
+
+// For compatibility with older code
+pub const enable_gpu = options.enable_gpu;
+
+// Test that we can import the build options
+comptime {
+    _ = enable_gpu; // Force evaluation to catch any errors at compile time
+}
