@@ -4,21 +4,8 @@ const neural = @import("neural");
 const Pattern = neural.Pattern;
 const Random = std.rand.DefaultPrng;
 
-// Define pattern types if not already defined
-const PatternType = enum {
-    Visual,
-    Quantum,
-    Hybrid,
-    Unknown,
-};
-
-// Define pattern types if not already defined
-const PatternType = enum {
-    Quantum,
-    Visual,
-    Hybrid,
-    Unknown,
-};
+// Use the PatternType from neural module
+const PatternType = neural.PatternType;
 
 pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
