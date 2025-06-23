@@ -29,7 +29,8 @@ pub const gpu_evolution = struct {
 
 // Re-export common types and functions for convenience
 pub const Pattern = @import("pattern.zig").Pattern;
-pub const PatternType = @import("pattern.zig").PatternType;
+// PatternType is not defined in pattern.zig, using Pattern as a fallback
+pub const PatternType = Pattern;
 pub const initGlobalPool = pattern.initGlobalPool;
 pub const deinitGlobalPool = pattern.deinitGlobalPool;
 pub const PatternFeedback = pattern_recognition.PatternFeedback;
