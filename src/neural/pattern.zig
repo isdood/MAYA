@@ -25,6 +25,20 @@ pub fn deinitGlobalPool() void {
 }
 
 pub const Pattern = struct {
+    /// The pixel data of the pattern
+    data: []u8,
+    /// Width of the pattern in pixels
+    width: usize,
+    /// Height of the pattern in pixels
+    height: usize,
+    /// Pattern complexity score
+    complexity: f64 = 0.0,
+    /// Pattern stability score
+    stability: f64 = 0.0,
+    /// Pattern type
+    pattern_type: PatternType,
+    /// Pattern metadata
+    metadata: PatternMetadata,
     /// Allocator used for this pattern's memory
     allocator: std.mem.Allocator,
 
