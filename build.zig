@@ -55,20 +55,23 @@ pub fn build(b: *std.Build) void {
     // Create the main executable
     const exe = b.addExecutable(.{
         .name = "test-patterns",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/quantum_cache/test_patterns.zig" } },
+        .root_source_file = .{ .path = "src/quantum_cache/test_patterns.zig" },
         .target = target,
         .optimize = optimize,
     });
     
-    // Add modules
+    // Add dependencies
     exe.root_module.addImport("neural", neural_mod);
     exe.root_module.addImport("build_options", build_options_module);
     
+    // Install the main executable
+    b.installArtifact(exe);
+    
     // Create a profiling-enabled executable if requested
     if (options.enable_profiling) {
-        const profile_exe = b.addExecutable({
+        const profile_exe = b.addExecutable(.{
             .name = "test-patterns-profile",
-            .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/quantum_cache/test_patterns.zig" } },
+            .root_source_file = .{ .path = "src/quantum_cache/test_patterns.zig" },
             .target = target,
             .optimize = .ReleaseSafe, // Use ReleaseSafe for profiling
         });
@@ -120,18 +123,6 @@ pub fn build(b: *std.Build) void {
             const view_step = b.step("view-flamegraph", "View the flamegraph");
             view_step.dependOn(&view_flamegraph.step);
         }
-    } else {
-        // If not building with profiling, just build the regular executable
-        const exe = b.addExecutable({
-            .name = "test-patterns",
-            .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/quantum_cache/test_patterns.zig" } },
-            .target = target,
-            .optimize = optimize,
-        });
-        
-        exe.root_module.addImport("neural", neural_mod);
-        exe.root_module.addImport("build_options", build_options_module);
-        b.installArtifact(exe);
     }
     
     // Install both executables
