@@ -4,6 +4,12 @@
 const std = @import("std");
 const testing = std.testing;
 const pattern = @import("pattern.zig");
+const profiling = @import("profiling.zig");
+
+comptime {
+    // Export the profiling module for easy access
+    _ = profiling;
+}
 
 // Core neural modules
 pub const pattern_recognition = @import("pattern_recognition.zig");

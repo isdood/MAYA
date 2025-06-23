@@ -10,12 +10,18 @@ const build_options = @import("build_options");
 pub const options = struct {
     /// Whether GPU support is enabled
     pub const enable_gpu = build_options.enable_gpu;
+    
+    /// Whether profiling is enabled
+    pub const enable_profiling = if (@hasDecl(build_options, "enable_profiling")) 
+        build_options.enable_profiling else false;
 };
 
 // For compatibility with older code
 pub const enable_gpu = options.enable_gpu;
+pub const enable_profiling = options.enable_profiling;
 
 // Test that we can import the build options
 comptime {
     _ = enable_gpu; // Force evaluation to catch any errors at compile time
+    _ = enable_profiling;
 }

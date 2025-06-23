@@ -1,6 +1,9 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const time = std.time;
+const math = std.math;
+const Complex = std.math.Complex;
+const assert = std.debug.assert;
 
 /// A single recorded metric with timestamp and metadata
 pub const Metric = struct {
@@ -122,35 +125,248 @@ pub const MetricsCollector = struct {
     }
 };
 
+/// Quantum coherence metrics for tracking quantum state coherence
+pub const QuantumCoherenceMetrics = struct {
+    allocator: std.mem.Allocator,
+    collector: *MetricsCollector,
+    
+    /// Initialize quantum coherence metrics
+    pub fn init(allocator: std.mem.Allocator, collector: *MetricsCollector) QuantumCoherenceMetrics {
+        return .{
+            .allocator = allocator,
+            .collector = collector,
+        };
+    }
+    
+    /// Calculate and record coherence metrics for a quantum state
+    /// state: Vector of complex amplitudes representing the quantum state
+    /// qubit_count: Number of qubits in the system
+    /// tags: Optional tags for the metrics
+    pub fn recordCoherenceMetrics(
+        self: *QuantumCoherenceMetrics,
+        state: []const Complex(f64),
+        qubit_count: usize,
+        tags: ?[]const []const u8,
+    ) !void {
+        const purity = try self.calculatePurity(state);
+        const coherence = try self.calculateCoherence(state);
+        const entropy = try self.calculateEntropy(state, qubit_count);
+        
+        try self.collector.record("quantum.purity", purity, tags);
+        try self.collector.record("quantum.coherence", coherence, tags);
+        try self.collector.record("quantum.entropy", entropy, tags);
+        
+        // Record per-qubit coherence metrics
+        for (0..qubit_count) |qubit| {
+            const qubit_coherence = try self.calculateQubitCoherence(state, qubit, qubit_count);
+            const qubit_tags = try self.addQubitTag(tags, qubit);
+            defer if (qubit_tags) |t| self.allocator.free(t);
+            
+            try self.collector.record("quantum.qubit_coherence", qubit_coherence, qubit_tags);
+        }
+    }
+    
+    /// Calculate purity of a quantum state (Tr[ρ²])
+    fn calculatePurity(_: *const QuantumCoherenceMetrics, state: []const Complex(f64)) !f64 {
+        var purity: f64 = 0.0;
+        for (state) |amp| {
+            const prob = amp.re * amp.re + amp.im * amp.im;
+            purity += prob * prob;
+        }
+        return purity;
+    }
+    
+    /// Calculate coherence of a quantum state (sum of off-diagonal elements)
+    fn calculateCoherence(_: *const QuantumCoherenceMetrics, state: []const Complex(f64)) !f64 {
+        var coherence: f64 = 0.0;
+        const n = @as(f64, @floatFromInt(state.len));
+        
+        // For each basis state
+        for (state, 0..) |amp_i, i| {
+            // Compare with all other basis states
+            for (state[i + 1 ..]) |amp_j| {
+                const conj_amp_j = Complex(f64).init(amp_j.re, -amp_j.im);
+                const prod = amp_i.mul(conj_amp_j);
+                coherence += 2 * math.sqrt(prod.re * prod.re + prod.im * prod.im);
+            }
+        }
+        
+        // Normalize by the maximum possible coherence
+        return coherence / (n * (n - 1));
+    }
+    
+    /// Calculate von Neumann entropy of the quantum state
+    fn calculateEntropy(
+        _: *const QuantumCoherenceMetrics,
+        state: []const Complex(f64),
+        _: usize, // qubit_count - for future use with reduced density matrices
+    ) !f64 {
+        var entropy: f64 = 0.0;
+        
+        for (state) |amp| {
+            const prob = amp.re * amp.re + amp.im * amp.im;
+            if (prob > 0) {
+                entropy -= prob * math.log2(prob);
+            }
+        }
+        
+        return entropy;
+    }
+    
+    /// Calculate coherence for a specific qubit
+    fn calculateQubitCoherence(
+        _: *const QuantumCoherenceMetrics,
+        state: []const Complex(f64),
+        target_qubit: usize,
+        qubit_count: usize,
+    ) !f64 {
+        var coherence: f64 = 0.0;
+        const basis_states = @as(usize, 1) << @as(u6, @intCast(qubit_count));
+        const mask = @as(usize, 1) << @as(u6, @intCast(target_qubit));
+        
+        for (0..basis_states) |i| {
+            // Only consider pairs where the target qubit is different
+            const j = i ^ mask;
+            if (j <= i) continue; // Avoid double counting
+            
+            if (j < state.len) {
+                const amp_i = state[i];
+                const amp_j = state[j];
+                const conj_amp_j = Complex(f64).init(amp_j.re, -amp_j.im);
+                const prod = amp_i.mul(conj_amp_j);
+                coherence += 2 * math.sqrt(prod.re * prod.re + prod.im * prod.im);
+            }
+        }
+        
+        // Normalize by the number of possible pairs
+        const possible_pairs = @as(f64, @floatFromInt(basis_states / 2));
+        return if (possible_pairs > 0) coherence / possible_pairs else 0.0;
+    }
+    
+    /// Helper to add qubit tag to existing tags
+    fn addQubitTag(
+        self: *const QuantumCoherenceMetrics,
+        base_tags: ?[]const []const u8,
+        qubit: usize,
+    ) !?[]const []const u8 {
+        const qubit_tag = try std.fmt.allocPrint(self.allocator, "qubit={d}", .{qubit});
+        
+        if (base_tags == null) {
+            const new_tags = try self.allocator.alloc([]const u8, 1);
+            new_tags[0] = qubit_tag;
+            return new_tags;
+        }
+        
+        const new_tags = try self.allocator.alloc([]const u8, base_tags.?.len + 1);
+        std.mem.copyForwards([]const u8, new_tags[0..base_tags.?.len], base_tags.?);
+        new_tags[base_tags.?.len] = qubit_tag;
+        
+        return new_tags;
+    }
+};
+
 // Tests
 const testing = std.testing;
 
 test "metrics recording and retrieval" {
-    var metrics = Metrics.init(testing.allocator);
-    defer metrics.deinit();
+    // Use an arena allocator for this test to simplify memory management
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    var collector = MetricsCollector.init(allocator, 100);
     
     // Record some metrics
-    try metrics.record("quantum_ops_per_sec", 1_000_000, "ops/s", "Quantum operations per second");
-    try metrics.record("memory_usage", 42.5, "MB", "Memory usage");
+    try collector.record("test.metric1", 1_000_000, null);
+    try collector.record("test.metric2", 42.5, &[_][]const u8{"tag1", "tag2"});
     
-    // Retrieve and verify
-    const ops_metric = metrics.get("quantum_ops_per_sec") orelse return error.MetricNotFound;
-    try testing.expectApproxEqAbs(ops_metric.value, 1_000_000, 0.001);
+    // Verify metrics were recorded
+    const metrics = collector.getAll();
+    try testing.expect(metrics.len == 2);
     
-    const mem_metric = metrics.get("memory_usage") orelse return error.MetricNotFound;
-    try testing.expectApproxEqAbs(mem_metric.value, 42.5, 0.001);
+    // Check that we can query metrics
+    const queried = collector.query("test.metric1", null, null);
+    defer {
+        for (queried.items) |metric| {
+            allocator.free(metric.name);
+            if (metric.tags) |tags| {
+                for (tags) |tag| allocator.free(tag);
+                allocator.free(tags);
+            }
+        }
+        queried.deinit();
+    }
+    
+    try testing.expect(queried.items.len == 1);
+    try testing.expectApproxEqAbs(queried.items[0].value, 1_000_000, 0.001);
 }
 
 test "metrics formatting" {
-    var metrics = Metrics.init(testing.allocator);
-    defer metrics.deinit();
+    // Use an arena allocator for this test to simplify memory management
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
     
-    try metrics.record("test_metric", 123.45, "units", "Test metric");
+    var collector = MetricsCollector.init(allocator, 100);
+    try collector.record("test_metric", 123.45, null);
+    
+    const metrics = collector.getAll();
+    try testing.expect(metrics.len == 1);
     
     var buffer: [1024]u8 = undefined;
-    const formatted = try std.fmt.bufPrint(&buffer, "{}", .{metrics});
+    const formatted = try std.fmt.bufPrint(&buffer, "{any}", .{metrics[0]});
     
     try testing.expect(std.mem.containsAtLeast(u8, formatted, 1, "test_metric"));
     try testing.expect(std.mem.containsAtLeast(u8, formatted, 1, "123.45"));
-    try testing.expect(std.mem.containsAtLeast(u8, formatted, 1, "units"));
+}
+
+test "quantum coherence metrics" {
+    // Use an arena allocator for this test to simplify memory management
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    var collector = MetricsCollector.init(allocator, 100);
+    var qm = QuantumCoherenceMetrics.init(allocator, &collector);
+    
+    // Create a simple Bell state (|00> + |11>)/√2
+    const bell_state = [_]Complex(f64){
+        .{ .re = 1.0 / math.sqrt(2.0), .im = 0.0 }, // |00>
+        .{ .re = 0.0, .im = 0.0 }, // |01>
+        .{ .re = 0.0, .im = 0.0 }, // |10>
+        .{ .re = 1.0 / math.sqrt(2.0), .im = 0.0 }, // |11>
+    };
+    
+    // Record metrics for the Bell state with some tags
+    const tags = &[_][]const u8{"test", "bell_state"};
+    try qm.recordCoherenceMetrics(&bell_state, 2, tags);
+    
+    // Verify metrics were recorded
+    const metrics = collector.getAll();
+    try testing.expect(metrics.len >= 3); // At least purity, coherence, and entropy
+    
+    // Check specific metrics
+    var found_purity = false;
+    var found_coherence = false;
+    var found_entropy = false;
+    
+    for (metrics) |metric| {
+        if (std.mem.eql(u8, metric.name, "quantum.purity")) {
+            found_purity = true;
+            // For a Bell state, purity should be 0.5 (since we have two basis states with equal probability)
+            try testing.expectApproxEqAbs(metric.value, 0.5, 1e-10);
+        } else if (std.mem.eql(u8, metric.name, "quantum.coherence")) {
+            found_coherence = true;
+            // Coherence should be between 0 and 1
+            try testing.expect(metric.value >= 0.0 and metric.value <= 1.0);
+        } else if (std.mem.eql(u8, metric.name, "quantum.entropy")) {
+            found_entropy = true;
+            // For a Bell state, entropy should be 1.0 (1 bit of entanglement)
+            try testing.expectApproxEqAbs(metric.value, 1.0, 1e-10);
+        }
+    }
+    
+    try testing.expect(found_purity);
+    try testing.expect(found_coherence);
+    try testing.expect(found_entropy);
 }
