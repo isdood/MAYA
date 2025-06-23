@@ -4,9 +4,6 @@
 const std = @import("std");
 const testing = std.testing;
 
-// Import build options
-const gpu_options = @import("build_options").gpu_options;
-
 // Core neural modules
 pub const pattern_recognition = @import("pattern_recognition.zig");
 pub const pattern_synthesis = @import("pattern_synthesis.zig");
