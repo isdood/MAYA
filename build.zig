@@ -9,7 +9,10 @@ pub fn build(b: *std.Build) !void {
 
     // Create a module for the neural network
     const neural_module = b.createModule(.{
-        .root_source_file = .{ .path = "src/neural/mod.zig" },
+        .root_source_file = .{ .src_path = .{
+            .owner = b,
+            .sub_path = "src/neural/mod.zig",
+        }},
     });
 
     // Create executable
