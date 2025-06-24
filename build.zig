@@ -48,6 +48,10 @@ pub fn build(b: *std.Build) !void {
     // Create run step
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
+
+    // Add a test step
+    const test_step = b.step("test_patterns", "Run the test patterns");
+    test_step.dependOn(&run_cmd.step);
     
     // Add command line arguments if provided
     if (b.args) |args| {
