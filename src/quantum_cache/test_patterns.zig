@@ -27,7 +27,7 @@ fn measureExecution(comptime name: []const u8, func: anytype, context: anytype) 
     try func(context);
     const end = std.time.nanoTimestamp();
     const elapsed_ms = @as(f64, @floatFromInt(end - start)) / 1_000_000.0;
-    std.debug.print("✅ {}: {d:.2} ms\n", .{ name, elapsed_ms });
+    std.debug.print("✅ {s}: {d:.2} ms\n", .{ name, elapsed_ms });
 }
 
 /// Context for benchmark functions
@@ -255,7 +255,7 @@ pub fn main() !void {
                 }
             }.f, .{ allocator, "gradient", 100, 100 });
             defer pattern.deinit(allocator);
-            std.debug.print("  - Created pattern: {}x{} ({} bytes)\n", 
+            std.debug.print("  - Created pattern: {d}x{d} ({} bytes)\n", 
                 .{pattern.width, pattern.height, pattern.data.len});
         }
         
@@ -268,7 +268,7 @@ pub fn main() !void {
                 }
             }.f, .{ allocator, "random", 100, 100 });
             defer pattern.deinit(allocator);
-            std.debug.print("  - Created pattern: {}x{} ({} bytes)\n", 
+            std.debug.print("  - Created pattern: {d}x{d} ({} bytes)\n", 
                 .{pattern.width, pattern.height, pattern.data.len});
         }
         
@@ -281,7 +281,7 @@ pub fn main() !void {
                 }
             }.f, .{ allocator, "checker", 100, 100 });
             defer pattern.deinit(allocator);
-            std.debug.print("  - Created pattern: {}x{} ({} bytes)\n", 
+            std.debug.print("  - Created pattern: {d}x{d} ({} bytes)\n", 
                 .{pattern.width, pattern.height, pattern.data.len});
         }
     }
