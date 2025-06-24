@@ -11,7 +11,11 @@ fn createTestPattern(allocator: std.mem.Allocator, width: usize, height: usize, 
     const size = width * height * 4; // 4 bytes per pixel (RGBA)
     const data = try allocator.alloc(u8, size);
     @memset(data, value);
-    return Pattern.init(data, width, height);
+    return Pattern{
+        .data = data,
+        .width = width,
+        .height = height,
+    };
 }
 
 test "PatternRecognizer shouldCache" {
