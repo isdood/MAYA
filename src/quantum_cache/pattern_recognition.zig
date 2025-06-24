@@ -1,7 +1,7 @@
 const std = @import("std");
 
 // Define a simple Pattern type that's compatible with our needs
-const Pattern = struct {
+pub const Pattern = struct {
     data: []const u8,
     width: usize,
     height: usize,

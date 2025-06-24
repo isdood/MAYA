@@ -75,16 +75,18 @@ test "PatternRecognizer findSimilar" {
     var recognizer = PatternRecognizer.init(allocator);
     
     // Create a test cache
+    const Shard = struct {
+        data: []const u8,
+        width: usize,
+        height: usize,
+    };
+    
     const TestCache = struct {
-        shards: std.StringArrayHashMap(struct {
-            data: []const u8,
-            width: usize,
-            height: usize,
-        }),
+        shards: std.StringArrayHashMap(Shard),
         
         pub fn init(alloc: std.mem.Allocator) @This() {
             return .{
-                .shards = std.StringArrayHashMap(@TypeOf(.{ .data = &.{}, .width = 0, .height = 0 })).init(alloc),
+                .shards = std.StringArrayHashMap(Shard).init(alloc),
             };
         }
         
