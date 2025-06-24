@@ -21,43 +21,21 @@ const ProfilingConfig = struct {
     const default_pattern_size = 256; // Default pattern size for benchmarks
 };
 
-/// Measures execution time of a function
-fn measureExecution(comptime name: []const u8, func: anytype, args: anytype) !void {
-    const warmup_iters = 3;  // Reduced for brevity
-    const bench_iters = 10;  // Reduced for brevity
-    
-    // Warmup
-    for (0..warmup_iters) |_| {
-        _ = try @call(.auto, func, args);
-    }
-    
-    // Benchmark
-    var min_time: u64 = math.maxInt(u64);
-    var max_time: u64 = 0;
-    var total_time: u64 = 0;
-    
-    for (0..bench_iters) |_| {
-        const start = time.nanoTimestamp();
-        _ = try @call(.auto, func, args);
-        const elapsed = @as(u64, @intCast(time.nanoTimestamp() - start));
-        
-        min_time = @min(min_time, elapsed);
-        max_time = @max(max_time, elapsed);
-        total_time += elapsed;
-    }
-    
-    const avg_time = @as(f64, @floatFromInt(total_time)) / @as(f64, @floatFromInt(bench_iters));
-    
-    std.debug.print(
-        "{s: <20} - Min: {d:8.3}µs, Avg: {d:8.3}µs, Max: {d:8.3}µs\n",
-        .{
-            name,
-            @as(f64, @floatFromInt(min_time)) / 1000.0,
-            avg_time / 1000.0,
-            @as(f64, @floatFromInt(max_time)) / 1000.0,
-        },
-    );
+/// Measures execution time of a function and prints the result
+fn measureExecution(comptime name: []const u8, func: anytype, context: anytype) !void {
+    const start = std.time.nanoTimestamp();
+    try func(context);
+    const end = std.time.nanoTimestamp();
+    const elapsed_ms = @as(f64, @floatFromInt(end - start)) / 1_000_000.0;
+    std.debug.print("✅ {}: {d:.2} ms\n", .{ name, elapsed_ms });
 }
+
+/// Context for benchmark functions
+const BenchmarkContext = struct {
+    allocator: std.mem.Allocator,
+    id: []const u8,
+    size: usize,
+};
 
 /// Profiles a specific section of code
 fn profileSection(name: []const u8, func: anytype, args: anytype) @TypeOf(@call(.auto, func, args)) {
@@ -102,103 +80,66 @@ fn measurePatternMemory(name: []const u8, allocator: std.mem.Allocator, width: u
 pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize, deinit_after: bool) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
     
-    const pixel_count = width * height * 4; // RGBA
-    var data = try allocator.alloc(u8, pixel_count);
-    errdefer if (deinit_after) allocator.free(data);
+    const pattern = try Pattern.initPattern(allocator, @intCast(width), @intCast(height), 1);
     
-    // Create a simple gradient pattern
+    // Fill with simple pattern (e.g., gradient)
     for (0..height) |y| {
         for (0..width) |x| {
-            const idx = (y * width + x) * 4;
-            data[idx] = @as(u8, @intCast((x * 255) / width));      // R
-            data[idx + 1] = @as(u8, @intCast((y * 255) / height)); // G
-            data[idx + 2] = @as(u8, @intCast(((x + y) * 255) / (width + height))); // B
-            data[idx + 3] = 255; // A
+            const idx = y * width + x;
+            pattern.data[idx] = @as(u8, @intFromFloat(255.0 * (@as(f32, @floatFromInt(x + y)) / @as(f32, @floatFromInt(width + height - 2)))));
         }
     }
     
-    const pattern = try Pattern.init(allocator, data, width, height);
-    
+    // If deinit_after is true, we need to make a copy that we can safely free
     if (deinit_after) {
-        allocator.free(data);
+        const pattern_copy = try Pattern.initPattern(allocator, @intCast(width), @intCast(height), 1);
+        @memcpy(pattern_copy.data, pattern.data);
+        pattern.deinit(allocator);
+        return pattern_copy;
     } else {
-        // If we're not deinitializing, ensure the pattern owns the data
-        pattern.owns_data = true;
+        return pattern;
     }
-    
-    pattern.pattern_type = .Visual;
-    pattern.complexity = 0.5;
-    pattern.stability = 0.8;
-    
-    return pattern;
 }
 
 pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize, deinit_after: bool) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
     
-    const pixel_count = width * height * 4; // RGBA
-    var data = try allocator.alloc(u8, pixel_count);
-    errdefer if (deinit_after) allocator.free(data);
+    const pattern = try Pattern.initPattern(allocator, @intCast(width), @intCast(height), 1);
     
-    // Fill with random data
-    std.crypto.random.bytes(data);
+    // Fill with random data using crypto.random
+    std.crypto.random.bytes(pattern.data);
     
-    // Ensure alpha is always 255
-    var i: usize = 3; // Start at first alpha channel
-    while (i < pixel_count) : (i += 4) {
-        data[i] = 255;
-    }
-    
-    const pattern = try Pattern.init(allocator, data, width, height);
-    
+    // If deinit_after is true, we need to make a copy that we can safely free
     if (deinit_after) {
-        allocator.free(data);
+        const pattern_copy = try Pattern.initPattern(allocator, @intCast(width), @intCast(height), 1);
+        @memcpy(pattern_copy.data, pattern.data);
+        pattern.deinit(allocator);
+        return pattern_copy;
     } else {
-        // If we're not deinitializing, ensure the pattern owns the data
-        pattern.owns_data = true;
+        return pattern;
     }
-    
-    pattern.pattern_type = .Quantum;
-    pattern.complexity = 0.9;
-    pattern.stability = 0.1;
-    
-    return pattern;
 }
 
 pub fn createCheckerboardPattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize, tile_size: usize, deinit_after: bool) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
+    _ = deinit_after; // Mark as used to avoid unused parameter warning
     
-    const pixel_count = width * height * 4; // RGBA
-    var data = try allocator.alloc(u8, pixel_count);
-    errdefer if (deinit_after) allocator.free(data);
+    const pattern = try Pattern.initPattern(allocator, @intCast(width), @intCast(height), 1);
     
-    // Create a checkerboard pattern
+    // Fill with checkerboard pattern using the specified tile size
     for (0..height) |y| {
+        const tile_y = y / tile_size;
         for (0..width) |x| {
-            const idx = (y * width + x) * 4;
             const tile_x = x / tile_size;
-            const tile_y = y / tile_size;
-            const is_black = (tile_x + tile_y) % 2 == 0;
-            
-            data[idx] = if (is_black) 0 else 255;     // R
-            data[idx + 1] = if (is_black) 0 else 255;  // G
-            data[idx + 2] = if (is_black) 0 else 255;  // B
-            data[idx + 3] = 255;                       // A
+            const idx = y * width + x;
+            // Alternate between black and white based on tile position
+            pattern.data[idx] = if ((tile_x + tile_y) % 2 == 0) 0 else 255;
         }
     }
     
-    const pattern = try Pattern.init(allocator, data, width, height);
-    
-    if (deinit_after) {
-        allocator.free(data);
-    } else {
-        // If we're not deinitializing, ensure the pattern owns the data
-        pattern.owns_data = true;
-    }
-    
-    pattern.pattern_type = .Hybrid;
+    pattern.pattern_type = .Visual;
     pattern.complexity = 0.7;
-    pattern.stability = 0.6;
+    pattern.stability = 0.9;
     
     return pattern;
 }
@@ -208,53 +149,46 @@ fn runBenchmarks(allocator: std.mem.Allocator) !void {
     std.debug.print("\n=== Running Benchmarks ===\n", .{});
     
     // Test different pattern sizes
-    const sizes = [_]usize{ 64, 128, 256 };
+    const ctx = BenchmarkContext{
+        .allocator = allocator,
+        .id = "benchmark",
+        .size = 256, // Fixed size for consistent benchmarking
+    };
     
-    for (sizes) |size| {
-        std.debug.print("\n=== Pattern Size: {}x{} ===\n", .{size, size});
-        
-        // Benchmark simple pattern creation
-        {
-            var pattern: ?*Pattern = null;
-            try measureExecution("simple_pattern", struct {
-                fn f(alloc: std.mem.Allocator, id: []const u8, w: usize, h: usize, p: *?*Pattern) !void {
-                    p.* = try createSimplePattern(alloc, id, w, h, false);
-                }
-            }.f, .{allocator, "bench", size, size, &pattern});
-            if (pattern) |p| {
-                p.deinit(allocator);
-                allocator.destroy(p);
-            }
+    std.debug.print("\n=== Running benchmarks with size {d}x{d} ===\n", .{ctx.size, ctx.size});
+    
+    // Benchmark simple pattern creation
+    try measureExecution("simple_pattern", struct {
+        fn f(context: BenchmarkContext) !void {
+            var pattern = try createSimplePattern(context.allocator, context.id, 
+                context.size, context.size, false);
+            defer pattern.deinit(context.allocator);
+            // Access pattern data to prevent optimization
+            _ = pattern.data[0];
         }
-        
-        // Benchmark random pattern creation
-        {
-            var pattern: ?*Pattern = null;
-            try measureExecution("random_pattern", struct {
-                fn f(alloc: std.mem.Allocator, id: []const u8, w: usize, h: usize, p: *?*Pattern) !void {
-                    p.* = try createRandomPattern(alloc, id, w, h, false);
-                }
-            }.f, .{allocator, "bench_random", size, size, &pattern});
-            if (pattern) |p| {
-                p.deinit(allocator);
-                allocator.destroy(p);
-            }
+    }.f, ctx);
+    
+    // Benchmark random pattern creation
+    try measureExecution("random_pattern", struct {
+        fn f(context: BenchmarkContext) !void {
+            var pattern = try createRandomPattern(context.allocator, context.id, 
+                context.size, context.size, false);
+            defer pattern.deinit(context.allocator);
+            // Access pattern data to prevent optimization
+            _ = pattern.data[0];
         }
-        
-        // Benchmark checkerboard pattern creation
-        {
-            var pattern: ?*Pattern = null;
-            try measureExecution("checker_pattern", struct {
-                fn f(alloc: std.mem.Allocator, id: []const u8, w: usize, h: usize, p: *?*Pattern) !void {
-                    p.* = try createCheckerboardPattern(alloc, id, w, h, 10, false);
-                }
-            }.f, .{allocator, "bench_checker", size, size, &pattern});
-            if (pattern) |p| {
-                p.deinit(allocator);
-                allocator.destroy(p);
-            }
+    }.f, ctx);
+    
+    // Benchmark checkerboard pattern creation
+    try measureExecution("checker_pattern", struct {
+        fn f(context: BenchmarkContext) !void {
+            var pattern = try createCheckerboardPattern(context.allocator, context.id, 
+                context.size, context.size, 10, false);
+            defer pattern.deinit(context.allocator);
+            // Access pattern data to prevent optimization
+            _ = pattern.data[0];
         }
-    }
+    }.f, ctx);
 }
 
 /// Runs memory usage tests
@@ -310,7 +244,7 @@ pub fn main() !void {
             ProfileSection.init("basic_tests") else undefined;
         defer if (enable_profiling) section.deinit();
         
-        std.debug.print("=== Basic Pattern Creation Tests ===\n", .{});
+        std.debug.print("\n=== Basic Pattern Creation Tests ===\n", .{});
         
         // Test simple gradient pattern
         {
