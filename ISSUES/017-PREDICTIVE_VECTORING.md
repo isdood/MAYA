@@ -12,8 +12,7 @@
 **Version**: 0.2.0  
 **Author**: isdood  
 **Last Updated**: 2025-06-24  
-**Status**: Active Development (Week 1/2 of Implementation)  
-**License**: STARWEAVE Open Source License
+**Status**: Active Development (Week 1/2 of Implementation)
 
 ## 🌟 Overview
 

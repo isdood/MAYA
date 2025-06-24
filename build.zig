@@ -23,46 +23,74 @@ pub fn build(b: *std.Build) !void {
         }},
     });
 
-    // Create executable
-    const exe = b.addExecutable(.{
+    // Create test-patterns executable
+    const test_patterns_exe = b.addExecutable(.{
         .name = "test-patterns",
         .root_source_file = .{ .cwd_relative = "src/quantum_cache/test_patterns.zig" },
         .target = target,
         .optimize = optimize,
     });
     
-    // Add modules to the executable
-    exe.root_module.addImport("neural", neural_module);
-    exe.root_module.addImport("build_options", build_options_module);
+    // Add modules to the test-patterns executable
+    test_patterns_exe.root_module.addImport("neural", neural_module);
+    test_patterns_exe.root_module.addImport("build_options", build_options_module);
     
     // Add include paths
-    exe.addIncludePath(.{ .cwd_relative = "src" });
-    exe.addSystemIncludePath(.{ .cwd_relative = "src/neural" });
+    test_patterns_exe.addIncludePath(.{ .cwd_relative = "src" });
+    test_patterns_exe.addSystemIncludePath(.{ .cwd_relative = "src/neural" });
     
     // Link against libc if needed
-    exe.linkLibC();
+    test_patterns_exe.linkLibC();
     
-    // Install the executable
-    b.installArtifact(exe);
+    // Install the test-patterns executable
+    b.installArtifact(test_patterns_exe);
     
-    // Create run step
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
+    // Create run step for test-patterns
+    const run_test_patterns_cmd = b.addRunArtifact(test_patterns_exe);
+    run_test_patterns_cmd.step.dependOn(b.getInstallStep());
+    
+    // Create pattern recognition test executable
+    const pattern_recognition_test = b.addTest(.{
+        .root_source_file = .{ .cwd_relative = "src/quantum_cache/pattern_recognition_test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add modules to the pattern recognition test
+    pattern_recognition_test.root_module.addImport("neural", neural_module);
+    pattern_recognition_test.root_module.addImport("build_options", build_options_module);
+    
+    // Add include paths
+    pattern_recognition_test.addIncludePath(.{ .cwd_relative = "src" });
+    pattern_recognition_test.addSystemIncludePath(.{ .cwd_relative = "src/neural" });
+    
+    // Create a test step for pattern recognition
+    const test_step = b.step("test-pattern-recognition", "Run pattern recognition tests");
+    test_step.dependOn(&pattern_recognition_test.step);
+    
+    // Add pattern recognition tests to the main test step
+    const test_all = b.step("test", "Run all tests");
+    test_all.dependOn(test_step);
+    test_all.dependOn(&test_patterns_exe.step);
+    
+    // Create run step for pattern recognition tests
+    const run_pattern_recognition_test = b.addRunArtifact(pattern_recognition_test);
+    run_pattern_recognition_test.step.dependOn(b.getInstallStep());
 
-    // Add a test step
-    const test_step = b.step("test_patterns", "Run the test patterns");
-    test_step.dependOn(&run_cmd.step);
+    // Add a test step for test patterns
+    const test_patterns_step = b.step("test_patterns", "Run the test patterns");
+    test_patterns_step.dependOn(&run_test_patterns_cmd.step);
     
     // Add command line arguments if provided
     if (b.args) |args| {
-        run_cmd.addArgs(args);
+        run_test_patterns_cmd.addArgs(args);
     }
     
     // Create a run step
     const run_step = b.step("run", "Run the application");
-    run_step.dependOn(&run_cmd.step);
+    run_step.dependOn(&run_test_patterns_cmd.step);
     
     // Create a test-patterns step (alias for run)
-    const test_patterns_step = b.step("test-patterns", "Run the test patterns application");
-    test_patterns_step.dependOn(&run_cmd.step);
+    const run_test_patterns_step = b.step("test-patterns", "Run the test patterns application");
+    run_test_patterns_step.dependOn(&run_test_patterns_cmd.step);
 }

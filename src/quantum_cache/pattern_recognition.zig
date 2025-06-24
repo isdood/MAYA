@@ -1,10 +1,18 @@
 const std = @import("std");
 
-// Define a simple Pattern type for testing
+// Define a simple Pattern type that's compatible with our needs
 const Pattern = struct {
     data: []const u8,
     width: usize,
     height: usize,
+    
+    pub fn init(data: []const u8, width: usize, height: usize) @This() {
+        return .{
+            .data = data,
+            .width = width,
+            .height = height,
+        };
+    }
 };
 
 /// PatternRecognizer identifies patterns for efficient caching
@@ -93,6 +101,14 @@ pub const PatternRecognizer = struct {
     /// Find similar patterns in the cache
     pub fn findSimilar(self: *const @This(), pattern: *const Pattern, cache: anytype, min_similarity: f32) ![]const []const u8 {
         var matches = std.ArrayList([]const u8).init(self.allocator);
+        errdefer {
+            for (matches.items) |key| self.allocator.free(key);
+            matches.deinit();
+        }
+        
+        // Get the cache iterator type
+        const CacheType = @TypeOf(cache);
+        _ = CacheType; // Mark as used to avoid unused variable warning
         
         // Iterate through cached patterns
         var it = cache.shards.iterator();
@@ -105,23 +121,22 @@ pub const PatternRecognizer = struct {
             }
             
             // Create a temporary pattern for comparison
-            const cached_pattern = Pattern{
-                .data = shard.data,
-                .width = shard.width,
-                .height = shard.height,
-                .pattern_type = .Visual,
-                .metadata = .{},
-                .allocator = self.allocator,
-            };
+            const cached_pattern = Pattern.init(
+                shard.data,
+                shard.width,
+                shard.height,
+            );
             
             // Calculate similarity
             const similarity = self.similarityScore(pattern, &cached_pattern);
             if (similarity >= min_similarity) {
-                try matches.append(entry.key_ptr.*);
+                // Make a copy of the key to return
+                const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
+                try matches.append(key_copy);
             }
         }
         
-        return matches.toOwnedSlice();
+        return try matches.toOwnedSlice();
     }
 };
 

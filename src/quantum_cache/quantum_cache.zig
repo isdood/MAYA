@@ -56,30 +56,37 @@ pub const QuantumCache = struct {
     }
 
     pub fn preShatter(self: *@This(), pattern: *const Pattern) !void {
+        // Create a compatible pattern for the recognizer
+        const compat_pattern = Pattern{
+            .data = pattern.data,
+            .width = pattern.width,
+            .height = pattern.height,
+        };
+        
         // Check if this pattern should be cached
-        if (!self.recognizer.shouldCache(pattern)) {
+        if (!self.recognizer.shouldCache(&compat_pattern)) {
             return; // Skip patterns that aren't good candidates for caching
+        }
+
+        // Calculate fingerprint for pattern recognition
+        const fingerprint = try self.recognizer.calculateFingerprint(&compat_pattern);
+        defer self.allocator.free(fingerprint);
+
+        // Check for similar patterns in cache
+        const similar = try self.recognizer.findSimilar(&compat_pattern, self, 0.9); // 90% similarity threshold
+        defer {
+            for (similar) |key| self.allocator.free(key);
+            self.allocator.free(similar);
+        }
+        
+        // If we found a similar pattern, don't cache this one
+        if (similar.len > 0) {
+            return;
         }
 
         // Check if we need to evict before adding a new shard
         if (self.shards.count() >= self.max_shards) {
             try self.evictLRU();
-        }
-
-        // Calculate fingerprint for pattern recognition
-        const fingerprint = try self.recognizer.calculateFingerprint(pattern);
-        defer self.allocator.free(fingerprint);
-
-        // Check for similar patterns in cache
-        const similar = try self.recognizer.findSimilar(pattern, self, 0.9); // 90% similarity threshold
-        defer {
-            for (similar) |key| self.allocator.free(key);
-            self.allocator.free(similar);
-        }
-
-        // If we found a similar pattern, don't cache this one
-        if (similar.len > 0) {
-            return;
         }
 
         // Create a copy of the pattern data
@@ -93,10 +100,15 @@ pub const QuantumCache = struct {
             .height = pattern.height,
             .last_accessed = self.clock.read(),
             .coherence = 1.0,
+            .access_count = 0,
         };
 
+        // Make a copy of the fingerprint to use as the key
+        const fingerprint_copy = try self.allocator.dupe(u8, fingerprint);
+        errdefer self.allocator.free(fingerprint_copy);
+
         // Store the new shard with its fingerprint as the key
-        try self.shards.put(fingerprint, shard);
+        try self.shards.put(fingerprint_copy, shard);
     }
 
     /// Get a cached pattern shard
