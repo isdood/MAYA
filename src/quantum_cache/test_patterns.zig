@@ -280,7 +280,7 @@ pub fn main() !void {
     }
     
     // Run benchmarks if not in quick mode
-    const argv0 = std.os.argv[0];
+    const argv0 = std.mem.span(std.os.argv[0]);
     const base_name = std.fs.path.basenamePosix(argv0);
     const is_quick = std.mem.eql(u8, base_name, "quick");
     if (!is_quick) {
