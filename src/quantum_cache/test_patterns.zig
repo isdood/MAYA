@@ -21,8 +21,8 @@ const ProfilingConfig = struct {
     const default_pattern_size = 256; // Default pattern size for benchmarks
 };
 
-/// Measures execution time of a function
-fn measureExecution(comptime name: []const u8, func: anytype, args: anytype) !void {
+/// Measures execution time of a function and returns the last result
+fn measureExecution(comptime name: []const u8, func: anytype, args: anytype) !@TypeOf(@call(.auto, func, args)) {
     const warmup_iters = 3;  // Reduced for brevity
     const bench_iters = 10;  // Reduced for brevity
     
@@ -35,11 +35,23 @@ fn measureExecution(comptime name: []const u8, func: anytype, args: anytype) !vo
     var min_time: u64 = math.maxInt(u64);
     var max_time: u64 = 0;
     var total_time: u64 = 0;
+    var result: @TypeOf(@call(.auto, func, args)) = undefined;
     
-    for (0..bench_iters) |_| {
+    for (0..bench_iters) |i| {
         const start = time.nanoTimestamp();
-        _ = try @call(.auto, func, args);
+        result = try @call(.auto, func, args);
         const elapsed = @as(u64, @intCast(time.nanoTimestamp() - start));
+        
+        // Clean up the result from all but the last iteration
+        if (i < bench_iters - 1) {
+            if (@typeInfo(@TypeOf(result)) == .Pointer) {
+                const T = @typeInfo(@TypeOf(result)).Pointer.child;
+                if (@hasDecl(T, "deinit")) {
+                    result.deinit(args[0]);
+                    args[0].destroy(result);
+                }
+            }
+        }
         
         min_time = @min(min_time, elapsed);
         max_time = @max(max_time, elapsed);
@@ -57,6 +69,8 @@ fn measureExecution(comptime name: []const u8, func: anytype, args: anytype) !vo
             @as(f64, @floatFromInt(max_time)) / 1000.0,
         },
     );
+    
+    return result;
 }
 
 /// Profiles a specific section of code
@@ -183,13 +197,12 @@ pub fn createCheckerboardPattern(allocator: std.mem.Allocator, id: []const u8, w
 
 /// Runs a series of benchmarks on pattern creation and processing
 fn runBenchmarks(allocator: std.mem.Allocator) !void {
-    const sizes = [_]usize{ 32, 64, 128, 256, 512 };
+    std.debug.print("\n=== Running Benchmarks ===\n", .{});
     
-    std.debug.print("\n=== Pattern Creation Benchmarks ===\n", .{});
+    // Test different pattern sizes
+    const sizes = [_]usize{ 64, 128, 256 };
+    
     for (sizes) |size| {
-        const size_str = try std.fmt.allocPrint(allocator, "{}x{}", .{size, size});
-        defer allocator.free(size_str);
-        
         std.debug.print("\n=== Pattern Size: {}x{} ===\n", .{size, size});
         
         // Benchmark simple pattern creation
