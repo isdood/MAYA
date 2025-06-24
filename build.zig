@@ -57,4 +57,8 @@ pub fn build(b: *std.Build) !void {
     // Create a run step
     const run_step = b.step("run", "Run the application");
     run_step.dependOn(&run_cmd.step);
+    
+    // Create a test-patterns step (alias for run)
+    const test_patterns_step = b.step("test-patterns", "Run the test patterns application");
+    test_patterns_step.dependOn(&run_cmd.step);
 }

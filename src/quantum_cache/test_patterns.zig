@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 const mem = std.mem;
 const time = std.time;
 const math = std.math;
-const Random = std.rand.DefaultPrng;
+const crypto = std.crypto;
 const neural = @import("neural");
 const Pattern = neural.Pattern;
 const profiling = neural.profiling;
@@ -127,7 +127,7 @@ pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: 
     
     // Fill with random noise
     for (0..pixel_count) |i| {
-        data[i] = rng.int(u8);
+        data[i] = crypto.random.int(u8);
     }
     
     const pattern = try Pattern.init(allocator, data, width, height);
@@ -187,10 +187,10 @@ fn runBenchmarks(allocator: std.mem.Allocator) !void {
         
         // Benchmark random pattern creation
         try measureExecution("random_pattern", struct {
-            fn f(alloc: std.mem.Allocator, id: []const u8, w: usize, h: usize, r: *Random) !*Pattern {
-                return createRandomPattern(alloc, id, w, h, r);
+            fn f(alloc: std.mem.Allocator, id: []const u8, w: usize, h: usize) !*Pattern {
+                return createRandomPattern(alloc, id, w, h);
             }
-        }.f, .{allocator, "bench_random", size, size, &rng});
+        }.f, .{allocator, "bench_random", size, size});
         
         // Benchmark checkerboard pattern creation
         try measureExecution("checker_pattern", createCheckerboardPattern, .{
@@ -214,9 +214,7 @@ fn runMemoryTests(allocator: std.mem.Allocator) !void {
 
 /// Main entry point with profiling support
 pub fn main() !void {
-    // Initialize random number generator
-    const rng = std.Random.DefaultPrng.init(@as(u64, @intCast(time.timestamp())));
-    defer _ = rng;
+    // No need to initialize crypto.random, it's ready to use
     
     // Initialize memory tracking
     var gpa = std.heap.GeneralPurposeAllocator(.{
