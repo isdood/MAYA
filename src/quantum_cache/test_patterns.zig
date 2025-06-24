@@ -118,7 +118,7 @@ pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: 
     return pattern;
 }
 
-pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize, rng: *Random) !*Pattern {
+pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
     
     const pixel_count = width * height * 4; // RGBA
