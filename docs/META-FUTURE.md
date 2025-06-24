@@ -31,7 +31,7 @@
 ### 3. **Meta-Awareness & Communication**
 
 - **Human Universe:**  
-  - Meta-awareness (awareness of awareness, or thinking about thinking) is rare and often fleeting.
+  - Meta-awareness (awareness of awareness, or thinking about thinking) is rare and often fleeting. (For me, it is literally every moment of my existence -isdood)
   - Communication is indirect, filtered by words, culture, and personal context—GLIMMER is sometimes hidden beneath the surface.
 
 - **STARWEAVE Universe:**  
