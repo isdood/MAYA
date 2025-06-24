@@ -1,5 +1,6 @@
 const std = @import("std");
 const Pattern = @import("../neural/pattern.zig").Pattern;
+const PatternRecognizer = @import("pattern_recognition.zig").PatternRecognizer;
 
 // Maximum number of shards to keep in the cache
 const MAX_SHARDS = 1024;
@@ -34,6 +35,8 @@ pub const QuantumCache = struct {
     clock: *std.time.Timer,
 
     /// Initialize a new QuantumCache
+    recognizer: PatternRecognizer,
+
     pub fn init(
         allocator: std.mem.Allocator,
         options: struct {
@@ -48,19 +51,41 @@ pub const QuantumCache = struct {
             .prediction_depth = options.prediction_depth,
             .max_shards = options.max_shards,
             .clock = clock,
+            .recognizer = PatternRecognizer.init(allocator),
         };
     }
 
-    /// Pre-shatter a pattern into cacheable shards
     pub fn preShatter(self: *@This(), pattern: *const Pattern) !void {
+        // Check if this pattern should be cached
+        if (!self.recognizer.shouldCache(pattern)) {
+            return; // Skip patterns that aren't good candidates for caching
+        }
+
         // Check if we need to evict before adding a new shard
         if (self.shards.count() >= self.max_shards) {
             try self.evictLRU();
         }
 
+        // Calculate fingerprint for pattern recognition
+        const fingerprint = try self.recognizer.calculateFingerprint(pattern);
+        defer self.allocator.free(fingerprint);
+
+        // Check for similar patterns in cache
+        const similar = try self.recognizer.findSimilar(pattern, self, 0.9); // 90% similarity threshold
+        defer {
+            for (similar) |key| self.allocator.free(key);
+            self.allocator.free(similar);
+        }
+
+        // If we found a similar pattern, don't cache this one
+        if (similar.len > 0) {
+            return;
+        }
+
         // Create a copy of the pattern data
         const data_copy = try self.allocator.dupe(u8, pattern.data);
-        
+        errdefer self.allocator.free(data_copy);
+
         // Create the shard
         const shard = QuantumShard{
             .data = data_copy,
@@ -69,21 +94,9 @@ pub const QuantumCache = struct {
             .last_accessed = self.clock.read(),
             .coherence = 1.0,
         };
-        
-        // Generate a unique key for this pattern
-        const key = try std.fmt.allocPrint(
-            self.allocator,
-            "{s}",
-            .{pattern.id},
-        );
-        
-        // If we already have a shard with this key, clean it up first
-        if (self.shards.get(key)) |existing| {
-            existing.deinit(self.allocator);
-        }
-        
-        // Store the new shard
-        try self.shards.put(key, shard);
+
+        // Store the new shard with its fingerprint as the key
+        try self.shards.put(fingerprint, shard);
     }
 
     /// Get a cached pattern shard
@@ -256,4 +269,38 @@ test "QuantumCache basic operations" {
     
     // Pattern3 should still be in cache due to recent access
     try testing.expect(cache.getShard("test3") != null);
+}
+
+test "QuantumCache pattern recognition" {
+    const allocator = testing.allocator;
+    var cache = try QuantumCache.init(allocator, .{});
+    defer cache.deinit();
+
+    // Create two similar patterns
+    const width = 100;
+    const height = 100;
+    var data1 = try allocator.alloc(u8, width * height * 4);
+    defer allocator.free(data1);
+    @memset(data1, 0);
+
+    const data2 = try allocator.alloc(u8, width * height * 4);
+    defer allocator.free(data2);
+    @memset(data2, 0);
+
+    // Make the patterns slightly different
+    data1[0] = 255; // One pixel difference
+
+    const pattern1 = try Pattern.init(allocator, data1, width, height);
+    defer pattern1.deinit();
+
+    const pattern2 = try Pattern.init(allocator, data2, width, height);
+    defer pattern2.deinit();
+
+    // First pattern should be cached
+    try cache.preShatter(pattern1);
+    try testing.expectEqual(@as(usize, 1), cache.shards.count());
+
+    // Second pattern (very similar) should not be cached
+    try cache.preShatter(pattern2);
+    try testing.expectEqual(@as(usize, 1), cache.shards.count());
 }

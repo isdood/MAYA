@@ -1,5 +1,29 @@
 const std = @import("std");
-const Pattern = @import("../neural/pattern").Pattern;
+
+// Define a simple Pattern type for testing
+const Pattern = struct {
+    data: []const u8,
+    width: usize,
+    height: usize,
+    pattern_type: enum { Quantum, Visual, Hybrid, Unknown } = .Visual,
+    metadata: struct { created_at: i64 = 0, updated_at: i64 = 0 } = .{},
+    allocator: std.mem.Allocator = std.testing.allocator,
+    
+    pub fn deinit(self: *const @This()) void {
+        self.allocator.free(self.data);
+    }
+    
+    pub fn init(allocator: std.mem.Allocator, data: []const u8, width: usize, height: usize) !*@This() {
+        const self = try allocator.create(@This());
+        self.* = .{
+            .data = try allocator.dupe(u8, data),
+            .width = width,
+            .height = height,
+            .allocator = allocator,
+        };
+        return self;
+    }
+};
 
 /// PatternRecognizer identifies patterns for efficient caching
 pub const PatternRecognizer = struct {
@@ -15,8 +39,6 @@ pub const PatternRecognizer = struct {
     /// Calculate a fingerprint for pattern recognition
     /// This is a simple implementation that can be enhanced with more sophisticated algorithms
     pub fn calculateFingerprint(self: *const @This(), pattern: *const Pattern) ![]const u8 {
-        _ = self; // Mark as used
-        
         // Simple fingerprint based on pattern dimensions and first few bytes
         var fingerprint = std.ArrayList(u8).init(self.allocator);
         defer fingerprint.deinit();
@@ -33,7 +55,7 @@ pub const PatternRecognizer = struct {
 
     /// Check if a pattern is a good candidate for caching
     pub fn shouldCache(self: *const @This(), pattern: *const Pattern) bool {
-        _ = self; // Mark as used
+        _ = self; // Keep for future use
         
         // Simple heuristic: cache patterns that are between 64x64 and 4096x4096 pixels
         const min_size = 64 * 64;
