@@ -10,7 +10,7 @@ const Thread = std.Thread;
 /// A single timing measurement
 pub const Timer = struct {
     name: []const u8,
-    start: i128,
+    start_time: i128,
     end: ?i128 = null,
     parent: ?*Timer = null,
     children: std.ArrayListUnmanaged(*Timer) = .{},
@@ -21,7 +21,7 @@ pub const Timer = struct {
         const timer = try allocator.create(Timer);
         timer.* = .{
             .name = name,
-            .start = time.nanoTimestamp(),
+            .start_time = time.nanoTimestamp(),
             .allocator = allocator,
         };
         return timer;
@@ -32,10 +32,16 @@ pub const Timer = struct {
         self.end = time.nanoTimestamp();
     }
 
+    /// Get the elapsed time in nanoseconds
+    pub fn elapsed(self: *const Timer) u64 {
+        const end = self.end orelse time.nanoTimestamp();
+        return @as(u64, @intCast(end - self.start_time));
+    }
+
     /// Get the duration in nanoseconds
     pub fn duration(self: Timer) i128 {
         const end = self.end orelse time.nanoTimestamp();
-        return end - self.start;
+        return end - self.start_time;
     }
 
     /// Get the duration in milliseconds

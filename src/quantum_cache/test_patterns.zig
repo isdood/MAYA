@@ -3,13 +3,13 @@ const builtin = @import("builtin");
 const mem = std.mem;
 const time = std.time;
 const math = std.math;
-const neural = @import("../neural/mod.zig");
+const Random = std.rand.DefaultPrng;
+const neural = @import("neural");
 const Pattern = neural.Pattern;
 const profiling = neural.profiling;
 const ProfileSection = profiling.ProfileSection;
 
-// Initialize random number generator
-var rng = std.Random.DefaultPrng.init(@as(u64, @intCast(time.timestamp())));
+// Random number generator is passed to functions that need it
 
 // Enable profiling if compiled with -DENABLE_PROFILING
 const enable_profiling = @import("build_options").enable_profiling;
@@ -60,7 +60,7 @@ fn measureExecution(comptime name: []const u8, comptime func: anytype, args: any
 }
 
 /// Profiles a specific section of code
-fn profileSection(comptime name: []const u8, comptime func: anytype, args: anytype) func.ReturnType {
+fn profileSection(comptime name: []const u8, comptime func: anytype, args: anytype) @TypeOf(@call(.auto, func, args)) {
     if (enable_profiling) {
         profiling.beginSection(name);
         defer profiling.endSection();
@@ -118,7 +118,7 @@ pub fn createSimplePattern(allocator: std.mem.Allocator, id: []const u8, width: 
     return pattern;
 }
 
-pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize) !*Pattern {
+pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: usize, height: usize, rng: *Random) !*Pattern {
     _ = id; // Mark as used to avoid unused parameter warning
     
     const pixel_count = width * height * 4; // RGBA
@@ -127,7 +127,7 @@ pub fn createRandomPattern(allocator: std.mem.Allocator, id: []const u8, width: 
     
     // Fill with random noise
     for (0..pixel_count) |i| {
-        data[i] = rng.random().int(u8);
+        data[i] = rng.int(u8);
     }
     
     const pattern = try Pattern.init(allocator, data, width, height);
@@ -186,9 +186,11 @@ fn runBenchmarks(allocator: std.mem.Allocator) !void {
         });
         
         // Benchmark random pattern creation
-        try measureExecution("random_pattern", createRandomPattern, .{
-            allocator, "bench_random", size, size
-        });
+        try measureExecution("random_pattern", struct {
+            fn f(alloc: std.mem.Allocator, id: []const u8, w: usize, h: usize, r: *Random) !*Pattern {
+                return createRandomPattern(alloc, id, w, h, r);
+            }
+        }.f, .{allocator, "bench_random", size, size, &rng});
         
         // Benchmark checkerboard pattern creation
         try measureExecution("checker_pattern", createCheckerboardPattern, .{
@@ -212,6 +214,10 @@ fn runMemoryTests(allocator: std.mem.Allocator) !void {
 
 /// Main entry point with profiling support
 pub fn main() !void {
+    // Initialize random number generator
+    const rng = std.Random.DefaultPrng.init(@as(u64, @intCast(time.timestamp())));
+    defer _ = rng;
+    
     // Initialize memory tracking
     var gpa = std.heap.GeneralPurposeAllocator(.{
         .enable_memory_limit = true,

@@ -7,6 +7,14 @@ pub fn build(b: *std.Build) !void {
     // Standard optimization options
     const optimize = b.standardOptimizeOption(.{});
 
+    // Create a module for build options
+    const build_options_module = b.createModule(.{
+        .root_source_file = .{ .src_path = .{
+            .owner = b,
+            .sub_path = "build_options.zig",
+        }},
+    });
+
     // Create a module for the neural network
     const neural_module = b.createModule(.{
         .root_source_file = .{ .src_path = .{
@@ -23,8 +31,9 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     
-    // Add the neural module to the executable
-    exe.addModule("neural", neural_module);
+    // Add modules to the executable
+    exe.root_module.addImport("neural", neural_module);
+    exe.root_module.addImport("build_options", build_options_module);
     
     // Add include paths
     exe.addIncludePath(.{ .cwd_relative = "src" });
