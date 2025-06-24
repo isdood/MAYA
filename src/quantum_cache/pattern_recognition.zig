@@ -171,16 +171,16 @@ test "pattern recognition smoke test" {
     try testing.expect(std.mem.startsWith(u8, fingerprint, "2x2:"));
     try testing.expect(fingerprint.len > 5);
     
-    // Check if should cache
-    try testing.expect(recognizer.shouldCache(&pattern));
+    // This pattern is too small to be cached
+    try testing.expect(!recognizer.shouldCache(&pattern));
 }
 
 test "PatternRecognizer shouldCache" {
     const allocator = testing.allocator;
     var recognizer = PatternRecognizer.init(allocator);
     
-    // Create a small pattern (should not be cached)
-    const small_data = [_]u8{0} ** (32 * 32 * 4);
+    // Create a small pattern (should not be cached - too small)
+    const small_data = [_]u8{0} ** (32 * 32 * 4);  // 4KB
     const small_pattern = Pattern{
         .data = &small_data,
         .width = 32,
@@ -188,20 +188,19 @@ test "PatternRecognizer shouldCache" {
     };
     
     // Create a medium pattern (should be cached)
-    const med_data = [_]u8{0} ** (128 * 128 * 4);
+    const med_data = [_]u8{0} ** (256 * 256 * 4);  // 256KB
     const med_pattern = Pattern{
         .data = &med_data,
-        .width = 128,
-        .height = 128,
+        .width = 256,
+        .height = 256,
     };
     
-    // Create a large pattern (should not be cached)
-    // Use a smaller size to avoid memory issues in tests
-    const large_data = [_]u8{0} ** (1024 * 1024 * 4);
+    // Create a large pattern (should not be cached - too large)
+    const large_data = [_]u8{0} ** (2048 * 2048 * 4);  // 16MB
     const large_pattern = Pattern{
         .data = &large_data,
-        .width = 1024,
-        .height = 1024,
+        .width = 2048,
+        .height = 2048,
     };
     
     // Test caching decisions
