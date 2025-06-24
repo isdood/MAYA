@@ -39,12 +39,21 @@ pub const PatternRecognizer = struct {
     pub fn shouldCache(self: *const @This(), pattern: *const Pattern) bool {
         _ = self; // Keep for future use
         
-        // Simple heuristic: cache patterns that are between 64x64 and 4096x4096 pixels
-        const min_size = 64 * 64;
-        const max_size = 4096 * 4096;
-        const pattern_size = pattern.width * pattern.height;
+        // Simple heuristic: cache patterns that are between 64x64 and 1024x1024 pixels
+        // and have a reasonable data size (not too small, not too large)
+        const min_pixels = 64 * 64;      // 4KB for RGBA
+        const max_pixels = 1024 * 1024;   // 4MB for RGBA
+        const pattern_pixels = pattern.width * pattern.height;
         
-        return pattern_size >= min_size and pattern_size <= max_size;
+        // Also check data size to be safe
+        const min_data_size = 4 * 1024;         // 4KB min
+        const max_data_size = 16 * 1024 * 1024;  // 16MB max
+        const data_size = pattern.data.len;
+        
+        return (pattern_pixels >= min_pixels and 
+                pattern_pixels <= max_pixels and
+                data_size >= min_data_size and 
+                data_size <= max_data_size);
     }
 
     /// Compare two patterns for similarity
