@@ -1,5 +1,4 @@
 const std = @import("std");
-const testing = std.testing;
 
 // Define a simple Pattern type for testing
 const Pattern = struct {
