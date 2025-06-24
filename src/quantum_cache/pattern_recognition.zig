@@ -127,14 +127,14 @@ test "PatternRecognizer fingerprint" {
     const width = 2;
     const height = 2;
     const data = [_]u8{ 0, 0, 0, 255, 255, 255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 128 };
-    const pattern = try Pattern.init(allocator, &data, width, height);
-    defer {
-        pattern.deinit();
-        allocator.destroy(pattern);
-    }
+    const pattern = Pattern{
+        .data = &data,
+        .width = width,
+        .height = height,
+    };
     
     // Calculate fingerprint
-    const fingerprint = try recognizer.calculateFingerprint(pattern);
+    const fingerprint = try recognizer.calculateFingerprint(&pattern);
     defer allocator.free(fingerprint);
     
     // Should be in format "WxH:hash"
@@ -172,30 +172,31 @@ test "PatternRecognizer shouldCache" {
     
     // Create a small pattern (should not be cached)
     const small_data = [_]u8{0} ** (32 * 32 * 4);
-    const small_pattern = try Pattern.init(allocator, &small_data, 32, 32);
-    defer {
-        small_pattern.deinit();
-        allocator.destroy(small_pattern);
-    }
+    const small_pattern = Pattern{
+        .data = &small_data,
+        .width = 32,
+        .height = 32,
+    };
     
     // Create a medium pattern (should be cached)
     const med_data = [_]u8{0} ** (128 * 128 * 4);
-    const med_pattern = try Pattern.init(allocator, &med_data, 128, 128);
-    defer {
-        med_pattern.deinit();
-        allocator.destroy(med_pattern);
-    }
+    const med_pattern = Pattern{
+        .data = &med_data,
+        .width = 128,
+        .height = 128,
+    };
     
     // Create a large pattern (should not be cached)
-    const large_data = [_]u8{0} ** (4096 * 4096 * 4);
-    const large_pattern = try Pattern.init(allocator, &large_data, 4096, 4096);
-    defer {
-        large_pattern.deinit();
-        allocator.destroy(large_pattern);
-    }
+    // Use a smaller size to avoid memory issues in tests
+    const large_data = [_]u8{0} ** (1024 * 1024 * 4);
+    const large_pattern = Pattern{
+        .data = &large_data,
+        .width = 1024,
+        .height = 1024,
+    };
     
     // Test caching decisions
-    try testing.expect(!recognizer.shouldCache(small_pattern));
-    try testing.expect(recognizer.shouldCache(med_pattern));
-    try testing.expect(!recognizer.shouldCache(large_pattern));
+    try testing.expect(!recognizer.shouldCache(&small_pattern));
+    try testing.expect(recognizer.shouldCache(&med_pattern));
+    try testing.expect(!recognizer.shouldCache(&large_pattern));
 }
