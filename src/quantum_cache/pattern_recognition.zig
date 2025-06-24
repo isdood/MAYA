@@ -1,25 +1,11 @@
 const std = @import("std");
+const testing = std.testing;
 
 // Define a simple Pattern type for testing
 const Pattern = struct {
     data: []const u8,
     width: usize,
     height: usize,
-    
-    pub fn deinit(_: *const @This()) void {
-        // No-op for testing
-    }
-    
-    pub fn init(allocator: std.mem.Allocator, data: []const u8, width: usize, height: usize) !*@This() {
-        _ = allocator;
-        const self = try std.testing.allocator.create(@This());
-        self.* = .{
-            .data = data,
-            .width = width,
-            .height = height,
-        };
-        return self;
-    }
 };
 
 /// PatternRecognizer identifies patterns for efficient caching
@@ -157,9 +143,28 @@ test "PatternRecognizer fingerprint" {
     try testing.expect(fingerprint.len > 5);
 }
 
-test "minimal test" {
-    // This is a minimal test to check if tests run at all
-    try testing.expect(true);
+test "pattern recognition smoke test" {
+    // Create a simple pattern
+    const data = [_]u8{1, 2, 3, 4};
+    const pattern = Pattern{
+        .data = &data,
+        .width = 2,
+        .height = 2,
+    };
+    
+    // Create a recognizer
+    var recognizer = PatternRecognizer.init(testing.allocator);
+    
+    // Calculate fingerprint
+    const fingerprint = try recognizer.calculateFingerprint(&pattern);
+    defer testing.allocator.free(fingerprint);
+    
+    // Should be in format "WxH:hash"
+    try testing.expect(std.mem.startsWith(u8, fingerprint, "2x2:"));
+    try testing.expect(fingerprint.len > 5);
+    
+    // Check if should cache
+    try testing.expect(recognizer.shouldCache(&pattern));
 }
 
 test "PatternRecognizer shouldCache" {
