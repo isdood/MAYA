@@ -53,22 +53,52 @@ pub const Pattern = struct {
     }
 };
 
+/// Parameters for pattern matching
+pub const PatternMatchParams = struct {
+    /// Enable multi-scale pattern matching
+    multi_scale: bool = false,
+    /// Minimum scale factor for multi-scale matching (e.g., 0.5 for half size)
+    min_scale: f32 = 0.5,
+    /// Maximum scale factor for multi-scale matching (e.g., 2.0 for double size)
+    max_scale: f32 = 2.0,
+    /// Scale step size for multi-scale matching
+    scale_step: f32 = 0.1,
+    
+    /// Enable rotation-invariant matching
+    rotation_invariant: bool = false,
+    /// Rotation step in degrees for rotation-invariant matching
+    rotation_step: f32 = 15.0,
+    
+    /// Enable partial pattern matching
+    partial_matching: bool = false,
+    /// Minimum match threshold for partial matching (0.0 to 1.0)
+    min_match_threshold: f32 = 0.7,
+    /// Maximum allowed scale difference for partial matching (0.0 to 1.0)
+    max_scale_diff: f32 = 0.3,
+    /// Maximum allowed rotation difference for partial matching in degrees
+    max_rotation_diff: f32 = 15.0,
+};
+
 /// Parameters for pattern transformation
 pub const TransformParams = struct {
     scale_x: f32 = 1.0,
     scale_y: f32 = 1.0,
-    rotation: f32 = 0.0, // in degrees, must be multiple of 90
+    rotation: f32 = 0.0, // in degrees
     translate_x: i32 = 0,
     translate_y: i32 = 0,
     
+    /// Pattern matching parameters
+    match_params: PatternMatchParams = .{},
+    
     /// Creates a unique key for these transformation parameters
     pub fn toKey(self: @This(), allocator: Allocator) ![]const u8 {
-        return std.fmt.allocPrint(allocator, "{d}:{d}:{d}:{d}:{d}", .{
+        return std.fmt.allocPrint(allocator, "{d}:{d}:{d}:{d}:{d}:{d}", .{
             self.scale_x, 
             self.scale_y, 
             self.rotation,
             self.translate_x,
             self.translate_y,
+            @as(u32, @bitCast(self.match_params)),
         });
     }
     
@@ -490,7 +520,11 @@ pub const PatternTransformCache = struct {
         }
         
         // Not in cache, apply transformation
-        const transformed = try self.applyTransform(pattern, params);
+        const transformed = if (params.match_params.multi_scale || params.match_params.rotation_invariant || params.match_params.partial_matching)
+            try self.applyAdvancedTransform(pattern, params)
+        else
+            try self.applySimpleTransform(pattern, params);
+            
         errdefer {
             transformed.deinit(self.allocator);
             self.allocator.destroy(transformed);
