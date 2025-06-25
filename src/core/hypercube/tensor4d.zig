@@ -2,6 +2,8 @@ const std = @import("std");
 const math = std.math;
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
+const Random = std.crypto.random;
+const DefaultPrng = std.rand.DefaultPrng;
 
 /// A 4-dimensional tensor for HYPERCUBE operations
 pub const Tensor4D = struct {
@@ -48,13 +50,11 @@ pub const Tensor4D = struct {
 
     /// Fills the tensor with random values in the range [min, max]
     pub fn randomFill(self: *@This(), min: f32, max: f32) !void {
-        const seed = @as(u64, @intCast(std.time.milliTimestamp()));
-        var rng = std.rand.DefaultPrng.init(seed);
         const range = max - min;
         
         for (self.data) |*v| {
-            v.* = min + @as(f32, @floatFromInt(rng.random().int(u32))) / 
-                  @as(f32, @floatFromInt(std.math.maxInt(u32))) * range;
+            const rand_val = @as(f32, @floatFromInt(Random.int(u32)));
+            v.* = min + (rand_val / @as(f32, @floatFromInt(std.math.maxInt(u32)))) * range;
         }
     }
 

@@ -10,10 +10,12 @@ const builtin = @import("builtin");
 pub const Tensor4D = @import("tensor4d.zig").Tensor4D;
 pub const SpiralConv = @import("spiral_conv.zig").SpiralConv;
 pub const glimmer = @import("glimmer.zig");
+pub const attention = @import("attention.zig");
 
 // Re-export commonly used types and functions
 pub const Color = glimmer.Color;
 pub const GlimmerParams = glimmer.GlimmerParams;
+pub const GravityAttentionParams = attention.GravityAttentionParams;
 
 // Core error set for HYPERCUBE operations
 pub const Error = error{
@@ -57,11 +59,11 @@ pub fn main() !void {
             defer allocator.free(viz);
             std.debug.print("{s}\n", .{viz});
         } else {
-            std.debug.print("Error: Unknown visualization type '{}'\n", .{args[2]});
+            std.debug.print("Error: Unknown visualization type '{s}'\n", .{args[2]});
             return printUsage();
         }
     } else {
-        std.debug.print("Error: Unknown command '{}'\n", .{args[1]});
+        std.debug.print("Error: Unknown command '{s}'\n", .{args[1]});
         return printUsage();
     }
 }
@@ -102,10 +104,10 @@ fn runExample(allocator: std.mem.Allocator) !void {
     }
     
     // Save the input as an image
-    const input_ppm = try glimmer.renderTensor4D(allocator, &input, .{});
+    const input_ppm = try glimmer.renderTensor4D(allocator, input, .{});
     defer allocator.free(input_ppm);
     
-    try std.fs.cwd().writeFile("input.ppm", input_ppm);
+    try std.fs.cwd().writeFile(.{ .sub_path = "input.ppm", .data = input_ppm });
     std.debug.print("✅ Saved input image to input.ppm\n", .{});
     
     // Create a spiral convolution layer
@@ -122,17 +124,17 @@ fn runExample(allocator: std.mem.Allocator) !void {
     const kernel_viz = try glimmer.visualizeSpiralKernel(allocator, 11, 2.0);
     defer allocator.free(kernel_viz);
     
-    std.debug.print("\nSpiral Kernel Visualization (11x11, 2 rotations):\n{s}\n", .{kernel_viz});
+    std.debug.print("\nSpiral Kernel Visualization (11x11, 2 rotations):\n{any}\n", .{kernel_viz});
     
     // Apply the convolution
-    const output = try conv.forward(&input);
+    const output = try conv.forward(input);
     defer output.deinit();
     
     // Save the output as an image
     const output_ppm = try glimmer.renderTensor4D(allocator, output, .{});
     defer allocator.free(output_ppm);
     
-    try std.fs.cwd().writeFile("output.ppm", output_ppm);
+    try std.fs.cwd().writeFile(.{ .sub_path = "output.ppm", .data = output_ppm });
     std.debug.print("✅ Applied spiral convolution and saved result to output.ppm\n", .{});
     
     // Print tensor shapes

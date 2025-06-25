@@ -42,7 +42,7 @@ pub fn runExample(allocator: Allocator) !void {
     const kernel_viz = try glimmer.visualizeSpiralKernel(allocator, 11, 2.0);
     defer allocator.free(kernel_viz);
     
-    std.debug.print("\nSpiral Kernel Visualization (11x11, 2 rotations):\n{s}\n", .{kernel_viz});
+    std.debug.print("\nSpiral Kernel Visualization (11x11, 2 rotations):\n{any}\n", .{kernel_viz});
     
     // Apply the convolution
     const output = try conv.forward(&input);

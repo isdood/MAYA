@@ -52,8 +52,8 @@ pub fn renderTensor4D(
     const height = tensor.shape[2];
     
     // Find min/max for normalization
-    var min_val: f32 = std.math.f32_max;
-    var max_val: f32 = -std.math.f32_max;
+    var min_val: f32 = std.math.floatMax(f32);
+    var max_val: f32 = -std.math.floatMax(f32);
     
     if (params.normalize) {
         for (0..height) |y| {
@@ -75,7 +75,7 @@ pub fn renderTensor4D(
     defer buffer.deinit();
     
     // Write PPM header
-    try buffer.writer().print("P6\n{} {}\n255\n", .{ width, height });
+    try buffer.writer().print("P6\n{d} {d}\n255\n", .{ width, height });
     
     // Write pixel data
     for (0..height) |y| {
@@ -113,12 +113,12 @@ pub fn createTensorAnimation(
     defer buffer.deinit();
     
     try buffer.writer().print(
-        "GLIMMER Animation ({} frames, {}ms delay)\n",
+        "GLIMMER Animation ({d} frames, {d}ms delay)\n",
         .{ tensors.len, frame_delay_ms },
     );
     
     for (tensors, 0..) |tensor, i| {
-        try buffer.writer().print("Frame {}: [{}x{}x{}x{}]\n", .{
+        try buffer.writer().print("Frame {d}: [{d}x{d}x{d}x{d}]\n", .{
             i,
             tensor.shape[0],
             tensor.shape[1],
@@ -147,7 +147,7 @@ pub fn visualizeSpiralKernel(
             const dx = @as(f32, @floatFromInt(x)) - center;
             const dy = @as(f32, @floatFromInt(y)) - center;
             const dist = math.sqrt(dx * dx + dy * dy);
-            const angle = math.atan2(f32, dy, dx);
+            const angle = math.atan2(dy, dx);
             
             // Calculate spiral value
             const spiral_angle = angle + math.pi; // Map to [0, 2π]

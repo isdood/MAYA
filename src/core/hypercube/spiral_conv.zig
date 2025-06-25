@@ -103,14 +103,25 @@ pub const SpiralConv = struct {
                         for (spiral_coords) |coord| {
                             const kh = coord[0];
                             const kw = coord[1];
-                            const h = oh * self.params.stride + kh - self.params.padding;
-                            const w = ow * self.params.stride + kw - self.params.padding;
+                            
+                            // Calculate coordinates with proper signed arithmetic
+                            const h = @as(isize, @intCast(oh * self.params.stride)) + 
+                                    @as(isize, @intCast(kh)) - 
+                                    @as(isize, @intCast(self.params.padding));
+                            const w = @as(isize, @intCast(ow * self.params.stride)) + 
+                                    @as(isize, @intCast(kw)) - 
+                                    @as(isize, @intCast(self.params.padding));
                             
                             // Skip if out of bounds (implicit padding with zeros)
-                            if (h >= 0 and h < in_height and w >= 0 and w < in_width) {
+                            if (h >= 0 and h < @as(isize, @intCast(in_height)) and 
+                                w >= 0 and w < @as(isize, @intCast(in_width))) 
+                            {
+                                const h_safe = @as(usize, @intCast(h));
+                                const w_safe = @as(usize, @intCast(w));
+                                
                                 for (0..in_channels) |ic| {
                                     const weight = self.weights.get(oc, ic, kh, kw);
-                                    const val = input.get(b, ic, h, w);
+                                    const val = input.get(b, ic, h_safe, w_safe);
                                     sum += weight * val;
                                 }
                             }
