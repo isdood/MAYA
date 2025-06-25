@@ -162,6 +162,53 @@ If you're upgrading from a version that used RocksDB, follow these steps:
 
 For detailed migration instructions, see [MIGRATION.md](MIGRATION.md).
 
+## 🧩 Pattern Recognition System
+
+MAYA features an advanced pattern recognition system that enables efficient matching and retrieval of similar patterns across different scales and transformations. This system is particularly useful for:
+
+- **Visual Pattern Matching**: Identify similar visual elements in different contexts
+- **Signal Processing**: Match patterns in time-series or frequency-domain data
+- **Adaptive Caching**: Intelligently cache and retrieve similar patterns
+
+### Key Features
+
+- **Multi-scale Pattern Matching**: Find patterns at different scales (e.g., 0.5x, 1.5x, 2.0x)
+- **Perceptual Similarity**: Uses perceptual color difference metrics for accurate matching
+- **Efficient Storage**: Optimized data structures for fast pattern lookup
+- **Adaptive Thresholding**: Configurable similarity thresholds for different use cases
+
+### Usage Example
+
+```zig
+// Initialize a pattern recognizer
+var recognizer = PatternRecognizer.init(allocator);
+defer recognizer.deinit();
+
+// Define a pattern
+const pattern = Pattern{
+    .data = &[16]u8{
+        0,0,0,255,     255,255,255,255,
+        255,255,255,255, 0,0,0,255,
+    },
+    .width = 2,
+    .height = 2,
+};
+
+// Add pattern to cache with a unique key
+try cache.addPattern("diagonal_pattern", 2, 2, pattern.data);
+
+// Find similar patterns
+const similar = try recognizer.findSimilar(&pattern, &cache, 0.7);
+```
+
+### Performance Considerations
+
+- **Pattern Size**: Larger patterns require more processing time
+- **Scale Range**: Wider scale ranges increase computation time
+- **Similarity Threshold**: Lower thresholds may return more matches but with lower precision
+
+For advanced usage, see the [Pattern Recognition Guide](docs/pattern_recognition.md).
+
 ## 🌟 STARWEAVE Universe Integration
 
 MAYA interfaces seamlessly with the broader STARWEAVE ecosystem:
