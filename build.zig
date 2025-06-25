@@ -19,9 +19,15 @@ pub fn build(b: *std.Build) !void {
     const neural_module = b.createModule(.{
         .root_source_file = .{ .src_path = .{
             .owner = b,
-            .sub_path = "src/neural/mod.zig",
+            .sub_path = "src/neural/neural.zig",
         }},
+        .dependencies = &.{
+            .{ .name = "build_options", .module = build_options_module },
+        },
     });
+
+    // Add include paths for the neural module
+    neural_module.addIncludePath(.{ .cwd_relative = "src/neural" });
 
     // Create test-patterns executable
     const test_patterns_exe = b.addExecutable(.{
@@ -37,6 +43,7 @@ pub fn build(b: *std.Build) !void {
     
     // Add include paths
     test_patterns_exe.addIncludePath(.{ .cwd_relative = "src" });
+    test_patterns_exe.addIncludePath(.{ .cwd_relative = "src/neural" });
     test_patterns_exe.addSystemIncludePath(.{ .cwd_relative = "src/neural" });
     
     // Link against libc if needed

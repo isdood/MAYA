@@ -47,6 +47,10 @@ pub const PatternProcessor = pattern_processor.PatternProcessor;
 pub const VisualState = @import("visual_processor.zig").VisualState;
 pub const VisualProcessor = @import("visual_processor.zig").VisualProcessor;
 
+// HYPERCUBE 4D Neural Architecture
+pub const hypercube = @import("hypercube.zig");
+pub const hypercube_bridge = @import("hypercube_bridge.zig");
+
 /// Bridge provides connectivity between neural components and the rest of the system.
 pub const Bridge = struct {
     /// Connect to the neural bridge.
