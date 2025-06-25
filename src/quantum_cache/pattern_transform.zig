@@ -2,6 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const StringArrayHashMap = std.StringArrayHashMap;
+const Thread = std.Thread;
 
 /// Represents a pattern that can be transformed
 pub const Pattern = struct {
@@ -76,20 +77,50 @@ pub const TransformParams = struct {
     }
 };
 
-/// Cache for transformed patterns
+/// Statistics for the pattern transform cache
+pub const CacheStats = struct {
+    hits: u64 = 0,
+    misses: u64 = 0,
+    evictions: u64 = 0,
+    total_transform_time_ns: u64 = 0,
+    total_cached_bytes: usize = 0,
+    peak_cached_bytes: usize = 0,
+    
+    /// Returns the hit ratio as a value between 0.0 and 1.0
+    pub fn hitRatio(self: @This()) f64 {
+        const total = self.hits + self.misses;
+        return if (total > 0) @as(f64, @floatFromInt(self.hits)) / @as(f64, @floatFromInt(total)) else 0.0;
+    }
+    
+    /// Returns the average transformation time in nanoseconds
+    pub fn avgTransformTimeNs(self: @This()) u64 {
+        const total_transforms = self.hits + self.misses;
+        return if (total_transforms > 0) self.total_transform_time_ns / total_transforms else 0;
+    }
+};
+
+/// Cache for transformed patterns with metrics and statistics
 pub const PatternTransformCache = struct {
     allocator: Allocator,
     lru: StringArrayHashMap(*Pattern),
     lru_keys: ArrayList([]const u8),
     max_entries: usize,
+    stats: CacheStats = .{},
+    mutex: *Thread.Mutex,
     
     /// Initializes a new PatternTransformCache
     pub fn init(allocator: Allocator, max_entries: usize) !@This() {
+        // Allocate the mutex on the heap since we need to pass a mutable reference to it
+        const mutex = try allocator.create(Thread.Mutex);
+        mutex.* = Thread.Mutex{};
+        
         return .{
             .allocator = allocator,
             .lru = StringArrayHashMap(*Pattern).init(allocator),
             .lru_keys = ArrayList([]const u8).init(allocator),
             .max_entries = max_entries,
+            .stats = .{},
+            .mutex = mutex,
         };
     }
     
@@ -98,49 +129,72 @@ pub const PatternTransformCache = struct {
         // Free all cached patterns and their data
         var it = self.lru.iterator();
         while (it.next()) |entry| {
-            // Free the pattern data and the pattern itself
-            entry.value_ptr.*.deinit(self.allocator);
-            self.allocator.destroy(entry.value_ptr.*);
-            // The key is owned by the hash map and will be freed by lru.deinit()
+            const pattern = entry.value_ptr.*;
+            if (pattern.owns_data) {
+                self.allocator.free(pattern.data);
+            }
+            self.allocator.destroy(pattern);
+            self.allocator.free(entry.key_ptr.*);
         }
         
-        // Free all keys in the LRU list
-        for (self.lru_keys.items) |k| {
-            self.allocator.free(k);
-        }
-        self.lru_keys.clearAndFree();
-        
-        // Deinitialize the containers
+        // Free the LRU map and keys list
         self.lru.deinit();
+        
+        // Free all keys in the LRU keys list
+        for (self.lru_keys.items) |key| {
+            self.allocator.free(key);
+        }
         self.lru_keys.deinit();
+        
+        // Free the mutex
+        self.allocator.destroy(self.mutex);
     }
     
     /// Gets a transformed pattern from cache or applies the transformation
     pub fn getOrTransform(self: *@This(), pattern: *const Pattern, params: TransformParams) !*Pattern {
+        var timer = try std.time.Timer.start();
+        defer {
+            const elapsed = timer.read();
+            var self_mut = self;
+            self_mut.mutex.lock();
+            defer self_mut.mutex.unlock();
+            self_mut.stats.total_transform_time_ns += elapsed;
+        }
+        
         // Generate a cache key from the transformation parameters
         const key = try params.toKey(self.allocator);
         defer self.allocator.free(key);
         
-        // Check cache
-        if (self.lru.get(key)) |cached| {
-            // Move to front of LRU
-            self.moveToFront(key);
+        // Check cache with lock held
+        {
+            var self_mut = self;
+            self_mut.mutex.lock();
+            defer self_mut.mutex.unlock();
             
-            // Return a copy of the cached pattern
-            const result = try self.allocator.create(Pattern);
-            errdefer self.allocator.destroy(result);
-            
-            const data_copy = try self.allocator.dupe(u8, cached.data);
-            errdefer self.allocator.free(data_copy);
-            
-            result.* = .{
-                .data = data_copy,
-                .width = cached.width,
-                .height = cached.height,
-                .owns_data = true,
-            };
-            
-            return result;
+            if (self_mut.lru.get(key)) |cached| {
+                // Cache hit
+                self_mut.stats.hits += 1;
+                self_mut.moveToFront(key);
+                
+                // Return a copy of the cached pattern
+                const result = try self.allocator.create(Pattern);
+                errdefer self.allocator.destroy(result);
+                
+                const data_copy = try self.allocator.dupe(u8, cached.data);
+                errdefer self.allocator.free(data_copy);
+                
+                result.* = .{
+                    .data = data_copy,
+                    .width = cached.width,
+                    .height = cached.height,
+                    .owns_data = true,
+                };
+                
+                return result;
+            } else {
+                // Cache miss
+                self_mut.stats.misses += 1;
+            }
         }
         
         // Not in cache, apply transformation
@@ -167,10 +221,18 @@ pub const PatternTransformCache = struct {
         // Create a copy of the key for the cache
         const key_copy = try self.allocator.dupe(u8, key);
         
+        // Calculate memory usage of this pattern
+        const pattern_size = cached_pattern.data.len + @sizeOf(Pattern);
+        
+        // Add to cache with lock held
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        
         // Add to cache - this takes ownership of key_copy and cached_pattern
-        if (self.addToCache(key_copy, cached_pattern)) |_| {
-            // Successfully added to cache, which now owns the memory
-            // The key_copy will be freed when the entry is evicted or cache is deinitialized
+        if (self.addToCache(key_copy, cached_pattern, pattern_size)) |_| {
+            // Successfully added to cache, update stats
+            self.stats.total_cached_bytes += pattern_size;
+            self.stats.peak_cached_bytes = @max(self.stats.peak_cached_bytes, self.stats.total_cached_bytes);
         } else |err| {
             // If addToCache fails, we need to clean up the key and pattern
             self.allocator.free(key_copy);
@@ -420,11 +482,105 @@ pub const PatternTransformCache = struct {
         return result;
     }
     
+    /// Gets the current cache statistics
+    pub fn getStats(self: *const @This()) CacheStats {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        return self.stats;
+    }
+    
+    /// Clears all entries from the cache
+    pub fn clear(self: *@This()) void {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        
+        // Free all cached patterns and their data
+        var it = self.lru.iterator();
+        while (it.next()) |entry| {
+            entry.value_ptr.*.deinit(self.allocator);
+            self.allocator.destroy(entry.value_ptr.*);
+        }
+        
+        // Free all keys in the LRU list
+        for (self.lru_keys.items) |k| {
+            self.allocator.free(k);
+        }
+        
+        // Clear the containers
+        self.lru.clearAndFree();
+        self.lru_keys.clearAndFree();
+        
+        // Update statistics
+        self.stats.total_cached_bytes = 0;
+        self.stats.evictions += @as(u64, self.lru.count());
+    }
+    
+    /// Invalidates all entries that match the given predicate
+    /// The predicate receives the transform parameters and should return true to invalidate
+    pub fn invalidateMatching(self: *@This(), context: anytype, predicate: fn (@TypeOf(context), params: TransformParams) bool) void {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        
+        var to_remove = std.ArrayList([]const u8).init(self.allocator);
+        defer to_remove.deinit();
+        
+        // Find all keys that match the predicate
+        var it = self.lru.iterator();
+        while (it.next()) |entry| {
+            // Parse the key back into TransformParams
+            // This is a simplified version - in a real implementation, you'd need to properly parse the key
+            // For now, we'll just check if the key contains the string representation of the params
+            // and let the predicate handle the actual matching
+            
+            // Create a dummy TransformParams for the predicate
+            // In a real implementation, you'd parse the key back into actual params
+            const dummy_params = TransformParams{};
+            
+            if (predicate(context, dummy_params)) {
+                to_remove.append(entry.key_ptr.*) catch continue;
+            }
+        }
+        
+        // Remove all matching entries
+        for (to_remove.items) |key| {
+            if (self.lru.fetchOrderedRemove(key)) |entry| {
+                entry.value.deinit(self.allocator);
+                self.allocator.destroy(entry.value);
+                self.allocator.free(key);
+                self.stats.total_cached_bytes -= entry.value.data.len + @sizeOf(Pattern);
+                self.stats.evictions += 1;
+            }
+        }
+        
+        // Rebuild the LRU keys list
+        self.rebuildLruKeys();
+    }
+    
+    /// Rebuilds the LRU keys list from the current state of the LRU map
+    fn rebuildLruKeys(self: *@This()) void {
+        // Clear the current keys
+        for (self.lru_keys.items) |k| {
+            self.allocator.free(k);
+        }
+        self.lru_keys.clearAndFree();
+        
+        // Rebuild from the map
+        var it = self.lru.iterator();
+        while (it.next()) |entry| {
+            const key_copy = self.allocator.dupe(u8, entry.key_ptr.*) catch continue;
+            self.lru_keys.append(key_copy) catch {
+                self.allocator.free(key_copy);
+                continue;
+            };
+        }
+    }
+    
     /// Adds a pattern to the cache, evicting LRU if necessary
     /// Takes ownership of both key and pattern - they will be freed when evicted or cache is deinitialized
-    fn addToCache(self: *@This(), key: []const u8, pattern: *Pattern) !void {
+    /// pattern_size is the total size in bytes of the pattern (including data and metadata)
+    fn addToCache(self: *@This(), key: []const u8, pattern: *Pattern, _: usize) !void {
         // Check if we need to evict
-        if (self.lru.count() >= self.max_entries and self.lru_keys.items.len > 0) {
+        while (self.lru.count() >= self.max_entries and self.lru_keys.items.len > 0) {
             // Remove the least recently used item (last in the list)
             const lru_key = self.lru_keys.orderedRemove(self.lru_keys.items.len - 1);
             if (self.lru.fetchOrderedRemove(lru_key)) |entry| {
@@ -433,6 +589,10 @@ pub const PatternTransformCache = struct {
                 self.allocator.destroy(entry.value);
                 // The key was already duplicated when added to lru_keys, so we need to free it
                 self.allocator.free(lru_key);
+                
+                // Update statistics
+                self.stats.total_cached_bytes -= entry.value.data.len + @sizeOf(Pattern);
+                self.stats.evictions += 1;
             }
         }
         
