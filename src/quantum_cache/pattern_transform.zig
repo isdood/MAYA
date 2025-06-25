@@ -47,19 +47,32 @@ pub const Pattern = struct {
 pub const TransformParams = struct {
     scale_x: f32 = 1.0,
     scale_y: f32 = 1.0,
-    angle: f32 = 0.0,  // in degrees
+    rotation: f32 = 0.0, // in degrees, must be multiple of 90
     translate_x: i32 = 0,
     translate_y: i32 = 0,
     
-    /// Creates a unique key for these parameters
+    /// Creates a unique key for these transformation parameters
     pub fn toKey(self: @This(), allocator: Allocator) ![]const u8 {
         return std.fmt.allocPrint(allocator, "{d}:{d}:{d}:{d}:{d}", .{
-            self.scale_x,
-            self.scale_y,
-            self.angle,
+            self.scale_x, 
+            self.scale_y, 
+            self.rotation,
             self.translate_x,
             self.translate_y,
         });
+    }
+    
+    /// Composes two transformations (applies other transformation after this one)
+    pub fn compose(self: @This(), other: TransformParams) TransformParams {
+        // For simplicity, just combine translations for now
+        // In a more complete implementation, we'd handle the full matrix composition
+        return TransformParams{
+            .scale_x = self.scale_x * other.scale_x,
+            .scale_y = self.scale_y * other.scale_y,
+            .rotation = @mod(self.rotation + other.rotation, 360.0),
+            .translate_x = self.translate_x + @as(i32, @intFromFloat(@as(f32, @floatFromInt(other.translate_x)) * self.scale_x)),
+            .translate_y = self.translate_y + @as(i32, @intFromFloat(@as(f32, @floatFromInt(other.translate_y)) * self.scale_y)),
+        };
     }
 };
 
@@ -176,9 +189,22 @@ pub const PatternTransformCache = struct {
         pattern: *const Pattern,
         params: TransformParams,
     ) !*Pattern {
-        // For now, just implement basic scaling
-        const new_width = @as(u32, @intFromFloat(@as(f32, @floatFromInt(pattern.width)) * params.scale_x));
-        const new_height = @as(u32, @intFromFloat(@as(f32, @floatFromInt(pattern.height)) * params.scale_y));
+        // First handle rotation by 90° increments
+        var rotated_width = pattern.width;
+        var rotated_height = pattern.height;
+        
+        // Normalize rotation to 0-360 range
+        const normalized_rot = @mod(@as(f32, @floatFromInt(@as(i32, @intFromFloat(params.rotation / 90.0)) * 90)), 360.0);
+        
+        // Adjust dimensions for 90° or 270° rotation
+        if (normalized_rot == 90.0 or normalized_rot == 270.0) {
+            rotated_width = pattern.height;
+            rotated_height = pattern.width;
+        }
+        
+        // Apply scaling
+        const new_width = @max(1, @as(u32, @intFromFloat(@as(f32, @floatFromInt(rotated_width)) * @abs(params.scale_x))));
+        const new_height = @max(1, @as(u32, @intFromFloat(@as(f32, @floatFromInt(rotated_height)) * @abs(params.scale_y))));
         
         // Allocate memory for the new pattern
         const result = try self.allocator.create(Pattern);
@@ -187,14 +213,74 @@ pub const PatternTransformCache = struct {
         const data = try self.allocator.alloc(u8, new_width * new_height * 4);
         errdefer self.allocator.free(data);
         
-        // Simple nearest-neighbor scaling
+        // Initialize with transparent black
+        @memset(data, 0);
+        
+        // Calculate translation with wrapping
+        const tx = @mod(@as(i64, @intCast(params.translate_x)), @as(i64, @intCast(new_width)));
+        const ty = @mod(@as(i64, @intCast(params.translate_y)), @as(i64, @intCast(new_height)));
+        
+        // Apply transformation
         for (0..new_height) |y| {
-            const src_y = y * pattern.height / new_height;
             for (0..new_width) |x| {
-                const src_x = x * pattern.width / new_width;
-                const src_idx = (src_y * pattern.width + src_x) * 4;
+                // Apply translation with wrapping
+                const tx_x = @mod(@as(i64, @intCast(x)) - tx, @as(i64, @intCast(new_width)));
+                const tx_y = @mod(@as(i64, @intCast(y)) - ty, @as(i64, @intCast(new_height)));
+                
+                // Skip if translation moved out of bounds (shouldn't happen with mod, but just in case)
+                if (tx_x < 0 or tx_x >= new_width or tx_y < 0 or tx_y >= new_height) continue;
+                
+                // Apply scaling and rotation
+                var src_x = @as(f32, @floatFromInt(@as(i64, @intCast(tx_x)) * @as(i64, @intCast(rotated_width)))) / @as(f32, @floatFromInt(new_width));
+                var src_y = @as(f32, @floatFromInt(@as(i64, @intCast(tx_y)) * @as(i64, @intCast(rotated_height)))) / @as(f32, @floatFromInt(new_height));
+                
+                // Handle negative scaling by flipping coordinates
+                if (params.scale_x < 0) src_x = @as(f32, @floatFromInt(rotated_width)) - 1 - src_x;
+                if (params.scale_y < 0) src_y = @as(f32, @floatFromInt(rotated_height)) - 1 - src_y;
+                
+                // Apply rotation
+                const center_x = @as(f32, @floatFromInt(rotated_width)) / 2.0;
+                const center_y = @as(f32, @floatFromInt(rotated_height)) / 2.0;
+                
+                const rot_x = src_x - center_x;
+                const rot_y = src_y - center_y;
+                
+                // Apply rotation matrix
+                var final_x: f32 = 0;
+                var final_y: f32 = 0;
+                
+                if (normalized_rot == 90.0) {
+                    final_x = -rot_y;
+                    final_y = rot_x;
+                } else if (normalized_rot == 180.0) {
+                    final_x = -rot_x;
+                    final_y = -rot_y;
+                } else if (normalized_rot == 270.0) {
+                    final_x = rot_y;
+                    final_y = -rot_x;
+                } else {
+                    final_x = rot_x;
+                    final_y = rot_y;
+                }
+                
+                // Convert back to pattern coordinates
+                final_x += center_x;
+                final_y += center_y;
+                
+                // Skip if out of bounds
+                if (final_x < 0 or final_x >= @as(f32, @floatFromInt(pattern.width)) or 
+                    final_y < 0 or final_y >= @as(f32, @floatFromInt(pattern.height))) 
+                {
+                    continue;
+                }
+                
+                // Sample the source pixel (nearest neighbor)
+                const src_x_idx = @min(pattern.width - 1, @as(u32, @intFromFloat(final_x)));
+                const src_y_idx = @min(pattern.height - 1, @as(u32, @intFromFloat(final_y)));
+                const src_idx = (src_y_idx * pattern.width + src_x_idx) * 4;
                 const dst_idx = (y * new_width + x) * 4;
                 
+                // Copy the pixel data
                 @memcpy(data[dst_idx..dst_idx+4], pattern.data[src_idx..src_idx+4]);
             }
         }
