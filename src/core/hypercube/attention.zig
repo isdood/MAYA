@@ -137,7 +137,7 @@ test "calculateMass" {
     tensor.set(0, 0, 0, 2, 3.0);
     
     // sqrt(1² + 2² + 3²) = sqrt(14) ≈ 3.7417
-    const mass = calculateMass(&tensor);
+    const mass = calculateMass(tensor);
     try testing.expectApproxEqAbs(@as(f32, 3.7417), mass, 1e-4);
 }
 
@@ -145,36 +145,37 @@ test "gravityWellAttention basic" {
     const allocator = testing.allocator;
     
     // Create query tensor
-    var query = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
+    const query = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
     defer query.deinit();
-    query.fill(1.0);  // All ones
+    query.fill(1.0);
     
     // Create keys and values (2 heads)
-    var key1 = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
+    const key1 = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
     defer key1.deinit();
     key1.fill(1.0);  // Same as query
     
-    var key2 = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
+    const key2 = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
     defer key2.deinit();
     key2.fill(-1.0);  // Opposite of query
     
-    var value1 = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
+    const value1 = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
     defer value1.deinit();
     value1.fill(1.0);
     
-    var value2 = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
+    const value2 = try Tensor4D.init(allocator, [4]usize{1, 1, 1, 4});
     defer value2.deinit();
     value2.fill(0.5);
     
-    const keys = [_]*const Tensor4D{ &key1, &key2 };
-    const values = [_]*const Tensor4D{ &value1, &value2 };
+    // Create slices of tensor pointers
+    const key_ptrs = [_]*const Tensor4D{ key1, key2 };
+    const value_ptrs = [_]*const Tensor4D{ value1, value2 };
     
     // Test attention
     const output = try gravityWellAttention(
         allocator,
-        &query,
-        &keys,
-        &values,
+        query,
+        &key_ptrs,
+        &value_ptrs,
         .{ .g_scale = 1.0, .temperature = 1.0 }
     );
     defer output.deinit();
