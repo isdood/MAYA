@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const StringArrayHashMap = std.StringArrayHashMap;
 const Thread = std.Thread;
+const time = std.time;
 
 /// Represents a pattern that can be transformed
 pub const Pattern = struct {
@@ -104,24 +105,50 @@ pub const PatternTransformCache = struct {
     allocator: Allocator,
     lru: StringArrayHashMap(*Pattern),
     lru_keys: ArrayList([]const u8),
+    entry_timestamps: StringArrayHashMap(u64), // Key -> timestamp_ns
     max_entries: usize,
+    max_size_bytes: usize = 1024 * 1024 * 100, // 100MB default
+    default_ttl_ns: u64 = 60 * 1_000_000_000, // 1 minute default TTL in nanoseconds
+    current_size_bytes: usize = 0,
     stats: CacheStats = .{},
     mutex: *Thread.Mutex,
     
-    /// Initializes a new PatternTransformCache
+    /// Initializes a new PatternTransformCache with default settings
     pub fn init(allocator: Allocator, max_entries: usize) !@This() {
+        return initWithOptions(allocator, max_entries, null, null);
+    }
+    
+    /// Initializes a new PatternTransformCache with custom options
+    /// max_size_mb: Maximum cache size in megabytes (0 for no limit)
+    /// default_ttl_seconds: Default time-to-live for cache entries in seconds (0 for no expiration)
+    pub fn initWithOptions(
+        allocator: Allocator,
+        max_entries: usize,
+        max_size_mb: ?usize,
+        default_ttl_seconds: ?u64
+    ) !@This() {
         // Allocate the mutex on the heap since we need to pass a mutable reference to it
         const mutex = try allocator.create(Thread.Mutex);
         mutex.* = Thread.Mutex{};
         
-        return .{
+        const max_size_bytes = if (max_size_mb) |mb| mb * 1024 * 1024 else 0;
+        const ttl_ns = if (default_ttl_seconds) |s| s * 1_000_000_000 else 0;
+        
+        var cache = @This(){
             .allocator = allocator,
             .lru = StringArrayHashMap(*Pattern).init(allocator),
             .lru_keys = ArrayList([]const u8).init(allocator),
+            .entry_timestamps = StringArrayHashMap(u64).init(allocator),
             .max_entries = max_entries,
+            .max_size_bytes = max_size_bytes,
+            .default_ttl_ns = ttl_ns,
+            .current_size_bytes = 0,
             .stats = .{},
             .mutex = mutex,
         };
+        errdefer cache.deinit();
+        
+        return cache;
     }
     
     /// Deinitializes the cache, freeing all resources
@@ -137,8 +164,9 @@ pub const PatternTransformCache = struct {
             self.allocator.free(entry.key_ptr.*);
         }
         
-        // Free the LRU map and keys list
+        // Free the LRU map, timestamps, and keys list
         self.lru.deinit();
+        self.entry_timestamps.deinit();
         
         // Free all keys in the LRU keys list
         for (self.lru_keys.items) |key| {
@@ -150,9 +178,83 @@ pub const PatternTransformCache = struct {
         self.allocator.destroy(self.mutex);
     }
     
+    /// Evicts entries based on time-to-live and size constraints
+    /// Returns the number of entries evicted
+    fn evictIfNeeded(self: *@This()) !usize {
+        var evicted: usize = 0;
+        const now = time.nanoTimestamp();
+        
+        // Check if we need to evict based on entry count
+        while (self.lru.count() >= self.max_entries and self.lru_keys.items.len > 0) {
+            try self.evictOne();
+            evicted += 1;
+        }
+        
+        // Check if we need to evict based on size
+        while (self.max_size_bytes > 0 and 
+               self.current_size_bytes > self.max_size_bytes and 
+               self.lru_keys.items.len > 0) {
+            try self.evictOne();
+            evicted += 1;
+        }
+        
+        // Check for expired entries if TTL is enabled
+        if (self.default_ttl_ns > 0) {
+            var i: usize = 0;
+            while (i < self.lru_keys.items.len) {
+                const key = self.lru_keys.items[i];
+                if (self.entry_timestamps.get(key)) |timestamp| {
+                    if (now - @as(i64, @intCast(timestamp)) > @as(i64, @intCast(self.default_ttl_ns))) {
+                        // Entry has expired, evict it
+                        try self.evictByKey(key);
+                        evicted += 1;
+                        continue; // Don't increment i as we removed an item
+                    }
+                }
+                i += 1;
+            }
+        }
+        
+        return evicted;
+    }
+    
+    /// Evicts a single entry (the least recently used)
+    fn evictOne(self: *@This()) !void {
+        if (self.lru_keys.pop()) |key| {
+            defer self.allocator.free(key);
+            try self.evictByKey(key);
+        }
+    }
+    
+    /// Evicts a specific entry by key
+    fn evictByKey(self: *@This(), key: []const u8) !void {
+        if (self.lru.fetchSwapRemove(key)) |kv| {
+            const pattern = kv.value;
+            
+            // Update size tracking
+            if (self.max_size_bytes > 0) {
+                const pattern_size = pattern.width * pattern.height * 4; // Assuming 4 bytes per pixel (RGBA)
+                self.current_size_bytes -|= pattern_size;
+            }
+            
+            // Free resources
+            if (pattern.owns_data) {
+                self.allocator.free(pattern.data);
+            }
+            self.allocator.destroy(pattern);
+            self.allocator.free(kv.key);
+            
+            // Remove from timestamps
+            _ = self.entry_timestamps.swapRemove(key);
+            
+            // Update stats
+            self.stats.evictions += 1;
+        }
+    }
+    
     /// Gets a transformed pattern from cache or applies the transformation
     pub fn getOrTransform(self: *@This(), pattern: *const Pattern, params: TransformParams) !*Pattern {
-        var timer = try std.time.Timer.start();
+        var timer = time.Timer.start() catch unreachable;
         defer {
             const elapsed = timer.read();
             var self_mut = self;
@@ -497,8 +599,12 @@ pub const PatternTransformCache = struct {
         // Free all cached patterns and their data
         var it = self.lru.iterator();
         while (it.next()) |entry| {
-            entry.value_ptr.*.deinit(self.allocator);
-            self.allocator.destroy(entry.value_ptr.*);
+            const pattern = entry.value_ptr.*;
+            if (pattern.owns_data) {
+                self.allocator.free(pattern.data);
+            }
+            self.allocator.destroy(pattern);
+            self.allocator.free(entry.key_ptr.*);
         }
         
         // Free all keys in the LRU list
@@ -506,23 +612,29 @@ pub const PatternTransformCache = struct {
             self.allocator.free(k);
         }
         
-        // Clear the containers
+        // Clear all containers
         self.lru.clearAndFree();
         self.lru_keys.clearAndFree();
+        self.entry_timestamps.clearAndFree();
         
-        // Update statistics
-        self.stats.total_cached_bytes = 0;
-        self.stats.evictions += @as(u64, self.lru.count());
+        // Update statistics and reset size tracking
+        const evicted = self.stats.evictions + @as(u64, self.lru.count());
+        self.stats = .{
+            .hits = self.stats.hits,
+            .misses = self.stats.misses,
+            .evictions = evicted,
+            .total_cached_bytes = 0,
+            .peak_cached_bytes = self.stats.peak_cached_bytes,
+            .total_transform_time_ns = self.stats.total_transform_time_ns,
+        };
+        self.current_size_bytes = 0;
     }
     
     /// Invalidates all entries that match the given predicate
     /// The predicate receives the transform parameters and should return true to invalidate
-    pub fn invalidateMatching(self: *@This(), context: anytype, predicate: fn (@TypeOf(context), params: TransformParams) bool) void {
+    pub fn invalidateMatching(self: *@This(), context: anytype, predicate: fn (@TypeOf(context), params: TransformParams) bool) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
-        
-        var to_remove = std.ArrayList([]const u8).init(self.allocator);
-        defer to_remove.deinit();
         
         // Find all keys that match the predicate
         var it = self.lru.iterator();
@@ -537,18 +649,30 @@ pub const PatternTransformCache = struct {
             const dummy_params = TransformParams{};
             
             if (predicate(context, dummy_params)) {
-                to_remove.append(entry.key_ptr.*) catch continue;
-            }
-        }
-        
-        // Remove all matching entries
-        for (to_remove.items) |key| {
-            if (self.lru.fetchOrderedRemove(key)) |entry| {
-                entry.value.deinit(self.allocator);
-                self.allocator.destroy(entry.value);
-                self.allocator.free(key);
-                self.stats.total_cached_bytes -= entry.value.data.len + @sizeOf(Pattern);
-                self.stats.evictions += 1;
+                // Remove the entry
+                if (self.lru.fetchOrderedRemove(entry.key_ptr.*)) |kv| {
+                    const pattern = kv.value;
+                    
+                    // Update size tracking
+                    if (self.max_size_bytes > 0) {
+                        const pattern_size = pattern.width * pattern.height * 4; // Assuming 4 bytes per pixel (RGBA)
+                        self.current_size_bytes -|= pattern_size;
+                    }
+                    
+                    // Free resources
+                    if (pattern.owns_data) {
+                        self.allocator.free(pattern.data);
+                    }
+                    self.allocator.destroy(pattern);
+                    self.allocator.free(kv.key);
+                    
+                    // Remove from timestamps
+                    _ = self.entry_timestamps.swapRemove(entry.key_ptr.*);
+                    
+                    // Update stats
+                    self.stats.evictions += 1;
+                    self.stats.total_cached_bytes -= pattern.width * pattern.height * 4; // Update total cached bytes
+                }
             }
         }
         
@@ -564,49 +688,52 @@ pub const PatternTransformCache = struct {
         }
         self.lru_keys.clearAndFree();
         
-        // Rebuild from the map
+        // Rebuild from the map in reverse order to maintain LRU order
+        // (newest items are at the front of the list)
         var it = self.lru.iterator();
         while (it.next()) |entry| {
             const key_copy = self.allocator.dupe(u8, entry.key_ptr.*) catch continue;
             self.lru_keys.append(key_copy) catch {
                 self.allocator.free(key_copy);
-                continue;
             };
         }
     }
     
-    /// Adds a pattern to the cache, evicting LRU if necessary
+    /// Adds a pattern to the cache, evicting if necessary based on size and TTL
     /// Takes ownership of both key and pattern - they will be freed when evicted or cache is deinitialized
-    /// pattern_size is the total size in bytes of the pattern (including data and metadata)
-    fn addToCache(self: *@This(), key: []const u8, pattern: *Pattern, _: usize) !void {
-        // Check if we need to evict
-        while (self.lru.count() >= self.max_entries and self.lru_keys.items.len > 0) {
-            // Remove the least recently used item (last in the list)
-            const lru_key = self.lru_keys.orderedRemove(self.lru_keys.items.len - 1);
-            if (self.lru.fetchOrderedRemove(lru_key)) |entry| {
-                // Clean up the old pattern
-                entry.value.deinit(self.allocator);
-                self.allocator.destroy(entry.value);
-                // The key was already duplicated when added to lru_keys, so we need to free it
-                self.allocator.free(lru_key);
-                
-                // Update statistics
-                self.stats.total_cached_bytes -= entry.value.data.len + @sizeOf(Pattern);
-                self.stats.evictions += 1;
-            }
-        }
-        
-        // Add to cache - this takes ownership of the key and pattern
-        try self.lru.put(key, pattern);
-        
-        // Insert the key at the front of the LRU list
-        // We need to duplicate the key since the hash map takes ownership of the original
+    fn addToCache(self: *@This(), key: []const u8, pattern: *Pattern, pattern_size: usize) !void {
+        // Make a copy of the key to own it
         const key_copy = try self.allocator.dupe(u8, key);
         errdefer self.allocator.free(key_copy);
         
+        // Calculate the size of this pattern
+        const entry_size = pattern_size;
+        
+        // Evict entries if needed to make space
+        if (self.lru.count() >= self.max_entries or 
+            (self.max_size_bytes > 0 and self.current_size_bytes + entry_size > self.max_size_bytes)) {
+            _ = try self.evictIfNeeded();
+        }
+        
+        // Add the new pattern to the cache
+        try self.lru.put(key_copy, pattern);
         try self.lru_keys.insert(0, key_copy);
+        
+        // Update timestamps
+        const now = @as(u64, @intCast(time.nanoTimestamp()));
+        try self.entry_timestamps.put(key_copy, now);
+        
+        // Update size tracking
+        if (self.max_size_bytes > 0) {
+            self.current_size_bytes += entry_size;
+        }
+        
+        // Update stats
+        self.stats.total_cached_bytes += entry_size;
+        if (self.stats.total_cached_bytes > self.stats.peak_cached_bytes) {
+            self.stats.peak_cached_bytes = self.stats.total_cached_bytes;
+        }
     }
-    
     /// Helper to create a new pattern instance
     fn createPattern(self: *@This(), data: []const u8, width: u32, height: u32) !*Pattern {
         const pattern = try self.allocator.create(Pattern);
