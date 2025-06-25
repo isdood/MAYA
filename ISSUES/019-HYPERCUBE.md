@@ -6,6 +6,12 @@ HYPERCUBE is a proposed neural architecture that integrates the 4D spacetime con
 
 ## 🏆 Recent Achievements
 
+### Implemented Gravity-Well Attention (June 25, 2025)
+- Added mass-based attention calculation
+- Implemented temperature scaling for attention sharpness
+- Created comprehensive test suite
+- Optimized for memory efficiency
+
 ### Fixed Issues (June 25, 2025)
 - Resolved integer overflow in spiral convolution's coordinate calculations
 - Fixed string formatting issues across the codebase
@@ -137,16 +143,25 @@ Sample values (input[0,0,0:5,0:5]):
 - Resolved string formatting and type safety issues
 - Basic example pipeline working with input/output visualization
 - Successfully generated spiral kernel visualizations
+- Implemented gravity-well attention mechanism with:
+  - Mass-based attention weights
+  - Temperature scaling for attention sharpness
+  - Comprehensive test coverage
+  - Memory-efficient implementation
 
 ### Phase 2: Quantum Memory (Weeks 5-8) - IN PROGRESS
-- [ ] Implement gravity-well attention
+- [x] Implement gravity-well attention
+  - Core attention mechanism with mass and distance calculations
+  - Temperature scaling for attention sharpness
+  - Comprehensive test suite with edge cases
 - [ ] Add quantum tunneling for memory access
+  - Implement probability-based memory access patterns
+  - Add non-local connection capabilities
+  - Test with various tunneling parameters
 - [ ] Optimize for GPU acceleration
-
-### Phase 2: Quantum Memory (Weeks 5-8)
-- [ ] Implement gravity-well attention
-- [ ] Add quantum tunneling for memory access
-- [ ] Optimize for GPU acceleration
+  - Port critical paths to CUDA/OpenCL
+  - Optimize memory access patterns
+  - Benchmark performance improvements
 
 ### Phase 3: Integration (Weeks 9-12)
 - [ ] Connect to existing MAYA neural core

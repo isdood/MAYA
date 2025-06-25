@@ -11,11 +11,13 @@ pub const Tensor4D = @import("tensor4d.zig").Tensor4D;
 pub const SpiralConv = @import("spiral_conv.zig").SpiralConv;
 pub const glimmer = @import("glimmer.zig");
 pub const attention = @import("attention.zig");
+pub const quantum_tunneling = @import("quantum_tunneling.zig");
 
 // Re-export commonly used types and functions
 pub const Color = glimmer.Color;
 pub const GlimmerParams = glimmer.GlimmerParams;
 pub const GravityAttentionParams = attention.GravityAttentionParams;
+pub const QuantumTunnelingParams = quantum_tunneling.QuantumTunnelingParams;
 
 // Core error set for HYPERCUBE operations
 pub const Error = error{
