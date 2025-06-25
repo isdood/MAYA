@@ -67,8 +67,13 @@ pub const SpiralConv = struct {
 
     /// Applies spiral convolution to the input tensor
     pub fn forward(self: *const @This(), input: *const Tensor4D) !*Tensor4D {
-        const [batch_size, in_channels, in_height, in_width] = input.shape;
-        const [out_channels, _, kernel_size, _] = self.weights.shape;
+        const batch_size = input.shape[0];
+        const in_channels = input.shape[1];
+        const in_height = input.shape[2];
+        const in_width = input.shape[3];
+        
+        const out_channels = self.weights.shape[0];
+        const kernel_size = self.weights.shape[2];
         
         // Calculate output dimensions
         const out_height = (in_height + 2 * self.params.padding - 
@@ -95,7 +100,9 @@ pub const SpiralConv = struct {
                         var sum: f32 = 0.0;
                         
                         // Apply spiral kernel
-                        for (spiral_coords) |(kh, kw)| {
+                        for (spiral_coords) |coord| {
+                            const kh = coord[0];
+                            const kw = coord[1];
                             const h = oh * self.params.stride + kh - self.params.padding;
                             const w = ow * self.params.stride + kw - self.params.padding;
                             

@@ -48,7 +48,8 @@ pub const Tensor4D = struct {
 
     /// Fills the tensor with random values in the range [min, max]
     pub fn randomFill(self: *@This(), min: f32, max: f32) !void {
-        var rng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp()));
+        const seed = @as(u64, @intCast(std.time.milliTimestamp()));
+        var rng = std.rand.DefaultPrng.init(seed);
         const range = max - min;
         
         for (self.data) |*v| {

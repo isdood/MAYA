@@ -93,4 +93,56 @@ pub fn build(b: *std.Build) !void {
     // Create a test-patterns step (alias for run)
     const run_test_patterns_step = b.step("test-patterns", "Run the test patterns application");
     run_test_patterns_step.dependOn(&run_test_patterns_cmd.step);
+    
+    // Create hypercube library
+    const hypercube_lib = b.addStaticLibrary(.{
+        .name = "hypercube",
+        .root_source_file = .{ .cwd_relative = "src/core/hypercube/mod.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add hypercube library to install step
+    b.installArtifact(hypercube_lib);
+    
+    // Create hypercube executable
+    const hypercube_exe = b.addExecutable(.{
+        .name = "hypercube",
+        .root_source_file = .{ .cwd_relative = "src/core/hypercube/mod.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Install hypercube executable
+    b.installArtifact(hypercube_exe);
+    
+    // Create run step for hypercube
+    const run_hypercube_cmd = b.addRunArtifact(hypercube_exe);
+    run_hypercube_cmd.step.dependOn(b.getInstallStep());
+    
+    // Add command line arguments if provided
+    if (b.args) |args| {
+        run_hypercube_cmd.addArgs(args);
+    }
+    
+    // Create hypercube test step
+    const hypercube_test = b.addTest(.{
+        .root_source_file = .{ .cwd_relative = "src/core/hypercube/mod.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Create a test step for hypercube
+    const hypercube_test_step = b.step("test-hypercube", "Run HYPERCUBE tests");
+    hypercube_test_step.dependOn(&hypercube_test.step);
+    
+    // Add hypercube tests to the main test step
+    test_all.dependOn(hypercube_test_step);
+    
+    // Create hypercube run step
+    const hypercube_run_step = b.step("hypercube", "Run HYPERCUBE example");
+    hypercube_run_step.dependOn(&run_hypercube_cmd.step);
+    
+    // Add hypercube to the main run step
+    run_step.dependOn(&run_hypercube_cmd.step);
 }

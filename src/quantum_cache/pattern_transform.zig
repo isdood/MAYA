@@ -563,6 +563,142 @@ pub const PatternTransformCache = struct {
         // Return the transformed pattern (caller is responsible for freeing it)
         return transformed;
     }
+    /// Applies a simple transformation without any advanced matching
+    fn applySimpleTransform(self: *@This(), pattern: *const Pattern, params: TransformParams) !*Pattern {
+        // Simple implementation - creates a copy of the pattern
+        // In a real implementation, this would apply the actual transformation
+        return try self.createPattern(pattern.data, pattern.width, pattern.height);
+    }
+    
+    /// Applies advanced transformations including multi-scale, rotation-invariant, and partial matching
+    fn applyAdvancedTransform(self: *@This(), pattern: *const Pattern, params: TransformParams) !*Pattern {
+        const match_params = params.match_params;
+        var best_score: f32 = 0.0;
+        var best_result: ?*Pattern = null;
+        
+        // Helper to update the best result
+        const updateBestResult = struct {
+            fn update(
+                self_ptr: *PatternTransformCache,
+                current: *?*Pattern,
+                score: f32,
+                new_pattern: *Pattern,
+                best_score_ptr: *f32,
+            ) !void {
+                if (score > best_score_ptr.*) {
+                    best_score_ptr.* = score;
+                    if (current.*) |prev| {
+                        prev.deinit(self_ptr.allocator);
+                        self_ptr.allocator.destroy(prev);
+                    }
+                    current.* = try self_ptr.createPattern(new_pattern.data, new_pattern.width, new_pattern.height);
+                }
+            }
+        };
+        
+        // Try different scales if multi-scale is enabled
+        if (match_params.multi_scale) {
+            var scale = match_params.min_scale;
+            while (scale <= match_params.max_scale) : (scale += match_params.scale_step) {
+                const scaled_params = TransformParams{
+                    .scale_x = scale,
+                    .scale_y = scale,
+                    .rotation = params.rotation,
+                    .translate_x = params.translate_x,
+                    .translate_y = params.translate_y,
+                    .match_params = params.match_params,
+                };
+                
+                const transformed = try self.applySimpleTransform(pattern, scaled_params);
+                defer {
+                    transformed.deinit(self.allocator);
+                    self.allocator.destroy(transformed);
+                }
+                
+                const score = self.calculateMatchScore(transformed, pattern);
+                try updateBestResult.update(
+                    self, &best_result, score, transformed, &best_score
+                );
+            }
+        }
+        
+        // Try different rotations if rotation-invariant is enabled
+        if (match_params.rotation_invariant) {
+            var rotation: f32 = 0.0;
+            while (rotation < 360.0) : (rotation += match_params.rotation_step) {
+                const rotated_params = TransformParams{
+                    .scale_x = params.scale_x,
+                    .scale_y = params.scale_y,
+                    .rotation = rotation,
+                    .translate_x = params.translate_x,
+                    .translate_y = params.translate_y,
+                    .match_params = params.match_params,
+                };
+                
+                const transformed = try self.applySimpleTransform(pattern, rotated_params);
+                defer {
+                    transformed.deinit(self.allocator);
+                    self.allocator.destroy(transformed);
+                }
+                
+                const score = self.calculateMatchScore(transformed, pattern);
+                try updateBestResult.update(
+                    self, &best_result, score, transformed, &best_score
+                );
+            }
+        }
+        
+        // Handle partial pattern matching
+        if (match_params.partial_matching) {
+            const window_width = @max(1, @as(u32, @intFromFloat(@as(f32, @floatFromInt(pattern.width)) * 
+                (1.0 - match_params.max_scale_diff))));
+            const window_height = @max(1, @as(u32, @intFromFloat(@as(f32, @floatFromInt(pattern.height)) * 
+                (1.0 - match_params.max_scale_diff))));
+            
+            // Simplified partial matching - just return the best matching window
+            // In a real implementation, this would use more sophisticated pattern matching
+            const partial_params = TransformParams{
+                .scale_x = params.scale_x * 0.8, // Example: slightly scaled down
+                .scale_y = params.scale_y * 0.8,
+                .rotation = params.rotation,
+                .translate_x = params.translate_x,
+                .translate_y = params.translate_y,
+                .match_params = .{},
+            };
+            
+            const partial_result = try self.applySimpleTransform(pattern, partial_params);
+            defer {
+                partial_result.deinit(self.allocator);
+                self.allocator.destroy(partial_result);
+            }
+            
+            const score = self.calculateMatchScore(partial_result, pattern);
+            if (score >= match_params.min_match_threshold) {
+                try updateBestResult.update(
+                    self, &best_result, score, partial_result, &best_score
+                );
+            }
+        }
+        
+        // Return the best result or fall back to simple transform
+        if (best_result) |result| {
+            return try self.createPattern(result.data, result.width, result.height);
+        }
+        
+        // Fallback to simple transformation if no good match found
+        return try self.applySimpleTransform(pattern, params);
+    }
+    
+    /// Calculates a match score between two patterns (simplified implementation)
+    fn calculateMatchScore(self: *@This(), a: *const Pattern, b: *const Pattern) f32 {
+        _ = self; // Unused parameter
+        // This is a simplified implementation that just compares dimensions
+        // In a real implementation, this would use more sophisticated pattern matching
+        const size_ratio = @as(f32, @floatFromInt(a.width * a.height)) / 
+                          @as(f32, @floatFromInt(b.width * b.height));
+        return 1.0 / (1.0 + @abs(size_ratio - 1.0));
+    }
+    
     /// Helper to create a new pattern instance
     fn createPattern(self: *@This(), data: []const u8, width: u32, height: u32) !*Pattern {
         const pattern = try self.allocator.create(Pattern);
