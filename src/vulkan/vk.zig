@@ -10,32 +10,42 @@ const c = @cImport({
 // Re-export all Vulkan types and functions
 pub usingnamespace c;
 
-// Directly export the Vulkan functions we need
-pub extern "vulkan" fn vkEnumerateInstanceExtensionProperties(
+// Export the Vulkan functions we need
+export fn vkEnumerateInstanceExtensionProperties(
     pLayerName: ?[*:0]const u8,
     pPropertyCount: *u32,
     pProperties: ?[*]c.VkExtensionProperties,
-) callconv(.C) c.VkResult;
+) callconv(.C) c.VkResult {
+    return c.vkEnumerateInstanceExtensionProperties(pLayerName, pPropertyCount, pProperties);
+}
 
-pub extern "vulkan" fn vkEnumerateInstanceLayerProperties(
+export fn vkEnumerateInstanceLayerProperties(
     pPropertyCount: *u32,
     pProperties: ?[*]c.VkLayerProperties,
-) callconv(.C) c.VkResult;
+) callconv(.C) c.VkResult {
+    return c.vkEnumerateInstanceLayerProperties(pPropertyCount, pProperties);
+}
 
-pub extern "vulkan" fn vkEnumerateInstanceVersion(
+export fn vkEnumerateInstanceVersion(
     pApiVersion: *u32,
-) callconv(.C) c.VkResult;
+) callconv(.C) c.VkResult {
+    return c.vkEnumerateInstanceVersion(pApiVersion);
+}
 
-pub extern "vulkan" fn vkCreateInstance(
+export fn vkCreateInstance(
     pCreateInfo: *const c.VkInstanceCreateInfo,
     pAllocator: ?*const c.VkAllocationCallbacks,
     pInstance: *c.VkInstance,
-) callconv(.C) c.VkResult;
+) callconv(.C) c.VkResult {
+    return c.vkCreateInstance(pCreateInfo, pAllocator, pInstance);
+}
 
-pub extern "vulkan" fn vkGetInstanceProcAddr(
+export fn vkGetInstanceProcAddr(
     instance: c.VkInstance,
     pName: [*:0]const u8,
-) callconv(.C) ?*const anyopaque;
+) callconv(.C) ?*const anyopaque {
+    return c.vkGetInstanceProcAddr(instance, pName);
+}
 
 // Debug utilities instance functions
 pub const DebugUtils = struct {

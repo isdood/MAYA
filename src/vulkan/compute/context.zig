@@ -1,5 +1,6 @@
+// src/vulkan/compute/context.zig
 const std = @import("std");
-const c = @import("vk");
+const c = @import("../../vk.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -28,77 +29,71 @@ fn loadInstanceFunctions(instance: c.VkInstance) void {
 }
 
 pub const VulkanContext = struct {
-    allocator: Allocator,
-    instance: c.VkInstance,
-    physical_device: c.VkPhysicalDevice,
-    device: c.VkDevice,
-    queue: c.VkQueue,
-    queue_family_index: u32,
-    command_pool: c.VkCommandPool,
-    pipeline_cache: c.VkPipelineCache,
-    debug_messenger: c.VkDebugUtilsMessengerEXT,
+    instance: ?c.VkInstance,
 
-    pub fn init(allocator: Allocator) VulkanError!VulkanContext {
-        std.debug.print("Creating Vulkan context...\n", .{});
-        
-        // Initialize with explicit null values for Vulkan handles
-        var self = VulkanContext{
-            .allocator = allocator,
-            .instance = null,
-            .physical_device = null,
-            .device = null,
-            .queue = null,
-            .queue_family_index = 0,
-            .command_pool = null,
-            .pipeline_cache = null,
-            .debug_messenger = null,
-        };
-
-        // Initialize Vulkan
-        std.debug.print("Initializing Vulkan...\n", .{});
+    pub fn init() !VulkanContext {
+        var self = VulkanContext{ .instance = null };
         try self.initVulkan();
-        std.debug.print("Vulkan initialization complete\n", .{});
-        
-        // Pick physical device
-        std.debug.print("Picking physical device...\n", .{});
-        try self.pickPhysicalDevice();
-        std.debug.print("Physical device selected\n", .{});
-        
-        // Create logical device
-        std.debug.print("Creating logical device...\n", .{});
-        try self.createLogicalDevice();
-        std.debug.print("Logical device created\n", .{});
-        
-        // Create command pool
-        std.debug.print("Creating command pool...\n", .{});
-        try self.createCommandPool();
-        std.debug.print("Command pool created\n", .{});
-        
-        std.debug.print("Vulkan context created successfully!\n", .{});
         return self;
     }
-    
-    pub fn deinit(self: *VulkanContext) void {
-        if (self.device != null) {
-            if (self.command_pool != null) {
-                c.vkDestroyCommandPool(self.device, self.command_pool, null);
-            }
-            if (self.pipeline_cache != null) {
-                c.vkDestroyPipelineCache(self.device, self.pipeline_cache, null);
-            }
-            c.vkDestroyDevice(self.device, null);
+
+    fn initVulkan(self: *VulkanContext) !void {
+        std.debug.print("Initializing Vulkan...\n", .{});
+
+        // Check Vulkan version
+        var instance_version: u32 = 0;
+        const version_result = c.vkEnumerateInstanceVersion(&instance_version);
+        if (version_result != c.VK_SUCCESS) {
+            std.debug.print("Failed to get Vulkan version: {}\n", .{version_result});
+            return error.VulkanInitFailed;
         }
-        
-        if (self.instance != null) {
-            const destroy_func = c.vkGetInstanceProcAddr(self.instance, "vkDestroyDebugUtilsMessengerEXT");
-            if (destroy_func) |func_ptr| {
-                const destroy_fn: c.PFN_vkDestroyDebugUtilsMessengerEXT = @ptrCast(func_ptr);
-                destroy_fn(self.instance, self.debug_messenger, null);
-            }
-            
-            c.vkDestroyInstance(self.instance, null);
+
+        const major = c.VK_API_VERSION_MAJOR(instance_version);
+        const minor = c.VK_API_VERSION_MINOR(instance_version);
+        const patch = c.VK_API_VERSION_PATCH(instance_version);
+        std.debug.print("Vulkan {}.{}.{} detected\n", .{ major, minor, patch });
+
+        // Create Vulkan instance
+        const app_info = c.VkApplicationInfo{
+            .sType = c.VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pNext = null,
+            .pApplicationName = "MAYA",
+            .applicationVersion = c.VK_MAKE_VERSION(1, 0, 0),
+            .pEngineName = "MAYA Engine",
+            .engineVersion = c.VK_MAKE_VERSION(1, 0, 0),
+            .apiVersion = c.VK_API_VERSION_1_0,
+        };
+
+        const create_info = c.VkInstanceCreateInfo{
+            .sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pNext = null,
+            .flags = 0,
+            .pApplicationInfo = &app_info,
+            .enabledLayerCount = 0,
+            .ppEnabledLayerNames = null,
+            .enabledExtensionCount = 0,
+            .ppEnabledExtensionNames = null,
+        };
+
+        var instance: c.VkInstance = undefined;
+        const create_result = c.vkCreateInstance(&create_info, null, &instance);
+        if (create_result != c.VK_SUCCESS) {
+            std.debug.print("Failed to create Vulkan instance: {}\n", .{create_result});
+            return error.VulkanInitFailed;
+        }
+
+        self.instance = instance;
+        std.debug.print("Vulkan instance created successfully\n", .{});
+    }
+
+    pub fn deinit(self: *VulkanContext) void {
+        if (self.instance) |instance| {
+            c.vkDestroyInstance(instance, null);
+            self.instance = null;
+            std.debug.print("Vulkan instance destroyed\n", .{});
         }
     }
+};
     
     fn initVulkan(self: *VulkanContext) VulkanError!void {
         std.debug.print("[DEBUG] Initializing Vulkan instance...\n", .{});
@@ -112,7 +107,12 @@ pub const VulkanContext = struct {
         std.debug.print("[DEBUG] Before vkEnumerateInstanceVersion call\n", .{});
         
         // Call the Vulkan function through the C ABI
-        const version_result = @as(c.PFN_vkEnumerateInstanceVersion, @ptrCast(c.vkGetInstanceProcAddr(null, "vkEnumerateInstanceVersion")))(&instance_version);
+        std.debug.print("[DEBUG] Getting vkEnumerateInstanceVersion function pointer...\n", .{});
+        
+        // Use the C function directly
+        std.debug.print("[DEBUG] Calling vkEnumerateInstanceVersion...\n", .{});
+        const version_result = c.vkEnumerateInstanceVersion(&instance_version);
+        
         std.debug.print("[DEBUG] After vkEnumerateInstanceVersion call, result: {}\n", .{version_result});
         
         if (version_result != c.VK_SUCCESS) {
@@ -144,7 +144,7 @@ pub const VulkanContext = struct {
         var extension_count: u32 = 0;
         
         std.debug.print("[DEBUG] Calling vkEnumerateInstanceExtensionProperties (first call)...\n", .{});
-        var enum_result = c.enumerateInstanceExtensionProperties(null, &extension_count, null);
+        var enum_result = c.vkEnumerateInstanceExtensionProperties(null, &extension_count, null);
         std.debug.print("[DEBUG] vkEnumerateInstanceExtensionProperties result: {}, count: {}\n", .{enum_result, extension_count});
         
         if (enum_result != c.VK_SUCCESS and enum_result != c.VK_INCOMPLETE) {
@@ -302,7 +302,7 @@ pub const VulkanContext = struct {
         
         std.debug.print("[DEBUG] Creating Vulkan instance...\n", .{});
         var instance: c.VkInstance = undefined;
-        const create_result = c.createInstance(&create_info, null, &instance);
+        const create_result = c.vkCreateInstance(&create_info, null, &instance);
         if (create_result != c.VK_SUCCESS) {
             std.debug.print("[ERROR] Failed to create Vulkan instance: {}\n", .{create_result});
             return VulkanError.InitializationFailed;
