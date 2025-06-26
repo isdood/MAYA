@@ -1,5 +1,7 @@
 // src/vulkan/memory.zig
 const std = @import("std");
+
+// Import the vk module that was provided by the build system
 const vk = @import("vk");
 
 pub const Buffer = struct {

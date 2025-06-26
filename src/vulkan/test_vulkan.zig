@@ -129,12 +129,14 @@ pub fn main() !void {
     // Create logical device
     const queue_priority = [_]f32{1.0};
     const queue_info = [_]vk.VkDeviceQueueCreateInfo{
-        .sType = vk.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .pNext = null,
-        .flags = 0,
-        .queueFamilyIndex = compute_queue_family.?,
-        .queueCount = 1,
-        .pQueuePriorities = &queue_priority,
+        vk.VkDeviceQueueCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .pNext = null,
+            .flags = 0,
+            .queueFamilyIndex = compute_queue_family.?,
+            .queueCount = 1,
+            .pQueuePriorities = &queue_priority,
+        }
     };
 
     const device_create_info = vk.VkDeviceCreateInfo{
@@ -203,9 +205,30 @@ pub fn main() !void {
     // 6. Create compute pipeline
     std.debug.print("Creating compute pipeline...\n", .{});
     
+    // Define descriptor set layout bindings for input and output buffers
+    const bindings = [_]vk.VkDescriptorSetLayoutBinding{
+        // Input buffer binding
+        .{
+            .binding = 0,
+            .descriptorType = vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
+            .pImmutableSamplers = null,
+        },
+        // Output buffer binding
+        .{
+            .binding = 1,
+            .descriptorType = vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
+            .pImmutableSamplers = null,
+        },
+    };
+    
     // TODO: Load shader code from file or embedded
     const shader_code = [_]u32{0x07230203, 0x00010000, 0x00080001, 0x0000001e, 0x00000000, 0x00020011, 0x00000001, 0x0006000b, 0x00000001, 0x4c534c47, 0x6474732e, 0x3035342e, 0x00000000, 0x0003000e, 0x00000000, 0x00000001, 0x0006000f, 0x00000005, 0x00000004, 0x6e69616d, 0x00000000, 0x0000000d, 0x00060010, 0x00000004, 0x00000011, 0x00000001, 0x00000001, 0x00000001, 0x00030003, 0x00000002, 0x000001c2, 0x00040005, 0x00000004, 0x6e69616d, 0x00000000, 0x00050005, 0x00000009, 0x726f6f66, 0x6e696d61, 0x00000000, 0x00050005, 0x0000000d, 0x67617266, 0x6f6c6f43, 0x00000072, 0x00040047, 0x0000000d, 0x0000000b, 0x0000001c, 0x00020013, 0x00000002, 0x00030021, 0x00000003, 0x00000002, 0x00030016, 0x00000006, 0x00000020, 0x00040017, 0x00000007, 0x00000006, 0x00000004, 0x00040020, 0x00000008, 0x00000007, 0x00000007, 0x0004002b, 0x00000006, 0x0000000a, 0x3f800000, 0x0004002b, 0x00000006, 0x0000000c, 0x00000000, 0x00040020, 0x0000000e, 0x00000001, 0x00000007, 0x0004003b, 0x0000000e, 0x0000000f, 0x00000001, 0x0004002b, 0x00000006, 0x00000013, 0x3f000000, 0x00050036, 0x00000002, 0x00000004, 0x00000000, 0x00000003, 0x000200f8, 0x00000005, 0x0004003b, 0x00000008, 0x00000009, 0x00000007, 0x0004003d, 0x00000007, 0x00000010, 0x0000000f, 0x0005008e, 0x00000007, 0x00000011, 0x00000010, 0x00000013, 0x00050081, 0x00000007, 0x00000012, 0x00000011, 0x0000000a, 0x0003003e, 0x00000009, 0x00000012, 0x000100fd, 0x00010038};
     
+    // Create the compute pipeline
     var compute_pipeline = try pipeline.ComputePipeline.init(
         device,
         &shader_code,

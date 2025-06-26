@@ -145,7 +145,7 @@ pub const VulkanComputePipeline = struct {
         self.context = context;
         
         // Create shader module
-        self.shader_module = try createShaderModule(context, shader_code);
+        self.shader_module = try createShaderModuleForContext(context, shader_code);
         
         // Create descriptor set layout
         self.descriptor_set_layout = try createDescriptorSetLayout(context);
@@ -281,8 +281,27 @@ pub const VulkanComputePipeline = struct {
     }
 };
 
-// Helper function to create a shader module from SPIR-V code
+// Helper function to create a shader module from SPIR-V code for a specific device
 fn createShaderModuleFromCode(device: vk.VkDevice, code: []const u32) !vk.VkShaderModule {
+    const create_info = vk.VkShaderModuleCreateInfo{
+        .sType = vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .pNext = null,
+        .flags = 0,
+        .codeSize = code.len * @sizeOf(u32),
+        .pCode = code.ptr,
+    };
+
+    var shader_module: vk.VkShaderModule = undefined;
+    const result = vk.vkCreateShaderModule(device, &create_info, null, &shader_module);
+    if (result != vk.VK_SUCCESS) {
+        return error.ShaderModuleCreationFailed;
+    }
+
+    return shader_module;
+}
+
+// Helper function to create a shader module for a Vulkan context
+fn createShaderModuleForContext(context: *Context, code: []const u8) !vk.VkShaderModule {
     const create_info = vk.VkShaderModuleCreateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .pNext = null,

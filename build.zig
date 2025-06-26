@@ -245,28 +245,40 @@ pub fn build(b: *std.Build) !void {
     // Link against Vulkan
     vulkan_test_exe.linkSystemLibrary("vulkan");
     
-    // Add the Vulkan module to the test executable
+    // Create the Vulkan module first
     const vk_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/vk.zig" },
     });
-    vulkan_test_exe.root_module.addImport("vk", vk_module);
     
-    // Add the memory module
+    // Create the memory module
     const memory_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/memory.zig" },
     });
-    vulkan_test_exe.root_module.addImport("memory", memory_module);
     
-    // Add the context module
+    // Create the context module
     const context_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/compute/context.zig" },
     });
-    vulkan_test_exe.root_module.addImport("context", context_module);
     
-    // Add the pipeline module
+    // Create the pipeline module
     const pipeline_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/compute/pipeline.zig" },
     });
+    
+    // Add all modules to the test executable with their dependencies
+    vulkan_test_exe.root_module.addImport("vk", vk_module);
+    
+    // Memory module needs vk
+    memory_module.addImport("vk", vk_module);
+    vulkan_test_exe.root_module.addImport("memory", memory_module);
+    
+    // Context module needs vk
+    context_module.addImport("vk", vk_module);
+    vulkan_test_exe.root_module.addImport("context", context_module);
+    
+    // Pipeline module needs vk and context
+    pipeline_module.addImport("vk", vk_module);
+    pipeline_module.addImport("context", context_module);
     vulkan_test_exe.root_module.addImport("pipeline", pipeline_module);
     
     // Make sure shaders are compiled before the test
