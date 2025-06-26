@@ -1,22 +1,81 @@
 // shaders/4d_tensor_operations.comp
 #version 450
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
+// Workgroup size
 layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
-layout(binding = 0) buffer InputTensor {
-    float values[];
-} input_tensor;
 
-layout(binding = 1) buffer OutputTensor {
+// Tensor dimensions (set via specialization constants)
+layout(constant_id = 0) const uint TENSOR_DIM_X = 1;
+layout(constant_id = 1) const uint TENSOR_DIM_Y = 1;
+layout(constant_id = 2) const uint TENSOR_DIM_Z = 1;
+layout(constant_id = 3) const uint TENSOR_DIM_W = 1;
+
+// Input and output buffers
+layout(binding = 0) readonly buffer InputTensorA {
+    float values[];
+} input_a;
+
+layout(binding = 1) readonly buffer InputTensorB {
+    float values[];
+} input_b;
+
+layout(binding = 2, std430) buffer OutputTensor {
     float values[];
 } output_tensor;
 
-// Simple 4D tensor addition
+// Parameters buffer (optional, for dynamic parameters)
+layout(binding = 3) uniform Parameters {
+    float alpha;
+    float beta;
+    uint operation_type; // 0: add, 1: mul, 2: sub, etc.
+} params;
+
+// Convert 4D tensor index to 1D array index
+uint getIndex4D(uvec4 coords, uvec4 dims) {
+    return coords.w * dims.x * dims.y * dims.z +
+           coords.z * dims.x * dims.y +
+           coords.y * dims.x +
+           coords.x;
+}
+
+// Get 4D coordinates from global invocation ID
+uvec4 getCoords4D() {
+    uvec4 coords = uvec4(0);
+    coords.x = gl_GlobalInvocationID.x;
+    if (gl_WorkGroupSize.y > 1) coords.y = gl_GlobalInvocationID.y;
+    if (gl_WorkGroupSize.z > 1) coords.z = gl_GlobalInvocationID.z;
+    // For 4th dimension, we'd need to use a different dispatch strategy
+    return coords;
+}
+
 void main() {
-    uint idx = gl_GlobalInvocationID.x * 4 + 
-               gl_GlobalInvocationID.y * 16 + 
-               gl_GlobalInvocationID.z * 64;
+    uvec4 coords = getCoords4D();
+    uvec4 dims = uvec4(TENSOR_DIM_X, TENSOR_DIM_Y, TENSOR_DIM_Z, TENSOR_DIM_W);
     
-    // Simple operation: output = input + 1.0
-    output_tensor.values[idx] = input_tensor.values[idx] + 1.0f;
+    // Bounds checking
+    if (all(lessThan(coords, dims))) {
+        uint idx = getIndex4D(coords, dims);
+        
+        // Perform operation based on operation_type
+        switch (params.operation_type) {
+            case 0: // Element-wise addition
+                output_tensor.values[idx] = input_a.values[idx] + input_b.values[idx];
+                break;
+                
+            case 1: // Element-wise multiplication
+                output_tensor.values[idx] = input_a.values[idx] * input_b.values[idx];
+                break;
+                
+            case 2: // Linear combination: alpha*A + beta*B
+                output_tensor.values[idx] = 
+                    params.alpha * input_a.values[idx] + 
+                    params.beta * input_b.values[idx];
+                break;
+                
+            default: // Default to addition
+                output_tensor.values[idx] = input_a.values[idx] + input_b.values[idx];
+        }
+    }
 }

@@ -273,14 +273,14 @@ pub fn build(b: *std.Build) !void {
     
     const minimal_loader_test = b.addExecutable(.{
         .name = "minimal_loader_test",
-        .root_source_file = .{ .path = "src/vulkan/minimal_loader.zig" },
+        .root_source_file = .{ .cwd_relative = "src/vulkan/minimal_loader.zig" },
         .target = target,
         .optimize = optimize,
     });
     
     const simple_test = b.addExecutable(.{
         .name = "simple_test",
-        .root_source_file = .{ .path = "src/vulkan/simple_test.zig" },
+        .root_source_file = .{ .cwd_relative = "src/vulkan/simple_test.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -425,6 +425,45 @@ pub fn build(b: *std.Build) !void {
     // Create Vulkan test step
     const vulkan_test_step = b.step("test-vulkan", "Run Vulkan compute tests");
     vulkan_test_step.dependOn(&vulkan_test_run.step);
+
+    // Create tensor operations test executable
+    const tensor_ops_test = b.addTest(.{
+        .root_source_file = .{ .cwd_relative = "tests/tensor_operations_test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Link system libraries
+    tensor_ops_test.linkLibC();
+    tensor_ops_test.linkSystemLibrary("vulkan");
+    tensor_ops_test.linkSystemLibrary("dl");
+    
+    // Add include paths
+    tensor_ops_test.addIncludePath(.{ .cwd_relative = "src" });
+    tensor_ops_test.addIncludePath(.{ .cwd_relative = "src/vulkan" });
+    tensor_ops_test.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+    tensor_ops_test.addSystemIncludePath(.{ .cwd_relative = "/usr/include/vulkan" });
+    
+    // Add include paths for C headers
+    tensor_ops_test.addIncludePath(.{ .cwd_relative = "src/vulkan" });
+    
+    // Add modules to the root module
+    tensor_ops_test.root_module.addImport("vulkan", vk_module);
+    tensor_ops_test.root_module.addImport("memory", memory_module);
+    tensor_ops_test.root_module.addImport("context", context_module);
+    tensor_ops_test.root_module.addImport("pipeline", pipeline_module);
+    
+    // Note: Explicitly add any module dependencies here if needed
+    // For example:
+    // tensor_ops_test.root_module.addImport("some_dependency", some_dep_module);
+    
+    // Create tensor ops test step
+    const tensor_ops_test_run = b.addRunArtifact(tensor_ops_test);
+    const tensor_ops_test_step = b.step("test-tensor-ops", "Run Vulkan tensor operations tests");
+    tensor_ops_test_step.dependOn(&tensor_ops_test_run.step);
+    
+    // Add to all tests
+    test_all.dependOn(tensor_ops_test_step);
     
     // Add CUDA tests to the main test step
     test_all.dependOn(cuda_test_step);
