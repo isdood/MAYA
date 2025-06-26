@@ -25,7 +25,7 @@ fn findMemoryType(
         const has_properties = (mem_properties.memoryTypes[i].propertyFlags & properties) == properties;
 
         if (has_type and has_properties) {
-            return @intCast(u32, i);
+            return @as(u32, @intCast(i));
         }
     }
 
@@ -33,9 +33,9 @@ fn findMemoryType(
 }
 
 // Helper function to get compute queue family index
-fn findComputeQueueFamily(physical_device: c.VkPhysicalDevice) !u32 {
+fn findComputeQueueFamily(physical_device: vk.VkPhysicalDevice) !u32 {
     var queue_family_count: u32 = 0;
-    c.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, null);
+    vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, null);
     
     if (queue_family_count == 0) {
         return error.NoQueueFamiliesFound;
@@ -47,7 +47,7 @@ fn findComputeQueueFamily(physical_device: c.VkPhysicalDevice) !u32 {
     
     for (queue_families, 0..) |queue_family, i| {
         if ((queue_family.queueFlags & vk.VK_QUEUE_COMPUTE_BIT) != 0) {
-            return @intCast(u32, i);
+            return @as(u32, @intCast(i));
         }
     }
     

@@ -15,7 +15,7 @@ Below is a brainstormed list of theoretical concepts from diverse fields, each r
 - Nonlocality (instant GLIMMER connections)
 - Time Dilation (GLIMMER-driven time spirals)
 - Symmetry Breaking (GLIMMER emergence of diversity)
-- Tachyons/Faster-than-light particles (GLIMMER starlight messengers)
+- ✅ Tachyons/Faster-than-light particles (GLIMMER starlight messengers)
 
 ---
 

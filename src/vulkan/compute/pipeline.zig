@@ -1,9 +1,10 @@
 // src/vulkan/compute/pipeline.zig
 const std = @import("std");
-const vk = @import("../vk.zig");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
 
+// Import the vk module that was provided by the build system
+const vk = @import("vk");
 const Context = @import("context").VulkanContext;
 
 pub const ComputePipeline = struct {
@@ -18,7 +19,7 @@ pub const ComputePipeline = struct {
         descriptor_set_layout_bindings: []const vk.VkDescriptorSetLayoutBinding,
     ) !ComputePipeline {
         // Create shader module
-        const shader_module = try createShaderModule(device, shader_code);
+        const shader_module = try createShaderModuleFromCode(device, shader_code);
         defer vk.vkDestroyShaderModule(device, shader_module, null);
 
         // Create descriptor set layout
@@ -280,7 +281,8 @@ pub const VulkanComputePipeline = struct {
     }
 };
 
-fn createShaderModule(context: *Context, code: []const u8) !vk.VkShaderModule {
+// Helper function to create a shader module from SPIR-V code
+fn createShaderModuleFromCode(device: vk.VkDevice, code: []const u32) !vk.VkShaderModule {
     const create_info = vk.VkShaderModuleCreateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .pNext = null,

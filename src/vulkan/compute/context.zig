@@ -1,8 +1,9 @@
 // src/vulkan/compute/context.zig
 const std = @import("std");
-const vk = @import("../vk.zig");
-
 const Allocator = std.mem.Allocator;
+
+// Import the vk module that was provided by the build system
+const vk = @import("vk");
 
 pub const VulkanError = error {
     InitializationFailed,
