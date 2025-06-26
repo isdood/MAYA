@@ -123,7 +123,7 @@ pub const VulkanComputeManager = struct {
             0,
             @as(u64, @intCast(buffer.size)),
             0,
-            @ptrCast(&mapped_ptr)
+            @ptrCast(@ptrCast(@ptrCast(@ptrCast(@ptrCast(*?*anyopaque, &mapped_ptr)mapped_ptr)mapped_ptr)mapped_ptr)mapped_ptr)
         ) != c.VK_SUCCESS) {
             return error.MemoryMapFailed;
         }
@@ -131,8 +131,7 @@ pub const VulkanComputeManager = struct {
         defer c.vkUnmapMemory(self.context.device, buffer.memory);
         
         if (mapped_ptr) |ptr| {
-            const dest: [*]u8 = @ptrCast(@alignCast(ptr));
-            @memcpy(dest[0..data.len], data);
+            @memcpy(@ptrCast([*]u8, @alignCast(@alignOf(u8), ptr)), data.ptr, data.len);
         } else {
             return error.MemoryMapFailed;
         }
@@ -150,7 +149,7 @@ pub const VulkanComputeManager = struct {
             0,
             @as(u64, @intCast(buffer.size)),
             0,
-            @ptrCast(&mapped_ptr)
+            @ptrCast(@ptrCast(@ptrCast(@ptrCast(@ptrCast(*?*anyopaque, &mapped_ptr)mapped_ptr)mapped_ptr)mapped_ptr)mapped_ptr)
         ) != c.VK_SUCCESS) {
             return error.MemoryMapFailed;
         }
@@ -158,8 +157,7 @@ pub const VulkanComputeManager = struct {
         defer c.vkUnmapMemory(self.context.device, buffer.memory);
         
         if (mapped_ptr) |ptr| {
-            const src: [*]const u8 = @ptrCast(@alignCast(ptr));
-            @memcpy(data, src[0..data.len]);
+            @memcpy(data.ptr, @ptrCast([*]const u8, @alignCast(@alignOf(u8), ptr)), data.len);
         } else {
             return error.MemoryMapFailed;
         }

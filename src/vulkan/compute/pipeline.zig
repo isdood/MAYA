@@ -78,7 +78,7 @@ pub const VulkanComputePipeline = struct {
         command_buffer: c.VkCommandBuffer,
         input_buffer: c.VkBuffer,
         output_buffer: c.VkBuffer,
-        params: SpiralConvolutionParams,
+        _: SpiralConvolutionParams,
         work_group_size: [3]u32,
     ) void {
         // Update descriptor sets
@@ -129,18 +129,14 @@ pub const VulkanComputePipeline = struct {
                 .descriptorCount = 1,
                 .descriptorType = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                 .pImageInfo = null,
-                .pBufferInfo = &c.VkDescriptorBufferInfo{
-                    .buffer = params_buffer,
-                    .offset = 0,
-                    .range = @sizeOf(SpiralConvolutionParams),
-                },
+                .pBufferInfo = null,
                 .pTexelBufferView = null,
             },
         };
         
         c.vkUpdateDescriptorSets(
             self.context.device,
-            @intCast(u32, write_descriptor_sets.len),
+            @as(u32, @intCast(write_descriptor_sets.len)),
             &write_descriptor_sets,
             0,
             null,
@@ -154,7 +150,8 @@ pub const VulkanComputePipeline = struct {
             self.pipeline_layout,
             0,
             1,
-            &self.descriptor_sets[0],n            0,
+            &self.descriptor_sets[0],
+            0,
             null,
         );
         
@@ -174,7 +171,7 @@ fn createShaderModule(context: *Context, code: []const u8) !c.VkShaderModule {
         .pNext = null,
         .flags = 0,
         .codeSize = code.len,
-        .pCode = @ptrCast([*]const u32, @alignCast(@alignOf(u32), code.ptr)),
+        .pCode = @ptrCast(code.ptr),
     };
     
     var shader_module: c.VkShaderModule = undefined;
@@ -214,7 +211,7 @@ fn createDescriptorSetLayout(context: *Context) !c.VkDescriptorSetLayout {
         .sType = c.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .pNext = null,
         .flags = 0,
-        .bindingCount = @intCast(u32, bindings.len),
+        .bindingCount = @as(u32, @intCast(bindings.len)),
         .pBindings = &bindings[0],
     };
     
@@ -291,7 +288,7 @@ fn createDescriptorPool(context: *Context, max_sets: u32) !c.VkDescriptorPool {
         .pNext = null,
         .flags = 0,
         .maxSets = max_sets,
-        .poolSizeCount = @intCast(u32, pool_sizes.len),
+        .poolSizeCount = @as(u32, @intCast(pool_sizes.len)),
         .pPoolSizes = &pool_sizes[0],
     };
     

@@ -2,7 +2,8 @@ const std = @import("std");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 
-const vulkan = @import("vulkan-compute");
+// Import the Vulkan compute module
+const vulkan = @import("compute/manager.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -10,8 +11,12 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     print("Initializing Vulkan compute...\n", .{});
+    
+    // Initialize Vulkan
     var manager = try vulkan.VulkanComputeManager.init(allocator);
     defer manager.deinit();
+    
+    print("Vulkan compute initialized successfully!\n", .{});
 
     // Simple test with 2x2x2x2 input and output
     const input_dims = [4]i32{ 1, 1, 2, 2 };  // [batch, channels, height, width]

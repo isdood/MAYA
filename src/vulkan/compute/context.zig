@@ -122,7 +122,7 @@ pub const VulkanContext = struct {
         c.vkGetPhysicalDeviceQueueFamilyProperties(self.physical_device, &queue_family_count, queue_families.ptr);
         
         self.queue_family_index = std.math.maxInt(u32);
-        for (queue_families) |queue_family, i| {
+        for (queue_families, 0..) |queue_family, i| {
             if ((queue_family.queueFlags & c.VK_QUEUE_COMPUTE_BIT) != 0) {
                 self.queue_family_index = @intCast(u32, i);
                 break;
@@ -206,7 +206,7 @@ pub const VulkanContext = struct {
         c.vkGetPhysicalDeviceMemoryProperties(self.physical_device, &memory_properties);
         
         var memory_type_index = std.math.maxInt(u32);
-        for (memory_properties.memoryTypes[0..memory_properties.memoryTypeCount]) |memory_type, i| {
+        for (memory_properties.memoryTypes[0..@as(usize, memory_properties.memoryTypeCount)], 0..) |memory_type, i| {
             if ((requirements.memoryTypeBits & (@as(u32, 1) << @intCast(u5, i))) != 0 and
                 (memory_type.propertyFlags & properties) == properties) {
                 memory_type_index = @intCast(u32, i);

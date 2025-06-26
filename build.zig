@@ -129,11 +129,7 @@ pub fn build(b: *std.Build) !void {
     const run_step = b.step("run", "Run the application");
     run_step.dependOn(&run_test_patterns_cmd.step);
     
-    // Create a module for Vulkan compute
-    const vulkan_module = b.createModule(.{
-        .source_file = .{ .cwd_relative = "src/vulkan/compute/manager.zig" },
-    });
-    try b.modules.put(b.dupe("vulkan-compute"), vulkan_module);
+    // Add Vulkan source files directly to the test executable
 
     // Build CUDA kernel
     const enable_cuda = b.option(bool, "enable_cuda", "Enable CUDA support") orelse false;
@@ -152,27 +148,24 @@ pub fn build(b: *std.Build) !void {
     
     // Add CUDA kernel to benchmark
     if (enable_cuda) {
+        cuda_kernel = try buildCudaKernel(b, target, optimize);
         benchmark_exe.addObject(cuda_kernel.?);
         
         // Add include paths
         benchmark_exe.addIncludePath(.{ .cwd_relative = "src/quantum_cache" });
         benchmark_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/local/cuda/include" });
         
-        // Link against CUDA libraries
         benchmark_exe.linkSystemLibrary("cuda");
         benchmark_exe.linkSystemLibrary("cudart");
         benchmark_exe.linkLibCpp();
-        
-        benchmark_exe.defineCMacro("ENABLE_CUDA", "1");
     }
     
-    // Add Vulkan support
-    const enable_vulkan = b.option(bool, "enable_vulkan", "Enable Vulkan support") orelse true;
+    // Enable Vulkan support
+    const enable_vulkan = true;
     var glslc_step: ?*std.Build.Step = null;
     
     if (enable_vulkan) {
         benchmark_exe.linkSystemLibrary("vulkan");
-        benchmark_exe.defineCMacro("ENABLE_VULKAN", "1");
         
         // Create output directory for shaders
         const mkdir = b.addSystemCommand(&.{"mkdir", "-p", "shaders"});
@@ -190,7 +183,9 @@ pub fn build(b: *std.Build) !void {
         glslc_step = &glslc.step;
         
         // Make sure shaders are compiled before the executable
-        benchmark_exe.step.dependOn(glslc_step);
+        if (glslc_step) |step| {
+            benchmark_exe.step.dependOn(step);
+        }
     }
     
     // Install the benchmark executable
@@ -241,15 +236,18 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     
-    // Add Vulkan support to test executable
-    if (enable_vulkan) {
-        vulkan_test_exe.linkSystemLibrary("vulkan");
-        vulkan_test_exe.defineCMacro("ENABLE_VULKAN", "1");
-        
-        // Make sure shaders are compiled before the test
-        if (glslc_step) |step| {
-            vulkan_test_exe.step.dependOn(step);
-        }
+    // Add include paths
+    vulkan_test_exe.addIncludePath(.{ .cwd_relative = "src" });
+    vulkan_test_exe.addIncludePath(.{ .cwd_relative = "src/vulkan" });
+    vulkan_test_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+    vulkan_test_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include/vulkan" });
+    
+    // Link against Vulkan
+    vulkan_test_exe.linkSystemLibrary("vulkan");
+    
+    // Make sure shaders are compiled before the test
+    if (glslc_step) |step| {
+        vulkan_test_exe.step.dependOn(step);
     }
     
     // Install the Vulkan test executable

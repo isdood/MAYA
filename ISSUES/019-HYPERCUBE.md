@@ -116,15 +116,15 @@ Sample values (input[0,0,0:5,0:5]):
                               |
 +----------------+    +------v------+    +----------------+
 |                |    |             |    |                |
-|  Spiral        |<-->| 4D Transform |<-->| Quantum Memory |
-|  Convolution   |    |  Engine     |    |  Matrix       |
+|  Spiral        |<-->| 4D Transform|<-->| Quantum Memory |
+|  Convolution   |    |  Engine     |    |  Matrix        |
 |                |    |             |    |                |
 +----------------+    +------+------+    +----------------+
                               |
                     +---------v---------+
-                    |  GLIMMER         |
-                    |  Visualization   |
-                    |  Layer           |
+                    |  GLIMMER          |
+                    |  Visualization    |
+                    |  Layer            |
                     +-------------------+
 ```
 
