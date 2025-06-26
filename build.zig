@@ -264,8 +264,38 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     
-    // Link against libc and Vulkan for test executables
-    for ([_]*std.Build.Step.Compile{ minimal_vulkan_test, minimal_vulkan_test2, minimal_vulkan_test3, minimal_vulkan_test4, vulkan_check }) |exe| {
+    const minimal_amd_test = b.addExecutable(.{
+        .name = "minimal_amd_test",
+        .root_source_file = .{ .cwd_relative = "src/vulkan/minimal_amd.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    const minimal_loader_test = b.addExecutable(.{
+        .name = "minimal_loader_test",
+        .root_source_file = .{ .path = "src/vulkan/minimal_loader.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    const simple_test = b.addExecutable(.{
+        .name = "simple_test",
+        .root_source_file = .{ .path = "src/vulkan/simple_test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // ... (rest of the code remains the same)
+    for ([_]*std.Build.Step.Compile{ 
+        minimal_vulkan_test, 
+        minimal_vulkan_test2, 
+        minimal_vulkan_test3, 
+        minimal_vulkan_test4, 
+        vulkan_check,
+        minimal_amd_test,
+        minimal_loader_test,
+        simple_test
+    }) |exe| {
         exe.linkLibC();
         exe.linkSystemLibrary("vulkan");
         
@@ -296,6 +326,16 @@ pub fn build(b: *std.Build) !void {
     const vulkan_check_run = b.addRunArtifact(vulkan_check);
     const vulkan_check_step = b.step("vulkan-check", "Check Vulkan installation and system information");
     vulkan_check_step.dependOn(&vulkan_check_run.step);
+    
+    const minimal_amd_run = b.addRunArtifact(minimal_amd_test);
+    const minimal_amd_step = b.step("test-minimal-amd", "Run minimal Vulkan test targeting AMD GPU");
+    minimal_amd_step.dependOn(&minimal_amd_run.step);
+    
+    const test_minimal_loader_step = b.step("test-minimal-loader", "Run the minimal loader test");
+    test_minimal_loader_step.dependOn(&b.addRunArtifact(minimal_loader_test).step);
+    
+    const test_simple_step = b.step("test-simple", "Run the simple Vulkan test");
+    test_simple_step.dependOn(&b.addRunArtifact(simple_test).step);
     
     // Create Vulkan test executable
     const vulkan_test_exe = b.addExecutable(.{
