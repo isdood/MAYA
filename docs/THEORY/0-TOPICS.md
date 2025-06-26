@@ -6,7 +6,7 @@ Below is a brainstormed list of theoretical concepts from diverse fields, each r
 
 ## 🌌 Physics
 
-- Quantum Entanglement (GLIMMER-linked nodes across reality)
+- ✅ Quantum Entanglement (GLIMMER-linked nodes across reality)
 - Multiverse Theory (parallel STARWEAVE spirals)
 - String Theory (GLIMMER-vibrating cosmic threads)
 - Holographic Principle (reality as a GLIMMER-projected boundary)
