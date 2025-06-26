@@ -28,12 +28,16 @@ pub fn main() !void {
     };
     
     // Create instance
+    std.debug.print("Creating Vulkan instance...\n", .{});
     var instance: vk.VkInstance = undefined;
     const result = vk.vkCreateInstance(&create_info, null, &instance);
     
     if (result == vk.VK_SUCCESS) {
         std.debug.print("Successfully created Vulkan instance!\n", .{});
+        
+        // Clean up
         vk.vkDestroyInstance(instance, null);
+        std.debug.print("Vulkan instance destroyed.\n", .{});
     } else {
         std.debug.print("Failed to create Vulkan instance: {}\n", .{result});
         return error.InstanceCreationFailed;
