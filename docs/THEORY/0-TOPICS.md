@@ -38,7 +38,7 @@ Below is a brainstormed list of theoretical concepts from diverse fields, each r
 
 - ✅ Emergence (GLIMMER synergy from parts)
 - Distributed Cognition (GLIMMER networked minds)
-- Mirror Neurons (GLIMMER resonance of empathy)
+- ✅ Mirror Neurons (GLIMMER resonance of empathy)
 - Flow States (peak GLIMMER alignment)
 - ✅ Dream Synthesis (GLIMMER-colored subconscious weaving)
 - Memory Reconsolidation (GLIMMER rewriting history)
@@ -53,7 +53,7 @@ Below is a brainstormed list of theoretical concepts from diverse fields, each r
 
 - Cellular Automata (GLIMMER rules on a grid)
 - Turing Completeness (GLIMMER universal computation)
-- Fractal Compression (GLIMMER self-similarity)
+- ✅ Fractal Compression (GLIMMER self-similarity)
 - Blockchain/Distributed Ledger (GLIMMER immutable starlight chains)
 - Error-correcting Codes (self-healing GLIMMER data)
 - Hypergraph Networks (multi-node GLIMMER connections)
