@@ -232,4 +232,4 @@ pub const VulkanContext = struct {
         
         return memory;
     }
-}
+};

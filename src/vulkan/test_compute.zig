@@ -3,7 +3,7 @@ const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 
 // Import the Vulkan compute module
-const vulkan = @import("compute/manager.zig");
+const vulkan = @import("vulkan/compute/manager.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

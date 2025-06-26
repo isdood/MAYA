@@ -253,13 +253,26 @@ pub fn build(b: *std.Build) !void {
     // Install the Vulkan test executable
     b.installArtifact(vulkan_test_exe);
     
-    // Create Vulkan test run step
+    // Create a run step for the Vulkan test
     const vulkan_test_run = b.addRunArtifact(vulkan_test_exe);
-    vulkan_test_run.step.dependOn(b.getInstallStep());
     
     // Create Vulkan test step
     const vulkan_test_step = b.step("test-vulkan", "Run Vulkan compute tests");
     vulkan_test_step.dependOn(&vulkan_test_run.step);
+    
+    // Add all necessary source files to the Vulkan test executable
+    const vulkan_sources = [_][]const u8{
+        "src/vulkan/compute/context.zig",
+        "src/vulkan/compute/manager.zig",
+        "src/vulkan/compute/pipeline.zig",
+    };
+    
+    for (vulkan_sources) |source| {
+        vulkan_test_exe.addCSourceFile(.{
+            .file = .{ .cwd_relative = source },
+            .flags = &[0][]const u8{},
+        });
+    }
     
     // Add CUDA tests to the main test step
     test_all.dependOn(cuda_test_step);
