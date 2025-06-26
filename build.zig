@@ -131,7 +131,7 @@ pub fn build(b: *std.Build) !void {
     
     // Create a module for Vulkan compute
     const vulkan_module = b.createModule(.{
-        .source_file = .{ .path = "src/vulkan/compute/manager.zig" },
+        .source_file = .{ .cwd_relative = "src/vulkan/compute/manager.zig" },
     });
     try b.modules.put(b.dupe("vulkan-compute"), vulkan_module);
 
