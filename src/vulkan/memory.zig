@@ -1,6 +1,6 @@
 // src/vulkan/memory.zig
 const std = @import("std");
-const c = @import("../vk.zig");
+const c = @import("vk");
 
 pub const Buffer = struct {
     buffer: c.VkBuffer,
@@ -10,6 +10,7 @@ pub const Buffer = struct {
 
     pub fn init(
         device: c.VkDevice,
+        physical_device: c.VkPhysicalDevice,
         size: usize,
         usage: c.VkBufferUsageFlags,
         memory_properties: c.VkMemoryPropertyFlags,
@@ -18,7 +19,7 @@ pub const Buffer = struct {
             .sType = c.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .pNext = null,
             .flags = 0,
-            .size = @intCast(u64, size),
+            .size = @as(u64, @intCast(size)),
             .usage = usage,
             .sharingMode = c.VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
@@ -35,6 +36,7 @@ pub const Buffer = struct {
         c.vkGetBufferMemoryRequirements(device, buffer, &mem_requirements);
 
         const memory_type_index = try findMemoryType(
+            physical_device,
             mem_requirements.memoryTypeBits,
             memory_properties,
         );
@@ -76,10 +78,10 @@ pub const Buffer = struct {
         const result = c.vkMapMemory(
             device,
             self.memory,
-            @intCast(u64, offset),
-            @intCast(u64, if (size == 0) self.size else size),
+            @as(u64, @intCast(offset)),
+            @as(u64, @intCast(if (size == 0) self.size else size)),
             0,
-            @ptrCast([*c]?*anyopaque, &data),
+            @as([*c]?*anyopaque, @ptrCast(&data)),
         );
         if (result != c.VK_SUCCESS) {
             return error.MemoryMappingFailed;
@@ -96,6 +98,7 @@ pub const Buffer = struct {
     }
 
     fn findMemoryType(
+        physical_device: c.VkPhysicalDevice,
         type_filter: u32,
         properties: c.VkMemoryPropertyFlags,
     ) !u32 {
@@ -103,7 +106,7 @@ pub const Buffer = struct {
         c.vkGetPhysicalDeviceMemoryProperties(physical_device, &mem_properties);
 
         for (0..mem_properties.memoryTypeCount) |i| {
-            const type_filter_bit = @as(u32, 1) << @intCast(u5, i);
+            const type_filter_bit = @as(u32, 1) << @as(u5, @intCast(i));
             const has_type = (type_filter & type_filter_bit) != 0;
             const has_properties = (mem_properties.memoryTypes[i].propertyFlags & properties) == properties;
 

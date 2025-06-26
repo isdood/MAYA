@@ -228,41 +228,13 @@ pub fn build(b: *std.Build) !void {
     const cuda_test_step = b.step("test-cuda", "Run CUDA wrapper tests");
     cuda_test_step.dependOn(&cuda_test_run.step);
     
-    // Create a module for Vulkan compute files
-    const vulkan_module = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/manager.zig" },
-        .imports = &.{
-            .{
-                .name = "context",
-                .module = b.createModule(.{
-                    .root_source_file = .{ .cwd_relative = "src/vulkan/compute/context.zig" },
-                }),
-            },
-            .{
-                .name = "pipeline",
-                .module = b.createModule(.{
-                    .root_source_file = .{ .cwd_relative = "src/vulkan/compute/pipeline.zig" },
-                }),
-            },
-            .{
-                .name = "vk",
-                .module = b.createModule(.{
-                    .root_source_file = .{ .cwd_relative = "src/vulkan/vk.zig" },
-                }),
-            },
-        },
-    });
-
     // Create Vulkan test executable
     const vulkan_test_exe = b.addExecutable(.{
         .name = "test_vulkan",
-        .root_source_file = .{ .cwd_relative = "src/vulkan/test_compute.zig" },
+        .root_source_file = .{ .cwd_relative = "src/vulkan/test_vulkan.zig" },
         .target = target,
         .optimize = optimize,
     });
-    
-    // Add the Vulkan module to the test executable
-    vulkan_test_exe.root_module.addImport("vulkan", vulkan_module);
     
     // Add include paths
     vulkan_test_exe.addIncludePath(.{ .cwd_relative = "src" });
@@ -272,6 +244,30 @@ pub fn build(b: *std.Build) !void {
     
     // Link against Vulkan
     vulkan_test_exe.linkSystemLibrary("vulkan");
+    
+    // Add the Vulkan module to the test executable
+    const vk_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/vk.zig" },
+    });
+    vulkan_test_exe.root_module.addImport("vk", vk_module);
+    
+    // Add the memory module
+    const memory_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/memory.zig" },
+    });
+    vulkan_test_exe.root_module.addImport("memory", memory_module);
+    
+    // Add the context module
+    const context_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/context.zig" },
+    });
+    vulkan_test_exe.root_module.addImport("context", context_module);
+    
+    // Add the pipeline module
+    const pipeline_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/pipeline.zig" },
+    });
+    vulkan_test_exe.root_module.addImport("pipeline", pipeline_module);
     
     // Make sure shaders are compiled before the test
     if (glslc_step) |step| {
@@ -310,6 +306,12 @@ pub fn build(b: *std.Build) !void {
     const cuda_integration_step = b.step("test-cuda-integration", "Test CUDA integration");
     cuda_integration_step.dependOn(&run_cuda_integration.step);
     test_all.dependOn(cuda_integration_step);
+    
+    // Add Vulkan compute test (using the existing vulkan_test_exe)
+    const run_vulkan_test = b.addRunArtifact(vulkan_test_exe);
+    const vulkan_compute_step = b.step("test-vulkan-compute", "Test Vulkan compute pipeline");
+    vulkan_compute_step.dependOn(&run_vulkan_test.step);
+    test_all.dependOn(vulkan_compute_step);
     
     // Create a test-patterns step (alias for run)
     const run_test_patterns_step = b.step("test-patterns", "Run the test patterns application");
