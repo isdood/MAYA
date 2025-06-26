@@ -4,34 +4,8 @@ const vk = @import("vk");
 // Import our Vulkan modules
 const memory = @import("memory");
 
-// Debug callback function for Vulkan validation layers
-extern "system" fn debugCallback(
-    message_severity: vk.VkDebugUtilsMessageSeverityFlagBitsEXT,
-    message_type: vk.VkDebugUtilsMessageTypeFlagsEXT,
-    p_callback_data: ?*const vk.VkDebugUtilsMessengerCallbackDataEXT,
-    p_user_data: ?*anyopaque,
-) callconv(vk.VKAPI_CALL) vk.VkBool32 {
-    _ = message_type;
-    _ = p_user_data;
-    
-    const message = if (p_callback_data) |data| 
-        std.mem.span(@as([*:0]const u8, @ptrCast(data.pMessage))) 
-    else 
-        "<no message>";
-    
-    if (message_severity & vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT != 0) {
-        std.debug.print("VULKAN VALIDATION ERROR: {s}\n", .{message});
-    } else if (message_severity & vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT != 0) {
-        std.debug.print("VULKAN VALIDATION WARNING: {s}\n", .{message});
-    } else if (message_severity & vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT != 0) {
-        std.debug.print("VULKAN VALIDATION INFO: {s}\n", .{message});
-    } else if (message_severity & vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT != 0) {
-        std.debug.print("VULKAN VALIDATION VERBOSE: {s}\n", .{message});
-    }
-    
-    return vk.VK_FALSE;
-}
 const pipeline = @import("pipeline");
+const debug = @import("debug");
 const context = @import("context");
 
 // Test parameters
@@ -91,7 +65,72 @@ pub fn main() !void {
     std.debug.print("Initialized allocator\n", .{});
     
     // Create Vulkan instance
-    std.debug.print("Creating Vulkan instance...\n", .{});
+    std.debug.print("=== Starting Vulkan Instance Creation ===\n", .{});
+    
+    // Check Vulkan loader version
+    var api_version: u32 = 0;
+    const loader_version_result = vk.vkEnumerateInstanceVersion(&api_version);
+    if (loader_version_result == vk.VK_SUCCESS) {
+        const major = vk.VK_API_VERSION_MAJOR(api_version);
+        const minor = vk.VK_API_VERSION_MINOR(api_version);
+        const patch = vk.VK_API_VERSION_PATCH(api_version);
+        std.debug.print("Vulkan loader version: {}.{}.{}\n", .{major, minor, patch});
+    } else {
+        std.debug.print("vkEnumerateInstanceVersion failed: {}\n", .{loader_version_result});
+    }
+    
+    // Get required instance extensions
+    // Enumerate instance extensions
+    var extension_count: u32 = 0;
+    var enumerate_result = vk.vkEnumerateInstanceExtensionProperties(null, &extension_count, null);
+    if (enumerate_result != vk.VK_SUCCESS and enumerate_result != vk.VK_INCOMPLETE) {
+        std.debug.print("Failed to enumerate instance extensions: {}\n", .{enumerate_result});
+        return error.FailedToEnumerateExtensions;
+    }
+    std.debug.print("Found {} instance extensions\n", .{extension_count});
+    
+    // List available extensions
+    if (extension_count > 0) {
+        const extensions = try std.heap.c_allocator.alloc(vk.VkExtensionProperties, extension_count);
+        defer std.heap.c_allocator.free(extensions);
+        
+        enumerate_result = vk.vkEnumerateInstanceExtensionProperties(null, &extension_count, extensions.ptr);
+        if (enumerate_result != vk.VK_SUCCESS) {
+            std.debug.print("Failed to get instance extensions: {}\n", .{enumerate_result});
+            return error.FailedToGetExtensions;
+        }
+        
+        std.debug.print("Available instance extensions ({}):\n", .{extension_count});
+        for (extensions, 0..) |ext, i| {
+            const name = std.mem.span(@as([*:0]const u8, @ptrCast(&ext.extensionName)));
+            std.debug.print("  {:3}: {s} (spec version: {})\n", .{i, name, ext.specVersion});
+        }
+    }
+    
+    // Check for debug utils extension
+    var debug_utils_available = false;
+    if (extension_count > 0) {
+        const extensions = try std.heap.c_allocator.alloc(vk.VkExtensionProperties, extension_count);
+        defer std.heap.c_allocator.free(extensions);
+        
+        enumerate_result = vk.vkEnumerateInstanceExtensionProperties(null, &extension_count, extensions.ptr);
+        if (enumerate_result == vk.VK_SUCCESS) {
+            for (extensions) |ext| {
+                const name = std.mem.span(@as([*:0]const u8, @ptrCast(&ext.extensionName)));
+                if (std.mem.eql(u8, name, vk.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+                    debug_utils_available = true;
+                    std.debug.print("Found debug utils extension\n", .{});
+                    break;
+                }
+            }
+        }
+    }
+    
+    if (!debug_utils_available) {
+        std.debug.print("Debug utils extension not found\n", .{});
+    }
+    
+    // Create application info
     const app_info = vk.VkApplicationInfo{
         .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = null,
@@ -101,6 +140,12 @@ pub fn main() !void {
         .engineVersion = vk.VK_MAKE_VERSION(1, 0, 0),
         .apiVersion = vk.VK_API_VERSION_1_0,
     };
+    
+    std.debug.print("Using Vulkan API version: {}.{}.{}\n", .{
+        vk.VK_API_VERSION_MAJOR(app_info.apiVersion),
+        vk.VK_API_VERSION_MINOR(app_info.apiVersion),
+        vk.VK_API_VERSION_PATCH(app_info.apiVersion),
+    });
 
     // Request validation layers if available
     const enable_validation_layers = true;
@@ -128,7 +173,24 @@ pub fn main() !void {
         vk.VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
     };
     
-    const create_info = vk.VkInstanceCreateInfo{
+    // Print enabled extensions
+    std.debug.print("Enabling {} instance extensions:\n", .{extensions.len});
+    for (extensions, 0..) |ext, i| {
+        std.debug.print("  {}: {s}\n", .{i, ext});
+    }
+    
+    // Print enabled layers if any
+    if (enable_validation and validation_layers.len > 0) {
+        std.debug.print("Enabling {} validation layers:\n", .{validation_layers.len});
+        for (validation_layers, 0..) |layer, i| {
+            std.debug.print("  {}: {s}\n", .{i, layer});
+        }
+    } else {
+        std.debug.print("No validation layers enabled\n", .{});
+    }
+    
+    // Create instance create info
+    var instance_create_info = vk.VkInstanceCreateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = null,
         .flags = 0,
@@ -136,12 +198,59 @@ pub fn main() !void {
         .enabledLayerCount = if (enable_validation) @as(u32, @intCast(validation_layers.len)) else 0,
         .ppEnabledLayerNames = if (enable_validation) &validation_layers else null,
         .enabledExtensionCount = @as(u32, @intCast(extensions.len)),
-        .ppEnabledExtensionNames = &extensions,
+        .ppEnabledExtensionNames = if (extensions.len > 0) &extensions else null,
     };
+    
+    // Setup debug messenger create info if debug utils are available
+    var debug_create_info: vk.VkDebugUtilsMessengerCreateInfoEXT = undefined;
+    if (debug_utils_available) {
+        debug_create_info = vk.VkDebugUtilsMessengerCreateInfoEXT{
+            .sType = vk.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .pNext = null,
+            .flags = 0,
+            .messageSeverity = vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                             vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                             vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = vk.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                          vk.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                          vk.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            .pfnUserCallback = debug.getDebugCallback(),
+            .pUserData = null,
+        };
+        
+        // Link debug messenger create info to instance create info if validation is enabled
+        if (enable_validation) {
+            std.debug.print("Enabling debug messenger for validation layers\n", .{});
+            instance_create_info.pNext = &debug_create_info;
+        }
+    } else if (enable_validation) {
+        std.debug.print("Warning: Validation layers requested but debug utils extension not available\n", .{});
+    }
 
     var instance: vk.VkInstance = undefined;
-    if (vk.vkCreateInstance(&create_info, null, &instance) != vk.VK_SUCCESS) {
-        std.debug.print("Failed to create Vulkan instance\n", .{});
+    const create_instance_result = vk.vkCreateInstance(&instance_create_info, null, &instance);
+    if (create_instance_result != vk.VK_SUCCESS) {
+        std.debug.print("Failed to create Vulkan instance: {}\n", .{create_instance_result});
+        
+        // Try to get more detailed error information
+        if (debug_utils_available) {
+            std.debug.print("Debug utils are available but instance creation still failed\n", .{});
+            
+            // Try to create a temporary instance without validation to see if that works
+            var temp_create_info = instance_create_info;
+            temp_create_info.enabledLayerCount = 0;
+            temp_create_info.ppEnabledLayerNames = null;
+            
+            const temp_result = vk.vkCreateInstance(&temp_create_info, null, &instance);
+            if (temp_result == vk.VK_SUCCESS) {
+                std.debug.print("Successfully created instance without validation layers\n", .{});
+                vk.vkDestroyInstance(instance, null);
+                return error.ValidationLayersNotAvailable;
+            } else {
+                std.debug.print("Also failed to create instance without validation layers: {}\n", .{temp_result});
+            }
+        }
+        
         return error.InstanceCreationFailed;
     }
     defer vk.vkDestroyInstance(instance, null);
