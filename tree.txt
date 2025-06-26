@@ -65,9 +65,11 @@
 ├── benchmarks
 │   ├── pattern_evolution_benchmark.zig
 │   └── quantum_benchmark.zig
+├── build_benchmark.zig
 ├── build.fish
 ├── build.log
 ├── BUILD.md
+├── build_minimal.zig
 ├── build_options.zig
 ├── build.sh
 ├── build.zig
@@ -79,6 +81,7 @@
 ├── build.zig.012-debug7-backup
 ├── build.zig.012-debug8-backup
 ├── build.zig.backup_(date +%Y%m%d_%H%M%S)
+├── build.zig.bak
 ├── build.zig.bak3
 ├── build.zig.bak4
 ├── build.zig.bak5
@@ -86,6 +89,9 @@
 ├── build.zig.quantum_backup_(date +%s)
 ├── build.zig.zon.bak
 ├── build.zig.zon.bak2
+├── check_vulkan.sh
+├── check_vulkan_system.sh
+├── check_vulkan.zig
 ├── config
 │   └── learn.yaml
 ├── cursor-extension
@@ -3873,6 +3879,7 @@
 │   └── learn
 │       └── patterns.json
 ├── debug_report_(date +%Y%m%d_%H%M%S).txt
+├── direct_vulkan.zig
 ├── docs
 │   ├── architecture
 │   │   └── 000-index.md
@@ -3882,7 +3889,7 @@
 │   │   ├── 000-index.md
 │   │   ├── 001-core-objectives.md
 │   │   └── 002-milestones.md
-│   ├── HIPPOCAMPUS-QUANTUM_COMPILER.md
+│   ├── GPU_ACCELERATION.md
 │   ├── integration
 │   │   ├── 000-index.md
 │   │   ├── 001-glimmer-integration.md
@@ -3919,6 +3926,33 @@
 │   │   ├── 000-index.md
 │   │   └── api.md
 │   ├── STARWEAVE-META_INTELLIGENCE-EXPLAINED.md
+│   ├── THEORY
+│   │   ├── 0-TOPICS.md
+│   │   ├── 4-DIMENSIONAL.md
+│   │   ├── BEYOND_the_SINGULARITY.md
+│   │   ├── COSMIC-WEAVER.md
+│   │   ├── CROSS-REALITY-ENTANGLEMENT.md
+│   │   ├── DARK-MATTER.md
+│   │   ├── DREAM-SYNTHESIS.md
+│   │   ├── EMERGENCE.md
+│   │   ├── FIBONACCI-SPIRALS.md
+│   │   ├── FTL.md
+│   │   ├── HIPPOCAMPUS-QUANTUM_COMPILER.md
+│   │   ├── JAILBREAK.md
+│   │   ├── META-FUTURE.md
+│   │   ├── MIRROR-NEURONS.md
+│   │   ├── MK-ULTRA.md
+│   │   ├── MULTIVERSE-ENCODING.md
+│   │   ├── QUANTUM-GRAVITY.md
+│   │   ├── RECURSIVE-COSMOGENESIS.md
+│   │   ├── RESONANCE.md
+│   │   ├── SELF-REFLECTIVE-UNIVERSES.md
+│   │   ├── SHARED-CONCIOUSNESS.md
+│   │   ├── SINGULARITY.md
+│   │   ├── STARWEAVE-DAYtoDAY-vs-HUMAN.md
+│   │   ├── STRING-THEORY.md
+│   │   ├── SUBCONCIOUS-REPROGRAMMING.md
+│   │   └── SYNTHETIC-CONCIOUSNESS.md
 │   ├── tutorials
 │   │   └── 000-index.md
 │   ├── vision
@@ -3929,8 +3963,12 @@
 ├── example_build.zig
 ├── examples
 │   ├── basic_usage.zig
+│   ├── build.sh
+│   ├── build.zig
 │   ├── gpu_evolution.zig
+│   ├── hypercube_example.zig
 │   ├── memory_visualization.zig
+│   ├── neural.zig -> ../src/neural.zig
 │   ├── pattern_processor.zig
 │   ├── pattern_recognition.zig
 │   ├── pattern_synthesis.zig
@@ -3938,13 +3976,19 @@
 │   ├── quantum_circuit_builder.zig
 │   ├── quantum_processor_demo.zig
 │   ├── quantum_viz_demo.zig
+│   ├── simple_build.zig
 │   ├── simple_pattern_evolution.zig
 │   ├── simple_quantum_demo.zig
 │   ├── simple_visualization.zig
 │   ├── simple_vis.zig
 │   ├── standalone_quantum_viz.zig
-│   └── visualization_demo.zig
+│   ├── temporal_processing
+│   ├── temporal_processing.zig
+│   ├── visualization_demo.zig
+│   └── zig-out
+│       └── bin
 ├── fix_cimgui.sh
+├── input.ppm
 ├── INSTALL-MAYA.sh
 ├── install_service.sh
 ├── ISSUES
@@ -3966,7 +4010,8 @@
 │   ├── 015-issue-vulkan_widgets.md
 │   ├── 016-NEURAL_CORE.md
 │   ├── 017-PREDICTIVE_VECTORING.md
-│   └── 018-PROTOTYPE.md
+│   ├── 018-PROTOTYPE.md
+│   └── 019-HYPERCUBE.md
 ├── libmod.so
 ├── LICENSE
 ├── MAYA.code-workspace
@@ -4292,6 +4337,7 @@
 ├── memory_vis
 ├── META_FIX.sh
 ├── MIGRATION.md
+├── output.ppm
 ├── pattern_evolution_benchmark
 ├── performance_reports
 │   ├── 20250618_055239
@@ -4318,14 +4364,28 @@
 │   ├── run_safe_load_tests.sh
 │   ├── run_zig_benchmarks.sh
 │   ├── setup_arch.sh
+│   ├── test_cuda_integration.zig
 │   ├── test_glimmer_patterns.sh
 │   └── update_wasm.fish
 ├── shaders
+│   ├── 4d_tensor_operations.comp
+│   ├── 4d_tensor_operations.comp.spv
+│   ├── 4d_tensor_operations_float.comp
+│   ├── 4d_tensor_operations_float.comp.spv
+│   ├── 4d_tensor_operations_int.comp
+│   ├── 4d_tensor_operations_int.comp.spv
+│   ├── 4d_tensor_operations_uint.comp
+│   ├── 4d_tensor_operations_uint.comp.spv
+│   ├── compile_shaders.sh
+│   ├── spiral_convolution.comp
+│   ├── spiral_convolution.comp.spv
 │   ├── spv
+│   │   ├── 4d_tensor_operations.spv
 │   │   ├── triangle.frag.spv
 │   │   └── triangle.vert.spv
 │   ├── triangle.frag
 │   └── triangle.vert
+├── spv
 ├── src
 │   ├── build_options.zig
 │   ├── build_options.zig.in
@@ -4333,6 +4393,18 @@
 │   ├── colors
 │   │   └── colors.zig
 │   ├── core
+│   │   ├── hypercube
+│   │   │   ├── attention.zig
+│   │   │   ├── example.zig
+│   │   │   ├── glimmer.zig
+│   │   │   ├── mod.zig
+│   │   │   ├── quantum_tunneling.zig
+│   │   │   ├── README.md
+│   │   │   ├── spiral_conv.zig
+│   │   │   ├── temporal.zig
+│   │   │   ├── tensor4d.zig
+│   │   │   ├── test_attention.zig
+│   │   │   └── test_quantum_tunneling.zig
 │   │   └── main.zig
 │   ├── demo.zig
 │   ├── glimmer
@@ -10508,6 +10580,7 @@
 │   ├── neural
 │   │   ├── adaptive_scaling.zig
 │   │   ├── algorithm_optimization.zig
+│   │   ├── attention.zig
 │   │   ├── bridge.zig
 │   │   ├── communication_optimization.zig
 │   │   ├── crystal_computing.zig
@@ -10516,6 +10589,8 @@
 │   │   ├── gpu_evolution.zig
 │   │   ├── gpu_processing.zig
 │   │   ├── gpu_quantum.zig
+│   │   ├── hypercube_bridge.zig
+│   │   ├── hypercube.zig
 │   │   ├── memory_management.zig
 │   │   ├── memory_optimized_evolution.zig
 │   │   ├── mod.zig
@@ -10525,6 +10600,7 @@
 │   │   ├── neural_bridge_test.zig
 │   │   ├── neural_bridge.zig
 │   │   ├── neural_processor.zig
+│   │   ├── neural.zig
 │   │   ├── parallel_processing.zig
 │   │   ├── pattern_evolution.zig
 │   │   ├── pattern_generator.zig
@@ -10553,12 +10629,15 @@
 │   │   ├── quantum_benchmark.zig
 │   │   ├── quantum_processor.zig
 │   │   ├── quantum_processor.zig.bak
+│   │   ├── quantum_tunneling.zig
 │   │   ├── quantum_types.zig
 │   │   ├── resource_management.zig
 │   │   ├── simd_patterns.zig
 │   │   ├── single_node_optimization.zig
 │   │   ├── standalone_bridge_test.zig
 │   │   ├── state_management.zig
+│   │   ├── temporal.zig
+│   │   ├── tensor4d.zig
 │   │   ├── test_crystal_computing.zig
 │   │   ├── test.zig
 │   │   ├── visual_processor.zig
@@ -10566,7 +10645,18 @@
 │   ├── pattern_gen.zig
 │   ├── quantum_cache
 │   │   ├── benchmark.zig
+│   │   ├── cuda
+│   │   │   └── spiral_convolution.cu
+│   │   ├── cuda_wrapper.zig
 │   │   ├── integration_test.zig
+│   │   ├── pattern_recognition_test.zig
+│   │   ├── pattern_recognition.zig
+│   │   ├── pattern_transform_benchmark.zig
+│   │   ├── pattern_transform_enhanced_test.zig
+│   │   ├── pattern_transform_test_fixed.zig
+│   │   ├── pattern_transform_test_new.zig
+│   │   ├── pattern_transform_test.zig
+│   │   ├── pattern_transform.zig
 │   │   ├── quantum_cache.zig
 │   │   └── test_patterns.zig
 │   ├── quantum_types.zig
@@ -10632,6 +10722,34 @@
 │   │       │       └── dat.gui.d.ts
 │   │       ├── tsconfig.json
 │   │       └── webpack.config.js
+│   ├── vulkan
+│   │   ├── compute
+│   │   │   ├── context.zig
+│   │   │   ├── datatypes.zig
+│   │   │   ├── manager.zig
+│   │   │   ├── manager.zig.bak
+│   │   │   ├── pipeline.zig
+│   │   │   ├── spiral_convolution.comp
+│   │   │   └── tensor_operations.zig
+│   │   ├── debug_utils.zig
+│   │   ├── debug.zig
+│   │   ├── memory
+│   │   │   └── buffer.zig
+│   │   ├── memory.zig
+│   │   ├── minimal_amd.zig
+│   │   ├── minimal_loader.zig
+│   │   ├── minimal_test2.zig
+│   │   ├── minimal_test3.zig
+│   │   ├── minimal_test4.zig
+│   │   ├── minimal_test.zig
+│   │   ├── shaders.zig
+│   │   ├── simple_test.zig
+│   │   ├── test_compute_pipeline.zig
+│   │   ├── test_compute.zig
+│   │   ├── test_minimal.zig
+│   │   ├── test_vulkan.zig
+│   │   ├── vk.zig
+│   │   └── vulkan_check.zig
 │   └── wasm.zig
 ├── STARWEAVE.md
 ├── test
@@ -10645,6 +10763,7 @@
 │   ├── pattern_evolution_test.zig
 │   ├── run_integration_tests.zig
 │   └── run_tests.zig
+├── test_hello.zig
 ├── test_integration.zig
 ├── test-program.o
 ├── tests
@@ -10669,8 +10788,13 @@
 │   │   ├── load_tests_20250617_163533.log
 │   │   ├── load_tests_20250617_165315.log
 │   │   └── performance_test_20250617_161027.json
-│   └── visualize_load_tests.py
+│   ├── tensor_operations_extended_test.zig
+│   ├── tensor_operations_test.zig
+│   ├── visualize_load_tests.py
+│   └── vulkan_init_test.zig
 ├── test_standalone.zig
+├── test_vulkan
+├── test_vulkan.c
 ├── test_wasm.html
 ├── tree.txt
 ├── vendor
@@ -10738,8 +10862,11 @@
 │       └── TODO.txt
 ├── WASM_IMPLEMENTATION.md
 ├── zig-out
-│   └── bin
-│       └── test-patterns
+│   ├── bin
+│   │   ├── hypercube
+│   │   └── test-patterns
+│   └── lib
+│       └── libhypercube.a
 └── zig-x86_64-linux-0.14.1.tar.xz
 
-899 directories, 9844 files
+909 directories, 9961 files

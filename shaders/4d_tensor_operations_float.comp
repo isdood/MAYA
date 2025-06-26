@@ -1,0 +1,63 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+
+// Specialization constants for tensor dimensions
+layout(constant_id = 0) const uint DIM_X = 1;
+layout(constant_id = 1) const uint DIM_Y = 1;
+layout(constant_id = 2) const uint DIM_Z = 1;
+layout(constant_id = 3) const uint DIM_W = 1;
+
+// Workgroup size
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+
+// Buffer bindings
+layout(std430, binding = 0) buffer InputA { float input_a[]; };
+layout(std430, binding = 1) buffer InputB { float input_b[]; };
+layout(std430, binding = 2) buffer Output { float output_data[]; };
+
+// Operation parameters
+layout(binding = 3) uniform Params {
+    float alpha;
+    float beta;
+    uint operation;  // 0 = Add, 1 = Multiply, 2 = LinearCombination
+};
+
+// Convert 4D index to 1D
+uint getIndex(uint x, uint y, uint z, uint w) {
+    return ((w * DIM_Z + z) * DIM_Y + y) * DIM_X + x;
+}
+
+void main() {
+    // Get global thread ID
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+    uint z = gl_GlobalInvocationID.z;
+    
+    // Check bounds
+    if (x >= DIM_X || y >= DIM_Y || z >= DIM_Z) {
+        return;
+    }
+    
+    // Process each element in the W dimension
+    for (uint w = 0; w < DIM_W; ++w) {
+        uint idx = getIndex(x, y, z, w);
+        float a = input_a[idx];
+        float b = input_b[idx];
+        
+        // Perform the selected operation
+        switch (operation) {
+            case 0:  // Add
+                output_data[idx] = a + b;
+                break;
+            case 1:  // Multiply
+                output_data[idx] = a * b;
+                break;
+            case 2:  // LinearCombination
+                output_data[idx] = alpha * a + beta * b;
+                break;
+            default:
+                output_data[idx] = 0.0;
+                break;
+        }
+    }
+}

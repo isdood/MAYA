@@ -3,53 +3,199 @@ const std = @import("std");
 const testing = std.testing;
 const Allocator = std.mem.Allocator;
 
+// Import Vulkan bindings and modules
 const vk = @import("vulkan");
 const Context = @import("vulkan/context").VulkanContext;
-const TensorPipeline = @import("vulkan/compute/tensor_operations").TensorPipeline;
-const Tensor4D = @import("vulkan/compute/tensor_operations").Tensor4D;
+const Buffer = @import("vulkan/memory/buffer").Buffer;
+const tensor_ops = @import("vulkan/compute/tensor_operations");
 
-pub fn main() !void {
-    const allocator = std.heap.page_allocator;
+// Import tensor types and pipelines
+const Tensor4DF32 = tensor_ops.Tensor4D(f32);
+const Tensor4DI32 = tensor_ops.Tensor4D(i32);
+const Tensor4DU32 = tensor_ops.Tensor4D(u32);
+
+const TensorPipelineF32 = tensor_ops.TensorPipeline(f32);
+const TensorPipelineI32 = tensor_ops.TensorPipeline(i32);
+const TensorPipelineU32 = tensor_ops.TensorPipeline(u32);
+
+const TensorOperation = tensor_ops.TensorOperation;
+
+const TensorDims = [4]u32;
+
+fn testTensorOperation(
+    comptime T: type,
+    context: *Context,
+    command_buffer: vk.VkCommandBuffer,
+    pipeline: anytype,
+    a: []const T,
+    b: []const T,
+    expected: []const T,
+    dims: TensorDims,
+    op: TensorOperation,
+    alpha: T,
+    beta: T,
+) !void {
+    const TensorType = tensor_ops.Tensor4D(T);
+    const allocator = std.testing.allocator;
     
+    // Create input tensors
+    var tensor_a = try TensorType.init(context, dims, 0);
+    defer tensor_a.deinit();
+    
+    var tensor_b = try TensorType.init(context, dims, 0);
+    defer tensor_b.deinit();
+    
+    // Create output tensor
+    var output = try TensorType.init(context, dims, 0);
+    defer output.deinit();
+    
+    // Copy test data to GPU
+    try tensor_a.writeData(a);
+    try tensor_b.writeData(b);
+    
+    // Execute the operation
+    try pipeline.execute(
+        command_buffer,
+        &tensor_a,
+        &tensor_b,
+        &output,
+        .{
+            .alpha = alpha,
+            .beta = beta,
+            .operation = op,
+        },
+    );
+    
+    // Read back the results
+    const result = try output.readData(allocator);
+    defer allocator.free(result);
+    
+    // Verify the results
+    for (expected, 0..) |expected_val, i| {
+        if (@typeInfo(T) == .Float) {
+            try std.testing.expectApproxEqAbs(expected_val, result[i], 0.001);
+        } else {
+            try std.testing.expectEqual(expected_val, result[i]);
+        }
+    }
+}
+
+test "tensor operations with different data types" {
     // Initialize Vulkan context
-    var context = try Context.init(allocator, .{ .enable_validation = true });
+    var context = try Context.init(
+        std.testing.allocator,
+        .{ .enable_validation = true },
+    );
     defer context.deinit();
     
-    // Create command pool
-    const command_pool = try context.createCommandPool();
+    // Create command pool and command buffer
+    const command_pool = try context.device.createCommandPool(
+        &vk.VkCommandPoolCreateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext = null,
+            .flags = vk.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = context.queue_family_index,
+        },
+        null,
+    );
     defer context.device.destroyCommandPool(command_pool, null);
     
-    // Allocate command buffer
-    const command_buffer = try context.allocateCommandBuffer(command_pool);
+    var command_buffer: vk.VkCommandBuffer = undefined;
+    _ = try context.device.allocateCommandBuffers(
+        &vk.VkCommandBufferAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = null,
+            .commandPool = command_pool,
+            .level = vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        },
+        @ptrCast(&command_buffer),
+    );
+    
+    // Initialize tensor pipelines for different data types
+    var pipeline_f32 = try TensorPipelineF32.init(std.testing.allocator, &context);
+    defer pipeline_f32.deinit();
+    
+    var pipeline_i32 = try TensorPipelineI32.init(std.testing.allocator, &context);
+    defer pipeline_i32.deinit();
+    
+    var pipeline_u32 = try TensorPipelineU32.init(std.testing.allocator, &context);
+    defer pipeline_u32.deinit();
     
     // Begin command buffer
-    const begin_info = vk.VkCommandBufferBeginInfo{
-        .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext = null,
-        .flags = vk.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-        .pInheritanceInfo = null,
-    };
+    try context.device.beginCommandBuffer(
+        command_buffer,
+        &vk.VkCommandBufferBeginInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext = null,
+            .flags = vk.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            .pInheritanceInfo = null,
+        },
+    );
     
-    try vk.vkBeginCommandBuffer(command_buffer, &begin_info);
-    
-    // Create tensor pipeline
-    var tensor_pipeline = try TensorPipeline.init(allocator, &context);
-    defer tensor_pipeline.deinit();
-    
-    // Test tensor addition
+    // Test float32 operations
     try testTensorOperation(
-        allocator,
+        f32,
         &context,
         command_buffer,
-        &tensor_pipeline,
+        &pipeline_f32,
+        &[_]f32{ 1.0, 2.0, 3.0, 4.0 },
+        &[_]f32{ 5.0, 6.0, 7.0, 8.0 },
+        &[_]f32{ 6.0, 8.0, 10.0, 12.0 }, // Addition
+        .{ 2, 2, 1, 1 },
         .Add,
-        "Addition"
+        1.0,
+        1.0,
+    );
+    
+    try testTensorOperation(
+        f32,
+        &context,
+        command_buffer,
+        &pipeline_f32,
+        &[_]f32{ 1.0, 2.0, 3.0, 4.0 },
+        &[_]f32{ 2.0, 2.0, 2.0, 2.0 },
+        &[_]f32{ 2.0, 4.0, 6.0, 8.0 }, // Multiplication
+        .{ 2, 2, 1, 1 },
+        .Multiply,
+        1.0,
+        1.0,
+    );
+    
+    // Test int32 operations
+    try testTensorOperation(
+        i32,
+        &context,
+        command_buffer,
+        &pipeline_i32,
+        &[_]i32{ 1, 2, 3, 4 },
+        &[_]i32{ 5, 6, 7, 8 },
+        &[_]i32{ 6, 8, 10, 12 }, // Addition
+        .{ 2, 2, 1, 1 },
+        .Add,
+        1,
+        1,
+    );
+    
+    // Test uint32 operations
+    try testTensorOperation(
+        u32,
+        &context,
+        command_buffer,
+        &pipeline_u32,
+        &[_]u32{ 1, 2, 3, 4 },
+        &[_]u32{ 5, 6, 7, 8 },
+        &[_]u32{ 6, 8, 10, 12 }, // Addition
+        .{ 2, 2, 1, 1 },
+        .Add,
+        1,
+        1,
     );
     
     // End command buffer
-    try vk.vkEndCommandBuffer(command_buffer);
+    try context.device.endCommandBuffer(command_buffer);
     
-    // Submit and wait for completion
+    // Submit the command buffer
     const submit_info = vk.VkSubmitInfo{
         .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = null,
@@ -62,80 +208,13 @@ pub fn main() !void {
         .pSignalSemaphores = undefined,
     };
     
-    const fence = try context.device.createFence(&.{
-        .sType = vk.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = 0,
-    }, null);
-    defer context.device.destroyFence(fence, null);
-    
     try context.device.queueSubmit(
-        context.compute_queue,
+        context.graphics_queue,
         1,
         @ptrCast(&submit_info),
-        fence
+        null,
     );
     
-    _ = try context.device.waitForFences(1, @ptrCast(&fence), vk.VK_TRUE, std.math.maxInt(u64));
-    
-    std.debug.print("All tests completed successfully!\n", .{});
-}
-
-fn testTensorOperation(
-    allocator: Allocator,
-    _: *Context,  // Unused parameter
-    command_buffer: vk.VkCommandBuffer,
-    pipeline: *TensorPipeline,
-    operation: TensorPipeline.TensorOperation,
-    name: []const u8,
-) !void {
-    std.debug.print("Testing tensor operation: {s}\n", .{name});
-    
-    const dims = [4]u32{ 4, 4, 4, 1 };  // 4x4x4x1 tensor
-    
-    // Create input and output tensors
-    const input_a = try createTensor(allocator, dims, 1.0);
-    defer allocator.free(input_a.data);
-    
-    const input_b = try createTensor(allocator, dims, 2.0);
-    defer allocator.free(input_b.data);
-    
-    var output = try createTensor(allocator, dims, 0.0);
-    defer allocator.free(output.data);
-    
-    // Execute the operation
-    try pipeline.execute(
-        command_buffer,
-        input_a,
-        input_b,
-        &output,
-        .{ .operation = operation }
-    );
-    
-    // Validate results
-    for (output.data, 0..) |val, i| {
-        const expected: f32 = switch (operation) {
-            .Add => 3.0,  // 1.0 + 2.0
-            .Multiply => 2.0,  // 1.0 * 2.0
-            .LinearCombination => 3.0,  // 1.0 * 1.0 + 2.0 * 1.0
-        };
-        
-        if (@abs(val - expected) > 0.001) {
-            std.debug.print("Mismatch at index {}: expected {}, got {}\n", .{
-                i, expected, val
-            });
-            return error.ValidationFailed;
-        }
-    }
-    
-    std.debug.print("  ✓ {s} test passed\n", .{name});
-}
-
-fn createTensor(allocator: Allocator, dims: [4]u32, value: f32) !Tensor4D {
-    const count = dims[0] * dims[1] * dims[2] * dims[3];
-    const data = try allocator.alloc(f32, count);
-    @memset(data, value);
-    return Tensor4D{
-        .data = data,
-        .dims = dims,
-    };
+    // Wait for the GPU to finish
+    try context.device.queueWaitIdle(context.graphics_queue);
 }

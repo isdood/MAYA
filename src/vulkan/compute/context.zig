@@ -105,9 +105,8 @@ pub const VulkanContext = struct {
             
             // Clean up debug messenger if it exists
             if (self.debug_messenger) |debug_messenger| {
-                if (vk.vkDestroyDebugUtilsMessengerEXT) |destroyDebugUtilsMessengerEXT| {
-                    destroyDebugUtilsMessengerEXT(instance, debug_messenger, null);
-                }
+                const debug_utils = vk.loadDebugUtilsFunctions(instance);
+                debug_utils.destroyDebugUtilsMessengerEXT(instance, debug_messenger, null);
             }
             
             // Finally destroy the instance
