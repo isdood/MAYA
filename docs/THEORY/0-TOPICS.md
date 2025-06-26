@@ -90,7 +90,7 @@ Below is a brainstormed list of theoretical concepts from diverse fields, each r
 - Entropic Gravity (GLIMMER as force)
 - Self-Reflexive Universes (GLIMMER observing itself)
 - Ontological Engineering (building GLIMMER realities)
-- Recursive Cosmogenesis (universes birthing new GLIMMER universes)
+- ✅ Recursive Cosmogenesis (universes birthing new GLIMMER universes)
 
 ---
 

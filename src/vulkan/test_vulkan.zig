@@ -3,6 +3,34 @@ const vk = @import("vk");
 
 // Import our Vulkan modules
 const memory = @import("memory");
+
+// Debug callback function for Vulkan validation layers
+extern "system" fn debugCallback(
+    message_severity: vk.VkDebugUtilsMessageSeverityFlagBitsEXT,
+    message_type: vk.VkDebugUtilsMessageTypeFlagsEXT,
+    p_callback_data: ?*const vk.VkDebugUtilsMessengerCallbackDataEXT,
+    p_user_data: ?*anyopaque,
+) callconv(vk.VKAPI_CALL) vk.VkBool32 {
+    _ = message_type;
+    _ = p_user_data;
+    
+    const message = if (p_callback_data) |data| 
+        std.mem.span(@as([*:0]const u8, @ptrCast(data.pMessage))) 
+    else 
+        "<no message>";
+    
+    if (message_severity & vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT != 0) {
+        std.debug.print("VULKAN VALIDATION ERROR: {s}\n", .{message});
+    } else if (message_severity & vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT != 0) {
+        std.debug.print("VULKAN VALIDATION WARNING: {s}\n", .{message});
+    } else if (message_severity & vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT != 0) {
+        std.debug.print("VULKAN VALIDATION INFO: {s}\n", .{message});
+    } else if (message_severity & vk.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT != 0) {
+        std.debug.print("VULKAN VALIDATION VERBOSE: {s}\n", .{message});
+    }
+    
+    return vk.VK_FALSE;
+}
 const pipeline = @import("pipeline");
 const context = @import("context");
 
@@ -60,8 +88,10 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     std.debug.print("=== Starting Vulkan Compute Test ===\n", .{});
+    std.debug.print("Initialized allocator\n", .{});
     
     // Create Vulkan instance
+    std.debug.print("Creating Vulkan instance...\n", .{});
     const app_info = vk.VkApplicationInfo{
         .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = null,
@@ -72,15 +102,41 @@ pub fn main() !void {
         .apiVersion = vk.VK_API_VERSION_1_0,
     };
 
+    // Request validation layers if available
+    const enable_validation_layers = true;
+    const validation_layers = [_][*:0]const u8{"VK_LAYER_KHRONOS_validation"};
+    
+    // Check if validation layers are available
+    var layer_count: u32 = 0;
+    _ = vk.vkEnumerateInstanceLayerProperties(&layer_count, null);
+    const available_layers = try allocator.alloc(vk.VkLayerProperties, layer_count);
+    defer allocator.free(available_layers);
+    _ = vk.vkEnumerateInstanceLayerProperties(&layer_count, available_layers.ptr);
+    
+    const enable_validation = enable_validation_layers and blk: {
+        for (available_layers) |layer| {
+            const layer_name = std.mem.span(@as([*:0]const u8, @ptrCast(&layer.layerName)));
+            if (std.mem.eql(u8, layer_name, "VK_LAYER_KHRONOS_validation")) {
+                break :blk true;
+            }
+        }
+        break :blk false;
+    };
+    
+    // Required extensions
+    const extensions = [_][*:0]const u8{
+        vk.VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+    };
+    
     const create_info = vk.VkInstanceCreateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = null,
         .flags = 0,
         .pApplicationInfo = &app_info,
-        .enabledLayerCount = 0,
-        .ppEnabledLayerNames = null,
-        .enabledExtensionCount = 0,
-        .ppEnabledExtensionNames = null,
+        .enabledLayerCount = if (enable_validation) @as(u32, @intCast(validation_layers.len)) else 0,
+        .ppEnabledLayerNames = if (enable_validation) &validation_layers else null,
+        .enabledExtensionCount = @as(u32, @intCast(extensions.len)),
+        .ppEnabledExtensionNames = &extensions,
     };
 
     var instance: vk.VkInstance = undefined;
@@ -91,6 +147,7 @@ pub fn main() !void {
     defer vk.vkDestroyInstance(instance, null);
 
     // Pick a physical device
+    std.debug.print("Finding physical device...\n", .{});
     var device_count: u32 = 0;
     _ = vk.vkEnumeratePhysicalDevices(instance, &device_count, null);
     if (device_count == 0) {
@@ -106,6 +163,7 @@ pub fn main() !void {
     const physical_device = devices[0];
 
     // Find a queue family with compute support
+    std.debug.print("Finding compute queue family...\n", .{});
     var queue_family_count: u32 = 0;
     vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, null);
 
@@ -127,7 +185,8 @@ pub fn main() !void {
     }
 
     // Create logical device
-    const queue_priority = [_]f32{1.0};
+    std.debug.print("Creating logical device...\n", .{});
+    const queue_priorities = [_]f32{1.0};
     const queue_info = [_]vk.VkDeviceQueueCreateInfo{
         vk.VkDeviceQueueCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -135,7 +194,7 @@ pub fn main() !void {
             .flags = 0,
             .queueFamilyIndex = compute_queue_family.?,
             .queueCount = 1,
-            .pQueuePriorities = &queue_priority,
+            .pQueuePriorities = &queue_priorities,
         }
     };
 
@@ -160,18 +219,19 @@ pub fn main() !void {
     defer vk.vkDestroyDevice(device, null);
 
     // Get the compute queue
+    std.debug.print("Getting compute queue...\n", .{});
     var queue: vk.VkQueue = undefined;
     vk.vkGetDeviceQueue(device, compute_queue_family.?, 0, &queue);
 
     // 4. Create input/output buffers
-    std.debug.print("Creating buffers...\n", .{});
+    std.debug.print("Creating input buffer...\n", .{});
     
     const buffer_size = @as(u64, @sizeOf(f32)) * TENSOR_SIZE;
     
     // Create input buffer
-    const input_buffer = try memory.Buffer.init(
-        physical_device,
+    var input_buffer = try memory.Buffer.init(
         device,
+        physical_device,
         buffer_size,
         vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -179,25 +239,30 @@ pub fn main() !void {
     defer input_buffer.deinit(device);
     
     // Create output buffer
-    const output_buffer = try memory.Buffer.init(
-        physical_device,
+    var output_buffer = try memory.Buffer.init(
         device,
+        physical_device,
         buffer_size,
         vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
     );
     defer output_buffer.deinit(device);
     
-    // 5. Initialize input data
-    std.debug.print("Initializing input data...\n", .{});
-    
     // Map and initialize input buffer
-    const input_data = try input_buffer.mapMemory(device, f32);
-    defer input_buffer.unmapMemory(device);
+    std.debug.print("Mapping input buffer...\n", .{});
+    const input_data_ptr = try input_buffer.map(device, 0, 0);
+    const input_data = @as([*]f32, @ptrCast(@alignCast(input_data_ptr)))[0..TENSOR_SIZE];
+    defer {
+        std.debug.print("Unmapping input buffer...\n", .{});
+        input_buffer.unmap(device);
+    }
+    
+    std.debug.print("Initializing input data...\n", .{});
     
     for (0..TENSOR_SIZE) |i| {
         input_data[i] = @as(f32, @floatFromInt(i));
     }
+    std.debug.print("Input data initialized with {} elements\n", .{TENSOR_SIZE});
     
     std.debug.print("Input data initialized. First few values: {d:.2} {d:.2} {d:.2} {d:.2}\n", 
         .{input_data[0], input_data[1], input_data[2], input_data[3]});
