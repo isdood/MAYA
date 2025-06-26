@@ -2,9 +2,8 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
 const fs = std.fs;
-const c = @cImport({
-    @cInclude("vulkan/vulkan.h");
-});
+const vk = @import("vk");
+const c = vk; // For backward compatibility
 
 const Context = @import("context.zig").VulkanContext;
 const VulkanComputePipeline = @import("pipeline.zig").VulkanComputePipeline;
@@ -179,13 +178,13 @@ pub const VulkanComputeManager = struct {
         const input_size = input_data.len * @sizeOf(f32);
         const output_size = output_data.len * @sizeOf(f32);
         
-        const input_buffer = try self.createBuffer(
+        var input_buffer = try self.createBuffer(
             input_size,
             c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT
         );
         defer input_buffer.deinit(self.context.device);
         
-        const output_buffer = try self.createBuffer(
+        var output_buffer = try self.createBuffer(
             output_size,
             c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT
         );
@@ -206,7 +205,7 @@ pub const VulkanComputeManager = struct {
             .time_scale = time_scale,
         };
         
-        const params_buffer = try self.createBuffer(
+        var params_buffer = try self.createBuffer(
             @sizeOf(SpiralConvolutionParams),
             c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT
         );
@@ -231,7 +230,7 @@ pub const VulkanComputeManager = struct {
         
         // Dispatch compute
         const work_group_size = [3]u32{
-            output_dims[3],  // width
+            @as(u32, @intCast(output_dims[3])),  // width
             @as(u32, @intCast(output_dims[2])),  // height
             @as(u32, @intCast(output_dims[0] * output_dims[1])),  // batch * channels
         };

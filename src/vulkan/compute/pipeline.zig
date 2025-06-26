@@ -1,13 +1,12 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
-const c = @cImport({
-    @cInclude("vulkan/vulkan.h");
-});
+const vk = @import("vk");
+const c = vk; // For backward compatibility
 
 const Context = @import("context.zig").VulkanContext;
 
-const SpiralConvolutionParams = extern struct {
+pub const SpiralConvolutionParams = extern struct {
     input_dims: [4]i32,
     output_dims: [4]i32,
     kernel_size: i32,
@@ -171,7 +170,7 @@ fn createShaderModule(context: *Context, code: []const u8) !c.VkShaderModule {
         .pNext = null,
         .flags = 0,
         .codeSize = code.len,
-        .pCode = @ptrCast(code.ptr),
+        .pCode = @ptrCast(@alignCast(code.ptr)),
     };
     
     var shader_module: c.VkShaderModule = undefined;

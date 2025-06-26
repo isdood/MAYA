@@ -228,6 +228,31 @@ pub fn build(b: *std.Build) !void {
     const cuda_test_step = b.step("test-cuda", "Run CUDA wrapper tests");
     cuda_test_step.dependOn(&cuda_test_run.step);
     
+    // Create a module for Vulkan compute files
+    const vulkan_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/manager.zig" },
+        .imports = &.{
+            .{
+                .name = "context",
+                .module = b.createModule(.{
+                    .root_source_file = .{ .cwd_relative = "src/vulkan/compute/context.zig" },
+                }),
+            },
+            .{
+                .name = "pipeline",
+                .module = b.createModule(.{
+                    .root_source_file = .{ .cwd_relative = "src/vulkan/compute/pipeline.zig" },
+                }),
+            },
+            .{
+                .name = "vk",
+                .module = b.createModule(.{
+                    .root_source_file = .{ .cwd_relative = "src/vulkan/vk.zig" },
+                }),
+            },
+        },
+    });
+
     // Create Vulkan test executable
     const vulkan_test_exe = b.addExecutable(.{
         .name = "test_vulkan",
@@ -235,6 +260,9 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
+    
+    // Add the Vulkan module to the test executable
+    vulkan_test_exe.root_module.addImport("vulkan", vulkan_module);
     
     // Add include paths
     vulkan_test_exe.addIncludePath(.{ .cwd_relative = "src" });
@@ -259,20 +287,6 @@ pub fn build(b: *std.Build) !void {
     // Create Vulkan test step
     const vulkan_test_step = b.step("test-vulkan", "Run Vulkan compute tests");
     vulkan_test_step.dependOn(&vulkan_test_run.step);
-    
-    // Add all necessary source files to the Vulkan test executable
-    const vulkan_sources = [_][]const u8{
-        "src/vulkan/compute/context.zig",
-        "src/vulkan/compute/manager.zig",
-        "src/vulkan/compute/pipeline.zig",
-    };
-    
-    for (vulkan_sources) |source| {
-        vulkan_test_exe.addCSourceFile(.{
-            .file = .{ .cwd_relative = source },
-            .flags = &[0][]const u8{},
-        });
-    }
     
     // Add CUDA tests to the main test step
     test_all.dependOn(cuda_test_step);
