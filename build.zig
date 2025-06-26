@@ -97,6 +97,85 @@ pub fn build(b: *std.Build) !void {
     const run_step = b.step("run", "Run the application");
     run_step.dependOn(&run_test_patterns_cmd.step);
     
+    // Build CUDA kernel
+    const cuda_kernel = try buildCudaKernel(b, target, optimize);
+    
+    // Create benchmark executable
+    const benchmark_exe = b.addExecutable(.{
+        .name = "pattern_transform_benchmark",
+        .root_source_file = .{ .cwd_relative = "src/quantum_cache/pattern_transform_benchmark.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add CUDA kernel to benchmark
+    benchmark_exe.addObject(cuda_kernel);
+    
+    // Add include paths
+    benchmark_exe.addIncludePath(.{ .cwd_relative = "src/quantum_cache" });
+    benchmark_exe.addSystemIncludePath(.{ .path = "/usr/local/cuda/include" });
+    
+    // Link against CUDA libraries
+    benchmark_exe.linkSystemLibrary("cuda");
+    benchmark_exe.linkSystemLibrary("cudart");
+    benchmark_exe.linkLibCpp();
+    
+    // Install the benchmark executable
+    b.installArtifact(benchmark_exe);
+    
+    // Create benchmark step
+    const benchmark_cmd = b.addRunArtifact(benchmark_exe);
+    benchmark_cmd.step.dependOn(b.getInstallStep());
+    
+    // Add benchmark step to build system
+    const benchmark_step = b.step("benchmark", "Run pattern transform benchmarks");
+    benchmark_step.dependOn(&benchmark_cmd.step);
+    
+    // Add CUDA test step
+    const cuda_test = b.addTest(.{
+        .root_source_file = .{ .path = "src/quantum_cache/cuda_wrapper.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add CUDA kernel to tests
+    cuda_test.addObject(cuda_kernel);
+    
+    // Add include paths
+    cuda_test.addIncludePath(.{ .path = "src/quantum_cache" });
+    cuda_test.addSystemIncludePath(.{ .path = "/usr/local/cuda/include" });
+    
+    // Link against CUDA libraries
+    cuda_test.linkSystemLibrary("cuda");
+    cuda_test.linkSystemLibrary("cudart");
+    cuda_test.linkLibCpp();
+    
+    // Create test step
+    const cuda_test_step = b.step("test-cuda", "Run CUDA wrapper tests");
+    cuda_test_step.dependOn(&cuda_test.step);
+    
+    // Add CUDA tests to the main test step
+    test_all.dependOn(cuda_test_step);
+    
+    // Add CUDA integration test
+    const cuda_integration_test = b.addExecutable(.{
+        .name = "test_cuda_integration",
+        .root_source_file = .{ .path = "scripts/test_cuda_integration.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Link against CUDA
+    cuda_integration_test.linkSystemLibrary("cuda");
+    cuda_integration_test.linkSystemLibrary("cudart");
+    cuda_integration_test.linkLibC();
+    
+    // Add test step
+    const run_cuda_integration = b.addRunArtifact(cuda_integration_test);
+    const cuda_integration_step = b.step("test-cuda-integration", "Test CUDA integration");
+    cuda_integration_step.dependOn(&run_cuda_integration.step);
+    test_all.dependOn(cuda_integration_step);
+    
     // Create a test-patterns step (alias for run)
     const run_test_patterns_step = b.step("test-patterns", "Run the test patterns application");
     run_test_patterns_step.dependOn(&run_test_patterns_cmd.step);

@@ -1,15 +1,19 @@
 {
 	"folders": [
 		{
+			"name": "MAYA",
 			"path": "."
 		},
 		{
+			"name": "GLIMMER",
 			"path": "../GLIMMER"
 		},
 		{
+			"name": "SOUNDQR",
 			"path": "../SOUNDQR"
 		},
 		{
+			"name": "SCRIBBLE",
 			"path": "../SCRIBBLE"
 		}
 	],

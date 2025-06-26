@@ -13,36 +13,94 @@ const DEFAULT_METRICS_PORT: u16 = 8080;
 // Default metrics update interval in seconds
 const DEFAULT_METRICS_UPDATE_INTERVAL: u64 = 60;
 
-/// Represents a pattern that can be transformed
+/// Represents a 4D pattern with GLIMMER encoding support
 pub const Pattern = struct {
-    data: []u8,
+    data: []f32,  // Using f32 for GLIMMER color channels and intensity
     width: u32,
     height: u32,
+    depth: u32 = 1,  // Default to 1 for backward compatibility
+    time_steps: u32 = 1,  // Default to 1 for static patterns
+    channels: u32 = 4,    // RGBA by default
     owns_data: bool,
     
-    /// Creates a new pattern that owns its data
-    pub fn create(allocator: Allocator, data: []const u8, width: u32, height: u32) !*@This() {
+    // GLIMMER encoding parameters
+    glimmer_scale: f32 = 1.0,  // Intensity scaling
+    glimmer_phase: f32 = 0.0,  // Phase offset for temporal patterns
+    
+    /// Creates a new 4D pattern that owns its data
+    pub fn create(allocator: Allocator, data: []const f32, width: u32, height: u32, depth: u32, time_steps: u32) !*@This() {
         const pattern = try allocator.create(@This());
-        const data_copy = try allocator.dupe(u8, data);
+        const data_copy = try allocator.dupe(f32, data);
         
         pattern.* = .{
             .data = data_copy,
             .width = width,
             .height = height,
+            .depth = depth,
+            .time_steps = time_steps,
+            .channels = 4, // Default to RGBA
             .owns_data = true,
         };
         
         return pattern;
     }
     
-    /// Creates a pattern that doesn't own its data
-    pub fn fromSlice(data: []const u8, width: u32, height: u32) @This() {
+    /// Creates a new pattern from raw bytes (for backward compatibility)
+    pub fn fromBytes(allocator: Allocator, data: []const u8, width: u32, height: u32) !*@This() {
+        const pattern = try allocator.create(@This());
+        const float_data = try allocator.alloc(f32, data.len);
+        
+        // Convert u8 [0-255] to f32 [0.0-1.0]
+        for (data, 0..) |byte, i| {
+            float_data[i] = @as(f32, @floatFromInt(byte)) / 255.0;
+        }
+        
+        pattern.* = .{
+            .data = float_data,
+            .width = width,
+            .height = height,
+            .depth = 1,
+            .time_steps = 1,
+            .channels = 4,
+            .owns_data = true,
+        };
+        
+        return pattern;
+    }
+    
+    /// Creates a 4D pattern that doesn't own its data
+    pub fn fromSlice(data: []const f32, width: u32, height: u32, depth: u32, time_steps: u32) @This() {
         return .{
             .data = @constCast(data),
             .width = width,
             .height = height,
+            .depth = depth,
+            .time_steps = time_steps,
+            .channels = 4,
             .owns_data = false,
         };
+    }
+    
+    /// Gets the index into the data array for a 4D coordinate
+    pub fn getIndex(self: @This(), x: u32, y: u32, z: u32, t: u32, c: u32) usize {
+        return (@as(usize, t) * self.depth * self.height * self.width * self.channels) +
+               (@as(usize, z) * self.height * self.width * self.channels) +
+               (@as(usize, y) * self.width * self.channels) +
+               (@as(usize, x) * self.channels) + c;
+    }
+    
+    /// Gets the value at a 4D coordinate and channel
+    pub fn getValue(self: @This(), x: u32, y: u32, z: u32, t: u32, channel: u32) f32 {
+        const idx = self.getIndex(x, y, z, t, channel);
+        return if (idx < self.data.len) self.data[idx] else 0.0;
+    }
+    
+    /// Sets the value at a 4D coordinate and channel
+    pub fn setValue(self: *@This(), x: u32, y: u32, z: u32, t: u32, channel: u32, value: f32) void {
+        const idx = self.getIndex(x, y, z, t, channel);
+        if (idx < self.data.len) {
+            self.data[idx] = value;
+        }
     }
     
     /// Frees the pattern's resources if it owns them
@@ -53,65 +111,215 @@ pub const Pattern = struct {
     }
 };
 
-/// Parameters for pattern matching
+/// Parameters for pattern matching with 4D support
 pub const PatternMatchParams = struct {
-    /// Enable multi-scale pattern matching
+    // Scale parameters
     multi_scale: bool = false,
-    /// Minimum scale factor for multi-scale matching (e.g., 0.5 for half size)
-    min_scale: f32 = 0.5,
-    /// Maximum scale factor for multi-scale matching (e.g., 2.0 for double size)
-    max_scale: f32 = 2.0,
-    /// Scale step size for multi-scale matching
+    min_scale: Vec4 = Vec4.one(),
+    max_scale: Vec4 = Vec4.one(),
     scale_step: f32 = 0.1,
     
-    /// Enable rotation-invariant matching
+    // Rotation parameters (in degrees)
     rotation_invariant: bool = false,
-    /// Rotation step in degrees for rotation-invariant matching
-    rotation_step: f32 = 15.0,
+    rotation_step: Vec3 = Vec3.one().scale(15.0), // x,y,z rotation steps
     
-    /// Enable partial pattern matching
+    // 4D transformation parameters
+    enable_4d: bool = false,
+    time_warp: f32 = 1.0, // Time scaling factor
+    
+    // Gravity-well attention parameters
+    gravity_well: bool = false,
+    well_center: Vec4 = Vec4.zero(),  // Center of attention in 4D space
+    well_mass: f32 = 1.0,            // Strength of the gravity well
+    well_radius: f32 = 1.0,          // Radius of influence
+    
+    // Spiral processing parameters
+    spiral_processing: bool = false,
+    spiral_ratio: f32 = 1.61803398875, // Golden ratio by default
+    spiral_turns: u32 = 5,             // Number of spiral turns
+    spiral_phase: f32 = 0.0,           // Phase offset for spiral
+    
+    // Quantum tunneling parameters
+    enable_tunneling: bool = false,
+    tunneling_probability: f32 = 0.1,  // Base probability of tunneling
+    tunneling_distance: f32 = 5.0,     // Maximum tunneling distance
+    
+    // Pattern matching thresholds
     partial_matching: bool = false,
-    /// Minimum match threshold for partial matching (0.0 to 1.0)
     min_match_threshold: f32 = 0.7,
-    /// Maximum allowed scale difference for partial matching (0.0 to 1.0)
     max_scale_diff: f32 = 0.3,
-    /// Maximum allowed rotation difference for partial matching in degrees
-    max_rotation_diff: f32 = 15.0,
+    max_rotation_diff: Vec3 = Vec3.one().scale(15.0),
+    
+    /// Creates a default 2D matching configuration
+    pub fn default2D() @This() {
+        return @This(){
+            .min_scale = Vec4.new(0.5, 0.5, 1.0, 1.0),
+            .max_scale = Vec4.new(2.0, 2.0, 1.0, 1.0),
+        };
+    }
+    
+    /// Creates a 4D matching configuration
+    pub fn default4D() @This() {
+        return @This(){
+            .enable_4d = true,
+            .min_scale = Vec4.new(0.5, 0.5, 0.5, 0.5),
+            .max_scale = Vec4.new(2.0, 2.0, 2.0, 2.0),
+            .gravity_well = true,
+            .spiral_processing = true,
+        };
+    }
 };
 
-/// Parameters for pattern transformation
-pub const TransformParams = struct {
-    scale_x: f32 = 1.0,
-    scale_y: f32 = 1.0,
-    rotation: f32 = 0.0, // in degrees
-    translate_x: i32 = 0,
-    translate_y: i32 = 0,
+/// 4D vector type for transformations
+pub const Vec4 = struct {
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
     
-    /// Pattern matching parameters
+    pub fn new(x: f32, y: f32, z: f32, w: f32) @This() {
+        return @This(){ .x = x, .y = y, .z = z, .w = w };
+    }
+    
+    pub fn zero() @This() {
+        return @This(){ .x = 0, .y = 0, .z = 0, .w = 0 };
+    }
+    
+    pub fn one() @This() {
+        return @This(){ .x = 1, .y = 1, .z = 1, .w = 1 };
+    }
+    
+    pub fn scale(self: @This(), s: f32) @This() {
+        return @This(){
+            .x = self.x * s,
+            .y = self.y * s,
+            .z = self.z * s,
+            .w = self.w * s,
+        };
+    }
+    
+    pub fn length(self: @This()) f32 {
+        return @sqrt(self.x*self.x + self.y*self.y + self.z*self.z + self.w*self.w);
+    }
+    
+    pub fn normalize(self: @This()) @This() {
+        const len = self.length();
+        if (len > 0) {
+            return self.scale(1.0 / len);
+        }
+        return self;
+    }
+};
+
+/// Parameters for 4D pattern transformation
+pub const TransformParams = struct {
+    // 4D transformation parameters
+    scale: Vec4 = Vec4.one(),
+    rotation: Vec4 = Vec4.zero(),  // Rotation angles in degrees for each plane
+    translation: Vec4 = Vec4.zero(),
+    
+    // Pattern matching parameters
     match_params: PatternMatchParams = .{},
     
     /// Creates a unique key for these transformation parameters
     pub fn toKey(self: @This(), allocator: Allocator) ![]const u8 {
-        return std.fmt.allocPrint(allocator, "{d}:{d}:{d}:{d}:{d}:{d}", .{
-            self.scale_x, 
-            self.scale_y, 
-            self.rotation,
-            self.translate_x,
-            self.translate_y,
-            @as(u32, @bitCast(self.match_params)),
+        return std.fmt.allocPrint(allocator, 
+            "{d}:{d}:{d}:{d}:{d}:{d}:{d}:{d}:{d}:{d}:{d}", .{
+            self.scale.x, self.scale.y, self.scale.z, self.scale.w,
+            self.rotation.x, self.rotation.y, self.rotation.z, self.rotation.w,
+            self.translation.x, self.translation.y, self.translation.z, self.translation.w
         });
     }
     
-    /// Composes two transformations (applies other transformation after this one)
+    /// Composes two 4D transformations (applies other transformation after this one)
     pub fn compose(self: @This(), other: TransformParams) TransformParams {
-        // For simplicity, just combine translations for now
-        // In a more complete implementation, we'd handle the full matrix composition
+        // Combine scales (element-wise multiplication)
+        const new_scale = Vec4{
+            .x = self.scale.x * other.scale.x,
+            .y = self.scale.y * other.scale.y,
+            .z = self.scale.z * other.scale.z,
+            .w = self.scale.w * other.scale.w,
+        };
+        
+        // Combine rotations (simple addition for now, should use quaternions for 3D rotations)
+        const new_rotation = Vec4{
+            .x = @mod(self.rotation.x + other.rotation.x, 360.0),
+            .y = @mod(self.rotation.y + other.rotation.y, 360.0),
+            .z = @mod(self.rotation.z + other.rotation.z, 360.0),
+            .w = @mod(self.rotation.w + other.rotation.w, 360.0),
+        };
+        
+        // Combine translations (scale by self's scale)
+        const new_translation = Vec4{
+            .x = self.translation.x + other.translation.x * self.scale.x,
+            .y = self.translation.y + other.translation.y * self.scale.y,
+            .z = self.translation.z + other.translation.z * self.scale.z,
+            .w = self.translation.w + other.translation.w * self.scale.w,
+        };
+        
         return TransformParams{
-            .scale_x = self.scale_x * other.scale_x,
-            .scale_y = self.scale_y * other.scale_y,
-            .rotation = @mod(self.rotation + other.rotation, 360.0),
-            .translate_x = self.translate_x + @as(i32, @intFromFloat(@as(f32, @floatFromInt(other.translate_x)) * self.scale_x)),
-            .translate_y = self.translate_y + @as(i32, @intFromFloat(@as(f32, @floatFromInt(other.translate_y)) * self.scale_y)),
+            .scale = new_scale,
+            .rotation = new_rotation,
+            .translation = new_translation,
+            .match_params = other.match_params, // Use the more specific match params
+        };
+    }
+    
+    /// Applies gravity-well attention to a 4D point
+    pub fn applyGravityWell(self: @This(), pos: Vec4, match_params: PatternMatchParams) Vec4 {
+        if (!match_params.gravity_well) return pos;
+        
+        const center = match_params.well_center;
+        const mass = match_params.well_mass;
+        const radius = match_params.well_radius;
+        
+        // Calculate vector to center
+        const to_center = Vec4{
+            .x = center.x - pos.x,
+            .y = center.y - pos.y,
+            .z = center.z - pos.z,
+            .w = center.w - pos.w,
+        };
+        
+        const dist_sq = to_center.x*to_center.x + to_center.y*to_center.y + 
+                        to_center.z*to_center.z + to_center.w*to_center.w;
+        const dist = @sqrt(dist_sq);
+        
+        if (dist > radius || dist < 0.0001) return pos;
+        
+        // Apply inverse square law force
+        const strength = mass / (dist_sq + 0.01); // Add small epsilon to avoid division by zero
+        const force = to_center.normalize().scale(strength * (1.0 - dist/radius));
+        
+        // Apply the force
+        return Vec4{
+            .x = pos.x + force.x,
+            .y = pos.y + force.y,
+            .z = pos.z + force.z,
+            .w = pos.w + force.w,
+        };
+    }
+    
+    /// Samples a point along a Fibonacci spiral in 4D
+    pub fn sampleSpiral4D(self: @This(), t: f32, match_params: PatternMatchParams) Vec4 {
+        if (!match_params.spiral_processing) {
+            return Vec4.zero();
+        }
+        
+        const phi = match_params.spiral_ratio;
+        const n = match_params.spiral_turns;
+        const phase = match_params.spiral_phase;
+        
+        // Golden angle in 4D
+        const angle = std.math.tau * t * @as(f32, @floatFromInt(n)) + phase;
+        const r = t;
+        
+        // 4D Fibonacci spiral coordinates
+        return Vec4{
+            .x = r * @sin(angle),
+            .y = r * @cos(angle),
+            .z = r * @sin(angle * phi),
+            .w = r * @cos(angle * phi),
         };
     }
 };
@@ -558,25 +766,6 @@ pub const PatternTransformCache = struct {
                 mb_max,
                 usage_percent,
             });
-        }
-        
-        // Return the transformed pattern (caller is responsible for freeing it)
-        return transformed;
-    }
-    /// Applies a simple transformation without any advanced matching
-    fn applySimpleTransform(self: *@This(), pattern: *const Pattern, params: TransformParams) !*Pattern {
-        // Simple implementation - creates a copy of the pattern
-        // In a real implementation, this would apply the actual transformation
-        return try self.createPattern(pattern.data, pattern.width, pattern.height);
-    }
-    
-    /// Applies advanced transformations including multi-scale, rotation-invariant, and partial matching
-    fn applyAdvancedTransform(self: *@This(), pattern: *const Pattern, params: TransformParams) !*Pattern {
-        const match_params = params.match_params;
-        var best_score: f32 = 0.0;
-        var best_result: ?*Pattern = null;
-        
-        // Helper to update the best result
         const updateBestResult = struct {
             fn update(
                 self_ptr: *PatternTransformCache,
