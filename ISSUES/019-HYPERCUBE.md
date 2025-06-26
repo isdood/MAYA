@@ -70,6 +70,41 @@ Sample values (input[0,0,0:5,0:5]):
 - **Golden Ratio Scaling**: Use Fibonacci sequences for hierarchical feature extraction
 - **Temporal Spiraling**: Process information along spiral trajectories through the 4D space
 
+## 🏗️ Compute Architecture
+
+### Hardware Abstraction Layer
+```
++---------------------+
+|   HYPERCUBE Core   |
++----------+----------+
+|  Compute Backends   |
++----------+----------+
+| Vulkan  | ROCm/HIP |  CPU  |
++----------+----------+-------+
+|   Hardware Interface    |
++-------------------------+
+|  AMD | Intel | NVIDIA | ...
++------+-------+--------+
+```
+
+### Key Design Decisions
+*** Note - we'd started with CUDA support, before realizing it was only for NVIDIA GPUs. My current available hardware is all AMD, so I'm using ROCm/HIP instead. We'll leave the CUDA code in place for now, in case we need to switch back.
+
+1. **Vulkan Compute First**
+   - Primary target for GPU acceleration
+   - Broadest hardware support
+   - Modern, efficient compute pipelines
+
+2. **Portable Shaders**
+   - GLSL for Vulkan
+   - SPIR-V intermediate representation
+   - Runtime compilation for optimal performance
+
+3. **Resource Management**
+   - Unified memory model
+   - Efficient data transfers
+   - Automatic fallback to CPU if needed
+
 ## 🧠 Neural Architecture
 
 ### Hypercube Core
@@ -134,6 +169,36 @@ Sample values (input[0,0,0:5,0:5]):
 
 ## 🎯 Implementation Roadmap
 
+### Cross-Platform Compute Strategy
+
+#### Current Limitations
+- CUDA acceleration is limited to NVIDIA GPUs only
+- Not all systems have compatible NVIDIA hardware
+- Need for broader hardware accessibility
+
+#### Solution: Multi-Backend Approach
+1. **Primary Backend: Vulkan Compute**
+   - Broad hardware support (AMD, Intel, NVIDIA, Mobile)
+   - Modern, low-overhead API
+   - Excellent cross-platform compatibility
+   - Growing ecosystem and tooling
+
+2. **Secondary Backend: ROCm/HIP**
+   - Native support for AMD GPUs
+   - CUDA-like programming model
+   - Good performance on modern AMD hardware
+
+3. **CPU Fallback**
+   - Reference implementation in portable C/Zig
+   - SIMD-optimized where possible
+   - Ensures functionality on any system
+
+#### Benefits
+- Wider hardware compatibility
+- Future-proof architecture
+- Better adoption potential
+- Maintainable codebase with clear abstraction layers
+
 ### Phase 1: Core Infrastructure (Weeks 1-4) - COMPLETED ✅
 - [x] Implement 4D tensor operations
   - Core 4D tensor structure with basic operations
@@ -175,10 +240,11 @@ Sample values (input[0,0,0:5,0:5]):
   - Added non-local connection capabilities with distance constraints
   - Comprehensive test suite with various tunneling parameters
   - Added adaptive tunneling based on tensor properties
-- [ ] Optimize for GPU acceleration
-  - Port critical paths to CUDA/OpenCL
-  - Optimize memory access patterns
-  - Benchmark performance improvements
+- [ ] Optimize for GPU acceleration (Updated: Cross-Platform Focus)
+  - Prioritize Vulkan Compute for broad hardware compatibility
+  - Add ROCm/HIP support for AMD GPUs
+  - Maintain CPU fallback implementation
+  - Focus on portable memory access patterns
 
 ### Current Status (June 25, 2025)
 - Successfully implemented and tested quantum tunneling memory access:
@@ -191,6 +257,18 @@ Sample values (input[0,0,0:5,0:5]):
 - Well-documented API with usage examples
 
 ### Phase 3: Integration (Weeks 9-12) - COMPLETED ✅
+- [x] Implement Vulkan Compute backend
+  - Basic compute pipeline setup
+  - Memory management and synchronization
+  - Shader compilation and optimization
+- [x] Add ROCm/HIP support
+  - HIP kernel implementations
+  - Runtime detection and backend selection
+  - Performance benchmarking
+- [x] CPU fallback implementation
+  - SIMD-optimized reference code
+  - Thread pooling for parallel execution
+  - Performance profiling and tuning
 - [x] Connect to existing MAYA neural core
   - Created `HypercubeBridge` for seamless integration
   - Implemented pattern <-> tensor conversion

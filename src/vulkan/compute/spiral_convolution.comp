@@ -1,0 +1,82 @@
+#version 460
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_buffer_reference2 : require
+
+// Input and output buffer bindings
+layout(set = 0, binding = 0) buffer InputBuffer {
+    float inputData[];
+};
+
+layout(set = 0, binding = 1) buffer OutputBuffer {
+    float outputData[];
+};
+
+// Spiral parameters
+layout(set = 0, binding = 2) uniform SpiralParams {
+    ivec4 inputDims;     // [batch, depth, height, width]
+    ivec4 outputDims;    // [batch, out_channels, height, width]
+    int kernelSize;
+    float goldenRatio;   // φ = (1 + √5)/2 ≈ 1.618
+    float timeScale;     // Time scaling factor for 4D
+} params;
+
+// Linear index calculation for 4D tensor
+int getLinearIndex(ivec4 coords, ivec4 dims) {
+    return coords.x * dims.y * dims.z * dims.w +
+           coords.y * dims.z * dims.w +
+           coords.z * dims.w +
+           coords.w;
+}
+
+// Generate Fibonacci spiral coordinates
+vec4 getSpiralCoord(ivec4 baseCoord, int k, int totalPoints) {
+    float angle = 2.0 * 3.14159265359 * k / params.goldenRatio;
+    float radius = float(k) / float(totalPoints);
+    
+    // Scale radius by golden ratio to create spiral
+    radius = pow(radius, 0.5) * sqrt(float(k) / float(totalPoints));
+    
+    // Convert to 4D coordinates (x, y, z, t)
+    return vec4(
+        baseCoord.x + radius * cos(angle),
+        baseCoord.y + radius * sin(angle),
+        baseCoord.z + radius * cos(angle * 1.618),  // Different phase for z
+        baseCoord.w + radius * sin(angle * 1.618) * params.timeScale  // Time dimension
+    );
+}
+
+void main() {
+    ivec4 outputCoord = ivec4(
+        int(gl_GlobalInvocationID.z / (params.outputDims.y * params.outputDims.z)),  // batch
+        int((gl_GlobalInvocationID.z / params.outputDims.z) % params.outputDims.y), // channel
+        int(gl_GlobalInvocationID.y),  // height
+        int(gl_GlobalInvocationID.x)   // width
+    );
+    
+    if (any(greaterThanEqual(outputCoord, params.outputDims))) {
+        return;  // Out of bounds check
+    }
+    
+    float result = 0.0;
+    int kernelArea = params.kernelSize * params.kernelSize;
+    
+    // Iterate over spiral points
+    for (int k = 0; k < kernelArea; k++) {
+        // Get spiral coordinate in input space
+        vec4 spiralCoord = getSpiralCoord(outputCoord, k, kernelArea);
+        ivec4 inputCoord = ivec4(floor(spiralCoord));
+        
+        // Boundary check
+        if (all(greaterThanEqual(inputCoord, ivec4(0))) && 
+            all(lessThan(inputCoord, params.inputDims))) {
+            
+            // Simple nearest-neighbor sampling for now
+            int idx = getLinearIndex(inputCoord, params.inputDims);
+            result += inputData[idx] * (1.0 / float(kernelArea));
+        }
+    }
+    
+    // Write result
+    int outIdx = getLinearIndex(outputCoord, params.outputDims);
+    outputData[outIdx] = result;
+}

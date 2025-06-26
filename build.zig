@@ -1,5 +1,40 @@
 const std = @import("std");
 
+// Build CUDA kernel
+fn buildCudaKernel(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) !*std.Build.Step.Compile {
+    const cuda_kernel = b.addObject(.{
+        .name = "spiral_convolution_kernel",
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add CUDA source file with appropriate flags
+    cuda_kernel.addCSourceFile(.{
+        .file = .{ .cwd_relative = "src/quantum_cache/cuda/spiral_convolution.cu" },
+        .flags = &[_][]const u8{
+            "-std=c++17",
+            "--ptxas-options=-v",
+            "-O3",
+            "-Xcompiler", "-fPIC",
+        },
+    });
+    
+    // Add include paths
+    cuda_kernel.addIncludePath(.{ .cwd_relative = "src/quantum_cache" });
+    cuda_kernel.addSystemIncludePath(.{ .cwd_relative = "/usr/local/cuda/include" });
+    
+    // Link against CUDA libraries
+    cuda_kernel.linkSystemLibrary("cuda");
+    cuda_kernel.linkSystemLibrary("cudart");
+    cuda_kernel.linkLibCpp();
+    
+    // Set CUDA compiler
+    const which_nvcc = b.addSystemCommand(&.{"which", "nvcc"});
+    cuda_kernel.step.dependOn(&which_nvcc.step);
+    
+    return cuda_kernel;
+}
+
 pub fn build(b: *std.Build) !void {
     // Standard target options
     const target = b.standardTargetOptions(.{});
@@ -12,7 +47,7 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = .{ .src_path = .{
             .owner = b,
             .sub_path = "build_options.zig",
-        }},
+        }}
     });
 
     // Create a module for the neural network
@@ -20,12 +55,9 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = .{ .src_path = .{
             .owner = b,
             .sub_path = "src/neural/neural.zig",
-        }},
-        .dependencies = &.{
-            .{ .name = "build_options", .module = build_options_module },
-        },
+        }}
     });
-
+    
     // Add include paths for the neural module
     neural_module.addIncludePath(.{ .cwd_relative = "src/neural" });
 
@@ -97,8 +129,18 @@ pub fn build(b: *std.Build) !void {
     const run_step = b.step("run", "Run the application");
     run_step.dependOn(&run_test_patterns_cmd.step);
     
+    // Create a module for Vulkan compute
+    const vulkan_module = b.createModule(.{
+        .source_file = .{ .path = "src/vulkan/compute/manager.zig" },
+    });
+    try b.modules.put(b.dupe("vulkan-compute"), vulkan_module);
+
     // Build CUDA kernel
-    const cuda_kernel = try buildCudaKernel(b, target, optimize);
+    const enable_cuda = b.option(bool, "enable_cuda", "Enable CUDA support") orelse false;
+    var cuda_kernel: ?*std.Build.Step.Compile = null;
+    if (enable_cuda) {
+        cuda_kernel = try buildCudaKernel(b, target, optimize);
+    }
     
     // Create benchmark executable
     const benchmark_exe = b.addExecutable(.{
@@ -109,16 +151,47 @@ pub fn build(b: *std.Build) !void {
     });
     
     // Add CUDA kernel to benchmark
-    benchmark_exe.addObject(cuda_kernel);
+    if (enable_cuda) {
+        benchmark_exe.addObject(cuda_kernel.?);
+        
+        // Add include paths
+        benchmark_exe.addIncludePath(.{ .cwd_relative = "src/quantum_cache" });
+        benchmark_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/local/cuda/include" });
+        
+        // Link against CUDA libraries
+        benchmark_exe.linkSystemLibrary("cuda");
+        benchmark_exe.linkSystemLibrary("cudart");
+        benchmark_exe.linkLibCpp();
+        
+        benchmark_exe.defineCMacro("ENABLE_CUDA", "1");
+    }
     
-    // Add include paths
-    benchmark_exe.addIncludePath(.{ .cwd_relative = "src/quantum_cache" });
-    benchmark_exe.addSystemIncludePath(.{ .path = "/usr/local/cuda/include" });
+    // Add Vulkan support
+    const enable_vulkan = b.option(bool, "enable_vulkan", "Enable Vulkan support") orelse true;
+    var glslc_step: ?*std.Build.Step = null;
     
-    // Link against CUDA libraries
-    benchmark_exe.linkSystemLibrary("cuda");
-    benchmark_exe.linkSystemLibrary("cudart");
-    benchmark_exe.linkLibCpp();
+    if (enable_vulkan) {
+        benchmark_exe.linkSystemLibrary("vulkan");
+        benchmark_exe.defineCMacro("ENABLE_VULKAN", "1");
+        
+        // Create output directory for shaders
+        const mkdir = b.addSystemCommand(&.{"mkdir", "-p", "shaders"});
+        
+        // Add Vulkan shader compilation step
+        const glslc = b.addSystemCommand(&.{
+            "glslc",
+            "src/vulkan/compute/spiral_convolution.comp",
+            "-o",
+            "shaders/spiral_convolution.comp.spv",
+            "-O",
+        });
+        
+        glslc.step.dependOn(&mkdir.step);
+        glslc_step = &glslc.step;
+        
+        // Make sure shaders are compiled before the executable
+        benchmark_exe.step.dependOn(glslc_step);
+    }
     
     // Install the benchmark executable
     b.installArtifact(benchmark_exe);
@@ -133,34 +206,71 @@ pub fn build(b: *std.Build) !void {
     
     // Add CUDA test step
     const cuda_test = b.addTest(.{
-        .root_source_file = .{ .path = "src/quantum_cache/cuda_wrapper.zig" },
+        .root_source_file = .{ .cwd_relative = "src/quantum_cache/cuda_wrapper.zig" },
         .target = target,
         .optimize = optimize,
     });
     
     // Add CUDA kernel to tests
-    cuda_test.addObject(cuda_kernel);
+    if (enable_cuda) {
+        cuda_test.addObject(cuda_kernel.?);
+        
+        // Add include paths
+        cuda_test.addIncludePath(.{ .cwd_relative = "src/quantum_cache" });
+        cuda_test.addSystemIncludePath(.{ .cwd_relative = "/usr/local/cuda/include" });
+        
+        // Link against CUDA libraries
+        cuda_test.linkSystemLibrary("cuda");
+        cuda_test.linkSystemLibrary("cudart");
+        cuda_test.linkLibCpp();
+    }
     
-    // Add include paths
-    cuda_test.addIncludePath(.{ .path = "src/quantum_cache" });
-    cuda_test.addSystemIncludePath(.{ .path = "/usr/local/cuda/include" });
+    // Create CUDA test run step
+    const cuda_test_run = b.addRunArtifact(cuda_test);
+    cuda_test_run.step.dependOn(b.getInstallStep());
     
-    // Link against CUDA libraries
-    cuda_test.linkSystemLibrary("cuda");
-    cuda_test.linkSystemLibrary("cudart");
-    cuda_test.linkLibCpp();
-    
-    // Create test step
+    // Create CUDA test step
     const cuda_test_step = b.step("test-cuda", "Run CUDA wrapper tests");
-    cuda_test_step.dependOn(&cuda_test.step);
+    cuda_test_step.dependOn(&cuda_test_run.step);
+    
+    // Create Vulkan test executable
+    const vulkan_test_exe = b.addExecutable(.{
+        .name = "test_vulkan",
+        .root_source_file = .{ .cwd_relative = "src/vulkan/test_compute.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add Vulkan support to test executable
+    if (enable_vulkan) {
+        vulkan_test_exe.linkSystemLibrary("vulkan");
+        vulkan_test_exe.defineCMacro("ENABLE_VULKAN", "1");
+        
+        // Make sure shaders are compiled before the test
+        if (glslc_step) |step| {
+            vulkan_test_exe.step.dependOn(step);
+        }
+    }
+    
+    // Install the Vulkan test executable
+    b.installArtifact(vulkan_test_exe);
+    
+    // Create Vulkan test run step
+    const vulkan_test_run = b.addRunArtifact(vulkan_test_exe);
+    vulkan_test_run.step.dependOn(b.getInstallStep());
+    
+    // Create Vulkan test step
+    const vulkan_test_step = b.step("test-vulkan", "Run Vulkan compute tests");
+    vulkan_test_step.dependOn(&vulkan_test_run.step);
     
     // Add CUDA tests to the main test step
     test_all.dependOn(cuda_test_step);
+    test_all.dependOn(vulkan_test_step);
     
     // Add CUDA integration test
     const cuda_integration_test = b.addExecutable(.{
         .name = "test_cuda_integration",
-        .root_source_file = .{ .path = "scripts/test_cuda_integration.zig" },
+        .root_source_file = .{ .cwd_relative = "scripts/test_cuda_integration.zig" },
         .target = target,
         .optimize = optimize,
     });

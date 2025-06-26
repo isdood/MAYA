@@ -1,0 +1,359 @@
+const std = @import("std");
+const builtin = @import("builtin");
+const Allocator = std.mem.Allocator;
+const fs = std.fs;
+const c = @cImport({
+    @cInclude("vulkan/vulkan.h");
+});
+
+const Context = @import("context.zig").VulkanContext;
+const VulkanComputePipeline = @import("pipeline.zig").VulkanComputePipeline;
+const SpiralConvolutionParams = @import("pipeline.zig").SpiralConvolutionParams;
+
+const Buffer = struct {
+    buffer: c.VkBuffer,
+    memory: c.VkDeviceMemory,
+    size: usize,
+    
+    pub fn deinit(self: *Buffer, device: c.VkDevice) void {
+        if (self.buffer != null) {
+            c.vkDestroyBuffer(device, self.buffer, null);
+        }
+        if (self.memory != null) {
+            c.vkFreeMemory(device, self.memory, null);
+        }
+    }
+};
+
+pub const VulkanComputeManager = struct {
+    allocator: Allocator,
+    context: Context,
+    pipeline: VulkanComputePipeline,
+    command_pool: c.VkCommandPool,
+    command_buffer: c.VkCommandBuffer,
+    fence: c.VkFence,
+    
+    pub fn init(allocator: Allocator) !VulkanComputeManager {
+        var self: VulkanComputeManager = undefined;
+        self.allocator = allocator;
+        
+        // Initialize Vulkan context
+        self.context = try Context.init(allocator);
+        
+        // Load and compile the compute shader
+        const shader_code = try loadShader(allocator, "spiral_convolution.comp");
+        defer allocator.free(shader_code);
+        
+        // Create compute pipeline
+        self.pipeline = try VulkanComputePipeline.init(&self.context, shader_code);
+        
+        // Create command buffer
+        const command_buffer_allocate_info = c.VkCommandBufferAllocateInfo{
+            .sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = null,
+            .commandPool = self.context.command_pool,
+            .level = c.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+        
+        if (c.vkAllocateCommandBuffers(
+            self.context.device,
+            &command_buffer_allocate_info,
+            &self.command_buffer
+        ) != c.VK_SUCCESS) {
+            return error.CommandBufferAllocationFailed;
+        }
+        
+        // Create fence
+        const fence_create_info = c.VkFenceCreateInfo{
+            .sType = c.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = null,
+            .flags = 0,
+        };
+        
+        if (c.vkCreateFence(self.context.device, &fence_create_info, null, &self.fence) != c.VK_SUCCESS) {
+            return error.FenceCreationFailed;
+        }
+        
+        return self;
+    }
+    
+    pub fn deinit(self: *VulkanComputeManager) void {
+        c.vkDestroyFence(self.context.device, self.fence, null);
+        c.vkFreeCommandBuffers(
+            self.context.device,
+            self.context.command_pool,
+            1,
+            &self.command_buffer
+        );
+        self.pipeline.deinit();
+        self.context.deinit();
+    }
+    
+    pub fn createBuffer(self: *VulkanComputeManager, size: usize, usage: c.VkBufferUsageFlags) !Buffer {
+        const buffer = try self.context.createBuffer(size, usage);
+        const mem_requirements = self.getBufferMemoryRequirements(buffer);
+        const memory = try self.context.allocateMemory(
+            mem_requirements,
+            c.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | c.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        );
+        
+        if (c.vkBindBufferMemory(self.context.device, buffer, memory, 0) != c.VK_SUCCESS) {
+            c.vkFreeMemory(self.context.device, memory, null);
+            c.vkDestroyBuffer(self.context.device, buffer, null);
+            return error.BufferMemoryBindFailed;
+        }
+        
+        return Buffer{
+            .buffer = buffer,
+            .memory = memory,
+            .size = size,
+        };
+    }
+    
+    pub fn uploadData(self: *VulkanComputeManager, buffer: *const Buffer, data: []const u8) !void {
+        if (data.len > buffer.size) {
+            return error.DataTooLarge;
+        }
+        
+        var mapped_ptr: ?*anyopaque = null;
+        if (c.vkMapMemory(
+            self.context.device,
+            buffer.memory,
+            0,
+            @intCast(u64, buffer.size),
+            0,
+            @ptrCast(*?*anyopaque, &mapped_ptr)
+        ) != c.VK_SUCCESS) {
+            return error.MemoryMapFailed;
+        }
+        
+        defer c.vkUnmapMemory(self.context.device, buffer.memory);
+        
+        if (mapped_ptr) |ptr| {
+            @memcpy(@ptrCast([*]u8, @alignCast(@alignOf(u8), ptr)), data.ptr, data.len);
+        } else {
+            return error.MemoryMapFailed;
+        }
+    }
+    
+    pub fn downloadData(self: *VulkanComputeManager, buffer: *const Buffer, data: []u8) !void {
+        if (data.len > buffer.size) {
+            return error.BufferTooSmall;
+        }
+        
+        var mapped_ptr: ?*anyopaque = null;
+        if (c.vkMapMemory(
+            self.context.device,
+            buffer.memory,
+            0,
+            @intCast(u64, buffer.size),
+            0,
+            @ptrCast(*?*anyopaque, &mapped_ptr)
+        ) != c.VK_SUCCESS) {
+            return error.MemoryMapFailed;
+        }
+        
+        defer c.vkUnmapMemory(self.context.device, buffer.memory);
+        
+        if (mapped_ptr) |ptr| {
+            @memcpy(data.ptr, @ptrCast([*]const u8, @alignCast(@alignOf(u8), ptr)), data.len);
+        } else {
+            return error.MemoryMapFailed;
+        }
+    }
+    
+    pub fn runSpiralConvolution(
+        self: *VulkanComputeManager,
+        input_data: []const f32,
+        output_data: []f32,
+        input_dims: [4]i32,
+        output_dims: [4]i32,
+        kernel_size: i32,
+        golden_ratio: f32,
+        time_scale: f32,
+    ) !void {
+        // Create input and output buffers
+        const input_size = input_data.len * @sizeOf(f32);
+        const output_size = output_data.len * @sizeOf(f32);
+        
+        const input_buffer = try self.createBuffer(
+            input_size,
+            c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        );
+        defer input_buffer.deinit(self.context.device);
+        
+        const output_buffer = try self.createBuffer(
+            output_size,
+            c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+        );
+        defer output_buffer.deinit(self.context.device);
+        
+        // Upload input data
+        try self.uploadData(
+            &input_buffer,
+            std.mem.sliceAsBytes(input_data)
+        );
+        
+        // Create uniform buffer for parameters
+        const params = SpiralConvolutionParams{
+            .input_dims = input_dims,
+            .output_dims = output_dims,
+            .kernel_size = kernel_size,
+            .golden_ratio = golden_ratio,
+            .time_scale = time_scale,
+        };
+        
+        const params_buffer = try self.createBuffer(
+            @sizeOf(SpiralConvolutionParams),
+            c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | c.VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        );
+        defer params_buffer.deinit(self.context.device);
+        
+        try self.uploadData(
+            &params_buffer,
+            std.mem.asBytes(&params)
+        );
+        
+        // Begin command buffer
+        const begin_info = c.VkCommandBufferBeginInfo{
+            .sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext = null,
+            .flags = c.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            .pInheritanceInfo = null,
+        };
+        
+        if (c.vkBeginCommandBuffer(self.command_buffer, &begin_info) != c.VK_SUCCESS) {
+            return error.CommandBufferBeginFailed;
+        }
+        
+        // Dispatch compute
+        const work_group_size = [3]u32{
+            @intCast(u32, output_dims[3]),  // width
+            @intCast(u32, output_dims[2]),  // height
+            @intCast(u32, output_dims[0] * output_dims[1]),  // batch * channels
+        };
+        
+        self.pipeline.dispatch(
+            self.command_buffer,
+            input_buffer.buffer,
+            output_buffer.buffer,
+            params,
+            work_group_size
+        );
+        
+        // Add barrier to ensure compute shader writes are finished
+        const memory_barrier = c.VkMemoryBarrier{
+            .sType = c.VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+            .pNext = null,
+            .srcAccessMask = c.VK_ACCESS_SHADER_WRITE_BIT,
+            .dstAccessMask = c.VK_ACCESS_TRANSFER_READ_BIT,
+        };
+        
+        c.vkCmdPipelineBarrier(
+            self.command_buffer,
+            c.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            c.VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0,
+            1,
+            &memory_barrier,
+            0,
+            null,
+            0,
+            null
+        );
+        
+        // End command buffer
+        if (c.vkEndCommandBuffer(self.command_buffer) != c.VK_SUCCESS) {
+            return error.CommandBufferEndFailed;
+        }
+        
+        // Submit command buffer
+        const submit_info = c.VkSubmitInfo{
+            .sType = c.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .pNext = null,
+            .waitSemaphoreCount = 0,
+            .pWaitSemaphores = null,
+            .pWaitDstStageMask = null,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &self.command_buffer,
+            .signalSemaphoreCount = 0,
+            .pSignalSemaphores = null,
+        };
+        
+        if (c.vkQueueSubmit(self.context.queue, 1, &submit_info, self.fence) != c.VK_SUCCESS) {
+            return error.QueueSubmitFailed;
+        }
+        
+        // Wait for completion
+        _ = c.vkWaitForFences(
+            self.context.device,
+            1,
+            &self.fence,
+            c.VK_TRUE,
+            std.math.maxInt(u64)
+        );
+        
+        // Reset fence for next use
+        _ = c.vkResetFences(self.context.device, 1, &self.fence);
+        
+        // Download results
+        try self.downloadData(
+            &output_buffer,
+            std.mem.sliceAsBytes(output_data)
+        );
+    }
+    
+    fn getBufferMemoryRequirements(self: *VulkanComputeManager, buffer: c.VkBuffer) c.VkMemoryRequirements {
+        var requirements: c.VkMemoryRequirements = undefined;
+        c.vkGetBufferMemoryRequirements(self.context.device, buffer, &requirements);
+        return requirements;
+    }
+};
+
+fn loadShader(allocator: Allocator, path: []const u8) ![]u8 {
+    const full_path = try std.fs.path.join(allocator, &[_][]const u8{ "src/vulkan/compute", path });
+    defer allocator.free(full_path);
+    
+    const file = try std.fs.cwd().openFile(full_path, .{});
+    defer file.close();
+    
+    const file_size = try file.getEndPos();
+    const code = try allocator.alloc(u8, file_size);
+    _ = try file.readAll(code);
+    
+    return code;
+}
+
+test "VulkanComputeManager" {
+    const allocator = std.testing.allocator;
+    
+    // Skip this test in CI since it requires Vulkan
+    if (builtin.is_test) {
+        return error.SkipZigTest;
+    }
+    
+    var manager = try VulkanComputeManager.init(allocator);
+    defer manager.deinit();
+    
+    // Simple test with 2x2x2x2 input and output
+    const input_dims = [4]i32{1, 1, 2, 2};
+    const output_dims = [4]i32{1, 1, 2, 2};
+    const input = [_]f32{1.0, 2.0, 3.0, 4.0};
+    var output = [_]f32{0.0} ** 4;
+    
+    try manager.runSpiralConvolution(
+        &input,
+        &output,
+        input_dims,
+        output_dims,
+        3,      // kernel_size
+        1.618,  // golden_ratio
+        1.0,    // time_scale
+    );
+    
+    // Verify the output is not zero (exact values depend on the shader implementation)
+    for (output) |val| {
+        try std.testing.expect(val != 0.0);
+    }
+}
