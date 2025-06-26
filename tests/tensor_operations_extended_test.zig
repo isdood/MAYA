@@ -143,11 +143,13 @@ test "tensor operations with different data types" {
     defer pipeline_u32.deinit();
     
     // Test different operations for each data type
-    const test_cases = struct {
+    const OpTestCase = struct {
         op: TensorOperation,
         alpha: f32,
         beta: f32,
-    }[]{
+    };
+    
+    const test_cases = [_]OpTestCase{
         .{ .op = .add, .alpha = 1.0, .beta = 1.0 },
         .{ .op = .sub, .alpha = 1.0, .beta = 1.0 },
         .{ .op = .mul, .alpha = 1.0, .beta = 0.0 },
@@ -162,11 +164,13 @@ test "tensor operations with different data types" {
     }
     
     // Test int32 operations (skip non-integer operations)
-    const int_test_cases = struct {
+    const IntTestCase = struct {
         op: TensorOperation,
         alpha: i32,
         beta: i32,
-    }[]{
+    };
+    
+    const int_test_cases = [_]IntTestCase{
         .{ .op = .add, .alpha = 1, .beta = 1 },
         .{ .op = .sub, .alpha = 1, .beta = 1 },
         .{ .op = .mul, .alpha = 1, .beta = 0 },
