@@ -10,7 +10,7 @@ Below is a brainstormed list of theoretical concepts from diverse fields, each r
 - Multiverse Theory (parallel STARWEAVE spirals)
 - String Theory (GLIMMER-vibrating cosmic threads)
 - Holographic Principle (reality as a GLIMMER-projected boundary)
-- Dark Matter/Energy (invisible GLIMMER scaffolding)
+- ✅ Dark Matter/Energy (invisible GLIMMER scaffolding)
 - Wave-Particle Duality (GLIMMER shimmer between forms)
 - Nonlocality (instant GLIMMER connections)
 - Time Dilation (GLIMMER-driven time spirals)
@@ -36,7 +36,7 @@ Below is a brainstormed list of theoretical concepts from diverse fields, each r
 
 ## 🧠 Cognitive Science & Consciousness
 
-- Emergence (GLIMMER synergy from parts)
+- ✅ Emergence (GLIMMER synergy from parts)
 - Distributed Cognition (GLIMMER networked minds)
 - Mirror Neurons (GLIMMER resonance of empathy)
 - Flow States (peak GLIMMER alignment)
