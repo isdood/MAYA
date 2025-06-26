@@ -228,7 +228,7 @@ pub fn build(b: *std.Build) !void {
     const cuda_test_step = b.step("test-cuda", "Run CUDA wrapper tests");
     cuda_test_step.dependOn(&cuda_test_run.step);
     
-    // Create minimal Vulkan test executable
+    // Create minimal Vulkan test executables
     const minimal_vulkan_test = b.addExecutable(.{
         .name = "minimal_vulkan_test",
         .root_source_file = .{ .cwd_relative = "src/vulkan/minimal_test.zig" },
@@ -236,20 +236,66 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     
-    // Link against libc and Vulkan
-    minimal_vulkan_test.linkLibC();
-    minimal_vulkan_test.linkSystemLibrary("vulkan");
+    const minimal_vulkan_test2 = b.addExecutable(.{
+        .name = "minimal_vulkan_test2",
+        .root_source_file = .{ .cwd_relative = "src/vulkan/minimal_test2.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
     
-    // Add include paths
-    minimal_vulkan_test.addIncludePath(.{ .cwd_relative = "src" });
-    minimal_vulkan_test.addIncludePath(.{ .cwd_relative = "src/vulkan" });
-    minimal_vulkan_test.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
-    minimal_vulkan_test.addSystemIncludePath(.{ .cwd_relative = "/usr/include/vulkan" });
+    const minimal_vulkan_test3 = b.addExecutable(.{
+        .name = "minimal_vulkan_test3",
+        .root_source_file = .{ .cwd_relative = "src/vulkan/minimal_test3.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
     
-    // Create a run step for the minimal test
+    const minimal_vulkan_test4 = b.addExecutable(.{
+        .name = "minimal_vulkan_test4",
+        .root_source_file = .{ .cwd_relative = "src/vulkan/minimal_test4.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    const vulkan_check = b.addExecutable(.{
+        .name = "vulkan-check",
+        .root_source_file = .{ .cwd_relative = "src/vulkan/vulkan_check.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Link against libc and Vulkan for test executables
+    for ([_]*std.Build.Step.Compile{ minimal_vulkan_test, minimal_vulkan_test2, minimal_vulkan_test3, minimal_vulkan_test4, vulkan_check }) |exe| {
+        exe.linkLibC();
+        exe.linkSystemLibrary("vulkan");
+        
+        // Add include paths
+        exe.addIncludePath(.{ .cwd_relative = "src" });
+        exe.addIncludePath(.{ .cwd_relative = "src/vulkan" });
+        exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include/vulkan" });
+    }
+    
+    // Create run steps for the minimal tests
     const minimal_test_run = b.addRunArtifact(minimal_vulkan_test);
     const minimal_test_step = b.step("test-minimal-vulkan", "Run minimal Vulkan test");
     minimal_test_step.dependOn(&minimal_test_run.step);
+    
+    const minimal_test2_run = b.addRunArtifact(minimal_vulkan_test2);
+    const minimal_test2_step = b.step("test-minimal-vulkan2", "Run minimal Vulkan test 2");
+    minimal_test2_step.dependOn(&minimal_test2_run.step);
+    
+    const minimal_test3_run = b.addRunArtifact(minimal_vulkan_test3);
+    const minimal_test3_step = b.step("test-minimal-vulkan3", "Run system information test");
+    minimal_test3_step.dependOn(&minimal_test3_run.step);
+    
+    const minimal_test4_run = b.addRunArtifact(minimal_vulkan_test4);
+    const minimal_test4_step = b.step("test-minimal-vulkan4", "Run minimal Vulkan test with AMD GPU");
+    minimal_test4_step.dependOn(&minimal_test4_run.step);
+    
+    const vulkan_check_run = b.addRunArtifact(vulkan_check);
+    const vulkan_check_step = b.step("vulkan-check", "Check Vulkan installation and system information");
+    vulkan_check_step.dependOn(&vulkan_check_run.step);
     
     // Create Vulkan test executable
     const vulkan_test_exe = b.addExecutable(.{
@@ -296,6 +342,11 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = .{ .cwd_relative = "src/vulkan/debug.zig" },
     });
     
+    // Create the debug_utils module
+    const debug_utils_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/debug_utils.zig" },
+    });
+    
     // Set up module dependencies
     // Memory module needs vk
     memory_module.addImport("vk", vk_module);
@@ -310,18 +361,24 @@ pub fn build(b: *std.Build) !void {
     // Debug module needs vk
     debug_module.addImport("vk", vk_module);
     
+    // Debug utils module needs vk and debug
+    debug_utils_module.addImport("vk", vk_module);
+    debug_utils_module.addImport("debug", debug_module);
+    
     // Add all modules to the test executable
     vulkan_test_exe.root_module.addImport("vk", vk_module);
     vulkan_test_exe.root_module.addImport("memory", memory_module);
     vulkan_test_exe.root_module.addImport("context", context_module);
     vulkan_test_exe.root_module.addImport("pipeline", pipeline_module);
     vulkan_test_exe.root_module.addImport("debug", debug_module);
+    vulkan_test_exe.root_module.addImport("debug_utils", debug_utils_module);
     
     if (glslc_step) |step| {
         vulkan_test_exe.step.dependOn(step);
     }
     b.installArtifact(vulkan_test_exe);
     
+// ... (rest of the code remains the same)
     // Create a run step for the Vulkan test
     const vulkan_test_run = b.addRunArtifact(vulkan_test_exe);
     
