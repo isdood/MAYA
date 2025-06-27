@@ -23,6 +23,21 @@ pub fn build(b: *std.Build) !void {
         },
     });
     
+    // Create the tensor_operations module
+    const tensor_ops_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/tensor_operations.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan/context",
+                .module = context_module,
+            },
+        },
+    });
+    
     // Create the test executable
     const test_exe = b.addTest(.{
         .name = "vulkan_init_test",
@@ -34,6 +49,26 @@ pub fn build(b: *std.Build) !void {
     // Add module imports
     test_exe.root_module.addImport("vulkan", vk_module);
     test_exe.root_module.addImport("vulkan/context", context_module);
+    
+    // Add shader files to the build
+    const shader_files = [_][]const u8{
+        "shaders/4d_tensor_operations_float.comp.spv",
+        "shaders/4d_tensor_operations_int.comp.spv",
+        "shaders/4d_tensor_operations_uint.comp.spv",
+    };
+    
+    // Create a shaders step
+    const shaders_step = b.step("shaders", "Install shader files");
+    
+    // Install shader files to the output directory
+    inline for (shader_files) |shader| {
+        const shader_install = b.addInstallFile(
+            .{ .cwd_relative = shader },
+            b.fmt("zig-out/{s}", .{shader}),
+        );
+        shaders_step.dependOn(&shader_install.step);
+        test_exe.step.dependOn(&shader_install.step);
+    }
     
     // Add include paths
     test_exe.addIncludePath(.{ .cwd_relative = "src" });
@@ -80,6 +115,7 @@ pub fn build(b: *std.Build) !void {
         // Add module imports
         exe.root_module.addImport("vulkan", vk_module);
         exe.root_module.addImport("vulkan/context", context_module);
+        exe.root_module.addImport("vulkan/compute/tensor_operations", tensor_ops_module);
     }
     
     // Create test steps

@@ -124,22 +124,27 @@ fn runTensorOperationTest(
 }
 
 test "tensor operations with different data types" {
+    // Get test allocator
+    const allocator = std.testing.allocator;
+    
     // Initialize Vulkan context
-    var context = try Context.init();
+    var context = try Context.init(allocator);
     defer context.deinit();
     
     // Create command buffer
     const command_buffer = try context.createCommandBuffer();
-    defer context.destroyCommandBuffer(command_buffer);
     
     // Initialize pipelines for different data types
-    var pipeline_f32 = try TensorPipelineF32.init(&context);
+    var pipeline_f32 = try TensorPipelineF32.init(allocator, &context);
     defer pipeline_f32.deinit();
     
-    var pipeline_i32 = try TensorPipelineI32.init(&context);
+    var pipeline_i32 = try TensorPipelineI32.init(allocator, &context);
     defer pipeline_i32.deinit();
     
-    var pipeline_u32 = try TensorPipelineU32.init(&context);
+    // Submit command buffer to ensure it's executed
+    try context.submitCommandBuffer(command_buffer);
+    
+    var pipeline_u32 = try TensorPipelineU32.init(allocator, &context);
     defer pipeline_u32.deinit();
     
     // Test different operations for each data type
@@ -195,16 +200,21 @@ test "tensor operations with different data types" {
 }
 
 test "tensor operations with different shapes" {
+    // Get test allocator
+    const allocator = std.testing.allocator;
+    
     // Initialize Vulkan context
-    var context = try Context.init();
+    var context = try Context.init(allocator);
     defer context.deinit();
     
     // Create command buffer
     const command_buffer = try context.createCommandBuffer();
-    defer context.destroyCommandBuffer(command_buffer);
+    
+    // Submit command buffer to ensure it's executed
+    try context.submitCommandBuffer(command_buffer);
     
     // Initialize pipeline
-    var pipeline = try TensorPipelineF32.init(&context);
+    var pipeline = try TensorPipelineF32.init(allocator, &context);
     defer pipeline.deinit();
     
     // Test different tensor shapes
@@ -247,8 +257,11 @@ test "tensor operations with different shapes" {
 }
 
 test "tensor operations with different alpha/beta values" {
+    // Get test allocator
+    const allocator = std.testing.allocator;
+    
     // Initialize Vulkan context
-    var context = try Context.init();
+    var context = try Context.init(allocator);
     defer context.deinit();
     
     // Create command buffer
@@ -256,7 +269,7 @@ test "tensor operations with different alpha/beta values" {
     defer context.destroyCommandBuffer(command_buffer);
     
     // Initialize pipeline
-    var pipeline = try TensorPipelineF32.init(&context);
+    var pipeline = try TensorPipelineF32.init(allocator, &context);
     defer pipeline.deinit();
     
     const dims = TensorDims{ 2, 2, 1, 1 };

@@ -1,6 +1,6 @@
 // src/vulkan/compute/datatypes.zig
 const std = @import("std");
-const vk = @import("../vk.zig");
+const vk = @import("vk");
 
 /// Supported data types for tensor operations
 pub const DataType = enum(u32) {

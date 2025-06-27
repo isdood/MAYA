@@ -5,7 +5,7 @@ const Allocator = std.mem.Allocator;
 
 // Import the vk module that was provided by the build system
 const vk = @import("vk");
-const Context = @import("context").VulkanContext;
+const Context = @import("vulkan/context").VulkanContext;
 
 pub const ComputePipeline = struct {
     device: vk.VkDevice,

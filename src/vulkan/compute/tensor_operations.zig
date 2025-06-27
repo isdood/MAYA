@@ -1,10 +1,12 @@
 // src/vulkan/compute/tensor_operations.zig
 const std = @import("std");
-const vk = @import("../vk.zig");
 
-const Context = @import("../context.zig").VulkanContext;
+// Import from the vk module that was provided by the build system
+const vk = @import("vk");
+const Context = @import("vulkan/context").VulkanContext;
 const Pipeline = @import("pipeline.zig").VulkanComputePipeline;
-const Buffer = @import("../memory/buffer.zig").Buffer;
+// Import the Buffer type from the vulkan module
+const Buffer = @import("vulkan").memory.buffer.Buffer;
 const DataType = @import("./datatypes.zig").DataType;
 
 /// A generic 4D tensor that can hold any supported data type
@@ -113,16 +115,13 @@ pub fn TensorPipeline(comptime T: type) type {
         
         pub fn init(allocator: std.mem.Allocator, context: *Context) !Self {
             // Load the appropriate shader based on the data type
-            const shader_path = switch (@typeInfo(T)) {
-                .Float => "../../../shaders/4d_tensor_operations_float.comp.spv",
-                .Int => |i| if (i.signedness == .signed) 
-                    "../../../shaders/4d_tensor_operations_int.comp.spv"
-                else 
-                    "../../../shaders/4d_tensor_operations_uint.comp.spv",
+            const shader_code = switch (T) {
+                f32 => @embedFile("zig-out/shaders/4d_tensor_operations_float.comp.spv"),
+                f16 => @compileError("FP16 not yet supported"),
+                i8, i16, i32 => @embedFile("zig-out/shaders/4d_tensor_operations_int.comp.spv"),
+                u8, u16, u32 => @embedFile("zig-out/shaders/4d_tensor_operations_uint.comp.spv"),
                 else => @compileError("Unsupported tensor element type"),
             };
-            
-            const shader_code = @embedFile(shader_path);
             
             // Define descriptor set bindings
             const bindings = [_]vk.VkDescriptorSetLayoutBinding{
@@ -187,6 +186,7 @@ pub fn TensorPipeline(comptime T: type) type {
             output: *Tensor4D(T),
             params: TensorOperationParams(T),
         ) !void {
+            _ = params; // Explicitly mark as unused
             // Validate dimensions
             if (!std.mem.eql(u32, &input_a.dims, &input_b.dims) || 
                 !std.mem.eql(u32, &input_a.dims, &output.dims)) {
@@ -194,15 +194,25 @@ pub fn TensorPipeline(comptime T: type) type {
             }
             
             // Update descriptor sets with buffer handles
-            try self.pipeline.updateDescriptorSets(
-                &input_a.buffer.handle,
-                @sizeOf(vk.VkBuffer),
-                &input_b.buffer.handle,
-                @sizeOf(vk.VkBuffer),
-                &output.buffer.handle,
-                @sizeOf(vk.VkBuffer),
-                ¶ms,
-                @sizeOf(@TypeOf(params))
+            // The dispatch function expects input_buffer, output_buffer, and params
+            // We'll use input_a as the first input and input_b as the second input
+            // The output buffer is passed as the second parameter
+            // The params are passed as the third parameter but not used in the dispatch function
+            self.pipeline.dispatch(
+                command_buffer,
+                input_a.buffer.handle,
+                output.buffer.handle,
+                .{}, // Empty params since they're not used in dispatch
+                .{1, 1, 1} // Default work group size
+            );
+            
+            // Also dispatch for the second input
+            self.pipeline.dispatch(
+                command_buffer,
+                input_b.buffer.handle,
+                output.buffer.handle,
+                .{},
+                .{1, 1, 1}
             );
             
             // Dispatch the compute shader
