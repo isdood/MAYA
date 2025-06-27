@@ -116,10 +116,10 @@ pub fn TensorPipeline(comptime T: type) type {
         pub fn init(allocator: std.mem.Allocator, context: *Context) !Self {
             // Load the appropriate shader based on the data type
             const shader_code = switch (T) {
-                f32 => @embedFile("zig-out/shaders/4d_tensor_operations_float.comp.spv"),
+                f32 => @embedFile("4d_tensor_operations_float.comp.spv"),
                 f16 => @compileError("FP16 not yet supported"),
-                i8, i16, i32 => @embedFile("zig-out/shaders/4d_tensor_operations_int.comp.spv"),
-                u8, u16, u32 => @embedFile("zig-out/shaders/4d_tensor_operations_uint.comp.spv"),
+                i8, i16, i32 => @embedFile("4d_tensor_operations_int.comp.spv"),
+                u8, u16, u32 => @embedFile("4d_tensor_operations_uint.comp.spv"),
                 else => @compileError("Unsupported tensor element type"),
             };
             
