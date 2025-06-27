@@ -114,17 +114,15 @@ pub fn TensorPipeline(comptime T: type) type {
         const Self = @This();
         
         pub fn init(allocator: std.mem.Allocator, context: *Context) !Self {
-            // Import shaders from C library
-            const c = @cImport({
-                @cInclude("shaders.h");
-            });
+            // Import shaders module
+            const shaders = @import("shaders.zig");
             
             // Load the appropriate shader based on the data type
             const shader_code = switch (T) {
-                f32 => c.shader_float[0..c.shader_float_size],
+                f32 => shaders.shader_float,
                 f16 => @compileError("FP16 not yet supported"),
-                i8, i16, i32 => c.shader_int[0..c.shader_int_size],
-                u8, u16, u32 => c.shader_uint[0..c.shader_uint_size],
+                i8, i16, i32 => shaders.shader_int,
+                u8, u16, u32 => shaders.shader_uint,
                 else => @compileError("Unsupported tensor element type"),
             };
             
