@@ -82,9 +82,15 @@ pub fn build(b: *std.Build) !void {
     test_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
     test_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include/vulkan" });
     
-    // Add shaders directory to the include paths
+    // Add include paths for shaders
     test_exe.addIncludePath(.{ .cwd_relative = "src/vulkan/compute" });
-    test_exe.addIncludePath(.{ .cwd_relative = "shaders" });
+    test_exe.addIncludePath(.{ .cwd_relative = "src/vulkan/compute/generated" });
+    
+    // Add shaders module
+    const shaders_module = b.addModule("shaders", .{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/shaders.zig" },
+    });
+    test_exe.root_module.addImport("shaders", shaders_module);
     
     // Link against required libraries
     test_exe.linkSystemLibrary("vulkan");

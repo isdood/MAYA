@@ -119,10 +119,10 @@ pub fn TensorPipeline(comptime T: type) type {
             
             // Load the appropriate shader based on the data type
             const shader_code = switch (T) {
-                f32 => shaders.shader_float,
+                f32 => shaders.float,
                 f16 => @compileError("FP16 not yet supported"),
-                i8, i16, i32 => shaders.shader_int,
-                u8, u16, u32 => shaders.shader_uint,
+                i8, i16, i32 => shaders.int,
+                u8, u16, u32 => shaders.uint,
                 else => @compileError("Unsupported tensor element type"),
             };
             
