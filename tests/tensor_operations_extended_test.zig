@@ -134,7 +134,7 @@ fn runTensorOperationTest(
             .add => a[i] + b[i],
             .sub => a[i] - b[i],
             .mul => a[i] * b[i],
-            .div => if (b[i] == 0) @as(T, 0) else a[i] / b[i],
+            .div => if (b[i] == 0) @as(T, 0) else if (is_float) a[i] / b[i] else @divTrunc(a[i], b[i]),
             .max => @max(a[i], b[i]),
             .min => @min(a[i], b[i]),
             .pow => if (is_float) std.math.pow(T, a[i], b[i]) else @as(T, 0),
