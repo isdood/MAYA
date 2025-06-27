@@ -29,6 +29,21 @@ pub fn build(b: *std.Build) !void {
         },
     });
     
+    // Create the buffer module
+    const buffer_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/memory/buffer.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan/context",
+                .module = context_module,
+            },
+        },
+    });
+    
     // Create the tensor_operations module
     const tensor_ops_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/compute/tensor_operations.zig" },
@@ -40,6 +55,10 @@ pub fn build(b: *std.Build) !void {
             .{
                 .name = "vulkan/context",
                 .module = context_module,
+            },
+            .{
+                .name = "vulkan/memory/buffer",
+                .module = buffer_module,
             },
         },
     });

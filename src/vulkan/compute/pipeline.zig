@@ -210,6 +210,12 @@ pub const VulkanComputePipeline = struct {
         work_group_size: [3]u32,
     ) void {
         // Update descriptor sets
+        const device = self.context.device orelse {
+            // Log error or handle the case where device is null
+            std.debug.print("Error: Device not initialized\n", .{});
+            return;
+        };
+        
         const buffer_infos = [2]vk.VkDescriptorBufferInfo{
             .{
                 .buffer = input_buffer,
@@ -262,8 +268,9 @@ pub const VulkanComputePipeline = struct {
             },
         };
         
+        // Device is already checked above
         vk.vkUpdateDescriptorSets(
-            self.context.device,
+            device,
             write_descriptor_sets.len,
             &write_descriptor_sets,
             0,

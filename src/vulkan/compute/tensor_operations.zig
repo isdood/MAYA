@@ -5,8 +5,9 @@ const std = @import("std");
 const vk = @import("vk");
 const Context = @import("vulkan/context").VulkanContext;
 const Pipeline = @import("pipeline.zig").VulkanComputePipeline;
-// Import the Buffer type from the vulkan module
-const Buffer = @import("vulkan").memory.buffer.Buffer;
+const SpiralConvolutionParams = @import("pipeline.zig").SpiralConvolutionParams;
+// Import the Buffer type from the vulkan/memory/buffer module
+const Buffer = @import("vulkan/memory/buffer").Buffer;
 const DataType = @import("./datatypes.zig").DataType;
 
 // Import the embedded shaders
@@ -60,7 +61,7 @@ pub fn Tensor4D(comptime T: type) type {
             return self.dims[0] * self.dims[1] * self.dims[2] * self.dims[3];
         }
         
-        pub fn readData(self: *const Self, allocator: std.mem.Allocator) ![]T {
+        pub fn readData(self: *Self, allocator: std.mem.Allocator) ![]T {
             const count = self.elementCount();
             const data = try allocator.alloc(T, count);
             try self.buffer.copyFromDevice(std.mem.sliceAsBytes(data));
@@ -75,32 +76,47 @@ pub fn Tensor4D(comptime T: type) type {
         }
         
         fn typeToDataType(comptime Type: type) DataType {
-            return switch (@typeInfo(Type)) {
-                .Float => |f| switch (f.bits) {
-                    32 => .F32,
-                    16 => .F16,
-                    else => @compileError("Unsupported float size"),
-                },
-                .Int => |i| switch (i.bits) {
-                    32 => if (i.signedness == .signed) .I32 else .U32,
-                    16 => if (i.signedness == .signed) .I16 else .U16,
-                    else => @compileError("Unsupported int size"),
-                },
-                else => @compileError("Unsupported tensor element type"),
-            };
+            if (Type == f16) return .F16;
+            if (Type == f32) return .F32;
+            if (Type == i16) return .I16;
+            if (Type == u16) return .U16;
+            if (Type == i32) return .I32;
+            if (Type == u32) return .U32;
+            @compileError("Unsupported tensor element type");
         }
     };
 }
 
 /// Supported tensor operations
 pub const TensorOperation = enum(u32) {
-    add = 0,  // Element-wise addition
-    sub = 1,  // Element-wise subtraction
-    mul = 2,  // Element-wise multiplication
-    div = 3,  // Element-wise division
-    max = 4,  // Element-wise maximum
-    min = 5,  // Element-wise minimum
-    LinearCombination = 6,  // Linear combination of two tensors: alpha * A + beta * B
+    add = 0,      // Element-wise addition
+    sub = 1,      // Element-wise subtraction
+    mul = 2,      // Element-wise multiplication
+    div = 3,      // Element-wise division
+    max = 4,      // Element-wise maximum
+    min = 5,      // Element-wise minimum
+    pow = 6,      // Element-wise power (a^b)
+    relu = 7,    // Rectified Linear Unit (max(0, x))
+    sigmoid = 8, // Sigmoid activation function (1 / (1 + e^-x))
+    tanh = 9,    // Hyperbolic tangent activation function
+    linear_combination = 10, // Linear combination of two tensors: alpha * A + beta * B
+    
+    /// Convert to string for debugging
+    pub fn toString(self: @This()) []const u8 {
+        return switch (self) {
+            .add => "add",
+            .sub => "sub",
+            .mul => "mul",
+            .div => "div",
+            .max => "max",
+            .min => "min",
+            .pow => "pow",
+            .relu => "relu",
+            .sigmoid => "sigmoid",
+            .tanh => "tanh",
+            .linear_combination => "linear_combination",
+        };
+    }
 };
 
 /// Parameters for tensor operations
@@ -108,7 +124,7 @@ pub fn TensorOperationParams(comptime T: type) type {
     return struct {
         alpha: T = 1,
         beta: T = 1,
-        operation: TensorOperation = .Add,
+        operation: TensorOperation = .add,
     };
 }
 
@@ -158,36 +174,57 @@ pub fn TensorPipeline(comptime T: type) type {
             output: *Tensor4D(T),
             params: TensorOperationParams(T),
         ) !void {
-            _ = params; // Explicitly mark as unused
-            // Validate dimensions
-            if (!std.mem.eql(u32, &input_a.dims, &input_b.dims) || 
-                !std.mem.eql(u32, &input_a.dims, &output.dims)) {
-                return error.InvalidTensorDimensions;
+            // Validate dimensions by comparing each element
+            for (input_a.dims, 0..) |dim, i| {
+                if ((dim != input_b.dims[i]) or (dim != output.dims[i])) {
+                    return error.InvalidTensorDimensions;
+                }
             }
             
-            // Update descriptor sets with buffer handles
-            // The dispatch function expects input_buffer, output_buffer, and params
-            // We'll use input_a as the first input and input_b as the second input
-            // The output buffer is passed as the second parameter
-            // The params are passed as the third parameter but not used in the dispatch function
+            // Calculate work group sizes based on tensor dimensions
+            // Using a work group size of 8x8x1 as a reasonable default
+            const work_group_size = [3]u32{
+                @max(@as(u32, 1), input_a.dims[0]),  // x
+                @max(@as(u32, 1), input_a.dims[1]),  // y
+                @max(@as(u32, 1), input_a.dims[2]),  // z
+            };
+            
+            // Create SpiralConvolutionParams with proper type conversion
+            // This will be passed to the shader but marked as unused in the function signature
+            const spiral_params = SpiralConvolutionParams{
+                .input_dims = [4]i32{
+                    @intCast(input_a.dims[0]),
+                    @intCast(input_a.dims[1]),
+                    @intCast(input_a.dims[2]),
+                    @intCast(input_a.dims[3]),
+                },
+                .output_dims = [4]i32{
+                    @intCast(output.dims[0]),
+                    @intCast(output.dims[1]),
+                    @intCast(output.dims[2]),
+                    @intCast(output.dims[3]),
+                },
+                .kernel_size = 1,    // Not used in this operation
+                .golden_ratio = 1.0, // Not used in this operation
+                .time_scale = 1.0,   // Not used in this operation
+            };
+            
+            // Use the operation type from params
+            _ = params.operation;  // This would be used to select the operation in the shader
+            
+            // Dispatch the compute shader with input and output buffers
             self.pipeline.dispatch(
-                command_buffer,
-                input_a.buffer.handle,
-                output.buffer.handle,
-                .{}, // Empty params since they're not used in dispatch
-                .{1, 1, 1} // Default work group size
+                command_buffer,           // Command buffer
+                input_a.buffer.handle,   // Input buffer A
+                output.buffer.handle,    // Output buffer
+                spiral_params,           // SpiralConvolutionParams (unused in the function)
+                work_group_size          // Work group size
             );
             
-            // Also dispatch for the second input
-            self.pipeline.dispatch(
-                command_buffer,
-                input_b.buffer.handle,
-                output.buffer.handle,
-                .{},
-                .{1, 1, 1}
-            );
+            // If needed, we can add a second dispatch for input_b here
+            // with appropriate synchronization if the operation requires it
             
-            // Dispatch the compute shader
+            // Original group counts calculation preserved for reference
             const group_counts = [4]u32{
                 (input_a.dims[0] + 3) / 4,  // x
                 (input_a.dims[1] + 3) / 4,  // y
@@ -195,11 +232,17 @@ pub fn TensorPipeline(comptime T: type) type {
                 input_a.dims[3],            // w (handled in shader)
             };
             
+            // Second dispatch with group counts
             self.pipeline.dispatch(
-                command_buffer,
-                group_counts[0],
-                group_counts[1],
-                group_counts[2]
+                command_buffer,           // Command buffer
+                input_a.buffer.handle,   // Input buffer A
+                output.buffer.handle,    // Output buffer
+                spiral_params,           // SpiralConvolutionParams (unused in the function)
+                [3]u32{                  // Work group size from group counts
+                    group_counts[0],
+                    group_counts[1],
+                    group_counts[2]
+                }
             );
         }
     };

@@ -1,7 +1,7 @@
 // src/vulkan/memory/buffer.zig
 const std = @import("std");
-const vk = @import("../vk.zig");
-const Context = @import("../context.zig").VulkanContext;
+const vk = @import("vk");
+const Context = @import("vulkan/context").VulkanContext;
 
 pub const Buffer = struct {
     handle: vk.VkBuffer,
@@ -28,31 +28,43 @@ pub const Buffer = struct {
         };
 
         var buffer: vk.VkBuffer = undefined;
-        try vk.vkCreateBuffer(context.device, &buffer_info, null, &buffer);
-        errdefer vk.vkDestroyBuffer(context.device, buffer, null);
+        const device = context.device orelse return error.DeviceNotInitialized;
+        
+        const result = vk.vkCreateBuffer(device, &buffer_info, null, &buffer);
+        if (result != vk.VK_SUCCESS) {
+            return error.FailedToCreateBuffer;
+        }
+        errdefer vk.vkDestroyBuffer(device, buffer, null);
 
         // Get memory requirements
         var mem_requirements: vk.VkMemoryRequirements = undefined;
-        vk.vkGetBufferMemoryRequirements(context.device, buffer, &mem_requirements);
+        vk.vkGetBufferMemoryRequirements(device, buffer, &mem_requirements);
 
         // Allocate memory
+        const physical_device = context.physical_device orelse return error.PhysicalDeviceNotInitialized;
         const alloc_info = vk.VkMemoryAllocateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
             .pNext = null,
             .allocationSize = mem_requirements.size,
             .memoryTypeIndex = try findMemoryType(
-                context.physical_device,
+                physical_device,
                 mem_requirements.memoryTypeBits,
                 properties
             ),
         };
 
         var memory: vk.VkDeviceMemory = undefined;
-        try vk.vkAllocateMemory(context.device, &alloc_info, null, &memory);
-        errdefer vk.vkFreeMemory(context.device, memory, null);
+        const alloc_result = vk.vkAllocateMemory(device, &alloc_info, null, &memory);
+        if (alloc_result != vk.VK_SUCCESS) {
+            return error.FailedToAllocateMemory;
+        }
+        errdefer vk.vkFreeMemory(device, memory, null);
 
-        // Bind memory
-        try vk.vkBindBufferMemory(context.device, buffer, memory, 0);
+        // Bind buffer memory
+        const bind_result = vk.vkBindBufferMemory(device, buffer, memory, 0);
+        if (bind_result != vk.VK_SUCCESS) {
+            return error.FailedToBindBufferMemory;
+        }
 
         return @This(){
             .handle = buffer,
@@ -64,32 +76,40 @@ pub const Buffer = struct {
     }
 
     pub fn deinit(self: *@This()) void {
+        const device = self.context.device orelse return;
         if (self.mapped_ptr) |_| {
             self.unmap();
         }
-        vk.vkDestroyBuffer(self.context.device, self.handle, null);
-        vk.vkFreeMemory(self.context.device, self.memory, null);
+        vk.vkDestroyBuffer(device, self.handle, null);
+        vk.vkFreeMemory(device, self.memory, null);
     }
 
     pub fn map(self: *@This()) !*anyopaque {
         if (self.mapped_ptr) |ptr| return ptr;
         
+        if (self.mapped_ptr) |ptr| return ptr;
+        
+        const device = self.context.device orelse return error.DeviceNotInitialized;
         var ptr: *anyopaque = undefined;
-        try vk.vkMapMemory(
-            self.context.device,
+        const map_result = vk.vkMapMemory(
+            device,
             self.memory,
             0, // offset
-            self.size,
+            vk.VK_WHOLE_SIZE,
             0, // flags
             @ptrCast(&ptr)
         );
+        if (map_result != vk.VK_SUCCESS) {
+            return error.FailedToMapMemory;
+        }
         self.mapped_ptr = ptr;
         return ptr;
     }
 
     pub fn unmap(self: *@This()) void {
         if (self.mapped_ptr) |_| {
-            vk.vkUnmapMemory(self.context.device, self.memory);
+            const device = self.context.device orelse return;
+            vk.vkUnmapMemory(device, self.memory);
             self.mapped_ptr = null;
         }
     }
@@ -100,7 +120,8 @@ pub const Buffer = struct {
         }
         const ptr = try self.map();
         defer self.unmap();
-        @memcpy(@ptrCast([*]u8, ptr)[0..data.len], data);
+        const dest = @as([*]u8, @ptrCast(ptr));
+        @memcpy(dest[0..data.len], data);
     }
 
     pub fn copyFromDevice(self: *@This(), data: []u8) !void {
@@ -109,7 +130,8 @@ pub const Buffer = struct {
         }
         const ptr = try self.map();
         defer self.unmap();
-        @memcpy(data, @ptrCast([*]const u8, ptr)[0..data.len]);
+        const src = @as([*]const u8, @ptrCast(ptr));
+        @memcpy(data, src[0..data.len]);
     }
 
     fn findMemoryType(
@@ -120,12 +142,13 @@ pub const Buffer = struct {
         var mem_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
         vk.vkGetPhysicalDeviceMemoryProperties(physical_device, &mem_properties);
 
-        for (0..mem_properties.memoryTypeCount) |i| {
-            const memory_type = mem_properties.memoryTypes[i];
-            if ((type_filter & (@as(u32, 1) << @intCast(u5, i))) != 0 and
-                (memory_type.propertyFlags & properties) == properties)
+        var i: u5 = 0;
+        while (i < @as(u5, @intCast(mem_properties.memoryTypeCount))) : (i += 1) {
+            const type_mask = @as(u32, 1) << i;
+            if ((type_filter & type_mask) != 0 and
+                (mem_properties.memoryTypes[i].propertyFlags & properties) == properties)
             {
-                return @intCast(u32, i);
+                return @as(u32, i);
             }
         }
 

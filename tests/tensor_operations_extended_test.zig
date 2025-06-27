@@ -51,20 +51,31 @@ fn testTensorOperation(
     defer output.deinit();
     
     // Copy data to device
-    try tensor_a.upload(a);
-    try tensor_b.upload(b);
+    try tensor_a.writeData(a);
+    try tensor_b.writeData(b);
     
-    // Dispatch the compute shader
-    try pipeline.dispatch(command_buffer, &tensor_a, &tensor_b, &output, op, alpha, beta);
+    // Execute the tensor operation
+    const ParamsType = tensor_ops.TensorOperationParams(T);
+    const params = ParamsType{
+        .alpha = alpha,
+        .beta = beta,
+        .operation = op,
+    };
+    try pipeline.execute(command_buffer, &tensor_a, &tensor_b, &output, params);
     
     // Wait for the GPU to finish
-    try context.deviceWaitIdle();
+    if (context.device) |device| {
+        const result = vk.vkDeviceWaitIdle(device);
+        if (result != vk.VK_SUCCESS) {
+            return error.DeviceWaitIdleFailed;
+        }
+    } else {
+        return error.DeviceNotInitialized;
+    }
     
     // Download and verify results
-    const result = try allocator.alloc(T, a.len);
+    const result = try output.readData(allocator);
     defer allocator.free(result);
-    
-    try output.download(result);
     
     // Compare results with expected values
     for (result, expected) |r, e| {
@@ -100,22 +111,37 @@ fn runTensorOperationTest(
     
     // Fill with test data
     for (0..len) |i| {
-        const val: T = @floatFromInt(i);
+        // Handle both integer and floating-point types
+        const is_float = switch (@typeInfo(T)) {
+            .float => true,
+            .int, .comptime_int => false,
+            else => @compileError("Unsupported tensor element type"),
+        };
+
+        const val: T = if (is_float)
+            @as(T, @floatFromInt(i))
+        else 
+            @as(T, @intCast(i));
+            
         a[i] = val;
-        b[i] = @floatFromInt(i * 2);
+        b[i] = if (is_float)
+            @as(T, @floatFromInt(i * 2))
+        else
+            @as(T, @intCast(i * 2));
         
         // Compute expected result based on operation
         expected[i] = switch (op) {
             .add => a[i] + b[i],
             .sub => a[i] - b[i],
             .mul => a[i] * b[i],
-            .div => if (b[i] == 0) 0 else a[i] / b[i],
+            .div => if (b[i] == 0) @as(T, 0) else a[i] / b[i],
             .max => @max(a[i], b[i]),
             .min => @min(a[i], b[i]),
-            .pow => if (T == f32) std.math.pow(f32, a[i], b[i]) else 0,
-            .relu => @max(a[i], 0),
-            .sigmoid => if (T == f32) 1.0 / (1.0 + std.math.exp(-a[i])) else 1,
-            .tanh => if (T == f32) std.math.tanh(a[i]) else 0,
+            .pow => if (is_float) std.math.pow(T, a[i], b[i]) else @as(T, 0),
+            .relu => if (a[i] > 0) a[i] else @as(T, 0),
+            .sigmoid => if (is_float) @as(T, 1.0) / (@as(T, 1.0) + std.math.exp(-a[i])) else @as(T, 1),
+            .tanh => if (is_float) std.math.tanh(a[i]) else @as(T, 0),
+            .linear_combination => alpha * a[i] + beta * b[i],
         };
     }
     
