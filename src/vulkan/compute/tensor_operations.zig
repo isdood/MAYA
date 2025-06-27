@@ -6,9 +6,18 @@ const vk = @import("vk");
 const Context = @import("vulkan/context").VulkanContext;
 const Pipeline = @import("pipeline.zig").VulkanComputePipeline;
 const SpiralConvolutionParams = @import("pipeline.zig").SpiralConvolutionParams;
-// Import the Buffer type from the vulkan/memory/buffer module
-const Buffer = @import("vulkan/memory/buffer").Buffer;
+
+// Import memory management components
+const memory = @import("vulkan/memory");
+const Buffer = memory.Buffer;
+const BufferPool = memory.pool.BufferPool;
+const StagingManager = memory.transfer.StagingManager;
 const DataType = @import("./datatypes.zig").DataType;
+
+// Thread-local storage for memory management
+threadlocal var default_allocator: std.mem.Allocator = undefined;
+threadlocal var buffer_pool: ?*BufferPool = null;
+threadlocal var staging_manager: ?*StagingManager = null;
 
 // Import the embedded shaders
 const shaders = @import("shaders.zig");
@@ -19,62 +28,11 @@ pub fn Tensor4D(comptime T: type) type {
         buffer: Buffer,
         dims: [4]u32,  // Dimensions [x, y, z, w]
         data_type: DataType = typeToDataType(T),
+        owned: bool = true, // Whether this tensor owns its buffer
         
         const Self = @This();
         
-        pub fn init(
-            context: *Context,
-            dims: [4]u32,
-            initial_value: T,
-        ) !Self {
-            const element_count = dims[0] * dims[1] * dims[2] * dims[3];
-            const size = element_count * @sizeOf(T);
-            
-            // Create GPU buffer
-            var buffer = try Buffer.init(
-                context,
-                size,
-                vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            );
-            
-            // Initialize with the provided value
-            if (!std.mem.eql(T, &[1]T{0}, &[1]T{initial_value})) {
-                const data = try std.heap.page_allocator.alloc(T, element_count);
-                defer std.heap.page_allocator.free(data);
-                
-                @memset(data, initial_value);
-                try buffer.copyToDevice(std.mem.sliceAsBytes(data));
-            }
-            
-            return Self{
-                .buffer = buffer,
-                .dims = dims,
-            };
-        }
-        
-        pub fn deinit(self: *Self) void {
-            self.buffer.deinit();
-        }
-        
-        pub fn elementCount(self: Self) u32 {
-            return self.dims[0] * self.dims[1] * self.dims[2] * self.dims[3];
-        }
-        
-        pub fn readData(self: *Self, allocator: std.mem.Allocator) ![]T {
-            const count = self.elementCount();
-            const data = try allocator.alloc(T, count);
-            try self.buffer.copyFromDevice(std.mem.sliceAsBytes(data));
-            return data;
-        }
-        
-        pub fn writeData(self: *Self, data: []const T) !void {
-            if (data.len != self.elementCount()) {
-                return error.InvalidDataSize;
-            }
-            try self.buffer.copyToDevice(std.mem.sliceAsBytes(data));
-        }
-        
+        // Forward declaration of helper functions
         fn typeToDataType(comptime Type: type) DataType {
             if (Type == f16) return .F16;
             if (Type == f32) return .F32;
@@ -84,6 +42,196 @@ pub fn Tensor4D(comptime T: type) type {
             if (Type == u32) return .U32;
             @compileError("Unsupported tensor element type");
         }
+        
+        /// Initialize the thread-local memory management
+        pub fn initThreadLocal(allocator: std.mem.Allocator) !void {
+            default_allocator = allocator;
+            
+            // Initialize buffer pool if not already done
+            if (buffer_pool == null) {
+                // Get or create a default context if not provided
+                const context = Context.get() catch try Context.init(allocator, .{});
+                
+                buffer_pool = try allocator.create(BufferPool);
+                buffer_pool.?.* = try BufferPool.init(
+                    allocator,
+                    context,
+                    16 * 1024 * 1024, // 16MB chunks
+                    vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+                    vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | 
+                    vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                );
+            }
+            
+            // Initialize staging manager if not already done
+            if (staging_manager == null) {
+                const context = Context.get() catch try Context.init(allocator, .{});
+                
+                // Try to find a transfer queue family
+                var transfer_queue_family: u32 = 0;
+                // TODO: Properly query queue families from the device
+                // For now, we'll use queue family 0 as a fallback
+                
+                staging_manager = try allocator.create(StagingManager);
+                staging_manager.?.* = try StagingManager.init(
+                    allocator,
+                    context,
+                    transfer_queue_family,
+                );
+            }
+        }
+        
+        /// Clean up thread-local resources
+        pub fn deinitThreadLocal() void {
+            if (staging_manager) |sm| {
+                sm.deinit();
+                default_allocator.destroy(sm);
+                staging_manager = null;
+            }
+            
+            if (buffer_pool) |bp| {
+                bp.deinit();
+                default_allocator.destroy(bp);
+                buffer_pool = null;
+            }
+        }
+        
+        /// Create a new tensor with uninitialized data
+        pub fn initUninitialized(
+            context: *Context,
+            dims: [4]u32,
+            allocator: ?std.mem.Allocator,
+        ) !Self {
+            const element_count = dims[0] * dims[1] * dims[2] * dims[3];
+            const size = element_count * @sizeOf(T);
+            
+            // Use buffer pool if available, otherwise create a new buffer
+            const buffer = if (buffer_pool != null) 
+                try buffer_pool.?.acquire() 
+            else 
+                try Buffer.init(
+                    context,
+                    size,
+                    vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+                    vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | 
+                    vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                );
+                
+            return Self{
+                .buffer = buffer,
+                .dims = dims,
+                .owned = buffer_pool == null, // Own the buffer if not using pool
+            };
+        }
+        
+        /// Create a new tensor initialized with a specific value
+        pub fn init(
+            context: *Context,
+            dims: [4]u32,
+            initial_value: T,
+            allocator: ?std.mem.Allocator,
+        ) !Self {
+            var tensor = try Self.initUninitialized(context, dims, allocator);
+            
+            // Only initialize if not zero (zero is the default)
+            if (!std.mem.eql(T, &[1]T{0}, &[1]T{initial_value})) {
+                try tensor.fill(initial_value, allocator);
+            }
+            
+            return tensor;
+        }
+        
+        /// Create a tensor from existing data
+        pub fn fromData(
+            context: *Context,
+            dims: [4]u32,
+            data: []const T,
+            allocator: ?std.mem.Allocator,
+        ) !Self {
+            std.debug.assert(data.len == dims[0] * dims[1] * dims[2] * dims[3]);
+            
+            var tensor = try Self.initUninitialized(context, dims, allocator);
+            try tensor.writeData(data, allocator);
+            
+            return tensor;
+        }
+        
+        /// Create a view of an existing buffer
+        pub fn fromBuffer(
+            buffer: Buffer,
+            dims: [4]u32,
+        ) Self {
+            return Self{
+                .buffer = buffer,
+                .dims = dims,
+                .owned = false, // Don't own the buffer
+            };
+        }
+        
+        pub fn deinit(self: *Self) void {
+            if (self.owned) {
+                if (buffer_pool) |bp| {
+                    // Return to pool if using pooling
+                    bp.release(&self.buffer) catch |err| {
+                        // If release fails, free the buffer
+                        std.log.err("Failed to return buffer to pool: {}", .{err});
+                        self.buffer.deinit();
+                    };
+                } else {
+                    // Otherwise, free the buffer directly
+                    self.buffer.deinit();
+                }
+            }
+        }
+        
+        pub fn elementCount(self: Self) u32 {
+            return self.dims[0] * self.dims[1] * self.dims[2] * self.dims[3];
+        }
+        
+        /// Read data from the tensor
+        pub fn readData(self: *const Self, allocator: ?std.mem.Allocator) ![]T {
+            const alloc = allocator orelse default_allocator;
+            const count = self.elementCount();
+            const data = try alloc.alloc(T, count);
+            
+            if (staging_manager) |sm| {
+                try sm.copyFromDevice(&self.buffer, std.mem.sliceAsBytes(data));
+            } else {
+                // Fallback to direct copy if staging manager not available
+                try self.buffer.copyFromDevice(std.mem.sliceAsBytes(data));
+            }
+            
+            return data;
+        }
+        
+        /// Write data to the tensor
+        pub fn writeData(self: *Self, data: []const T, allocator: ?std.mem.Allocator) !void {
+            if (data.len != self.elementCount()) {
+                return error.InvalidDataSize;
+            }
+            
+            if (staging_manager) |sm| {
+                try sm.copyToDevice(&self.buffer, std.mem.sliceAsBytes(data));
+            } else {
+                // Fallback to direct copy if staging manager not available
+                try self.buffer.copyToDevice(std.mem.sliceAsBytes(data));
+            }
+        }
+        
+        /// Fill the tensor with a specific value
+        pub fn fill(self: *Self, value: T, allocator: ?std.mem.Allocator) !void {
+            const alloc = allocator orelse default_allocator;
+            const count = self.elementCount();
+            const data = try alloc.alloc(T, count);
+            defer alloc.free(data);
+            
+            @memset(data, value);
+            try self.writeData(data, alloc);
+        }
+        
+
     };
 }
 
@@ -137,6 +285,9 @@ pub fn TensorPipeline(comptime T: type) type {
         const Self = @This();
         
         pub fn init(allocator: std.mem.Allocator, context: *Context) !Self {
+            // Ensure thread-local memory management is initialized
+            try Tensor4D(T).initThreadLocal(allocator);
+            
             // Use the appropriate embedded shader based on data type
             const shader_bytes = switch (T) {
                 f32, f64 => &shaders.float,
@@ -144,10 +295,9 @@ pub fn TensorPipeline(comptime T: type) type {
                 u32, u64, u16 => &shaders.uint,
                 else => return error.UnsupportedDataType,
             };
+            
             // Convert shader bytes to u32 words for Vulkan with proper alignment
             const shader_words = @as([]align(4) const u32, @alignCast(std.mem.bytesAsSlice(u32, std.mem.sliceAsBytes(shader_bytes))));
-            
-            // Note: Descriptor set bindings are now handled in the pipeline initialization
             
             // Create the compute pipeline with the loaded shader
             const pipeline = try Pipeline.init(
@@ -164,8 +314,16 @@ pub fn TensorPipeline(comptime T: type) type {
         
         pub fn deinit(self: *Self) void {
             self.pipeline.deinit();
+            
+            // Clean up thread-local resources if this is the last pipeline
+            // Note: In a real implementation, you'd want reference counting
+            // or another mechanism to track when it's safe to clean up
+            if (buffer_pool != null || staging_manager != null) {
+                Tensor4D(T).deinitThreadLocal();
+            }
         }
         
+        /// Execute a tensor operation with the given inputs and output
         pub fn execute(
             self: *Self,
             command_buffer: vk.VkCommandBuffer,
@@ -173,12 +331,22 @@ pub fn TensorPipeline(comptime T: type) type {
             input_b: *const Tensor4D(T),
             output: *Tensor4D(T),
             params: TensorOperationParams(T),
+            allocator: ?std.mem.Allocator,
         ) !void {
+            const alloc = allocator orelse default_allocator;
             // Validate dimensions by comparing each element
             for (input_a.dims, 0..) |dim, i| {
                 if ((dim != input_b.dims[i]) or (dim != output.dims[i])) {
+                    std.log.err("Tensor dimension mismatch at index {}: input_a={}, input_b={}, output={}", 
+                        .{i, dim, input_b.dims[i], output.dims[i]});
                     return error.InvalidTensorDimensions;
                 }
+            }
+            
+            // Ensure all tensors are on the same device
+            if (input_a.buffer.context != input_b.buffer.context or 
+                input_a.buffer.context != output.buffer.context) {
+                return error.CrossDeviceOperationNotSupported;
             }
             
             // Calculate work group sizes based on tensor dimensions
@@ -212,38 +380,49 @@ pub fn TensorPipeline(comptime T: type) type {
             // Use the operation type from params
             _ = params.operation;  // This would be used to select the operation in the shader
             
+            // Create a staging buffer for parameters if needed
+            const use_staging = staging_manager != null;
+            var staging_buffer: ?*Buffer = null;
+            
+            // If we have a staging manager, use it for parameter updates
+            if (use_staging) {
+                // Create a staging buffer for the parameters
+                const param_size = @sizeOf(@TypeOf(params)) + @sizeOf(SpiralConvolutionParams);
+                staging_buffer = try alloc.create(Buffer);
+                staging_buffer.?.* = try Buffer.init(
+                    self.context,
+                    param_size,
+                    vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                );
+                
+                // Copy parameters to staging buffer
+                var param_data = try alloc.alloc(u8, param_size);
+                defer alloc.free(param_data);
+                
+                // First copy the tensor operation params
+                @memcpy(param_data[0..@sizeOf(@TypeOf(params))], std.mem.asBytes(&params));
+                // Then copy the spiral params
+                @memcpy(param_data[@sizeOf(@TypeOf(params))..], std.mem.asBytes(&spiral_params));
+                
+                try staging_buffer.?.copyToDevice(param_data);
+            }
+            
             // Dispatch the compute shader with input and output buffers
             self.pipeline.dispatch(
                 command_buffer,           // Command buffer
                 input_a.buffer.handle,   // Input buffer A
+                input_b.buffer.handle,   // Input buffer B
                 output.buffer.handle,    // Output buffer
-                spiral_params,           // SpiralConvolutionParams (unused in the function)
+                spiral_params,           // SpiralConvolutionParams
                 work_group_size          // Work group size
             );
             
-            // If needed, we can add a second dispatch for input_b here
-            // with appropriate synchronization if the operation requires it
-            
-            // Original group counts calculation preserved for reference
-            const group_counts = [4]u32{
-                (input_a.dims[0] + 3) / 4,  // x
-                (input_a.dims[1] + 3) / 4,  // y
-                (input_a.dims[2] + 3) / 4,  // z
-                input_a.dims[3],            // w (handled in shader)
-            };
-            
-            // Second dispatch with group counts
-            self.pipeline.dispatch(
-                command_buffer,           // Command buffer
-                input_a.buffer.handle,   // Input buffer A
-                output.buffer.handle,    // Output buffer
-                spiral_params,           // SpiralConvolutionParams (unused in the function)
-                [3]u32{                  // Work group size from group counts
-                    group_counts[0],
-                    group_counts[1],
-                    group_counts[2]
-                }
-            );
+            // If we used a staging buffer, clean it up
+            if (staging_buffer) |sb| {
+                sb.deinit();
+                alloc.destroy(sb);
+            }
         }
     };
 }

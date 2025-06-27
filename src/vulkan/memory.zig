@@ -4,7 +4,17 @@ const std = @import("std");
 // Import the vk module that was provided by the build system
 const vk = @import("vk");
 
-pub const Buffer = struct {
+// Re-export buffer implementation
+pub const Buffer = @import("vulkan/memory/buffer.zig").Buffer;
+
+// Re-export pool implementation
+pub const pool = @import("vulkan/memory/pool.zig");
+
+// Re-export transfer implementation
+pub const transfer = @import("vulkan/memory/transfer.zig");
+
+// For backward compatibility
+pub const Buffer_legacy = struct {
     buffer: vk.VkBuffer,
     memory: vk.VkDeviceMemory,
     size: usize,

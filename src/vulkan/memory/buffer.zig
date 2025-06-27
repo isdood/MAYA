@@ -3,12 +3,25 @@ const std = @import("std");
 const vk = @import("vk");
 const Context = @import("vulkan/context").VulkanContext;
 
+/// Represents a Vulkan buffer with associated memory
 pub const Buffer = struct {
+    /// The underlying Vulkan buffer handle
     handle: vk.VkBuffer,
+    
+    /// The memory allocated for this buffer
     memory: vk.VkDeviceMemory,
+    
+    /// Size of the buffer in bytes
     size: vk.VkDeviceSize,
+    
+    /// Pointer to mapped memory, or null if not mapped
     mapped_ptr: ?*anyopaque,
+    
+    /// Vulkan context this buffer belongs to
     context: *Context,
+    
+    /// Memory properties this buffer was created with
+    memory_properties: vk.VkMemoryPropertyFlags,
 
     pub fn init(
         context: *Context,
@@ -72,21 +85,33 @@ pub const Buffer = struct {
             .size = size,
             .mapped_ptr = null,
             .context = context,
+            .memory_properties = properties,
         };
     }
 
+    /// Deinitialize and clean up the buffer resources
     pub fn deinit(self: *@This()) void {
         const device = self.context.device orelse return;
         if (self.mapped_ptr) |_| {
             self.unmap();
         }
-        vk.vkDestroyBuffer(device, self.handle, null);
-        vk.vkFreeMemory(device, self.memory, null);
+        if (self.handle != .null_handle) {
+            vk.vkDestroyBuffer(device, self.handle, null);
+            self.handle = .null_handle;
+        }
+        if (self.memory != .null_handle) {
+            vk.vkFreeMemory(device, self.memory, null);
+            self.memory = .null_handle;
+        }
+    }
+    
+    /// Reset the buffer to its initial state (useful for pooling)
+    pub fn reset(self: *@This()) void {
+        self.mapped_ptr = null;
     }
 
+    /// Map the buffer memory to host-visible memory
     pub fn map(self: *@This()) !*anyopaque {
-        if (self.mapped_ptr) |ptr| return ptr;
-        
         if (self.mapped_ptr) |ptr| return ptr;
         
         const device = self.context.device orelse return error.DeviceNotInitialized;
@@ -114,27 +139,64 @@ pub const Buffer = struct {
         }
     }
 
+    /// Copy data from host to device memory
+    /// Note: For optimal performance, use StagingManager for large transfers
     pub fn copyToDevice(self: *@This(), data: []const u8) !void {
+        if (data.len == 0) return;
         if (data.len > self.size) {
             return error.BufferTooSmall;
         }
-        const ptr = try self.map();
-        defer self.unmap();
-        const dest = @as([*]u8, @ptrCast(ptr));
-        @memcpy(dest[0..data.len], data);
+        
+        // Use direct mapping if host-visible
+        if (self.memory_properties & vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT != 0) {
+            const ptr = try self.map();
+            defer self.unmap();
+            const dest = @as([*]u8, @ptrCast(ptr));
+            @memcpy(dest[0..data.len], data);
+        } else {
+            // For device-local memory, use a staging buffer
+            // Note: In a real implementation, you'd want to batch these operations
+            var transfer_mgr = try transfer.StagingManager.init(
+                std.heap.page_allocator,
+                self.context,
+                0, // TODO: Get transfer queue family index from context
+            );
+            defer transfer_mgr.deinit();
+            
+            try transfer_mgr.copyToDevice(self, data);
+        }
     }
 
+    /// Copy data from device to host memory
+    /// Note: For optimal performance, use StagingManager for large transfers
     pub fn copyFromDevice(self: *@This(), data: []u8) !void {
+        if (data.len == 0) return;
         if (data.len > self.size) {
             return error.BufferTooSmall;
         }
-        const ptr = try self.map();
-        defer self.unmap();
-        const src = @as([*]const u8, @ptrCast(ptr));
-        @memcpy(data, src[0..data.len]);
+        
+        // Use direct mapping if host-visible
+        if (self.memory_properties & vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT != 0) {
+            const ptr = try self.map();
+            defer self.unmap();
+            const src = @as([*]const u8, @ptrCast(ptr));
+            @memcpy(data, src[0..data.len]);
+        } else {
+            // For device-local memory, use a staging buffer
+            // Note: In a real implementation, you'd want to batch these operations
+            var transfer_mgr = try transfer.StagingManager.init(
+                std.heap.page_allocator,
+                self.context,
+                0, // TODO: Get transfer queue family index from context
+            );
+            defer transfer_mgr.deinit();
+            
+            try transfer_mgr.copyFromDevice(self, data);
+        }
     }
 
-    fn findMemoryType(
+    /// Find a memory type with the required properties
+    pub fn findMemoryType(
         physical_device: vk.VkPhysicalDevice,
         type_filter: u32,
         properties: vk.VkMemoryPropertyFlags,
