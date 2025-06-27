@@ -114,12 +114,17 @@ pub fn TensorPipeline(comptime T: type) type {
         const Self = @This();
         
         pub fn init(allocator: std.mem.Allocator, context: *Context) !Self {
+            // Import shaders from C library
+            const c = @cImport({
+                @cInclude("shaders.h");
+            });
+            
             // Load the appropriate shader based on the data type
             const shader_code = switch (T) {
-                f32 => @embedFile("4d_tensor_operations_float.comp.spv"),
+                f32 => c.shader_float[0..c.shader_float_size],
                 f16 => @compileError("FP16 not yet supported"),
-                i8, i16, i32 => @embedFile("4d_tensor_operations_int.comp.spv"),
-                u8, u16, u32 => @embedFile("4d_tensor_operations_uint.comp.spv"),
+                i8, i16, i32 => c.shader_int[0..c.shader_int_size],
+                u8, u16, u32 => c.shader_uint[0..c.shader_uint_size],
                 else => @compileError("Unsupported tensor element type"),
             };
             

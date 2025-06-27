@@ -79,35 +79,46 @@ pub fn build(b: *std.Build) !void {
     // Add include paths
     test_exe.addIncludePath(.{ .cwd_relative = "src" });
     test_exe.addIncludePath(.{ .cwd_relative = "src/vulkan" });
-    
-    // Create a build directory for shaders
-    const shaders_dir = b.fmt("{s}/shaders", .{b.cache_root.path.?});
-    const shaders_dir_path = std.fs.path.dirname(shaders_dir).?;
-    std.fs.cwd().makePath(shaders_dir_path) catch |err| {
-        std.debug.print("Failed to create shaders directory: {}\n", .{err});
-        return err;
-    };
-    
-    // Copy shader files to the build directory
-    const shader_files = [_][]const u8{
-        "shaders/4d_tensor_operations_float.comp.spv",
-        "shaders/4d_tensor_operations_int.comp.spv",
-        "shaders/4d_tensor_operations_uint.comp.spv",
-    };
-    
-    for (shader_files) |shader| {
-        const shader_path = b.fmt("{s}/{s}", .{shaders_dir, std.fs.path.basename(shader)});
-        const shader_install = b.addInstallFile(
-            .{ .cwd_relative = shader },
-            shader_path,
-        );
-        test_exe.step.dependOn(&shader_install.step);
-    }
-    
-    // Add the shaders directory to the include paths
-    test_exe.addIncludePath(.{ .path = shaders_dir });
+    test_exe.addIncludePath(.{ .cwd_relative = "shaders" });
     test_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
     test_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include/vulkan" });
+    
+    // Add shaders as a static library
+    const shaders_lib = b.addStaticLibrary("shaders", null);
+    shaders_lib.setTarget(target);
+    shaders_lib.setOptimize(optimize);
+    shaders_lib.addCSourceFile("shaders/shaders.c", &[0][]const u8{});
+    shaders_lib.linkLibC();
+    test_exe.linkLibrary(shaders_lib);
+    
+    // Add shaders include path
+    const shaders_include = b.addWriteFiles();
+    const shaders_zig = 
+        \\pub const shader_float = @cImport({\
+\.
+        \\    @cInclude(\"shaders.h\");\n\.
+        \\}).shader_float[0..@cImport({\
+\.
+        \\    @cInclude(\"shaders.h\");\n\.
+        \\}).shader_float_size];\n\.
+        \\pub const shader_int = @cImport({\
+\.
+        \\    @cInclude(\"shaders.h\");\n\.
+        \\}).shader_int[0..@cImport({\
+\.
+        \\    @cInclude(\"shaders.h\");\n\.
+        \\}).shader_int_size];\n\.
+        \\pub const shader_uint = @cImport({\
+\.
+        \\    @cInclude(\"shaders.h\");\n\.
+        \\}).shader_uint[0..@cImport({\
+\.
+        \\    @cInclude(\"shaders.h\");\n\.
+        \\}).shader_uint_size];";
+    
+    _ = shaders_include.add("shaders/shaders.zig", shaders_zig);
+    test_exe.step.dependOn(&shaders_include.step);
+    test_exe.addIncludePath(shaders_include.getDirectory());
     
     // Link against required libraries
     test_exe.linkSystemLibrary("vulkan");
