@@ -133,6 +133,7 @@ pub const SpiralConvolutionParams = extern struct {
 
 pub const VulkanComputePipeline = struct {
     context: *Context,
+    allocator: Allocator,
     pipeline: vk.VkPipeline,
     pipeline_layout: vk.VkPipelineLayout,
     descriptor_set_layout: vk.VkDescriptorSetLayout,
@@ -140,12 +141,14 @@ pub const VulkanComputePipeline = struct {
     descriptor_sets: []vk.VkDescriptorSet,
     shader_module: vk.VkShaderModule,
     
-    pub fn init(context: *Context, shader_code: []const u8) !VulkanComputePipeline {
+    pub fn init(context: *Context, allocator: Allocator, shader_code: []const u32) !VulkanComputePipeline {
         var self: VulkanComputePipeline = undefined;
         self.context = context;
+        self.allocator = allocator;
         
         // Create shader module
-        self.shader_module = try createShaderModuleForContext(context, shader_code);
+        const device = context.device orelse return error.DeviceNotInitialized;
+        self.shader_module = try createShaderModuleFromCode(device, shader_code);
         
         // Create descriptor set layout
         self.descriptor_set_layout = try createDescriptorSetLayout(context);
@@ -160,13 +163,22 @@ pub const VulkanComputePipeline = struct {
         self.descriptor_pool = try createDescriptorPool(context, 1);
         
         // Allocate descriptor sets
-        self.descriptor_sets = try allocateDescriptorSets(context, self.descriptor_pool, self.descriptor_set_layout, 1);
+        const descriptor_set_layouts = try self.allocator.alloc(vk.VkDescriptorSetLayout, 1);
+        defer self.allocator.free(descriptor_set_layouts);
+        descriptor_set_layouts[0] = self.descriptor_set_layout;
+        
+        self.descriptor_sets = try allocateDescriptorSets(context, self.allocator, self.descriptor_pool, descriptor_set_layouts);
         
         return self;
     }
     
     pub fn deinit(self: *VulkanComputePipeline) void {
-        const device = self.context.device;
+        const device = self.context.device orelse return;
+        
+        // Free descriptor sets (they're automatically freed when the pool is destroyed)
+        if (self.descriptor_sets.len > 0) {
+            self.allocator.free(self.descriptor_sets);
+        }
         
         if (self.descriptor_pool != null) {
             vk.vkDestroyDescriptorPool(device, self.descriptor_pool, null);
@@ -294,6 +306,7 @@ fn createShaderModuleFromCode(device: vk.VkDevice, code: []const u32) !vk.VkShad
     var shader_module: vk.VkShaderModule = undefined;
     const result = vk.vkCreateShaderModule(device, &create_info, null, &shader_module);
     if (result != vk.VK_SUCCESS) {
+        std.debug.print("Failed to create shader module: {}\n", .{result});
         return error.ShaderModuleCreationFailed;
     }
 
@@ -302,24 +315,14 @@ fn createShaderModuleFromCode(device: vk.VkDevice, code: []const u32) !vk.VkShad
 
 // Helper function to create a shader module for a Vulkan context
 fn createShaderModuleForContext(context: *Context, code: []const u8) !vk.VkShaderModule {
-    const create_info = vk.VkShaderModuleCreateInfo{
-        .sType = vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .pNext = null,
-        .flags = 0,
-        .codeSize = code.len,
-        .pCode = @ptrCast(code.ptr),
-    };
-    
-    var shader_module: vk.VkShaderModule = undefined;
-    const result = vk.vkCreateShaderModule(context.device, &create_info, null, &shader_module);
-    if (result != vk.VK_SUCCESS) {
-        return error.ShaderModuleCreationFailed;
-    }
-    
-    return shader_module;
+    // Convert the code to a slice of u32 for Vulkan
+    const code_u32 = std.mem.bytesAsSlice(u32, code);
+    return createShaderModuleFromCode(context.device, code_u32);
 }
 
 fn createDescriptorSetLayout(context: *Context) !vk.VkDescriptorSetLayout {
+    const device = context.device orelse return error.DeviceNotInitialized;
+    
     const bindings = [_]vk.VkDescriptorSetLayoutBinding{
         .{
             .binding = 0,
@@ -335,13 +338,6 @@ fn createDescriptorSetLayout(context: *Context) !vk.VkDescriptorSetLayout {
             .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
             .pImmutableSamplers = null,
         },
-        .{
-            .binding = 2,
-            .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
-            .pImmutableSamplers = null,
-        },
     };
     
     const create_info = vk.VkDescriptorSetLayoutCreateInfo{
@@ -353,7 +349,7 @@ fn createDescriptorSetLayout(context: *Context) !vk.VkDescriptorSetLayout {
     };
     
     var descriptor_set_layout: vk.VkDescriptorSetLayout = undefined;
-    const result = vk.vkCreateDescriptorSetLayout(context.device, &create_info, null, &descriptor_set_layout);
+    const result = vk.vkCreateDescriptorSetLayout(device, &create_info, null, &descriptor_set_layout);
     if (result != vk.VK_SUCCESS) {
         return error.DescriptorSetLayoutCreationFailed;
     }
@@ -362,6 +358,8 @@ fn createDescriptorSetLayout(context: *Context) !vk.VkDescriptorSetLayout {
 }
 
 fn createPipelineLayout(context: *Context, descriptor_set_layout: vk.VkDescriptorSetLayout) !vk.VkPipelineLayout {
+    const device = context.device orelse return error.DeviceNotInitialized;
+    
     const push_constant_range = vk.VkPushConstantRange{
         .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
         .offset = 0,
@@ -379,7 +377,7 @@ fn createPipelineLayout(context: *Context, descriptor_set_layout: vk.VkDescripto
     };
     
     var pipeline_layout: vk.VkPipelineLayout = undefined;
-    const result = vk.vkCreatePipelineLayout(context.device, &create_info, null, &pipeline_layout);
+    const result = vk.vkCreatePipelineLayout(device, &create_info, null, &pipeline_layout);
     if (result != vk.VK_SUCCESS) {
         return error.PipelineLayoutCreationFailed;
     }
@@ -388,6 +386,8 @@ fn createPipelineLayout(context: *Context, descriptor_set_layout: vk.VkDescripto
 }
 
 fn createComputePipeline(context: *Context, shader_module: vk.VkShaderModule, pipeline_layout: vk.VkPipelineLayout) !vk.VkPipeline {
+    const device = context.device orelse return error.DeviceNotInitialized;
+    
     const stage_create_info = vk.VkPipelineShaderStageCreateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .pNext = null,
@@ -409,7 +409,7 @@ fn createComputePipeline(context: *Context, shader_module: vk.VkShaderModule, pi
     };
     
     var pipeline: vk.VkPipeline = undefined;
-    const result = vk.vkCreateComputePipelines(context.device, null, 1, &create_info, null, &pipeline);
+    const result = vk.vkCreateComputePipelines(device, null, 1, &create_info, null, &pipeline);
     if (result != vk.VK_SUCCESS) {
         return error.PipelineCreationFailed;
     }
@@ -418,6 +418,8 @@ fn createComputePipeline(context: *Context, shader_module: vk.VkShaderModule, pi
 }
 
 fn createDescriptorPool(context: *Context, max_sets: u32) !vk.VkDescriptorPool {
+    const device = context.device orelse return error.DeviceNotInitialized;
+    
     const pool_sizes = [_]vk.VkDescriptorPoolSize{
         .{ .type = vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = 2 * max_sets },
         .{ .type = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = max_sets },
@@ -433,7 +435,7 @@ fn createDescriptorPool(context: *Context, max_sets: u32) !vk.VkDescriptorPool {
     };
     
     var descriptor_pool: vk.VkDescriptorPool = undefined;
-    const result = vk.vkCreateDescriptorPool(context.device, &create_info, null, &descriptor_pool);
+    const result = vk.vkCreateDescriptorPool(device, &create_info, null, &descriptor_pool);
     if (result != vk.VK_SUCCESS) {
         return error.DescriptorPoolCreationFailed;
     }
@@ -441,16 +443,14 @@ fn createDescriptorPool(context: *Context, max_sets: u32) !vk.VkDescriptorPool {
     return descriptor_pool;
 }
 
-fn allocateDescriptorSets(context: *Context, descriptor_pool: vk.VkDescriptorPool, 
-                         descriptor_set_layout: vk.VkDescriptorSetLayout, count: u32) ![]vk.VkDescriptorSet {
-    const allocator = context.allocator;
-    
-    const layouts = try allocator.alloc(vk.VkDescriptorSetLayout, count);
-    defer allocator.free(layouts);
-    
-    for (layouts) |*layout| {
-        layout.* = descriptor_set_layout;
-    }
+fn allocateDescriptorSets(
+    context: *Context,
+    allocator: Allocator,
+    descriptor_pool: vk.VkDescriptorPool,
+    layouts: []const vk.VkDescriptorSetLayout,
+) ![]vk.VkDescriptorSet {
+    const device = context.device orelse return error.DeviceNotInitialized;
+    const count = @as(u32, @intCast(layouts.len));
     
     const allocate_info = vk.VkDescriptorSetAllocateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -463,7 +463,7 @@ fn allocateDescriptorSets(context: *Context, descriptor_pool: vk.VkDescriptorPoo
     const descriptor_sets = try allocator.alloc(vk.VkDescriptorSet, count);
     errdefer allocator.free(descriptor_sets);
     
-    const result = vk.vkAllocateDescriptorSets(context.device, &allocate_info, descriptor_sets.ptr);
+    const result = vk.vkAllocateDescriptorSets(device, &allocate_info, descriptor_sets.ptr);
     if (result != vk.VK_SUCCESS) {
         allocator.free(descriptor_sets);
         return error.DescriptorSetAllocationFailed;

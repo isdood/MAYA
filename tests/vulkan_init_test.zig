@@ -9,7 +9,7 @@ const Context = @import("vulkan/context").VulkanContext;
 
 test "vulkan initialization" {
     // Initialize Vulkan context
-    var context = try Context.init();
+    var context = try Context.init(std.testing.allocator);
     defer context.deinit();
 
     // Verify context was initialized correctly

@@ -9,6 +9,9 @@ const Pipeline = @import("pipeline.zig").VulkanComputePipeline;
 const Buffer = @import("vulkan").memory.buffer.Buffer;
 const DataType = @import("./datatypes.zig").DataType;
 
+// Import the embedded shaders
+const shaders = @import("shaders.zig");
+
 /// A generic 4D tensor that can hold any supported data type
 pub fn Tensor4D(comptime T: type) type {
     return struct {
@@ -91,9 +94,13 @@ pub fn Tensor4D(comptime T: type) type {
 
 /// Supported tensor operations
 pub const TensorOperation = enum(u32) {
-    Add = 0,
-    Multiply = 1,
-    LinearCombination = 2,
+    add = 0,  // Element-wise addition
+    sub = 1,  // Element-wise subtraction
+    mul = 2,  // Element-wise multiplication
+    div = 3,  // Element-wise division
+    max = 4,  // Element-wise maximum
+    min = 5,  // Element-wise minimum
+    LinearCombination = 6,  // Linear combination of two tensors: alpha * A + beta * B
 };
 
 /// Parameters for tensor operations
@@ -114,61 +121,23 @@ pub fn TensorPipeline(comptime T: type) type {
         const Self = @This();
         
         pub fn init(allocator: std.mem.Allocator, context: *Context) !Self {
-            // Import shaders module
-            const shaders = @import("shaders.zig");
-            
-            // Load the appropriate shader based on the data type
-            const shader_code = switch (T) {
-                f32 => shaders.float,
-                f16 => @compileError("FP16 not yet supported"),
-                i8, i16, i32 => shaders.int,
-                u8, u16, u32 => shaders.uint,
-                else => @compileError("Unsupported tensor element type"),
+            // Use the appropriate embedded shader based on data type
+            const shader_bytes = switch (T) {
+                f32, f64 => &shaders.float,
+                i32, i64, i16 => &shaders.int,
+                u32, u64, u16 => &shaders.uint,
+                else => return error.UnsupportedDataType,
             };
+            // Convert shader bytes to u32 words for Vulkan with proper alignment
+            const shader_words = @as([]align(4) const u32, @alignCast(std.mem.bytesAsSlice(u32, std.mem.sliceAsBytes(shader_bytes))));
             
-            // Define descriptor set bindings
-            const bindings = [_]vk.VkDescriptorSetLayoutBinding{
-                // Input A
-                .{
-                    .binding = 0,
-                    .descriptorType = vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                    .descriptorCount = 1,
-                    .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
-                    .pImmutableSamplers = null,
-                },
-                // Input B
-                .{
-                    .binding = 1,
-                    .descriptorType = vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                    .descriptorCount = 1,
-                    .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
-                    .pImmutableSamplers = null,
-                },
-                // Output
-                .{
-                    .binding = 2,
-                    .descriptorType = vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                    .descriptorCount = 1,
-                    .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
-                    .pImmutableSamplers = null,
-                },
-                // Parameters
-                .{
-                    .binding = 3,
-                    .descriptorType = vk.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                    .descriptorCount = 1,
-                    .stageFlags = vk.VK_SHADER_STAGE_COMPUTE_BIT,
-                    .pImmutableSamplers = null,
-                },
-            };
+            // Note: Descriptor set bindings are now handled in the pipeline initialization
             
-            // Create the compute pipeline
+            // Create the compute pipeline with the loaded shader
             const pipeline = try Pipeline.init(
-                allocator,
                 context,
-                shader_code,
-                &bindings,
-                null, // No push constants for now
+                allocator,
+                shader_words,
             );
             
             return Self{
