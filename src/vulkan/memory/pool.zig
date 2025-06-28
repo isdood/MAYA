@@ -132,7 +132,7 @@ pub const BufferPoolManager = struct {
             return pool;
         }
         
-        var pool = try BufferPool.init(
+        const pool = try BufferPool.init(
             self.allocator,
             self.context,
             buffer_size,

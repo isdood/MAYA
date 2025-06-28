@@ -2,6 +2,7 @@
 const std = @import("std");
 const vk = @import("vk");
 const Context = @import("vulkan/context").VulkanContext;
+const transfer = @import("vulkan/memory/transfer");
 
 /// Represents a Vulkan buffer with associated memory
 pub const Buffer = struct {

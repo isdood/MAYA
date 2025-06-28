@@ -13,6 +13,11 @@ pub fn build(b: *std.Build) !void {
     // Standard optimization options
     const optimize = b.standardOptimizeOption(.{});
 
+    // Create the shaders module first to avoid conflicts
+    const shaders_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/shaders.zig" },
+    });
+
     // Create the Vulkan module
     const vk_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/vk.zig" },
@@ -29,9 +34,9 @@ pub fn build(b: *std.Build) !void {
         },
     });
     
-    // Create the buffer module
-    const buffer_module = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/vulkan/memory/buffer.zig" },
+    // Create the memory module
+    const memory_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/memory.zig" },
         .imports = &.{
             .{
                 .name = "vk",
@@ -40,6 +45,25 @@ pub fn build(b: *std.Build) !void {
             .{
                 .name = "vulkan/context",
                 .module = context_module,
+            },
+        },
+    });
+    
+    // Create the tensor module
+    const tensor_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/tensor.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan/context",
+                .module = context_module,
+            },
+            .{
+                .name = "vulkan/memory",
+                .module = memory_module,
             },
         },
     });
@@ -57,8 +81,16 @@ pub fn build(b: *std.Build) !void {
                 .module = context_module,
             },
             .{
-                .name = "vulkan/memory/buffer",
-                .module = buffer_module,
+                .name = "vulkan/memory",
+                .module = memory_module,
+            },
+            .{
+                .name = "shaders",
+                .module = shaders_module,
+            },
+            .{
+                .name = "vulkan/compute/tensor",
+                .module = tensor_module,
             },
         },
     });
@@ -106,9 +138,6 @@ pub fn build(b: *std.Build) !void {
     test_exe.addIncludePath(.{ .cwd_relative = "src/vulkan/compute/generated" });
     
     // Add shaders module
-    const shaders_module = b.addModule("shaders", .{
-        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/shaders.zig" },
-    });
     test_exe.root_module.addImport("shaders", shaders_module);
     
     // Link against required libraries
@@ -169,10 +198,89 @@ pub fn build(b: *std.Build) !void {
     test_all.dependOn(test_tensor_ops_step);
     test_all.dependOn(test_tensor_ops_ext_step);
     
-    // Create a run step
-    const run_cmd = b.addRunArtifact(test_exe);
-    run_cmd.step.dependOn(b.getInstallStep());
+    // Create a run step for the test executable
+    const run_test_cmd = b.addRunArtifact(test_exe);
+    run_test_cmd.step.dependOn(b.getInstallStep());
     
-    const run_step = b.step("run", "Run the Vulkan initialization test");
-    run_step.dependOn(&run_cmd.step);
+    const run_test_step = b.step("run-test", "Run the Vulkan initialization test");
+    run_test_step.dependOn(&run_test_cmd.step);
+    
+    // Create the test_tensor_ops executable
+    const test_tensor_ops_exe = b.addExecutable(.{
+        .name = "test_tensor_ops",
+        .root_source_file = .{ .cwd_relative = "examples/test_tensor_ops.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add include paths
+    test_tensor_ops_exe.addIncludePath(.{ .cwd_relative = "src" });
+    test_tensor_ops_exe.addIncludePath(.{ .cwd_relative = "src/vulkan" });
+    test_tensor_ops_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+    test_tensor_ops_exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include/vulkan" });
+    
+    // Add module imports
+    test_tensor_ops_exe.root_module.addImport("vk", vk_module);
+    test_tensor_ops_exe.root_module.addImport("vulkan/context", context_module);
+    test_tensor_ops_exe.root_module.addImport("vulkan/memory", memory_module);
+    test_tensor_ops_exe.root_module.addImport("vulkan/compute/tensor_operations", tensor_ops_module);
+    test_tensor_ops_exe.root_module.addImport("vulkan/compute/tensor", tensor_module);
+    
+    // Add include paths for shaders
+    test_tensor_ops_exe.addIncludePath(.{ .cwd_relative = "src/vulkan/compute" });
+    test_tensor_ops_exe.addIncludePath(.{ .cwd_relative = "src/vulkan/compute/generated" });
+    
+    // Reuse the existing shaders module
+    test_tensor_ops_exe.root_module.addImport("shaders", shaders_module);
+    
+    // Link against required libraries
+    test_tensor_ops_exe.linkSystemLibrary("vulkan");
+    test_tensor_ops_exe.linkLibC();
+    
+    // Install the executable
+    b.installArtifact(test_tensor_ops_exe);
+    
+    // Create a run step for test_tensor_ops
+    const run_tensor_ops_cmd = b.addRunArtifact(test_tensor_ops_exe);
+    run_tensor_ops_cmd.step.dependOn(b.getInstallStep());
+    
+    const run_tensor_ops_step = b.step("run-tensor-ops", "Run the tensor operations test");
+    run_tensor_ops_step.dependOn(&run_tensor_ops_cmd.step);
+    
+    // Create the memory_management executable
+    const memory_management_exe = b.addExecutable(.{
+        .name = "memory_management",
+        .root_source_file = .{ .cwd_relative = "examples/memory_management.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // Add dependencies
+    memory_management_exe.root_module.addImport("vk", vk_module);
+    memory_management_exe.root_module.addImport("vulkan/context", context_module);
+    memory_management_exe.root_module.addImport("vulkan/memory", memory_module);
+
+    // Link against system libraries
+    memory_management_exe.linkLibC();
+    memory_management_exe.linkSystemLibrary("vulkan");
+    memory_management_exe.linkSystemLibrary("dl");  // For dynamic loading
+    memory_management_exe.linkSystemLibrary("pthread");  // For threading
+    memory_management_exe.linkSystemLibrary("m");  // For math
+    memory_management_exe.linkSystemLibrary("rt");  // For real-time extensions
+    memory_management_exe.linkSystemLibrary("X11"); // For X11 (if needed for windowing)
+
+
+    // Add to install step
+    b.installArtifact(memory_management_exe);
+
+    // Add run step
+    const memory_management_run_cmd = b.addRunArtifact(memory_management_exe);
+    memory_management_run_cmd.step.dependOn(b.getInstallStep());
+    const memory_management_run_step = b.step("run-memory-management", "Run the memory management example");
+    memory_management_run_step.dependOn(&memory_management_run_cmd.step);
+
+    // Default run step
+    const run_step = b.step("run", "Run the tensor operations test");
+    // Add the example to the main run step
+    run_step.dependOn(memory_management_run_step);
 }

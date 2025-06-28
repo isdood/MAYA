@@ -3,105 +3,36 @@ const std = @import("std");
 
 // Import from the vk module that was provided by the build system
 const vk = @import("vk");
-const Context = @import("vulkan/context").VulkanContext;
+const Context = @import("../context").VulkanContext;
 const Pipeline = @import("pipeline.zig").VulkanComputePipeline;
 const SpiralConvolutionParams = @import("pipeline.zig").SpiralConvolutionParams;
 
-// Import memory management components
-const memory = @import("vulkan/memory");
-const Buffer = memory.Buffer;
-const BufferPool = memory.pool.BufferPool;
-const StagingManager = memory.transfer.StagingManager;
+// Import tensor and memory management components
+const tensor = @import("./tensor.zig");
+const Tensor4D = tensor.Tensor4D;
 const DataType = @import("./datatypes.zig").DataType;
 
 // Thread-local storage for memory management
 threadlocal var default_allocator: std.mem.Allocator = undefined;
-threadlocal var buffer_pool: ?*BufferPool = null;
-threadlocal var staging_manager: ?*StagingManager = null;
 
-// Import the embedded shaders
-const shaders = @import("shaders.zig");
+// Import shaders
+const shaders = @import("shaders");
 
-/// A generic 4D tensor that can hold any supported data type
-pub fn Tensor4D(comptime T: type) type {
-    return struct {
-        buffer: Buffer,
-        dims: [4]u32,  // Dimensions [x, y, z, w]
-        data_type: DataType = typeToDataType(T),
-        owned: bool = true, // Whether this tensor owns its buffer
-        
-        const Self = @This();
-        
-        // Forward declaration of helper functions
-        fn typeToDataType(comptime Type: type) DataType {
-            if (Type == f16) return .F16;
-            if (Type == f32) return .F32;
-            if (Type == i16) return .I16;
-            if (Type == u16) return .U16;
-            if (Type == i32) return .I32;
-            if (Type == u32) return .U32;
-            @compileError("Unsupported tensor element type");
-        }
-        
-        /// Initialize the thread-local memory management
-        pub fn initThreadLocal(allocator: std.mem.Allocator) !void {
-            default_allocator = allocator;
-            
-            // Initialize buffer pool if not already done
-            if (buffer_pool == null) {
-                // Get or create a default context if not provided
-                const context = Context.get() catch try Context.init(allocator, .{});
-                
-                buffer_pool = try allocator.create(BufferPool);
-                buffer_pool.?.* = try BufferPool.init(
-                    allocator,
-                    context,
-                    16 * 1024 * 1024, // 16MB chunks
-                    vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-                    vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | 
-                    vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                    vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                );
-            }
-            
-            // Initialize staging manager if not already done
-            if (staging_manager == null) {
-                const context = Context.get() catch try Context.init(allocator, .{});
-                
-                // Try to find a transfer queue family
-                var transfer_queue_family: u32 = 0;
-                // TODO: Properly query queue families from the device
-                // For now, we'll use queue family 0 as a fallback
-                
-                staging_manager = try allocator.create(StagingManager);
-                staging_manager.?.* = try StagingManager.init(
-                    allocator,
-                    context,
-                    transfer_queue_family,
-                );
-            }
-        }
-        
-        /// Clean up thread-local resources
-        pub fn deinitThreadLocal() void {
-            if (staging_manager) |sm| {
-                sm.deinit();
-                default_allocator.destroy(sm);
-                staging_manager = null;
-            }
-            
-            if (buffer_pool) |bp| {
-                bp.deinit();
-                default_allocator.destroy(bp);
-                buffer_pool = null;
-            }
-        }
-        
-        /// Create a new tensor with uninitialized data
+/// Initialize the thread-local memory management
+pub fn initThreadLocal(allocator: std.mem.Allocator) void {
+    default_allocator = allocator;
+}
+
+/// Get the default allocator for this thread
+pub fn getAllocator() std.mem.Allocator {
+    return default_allocator;
+}
+
+/// Create a new tensor with uninitialized data
         pub fn initUninitialized(
             context: *Context,
             dims: [4]u32,
-            allocator: ?std.mem.Allocator,
+            _: ?std.mem.Allocator,
         ) !Self {
             const element_count = dims[0] * dims[1] * dims[2] * dims[3];
             const size = element_count * @sizeOf(T);
@@ -207,7 +138,7 @@ pub fn Tensor4D(comptime T: type) type {
         }
         
         /// Write data to the tensor
-        pub fn writeData(self: *Self, data: []const T, allocator: ?std.mem.Allocator) !void {
+        pub fn writeData(self: *Self, data: []const T, _: ?std.mem.Allocator) !void {
             if (data.len != self.elementCount()) {
                 return error.InvalidDataSize;
             }
@@ -318,7 +249,7 @@ pub fn TensorPipeline(comptime T: type) type {
             // Clean up thread-local resources if this is the last pipeline
             // Note: In a real implementation, you'd want reference counting
             // or another mechanism to track when it's safe to clean up
-            if (buffer_pool != null || staging_manager != null) {
+            if (buffer_pool != null or staging_manager != null) {
                 Tensor4D(T).deinitThreadLocal();
             }
         }

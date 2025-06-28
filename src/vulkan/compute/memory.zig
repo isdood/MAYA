@@ -1,10 +1,10 @@
 // src/vulkan/compute/memory.zig
 const std = @import("std");
 const vk = @import("vk");
-const Context = @import("vulkan/context").VulkanContext;
-const Buffer = @import("vulkan/memory/buffer").Buffer;
-const BufferPool = @import("vulkan/memory/pool").BufferPool;
-const StagingManager = @import("vulkan/memory/transfer").StagingManager;
+const Context = @import("../context").VulkanContext;
+const Buffer = @import("../memory/buffer").Buffer;
+const BufferPool = @import("../memory/pool").BufferPool;
+const StagingManager = @import("../memory/transfer").StagingManager;
 
 /// Global memory manager for tensor operations
 pub const TensorMemoryManager = struct {
