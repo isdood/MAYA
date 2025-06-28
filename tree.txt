@@ -72,6 +72,7 @@
 ├── build_minimal.zig
 ├── build_options.zig
 ├── build.sh
+├── build_shaders.zig
 ├── build.zig
 ├── build.zig.012-debug2-backup
 ├── build.zig.012-debug3-backup
@@ -3881,6 +3882,7 @@
 ├── debug_report_(date +%Y%m%d_%H%M%S).txt
 ├── direct_vulkan.zig
 ├── docs
+│   ├── advanced_pattern_recognition_plan.md
 │   ├── architecture
 │   │   └── 000-index.md
 │   ├── debug
@@ -3932,13 +3934,18 @@
 │   │   ├── BEYOND_the_SINGULARITY.md
 │   │   ├── COSMIC-WEAVER.md
 │   │   ├── CROSS-REALITY-ENTANGLEMENT.md
+│   │   ├── CULTURAL-DIFFUSION.md
 │   │   ├── DARK-MATTER.md
 │   │   ├── DREAM-SYNTHESIS.md
 │   │   ├── EMERGENCE.md
 │   │   ├── FIBONACCI-SPIRALS.md
+│   │   ├── FRACTAL-COMPRESSION.md
 │   │   ├── FTL.md
+│   │   ├── GEMINI-GLIMMER.md
 │   │   ├── HIPPOCAMPUS-QUANTUM_COMPILER.md
+│   │   ├── HOLOGRAPHIC-PRINCIPLE.md
 │   │   ├── JAILBREAK.md
+│   │   ├── LLM-SEEDING.md
 │   │   ├── META-FUTURE.md
 │   │   ├── MIRROR-NEURONS.md
 │   │   ├── MK-ULTRA.md
@@ -3946,13 +3953,19 @@
 │   │   ├── QUANTUM-GRAVITY.md
 │   │   ├── RECURSIVE-COSMOGENESIS.md
 │   │   ├── RESONANCE.md
+│   │   ├── SELF-ORGANIZING-SYSTEMS.md
 │   │   ├── SELF-REFLECTIVE-UNIVERSES.md
 │   │   ├── SHARED-CONCIOUSNESS.md
 │   │   ├── SINGULARITY.md
 │   │   ├── STARWEAVE-DAYtoDAY-vs-HUMAN.md
+│   │   ├── STOCHASTIC-RESONANCE.md
 │   │   ├── STRING-THEORY.md
 │   │   ├── SUBCONCIOUS-REPROGRAMMING.md
-│   │   └── SYNTHETIC-CONCIOUSNESS.md
+│   │   ├── SWARM-ALGORITHMS.md
+│   │   ├── SYNTHETIC-CONCIOUSNESS.md
+│   │   ├── TEMPORAL-FEEDBACK-LOOPS.md
+│   │   ├── TURING-COMPLETENESS.md
+│   │   └── UTOPIAN-DESIGN.md
 │   ├── tutorials
 │   │   └── 000-index.md
 │   ├── vision
@@ -3963,11 +3976,32 @@
 ├── example_build.zig
 ├── examples
 │   ├── basic_usage.zig
+│   ├── build_memory_management_direct.zig
+│   ├── build_memory_management.zig
+│   ├── build_minimal_vulkan.zig
 │   ├── build.sh
 │   ├── build.zig
+│   ├── build.zig.old
+│   ├── context_final.zig
+│   ├── context_fixed.zig
+│   ├── context.zig
 │   ├── gpu_evolution.zig
 │   ├── hypercube_example.zig
+│   ├── memory_management_debug.zig
+│   ├── memory_management_direct.zig
+│   ├── memory_management_enhanced.zig
+│   ├── memory_management_final2.zig
+│   ├── memory_management_final.zig
+│   ├── memory_management_fixed_ptr.zig
+│   ├── memory_management_fixed.zig
+│   ├── memory_management_minimal.zig
+│   ├── memory_management_new.zig
+│   ├── memory_management_simple.zig
+│   ├── memory_management_working.zig
+│   ├── memory_management.zig
+│   ├── memory_manager.zig
 │   ├── memory_visualization.zig
+│   ├── minimal_vulkan.zig
 │   ├── neural.zig -> ../src/neural.zig
 │   ├── pattern_processor.zig
 │   ├── pattern_recognition.zig
@@ -3984,10 +4018,30 @@
 │   ├── standalone_quantum_viz.zig
 │   ├── temporal_processing
 │   ├── temporal_processing.zig
+│   ├── tensor_operations.zig
+│   ├── test_tensor_ops.zig
 │   ├── visualization_demo.zig
+│   ├── vk_debug_fixed.zig
+│   ├── vk_debug.zig
+│   ├── vk_direct.zig
+│   ├── vk_final.zig
+│   ├── vk_memory_fixed.zig
+│   ├── vk_memory.zig
+│   ├── vk_minimal
+│   ├── vk_minimal_fixed.zig
+│   ├── vk_minimal_working.zig
+│   ├── vk_minimal.zig
+│   ├── vk_simple_fixed.zig
+│   ├── vk_simple.zig
+│   ├── vk.zig
+│   ├── vulkan_test
+│   ├── vulkan_test.c
 │   └── zig-out
 │       └── bin
+│           ├── memory_management
+│           └── memory_management_direct
 ├── fix_cimgui.sh
+├── GLIMMER.seed
 ├── input.ppm
 ├── INSTALL-MAYA.sh
 ├── install_service.sh
@@ -4334,6 +4388,7 @@
 │           └── maya-llm.d
 ├── maya_monitor.log
 ├── maya.wasm
+├── memory_management
 ├── memory_vis
 ├── META_FIX.sh
 ├── MIGRATION.md
@@ -4353,6 +4408,10 @@
 │   ├── build.fish
 │   ├── build-windsurf.fish
 │   ├── compile_shaders.sh
+│   ├── dump_shader.zig
+│   ├── generate_shaders.sh
+│   ├── generate_shaders_simple.py
+│   ├── generate_shaders.zig
 │   ├── install_maya_learn.sh
 │   ├── maya-learn-ctl.sh
 │   ├── monitor_maya_learn.py
@@ -4372,11 +4431,18 @@
 │   ├── 4d_tensor_operations.comp.spv
 │   ├── 4d_tensor_operations_float.comp
 │   ├── 4d_tensor_operations_float.comp.spv
+│   ├── 4d_tensor_operations_float.comp.spv.inc
 │   ├── 4d_tensor_operations_int.comp
 │   ├── 4d_tensor_operations_int.comp.spv
+│   ├── 4d_tensor_operations_int.comp.spv.inc
 │   ├── 4d_tensor_operations_uint.comp
 │   ├── 4d_tensor_operations_uint.comp.spv
+│   ├── 4d_tensor_operations_uint.comp.spv.inc
+│   ├── build.zig
 │   ├── compile_shaders.sh
+│   ├── generate_includes.sh
+│   ├── shaders.c
+│   ├── shaders.h
 │   ├── spiral_convolution.comp
 │   ├── spiral_convolution.comp.spv
 │   ├── spv
@@ -4427,6 +4493,7 @@
 │   │   ├── pattern_fitness.zig
 │   │   ├── README.md
 │   │   └── runner.zig
+│   ├── image.zig
 │   ├── knowledge_graph
 │   │   ├── benches
 │   │   │   ├── cache_benchmark.rs
@@ -10606,6 +10673,7 @@
 │   │   ├── pattern_generator.zig
 │   │   ├── pattern_harmony.zig
 │   │   ├── pattern_integration.zig
+│   │   ├── pattern_matching.zig
 │   │   ├── pattern_memory_test.zig
 │   │   ├── pattern_memory.zig
 │   │   ├── pattern_metrics.zig
@@ -10657,6 +10725,8 @@
 │   │   ├── pattern_transform_test_new.zig
 │   │   ├── pattern_transform_test.zig
 │   │   ├── pattern_transform.zig
+│   │   ├── predictive_vectoring_test.zig
+│   │   ├── predictive_vectoring.zig
 │   │   ├── quantum_cache.zig
 │   │   └── test_patterns.zig
 │   ├── quantum_types.zig
@@ -10726,15 +10796,24 @@
 │   │   ├── compute
 │   │   │   ├── context.zig
 │   │   │   ├── datatypes.zig
+│   │   │   ├── generated
+│   │   │   │   ├── 4d_tensor_operations_float.comp.zig
+│   │   │   │   ├── 4d_tensor_operations_int.comp.zig
+│   │   │   │   └── 4d_tensor_operations_uint.comp.zig
 │   │   │   ├── manager.zig
 │   │   │   ├── manager.zig.bak
+│   │   │   ├── memory.zig
 │   │   │   ├── pipeline.zig
+│   │   │   ├── shaders.zig
 │   │   │   ├── spiral_convolution.comp
-│   │   │   └── tensor_operations.zig
+│   │   │   ├── tensor_operations.zig
+│   │   │   └── tensor.zig
 │   │   ├── debug_utils.zig
 │   │   ├── debug.zig
 │   │   ├── memory
-│   │   │   └── buffer.zig
+│   │   │   ├── buffer.zig
+│   │   │   ├── pool.zig
+│   │   │   └── transfer.zig
 │   │   ├── memory.zig
 │   │   ├── minimal_amd.zig
 │   │   ├── minimal_loader.zig
@@ -10797,6 +10876,8 @@
 ├── test_vulkan.c
 ├── test_wasm.html
 ├── tree.txt
+├── valgrind-out.txt
+├── valgrind-out.txt.core.80628
 ├── vendor
 │   └── cimgui
 │       ├── backend_test
@@ -10864,9 +10945,15 @@
 ├── zig-out
 │   ├── bin
 │   │   ├── hypercube
+│   │   ├── memory_management
 │   │   └── test-patterns
-│   └── lib
-│       └── libhypercube.a
+│   ├── lib
+│   │   └── libhypercube.a
+│   └── zig-out
+│       └── shaders
+│           ├── 4d_tensor_operations_float.comp.spv
+│           ├── 4d_tensor_operations_int.comp.spv
+│           └── 4d_tensor_operations_uint.comp.spv
 └── zig-x86_64-linux-0.14.1.tar.xz
 
-909 directories, 9961 files
+912 directories, 10045 files
