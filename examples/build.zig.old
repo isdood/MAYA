@@ -1,0 +1,77 @@
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    // Standard target options
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+    
+    // Create the minimal_vulkan example
+    const minimal_vulkan = b.addExecutable(.{
+        .name = "minimal_vulkan",
+        .root_source_file = .{ .cwd_relative = "minimal_vulkan.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Link against Vulkan and dl
+    minimal_vulkan.linkSystemLibrary("vulkan");
+    minimal_vulkan.linkSystemLibrary("dl");
+    
+    // Create the memory_management_direct example
+    const memory_management_direct = b.addExecutable(.{
+        .name = "memory_management_direct",
+        .root_source_file = .{ .cwd_relative = "memory_management_direct.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Link against Vulkan and dl
+    memory_management_direct.linkSystemLibrary("vulkan");
+    memory_management_direct.linkSystemLibrary("dl");
+    
+    // Add the install steps
+    b.installArtifact(minimal_vulkan);
+    b.installArtifact(memory_management_direct);
+    
+    // Create run steps
+    const run_minimal = b.addRunArtifact(minimal_vulkan);
+    const run_memory = b.addRunArtifact(memory_management_direct);
+    
+    // Add run steps
+    const run_minimal_step = b.step("run-minimal", "Run the minimal Vulkan example");
+    run_minimal_step.dependOn(&run_minimal.step);
+    
+    const run_memory_step = b.step("run-memory", "Run the memory management example");
+    run_memory_step.dependOn(&run_memory.step);
+    
+    // Default step runs the minimal example
+    const run_step = b.step("run", "Run the minimal Vulkan example");
+    run_step.dependOn(run_minimal_step);
+    
+    // Add tests
+    const test_step = b.step("test", "Run all tests");
+    
+    // Test for minimal_vulkan
+    const minimal_test = b.addTest(.{
+        .root_source_file = .{ .cwd_relative = "minimal_vulkan.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    minimal_test.linkSystemLibrary("vulkan");
+    minimal_test.linkSystemLibrary("dl");
+    
+    // Test for memory_management_direct
+    const memory_test = b.addTest(.{
+        .root_source_file = .{ .cwd_relative = "memory_management_direct.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    memory_test.linkSystemLibrary("vulkan");
+    memory_test.linkSystemLibrary("dl");
+    
+    const run_minimal_test = b.addRunArtifact(minimal_test);
+    const run_memory_test = b.addRunArtifact(memory_test);
+    
+    test_step.dependOn(&run_minimal_test.step);
+    test_step.dependOn(&run_memory_test.step);
+}
