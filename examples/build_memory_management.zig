@@ -52,7 +52,7 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibC();
     exe.linkSystemLibrary("vulkan");
     exe.linkSystemLibrary("X11");
-    exe.linkSystemLibrary("dl");
+    exe.linkSystemLibrary("dl");  // For dynamic loading
     exe.linkSystemLibrary("pthread");
     exe.linkSystemLibrary("m");
     exe.linkSystemLibrary("rt");

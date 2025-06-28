@@ -6,6 +6,31 @@ const vk = @import("vk");
 const Context = @import("vulkan/context").VulkanContext;
 const Buffer_legacy = @import("vulkan/memory").Buffer_legacy;
 
+// Helper function to print Vulkan memory properties
+fn printMemoryProperties(device: vk.VkPhysicalDevice) void {
+    var memory_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
+    vk.vkGetPhysicalDeviceMemoryProperties(device, &memory_properties);
+    
+    std.debug.print("Memory Types ({}):\n", .{memory_properties.memoryTypeCount});
+    for (0..memory_properties.memoryTypeCount) |i| {
+        const flags = memory_properties.memoryTypes[i].propertyFlags;
+        std.debug.print("  [{}] Heap: {}, Flags: {{ {b} }}\n", .{
+            i,
+            memory_properties.memoryTypes[i].heapIndex,
+            flags,
+        });
+    }
+    
+    std.debug.print("Memory Heaps ({}):\n", .{memory_properties.memoryHeapCount});
+    for (0..memory_properties.memoryHeapCount) |i| {
+        std.debug.print("  [{}] Size: {} MB, Flags: {b}\n", .{
+            i,
+            memory_properties.memoryHeaps[i].size / (1024 * 1024),
+            memory_properties.memoryHeaps[i].flags,
+        });
+    }
+}
+
 pub fn main() !void {
     std.debug.print("Starting memory management example...\n", .{});
     
@@ -20,31 +45,69 @@ pub fn main() !void {
 
     // Initialize Vulkan context
     std.debug.print("Initializing Vulkan context...\n", .{});
-    var context = try Context.init(allocator);
+    
+    std.debug.print("Creating Vulkan instance...\n", .{});
+    var context = Context.init(allocator) catch |err| {
+        std.debug.print("Failed to initialize Vulkan context: {}\n", .{err});
+        return err;
+    };
+    
+    std.debug.print("Vulkan context created successfully\n", .{});
+    
+    // Ensure we have a valid device
+    if (context.device == null) {
+        std.debug.print("Error: No Vulkan device available\n", .{});
+        return error.NoDevice;
+    }
+    
+    if (context.physical_device == null) {
+        std.debug.print("Error: No physical device selected\n", .{});
+        return error.NoPhysicalDevice;
+    }
+    
+    std.debug.print("Vulkan device and physical device are valid\n", .{});
+    
     defer {
         std.debug.print("Deinitializing Vulkan context...\n", .{});
         context.deinit();
     }
+    
+    // Print memory properties for debugging
+    if (context.physical_device) |physical_device| {
+        std.debug.print("\nPhysical Device Memory Properties:\n", .{});
+        printMemoryProperties(physical_device);
+    } else {
+        std.debug.print("Warning: No physical device found!\n", .{});
+    }
 
     // Verify device and physical device are valid
-    std.debug.print("Checking device handles...\n", .{});
-    const device = context.device orelse return error.NoDevice;
-    const physical_device = context.physical_device orelse return error.NoPhysicalDevice;
+    std.debug.print("\nChecking device handles...\n", .{});
+    const device = context.device orelse {
+        std.debug.print("Error: No Vulkan device available\n", .{});
+        return error.NoDevice;
+    };
+    const physical_device = context.physical_device orelse {
+        std.debug.print("Error: No physical device available\n", .{});
+        return error.NoPhysicalDevice;
+    };
     std.debug.print("Using Vulkan device: {*}\n", .{device});
     std.debug.print("Using physical device: {*}\n", .{physical_device});
 
     // Create a buffer directly using Buffer_legacy for simplicity
-    std.debug.print("Creating buffer...\n", .{});
+    std.debug.print("\nCreating buffer...\n", .{});
     const buffer_size = 1024 * 1024; // 1MB buffer size
-    const usage = vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    const memory_properties = vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+    
+    // Use more compatible memory properties
+    const usage = vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+                 vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | 
+                 vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+                 
+    // Try with host-visible memory first for simplicity
+    const memory_properties = vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
+                             vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     
     std.debug.print("Buffer size: {} bytes\n", .{buffer_size});
     std.debug.print("Buffer usage: {b}\n", .{usage});
-    std.debug.print("Memory properties: {b}\n", .{memory_properties});
-    
-    std.debug.print("Buffer size: {} bytes\n", .{buffer_size});
-    std.debug.print("Buffer usage flags: {b}\n", .{usage});
     std.debug.print("Memory properties: {b}\n", .{memory_properties});
     
     std.debug.print("Initializing buffer...\n", .{});
