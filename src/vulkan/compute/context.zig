@@ -108,70 +108,50 @@ pub const VulkanContext = struct {
     pub fn initVulkan(self: *VulkanContext) !void {
         std.debug.print("1. Starting Vulkan initialization...\n", .{});
         
-        // 1. Create application info with null-terminated strings
-        const app_name = [_:0]u8{ 'M', 'A', 'Y', 'A', 0 };
-        const engine_name = [_:0]u8{ 'M', 'A', 'Y', 'A', ' ', 'E', 'n', 'g', 'i', 'n', 'e', 0 };
-        
+        // 1. Create application info
+        std.debug.print("1.1. Creating application info...\n", .{});
         const app_info = vk.VkApplicationInfo{
             .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
             .pNext = null,
-            .pApplicationName = @ptrCast(&app_name),
+            .pApplicationName = "MAYA",
             .applicationVersion = vk.VK_MAKE_API_VERSION(0, 1, 0, 0),
-            .pEngineName = @ptrCast(&engine_name),
+            .pEngineName = "MAYA Engine",
             .engineVersion = vk.VK_MAKE_API_VERSION(0, 1, 0, 0),
             .apiVersion = vk.VK_API_VERSION_1_0,
         };
         
-        std.debug.print("2. Created application info\n", .{});
+        std.debug.print("1.2. Application info created successfully\n", .{});
         
-        // 2. Try with required extensions for X11
-        const required_extensions = [_][*:0]const u8{
-            "VK_KHR_surface\x00",
-            "VK_KHR_xlib_surface\x00",
-        };
-        
-        var create_info = vk.VkInstanceCreateInfo{
+        // 2. Instance create info with no extensions or layers initially
+        std.debug.print("2.1. Creating instance create info...\n", .{});
+        const create_info = vk.VkInstanceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pNext = null,
             .flags = 0,
             .pApplicationInfo = &app_info,
             .enabledLayerCount = 0,
             .ppEnabledLayerNames = null,
-            .enabledExtensionCount = @as(u32, required_extensions.len),
-            .ppEnabledExtensionNames = &required_extensions[0],
+            .enabledExtensionCount = 0,
+            .ppEnabledExtensionNames = null,
         };
         
-        std.debug.print("3. Created instance create info with required extensions\n", .{});
+        std.debug.print("2.2. Instance create info created successfully\n", .{});
         
-        // 3. Try to create the instance
+        // 3. Create instance
+        std.debug.print("3.1. Creating Vulkan instance...\n", .{});
         var instance: vk.VkInstance = undefined;
-        std.debug.print("4. Creating Vulkan instance...\n", .{});
         
-        // Debug print the create_info structure
-        std.debug.print("4.1. Create info: {{\n", .{});
-        std.debug.print("  sType: {}\n", .{create_info.sType});
-        std.debug.print("  flags: {}\n", .{create_info.flags});
-        std.debug.print("  enabledExtensionCount: {}\n", .{create_info.enabledExtensionCount});
-        std.debug.print("  enabledLayerCount: {}\n", .{create_info.enabledLayerCount});
-        std.debug.print("}}\n", .{});
-        
+        std.debug.print("3.2. Calling vkCreateInstance...\n", .{});
         const result = vk.vkCreateInstance(&create_info, null, &instance);
+        std.debug.print("3.3. vkCreateInstance returned: {}\n", .{result});
         
         if (result != vk.VK_SUCCESS) {
-            std.debug.print("5.1. Failed to create Vulkan instance: {}\n", .{result});
+            std.debug.print("3.4. ERROR: Failed to create Vulkan instance: {}\n", .{result});
             self.printVulkanError(result);
-            
-                // If we're here, the attempt failed
-            std.debug.print("5.2. Vulkan instance creation failed\n", .{});
-            std.debug.print("5.3. Please check if your system has Vulkan installed and your GPU drivers are up to date\n", .{});
-            std.debug.print("5.4. You can verify Vulkan installation with: vulkaninfo | head -n 20\n", .{});
-            
             return error.FailedToCreateInstance;
         }
         
-        std.debug.print("5. Successfully created Vulkan instance\n", .{});
-        
-        std.debug.print("8. Successfully created Vulkan instance\n", .{});
+        std.debug.print("3.4. Vulkan instance created successfully\n", .{});
         self.instance = instance;
         
         // Now proceed with device creation
