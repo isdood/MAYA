@@ -5,6 +5,9 @@ const Allocator = std.mem.Allocator;
 // Import the vk module that was provided by the build system
 const vk = @import("vk");
 
+// Function pointer types for dynamically loaded Vulkan functions
+const PFN_vkEnumerateInstanceVersion = fn(*u32) callconv(.C) vk.VkResult;
+
 pub const VulkanError = error {
     InitializationFailed,
     NoPhysicalDevicesFound,
@@ -41,43 +44,59 @@ pub const VulkanContext = struct {
         return self;
     }
 
+    // Helper function to safely get Vulkan version
+    fn getVulkanVersion() struct { result: vk.VkResult, version: u32 } {
+        var version: u32 = 0;
+        std.debug.print("  Attempting to get Vulkan version...\n", .{});
+        
+        // Try to load the function pointer dynamically
+        const vkGetInstanceProcAddr = std.dynlib.openLibraryZ("libvulkan.so.1") catch |err| {
+            std.debug.print("  Failed to load libvulkan.so.1: {}\n", .{err});
+            return .{ .result = vk.VK_ERROR_INITIALIZATION_FAILED, .version = 0 };
+        };
+        defer vkGetInstanceProcAddr.close();
+        
+        const vkEnumerateInstanceVersionFn = vkGetInstanceProcAddr.lookup(PFN_vkEnumerateInstanceVersion, "vkEnumerateInstanceVersion") orelse {
+            std.debug.print("  vkEnumerateInstanceVersion not found, using Vulkan 1.0\n", .{});
+            return .{ .result = vk.VK_SUCCESS, .version = vk.VK_MAKE_API_VERSION(0, 1, 0, 0) };
+        };
+        
+        std.debug.print("  Calling vkEnumerateInstanceVersion...\n", .{});
+        const result = vkEnumerateInstanceVersionFn(&version);
+        std.debug.print("  vkEnumerateInstanceVersion returned: {}\n", .{result});
+        
+        if (result == vk.VK_SUCCESS) {
+            const major = vk.VK_API_VERSION_MAJOR(version);
+            const minor = vk.VK_API_VERSION_MINOR(version);
+            const patch = vk.VK_API_VERSION_PATCH(version);
+            std.debug.print("  Vulkan API version: {}.{}.{}\n", .{major, minor, patch});
+        } else {
+            std.debug.print("  Failed to get Vulkan version: {}, falling back to 1.0\n", .{result});
+            version = vk.VK_MAKE_API_VERSION(0, 1, 0, 0);
+        }
+        
+        return .{ .result = result, .version = version };
+    }
+
     fn initVulkan(self: *VulkanContext) !void {
         std.debug.print("Initializing Vulkan...\n", .{});
 
-        // Try to dynamically load vkEnumerateInstanceVersion
-        const vk_lib = std.DynLib.openZ("libvulkan.so.1") catch |err| {
-            std.debug.print("Failed to load Vulkan library: {s}\n", .{@errorName(err)});
-            return error.VulkanNotAvailable;
-        };
-        defer vk_lib.close();
-
-        // Get the vkGetInstanceProcAddr function
-        const vkGetInstanceProcAddr = vk_lib.lookup(
-            *const fn (instance: vk.VkInstance, pName: [*:0]const u8) callconv(.C) ?*const anyopaque,
-            "vkGetInstanceProcAddr",
-        ) orelse {
-            std.debug.print("Failed to find vkGetInstanceProcAddr\n", .{});
-            return error.VulkanNotAvailable;
-        };
-
-        // Get vkEnumerateInstanceVersion
-        const vkEnumerateInstanceVersion = @as(
-            *const fn (pApiVersion: *u32) callconv(.C) vk.VkResult,
-            @ptrCast(vkGetInstanceProcAddr(null, "vkEnumerateInstanceVersion") orelse {
-                std.debug.print("vkEnumerateInstanceVersion not available\n", .{});
-                return error.VulkanNotAvailable;
-            }),
-        );
-
-        // Check Vulkan version
+        // Try to get Vulkan version, but don't fail if it doesn't work
         std.debug.print("Checking Vulkan version...\n", .{});
-        var instance_version: u32 = 0;
-        const version_result = vkEnumerateInstanceVersion(&instance_version);
-        std.debug.print("  vkEnumerateInstanceVersion result: {}\n", .{version_result});
-        if (version_result != vk.VK_SUCCESS) {
-            std.debug.print("  Failed to get Vulkan version: {}\n", .{version_result});
-            return error.InitializationFailed;
-        }
+        
+        // Get the Vulkan version
+        const version_info = getVulkanVersion();
+        const instance_version = if (version_info.result == vk.VK_SUCCESS) 
+            version_info.version 
+        else 
+            vk.VK_MAKE_API_VERSION(0, 1, 0, 0);
+        
+        // Continue with the instance version we have, even if we couldn't get it from the loader
+        std.debug.print("Using Vulkan API version: {}.{}.{}\n", .{
+            vk.VK_API_VERSION_MAJOR(instance_version),
+            vk.VK_API_VERSION_MINOR(instance_version),
+            vk.VK_API_VERSION_PATCH(instance_version)
+        });
 
         const major = vk.VK_API_VERSION_MAJOR(instance_version);
         const minor = vk.VK_API_VERSION_MINOR(instance_version);

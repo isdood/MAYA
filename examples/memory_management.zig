@@ -1,11 +1,10 @@
 // examples/memory_management.zig
 const std = @import("std");
+
+// Import the Vulkan modules using the correct module paths
 const vk = @import("vk");
 const Context = @import("vulkan/context").VulkanContext;
-
-// Import Buffer_legacy directly from the memory module
-const memory = @import("vulkan/memory");
-const Buffer_legacy = memory.Buffer_legacy;
+const Buffer_legacy = @import("vulkan/memory").Buffer_legacy;
 
 pub fn main() !void {
     std.debug.print("Starting memory management example...\n", .{});
