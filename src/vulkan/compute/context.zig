@@ -25,8 +25,60 @@ pub const VulkanContext = struct {
     pipeline_cache: ?vk.VkPipelineCache,
     debug_messenger: ?vk.VkDebugUtilsMessengerEXT,
     allocator: std.mem.Allocator,
+    enable_validation: bool,
+
+    // Debug callback function for Vulkan validation layers (temporarily disabled)
+    fn debugCallback(
+        messageSeverity: vk.VkDebugUtilsMessageSeverityFlagBitsEXT,
+        messageType: vk.VkDebugUtilsMessageTypeFlagsEXT,
+        pCallbackData: ?*const vk.VkDebugUtilsMessengerCallbackDataEXT,
+        pUserData: ?*anyopaque,
+    ) callconv(.C) vk.VkBool32 {
+        _ = messageSeverity;
+        _ = messageType;
+        _ = pCallbackData;
+        _ = pUserData;
+        return vk.VK_FALSE;
+    }
+    
+    fn printVulkanError(self: *VulkanContext, result: vk.VkResult) void {
+        _ = self; // Unused parameter
+        std.debug.print("Vulkan Error: ", .{});
+        
+        switch (result) {
+            vk.VK_ERROR_OUT_OF_HOST_MEMORY => {
+                std.debug.print("Out of host memory\n", .{});
+            },
+            vk.VK_ERROR_OUT_OF_DEVICE_MEMORY => {
+                std.debug.print("Out of device memory\n", .{});
+            },
+            vk.VK_ERROR_INITIALIZATION_FAILED => {
+                std.debug.print("Initialization failed\n", .{});
+                std.debug.print("  - Check if Vulkan is properly installed on your system\n", .{});
+                std.debug.print("  - Make sure your GPU supports Vulkan\n", .{});
+                std.debug.print("  - Verify that your GPU drivers are up to date\n", .{});
+            },
+            vk.VK_ERROR_LAYER_NOT_PRESENT => {
+                std.debug.print("Layer not present\n", .{});
+                std.debug.print("  - Make sure you have installed the Vulkan SDK\n", .{});
+            },
+            vk.VK_ERROR_EXTENSION_NOT_PRESENT => {
+                std.debug.print("Extension not present\n", .{});
+                std.debug.print("  - Required Vulkan extensions are not supported\n", .{});
+            },
+            vk.VK_ERROR_INCOMPATIBLE_DRIVER => {
+                std.debug.print("Incompatible driver\n", .{});
+                std.debug.print("  - Your GPU driver may not support the requested Vulkan version\n", .{});
+                std.debug.print("  - Try updating your graphics drivers\n", .{});
+            },
+            else => {
+                std.debug.print("Unknown error ({})\n", .{result});
+            },
+        }
+    }
 
     pub fn init(allocator: std.mem.Allocator) !VulkanContext {
+        std.debug.print("Creating Vulkan instance...\n", .{});
         var self = VulkanContext{
             .instance = null,
             .physical_device = null,
@@ -36,149 +88,90 @@ pub const VulkanContext = struct {
             .pipeline_cache = null,
             .debug_messenger = null,
             .allocator = allocator,
+            .enable_validation = true,  // Enable validation layers by default for better error reporting
         };
         try self.initVulkan();
         return self;
     }
 
 
-    fn initVulkan(self: *VulkanContext) !void {
-        std.debug.print("Initializing Vulkan...\n", .{});
-        
-        // Initialize Vulkan function pointers first
-        std.debug.print("1. Loading Vulkan function pointers...\n", .{});
-        
-        // Check Vulkan version
-        std.debug.print("2. Checking Vulkan version...\n", .{});
-        
-        // Try to get Vulkan version, but don't fail if it doesn't work
-        std.debug.print("3. Attempting to get Vulkan version...\n", .{});
-        var api_version: u32 = vk.VK_MAKE_VERSION(1, 0, 0); // Default to 1.0.0
-        
-        // Use vkEnumerateInstanceVersion if available
-        std.debug.print("4. Checking for vkEnumerateInstanceVersion...\n", .{});
-        if (@hasDecl(vk, "vkEnumerateInstanceVersion")) {
-            std.debug.print("5. vkEnumerateInstanceVersion is available, querying version...\n", .{});
-            
-            // Add a null check for the function pointer
-            if (@typeInfo(@TypeOf(vk.vkEnumerateInstanceVersion)) == .Fn) {
-                std.debug.print("5a. vkEnumerateInstanceVersion is a function, calling it...\n", .{});
-                
-                // Use a temporary variable to avoid potential issues with the function call
-                var version: u32 = 0;
-                const result = vk.vkEnumerateInstanceVersion(&version);
-                std.debug.print("5b. vkEnumerateInstanceVersion called, result: {}\n", .{result});
-                
-                if (result == vk.VK_SUCCESS) {
-                    api_version = version;
-                    const major = vk.VK_API_VERSION_MAJOR(api_version);
-                    const minor = vk.VK_API_VERSION_MINOR(api_version);
-                    const patch = vk.VK_API_VERSION_PATCH(api_version);
-                    std.debug.print("5c. Vulkan version: {}.{}.{}\n", .{major, minor, patch});
-                } else {
-                    std.debug.print("5d. Failed to get Vulkan version (error: {}), defaulting to 1.0.0\n", .{result});
-                }
-            } else {
-                std.debug.print("5e. vkEnumerateInstanceVersion is not a function, defaulting to 1.0.0\n", .{});
+    // Helper function to check if an extension is available
+    fn isExtensionAvailable(extensions: []const [*:0]const u8, required: []const u8) bool {
+        for (extensions) |ext| {
+            if (std.mem.eql(u8, std.mem.span(ext), required)) {
+                return true;
             }
-        } else {
-            std.debug.print("5f. vkEnumerateInstanceVersion not available, assuming Vulkan 1.0.0\n", .{});
         }
+        return false;
+    }
+    
+    pub fn initVulkan(self: *VulkanContext) !void {
+        std.debug.print("1. Starting Vulkan initialization...\n", .{});
         
-        // Create Vulkan instance
-        std.debug.print("10. Preparing to create Vulkan instance...\n", .{});
-        
-        // Default to Vulkan 1.0
-        var instance_version = vk.VK_MAKE_API_VERSION(0, 1, 0, 0);
-        if (api_version >= vk.VK_MAKE_API_VERSION(0, 1, 1, 0)) {
-            // If the system supports Vulkan 1.1 or higher, use that
-            instance_version = vk.VK_MAKE_API_VERSION(0, 1, 1, 0);
-            std.debug.print("11. Using Vulkan 1.1 API version\n", .{});
-        } else {
-            std.debug.print("12. Using Vulkan 1.0 API version\n", .{});
-        }
-        
-        // Try to load vkEnumerateInstanceVersion dynamically
-        if (@hasDecl(vk, "vkEnumerateInstanceVersion")) {
-            std.debug.print("  vkEnumerateInstanceVersion is available, querying version...\n", .{});
-            const result = vk.vkEnumerateInstanceVersion(&instance_version);
-            if (result != vk.VK_SUCCESS) {
-                std.debug.print("  Failed to get Vulkan version: {}\n", .{result});
-                std.debug.print("  Falling back to Vulkan 1.0\n", .{});
-                instance_version = vk.VK_MAKE_API_VERSION(0, 1, 0, 0);
-            }
-        } else {
-            std.debug.print("  vkEnumerateInstanceVersion not available\n", .{});
-            std.debug.print("  Falling back to Vulkan 1.0\n", .{});
-        }
-        
-        // Print the version we're using
-        const major = vk.VK_API_VERSION_MAJOR(instance_version);
-        const minor = vk.VK_API_VERSION_MINOR(instance_version);
-        const patch = vk.VK_API_VERSION_PATCH(instance_version);
-        std.debug.print("  Using Vulkan {}.{}.{}\n", .{major, minor, patch});
-        
-        // Check for required Vulkan version
-        const required_version = vk.VK_MAKE_API_VERSION(0, 1, 0, 0);
-        if (instance_version < required_version) {
-            std.debug.print("  Error: Vulkan 1.0 or later is required\n", .{});
-            return error.VulkanVersionTooLow;
-        }
-        
-        // Create application info with minimal requirements
-        const app_name = "MAYA";
-        const engine_name = "MAYA Engine";
-        const app_version = vk.VK_MAKE_API_VERSION(0, 0, 1, 0);
-        const engine_version = vk.VK_MAKE_API_VERSION(0, 0, 1, 0);
-        
-        std.debug.print("  Application: {s} v{}.{}.{}\n", .{
-            app_name,
-            vk.VK_API_VERSION_MAJOR(app_version),
-            vk.VK_API_VERSION_MINOR(app_version),
-            vk.VK_API_VERSION_PATCH(app_version),
-        });
-        std.debug.print("  Engine: {s} v{}.{}.{}\n", .{
-            engine_name,
-            vk.VK_API_VERSION_MAJOR(engine_version),
-            vk.VK_API_VERSION_MINOR(engine_version),
-            vk.VK_API_VERSION_PATCH(engine_version),
-        });
-
-        // Start with no extensions
-        std.debug.print("  No instance extensions required\n", .{});
+        // 1. Create application info with null-terminated strings
+        const app_name = [_:0]u8{ 'M', 'A', 'Y', 'A', 0 };
+        const engine_name = [_:0]u8{ 'M', 'A', 'Y', 'A', ' ', 'E', 'n', 'g', 'i', 'n', 'e', 0 };
         
         const app_info = vk.VkApplicationInfo{
             .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
             .pNext = null,
-            .pApplicationName = app_name,
-            .applicationVersion = app_version,
-            .pEngineName = engine_name,
-            .engineVersion = engine_version,
-            .apiVersion = instance_version,
+            .pApplicationName = @ptrCast(&app_name),
+            .applicationVersion = vk.VK_MAKE_API_VERSION(0, 1, 0, 0),
+            .pEngineName = @ptrCast(&engine_name),
+            .engineVersion = vk.VK_MAKE_API_VERSION(0, 1, 0, 0),
+            .apiVersion = vk.VK_API_VERSION_1_0,
         };
         
-        const create_info = vk.VkInstanceCreateInfo{
+        std.debug.print("2. Created application info\n", .{});
+        
+        // 2. Try with required extensions for X11
+        const required_extensions = [_][*:0]const u8{
+            "VK_KHR_surface\x00",
+            "VK_KHR_xlib_surface\x00",
+        };
+        
+        var create_info = vk.VkInstanceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pNext = null,
             .flags = 0,
             .pApplicationInfo = &app_info,
             .enabledLayerCount = 0,
             .ppEnabledLayerNames = null,
-            .enabledExtensionCount = 0,
-            .ppEnabledExtensionNames = null,
+            .enabledExtensionCount = @as(u32, required_extensions.len),
+            .ppEnabledExtensionNames = &required_extensions[0],
         };
         
-        var instance: vk.VkInstance = undefined;
-        const create_result = vk.vkCreateInstance(&create_info, null, &instance);
+        std.debug.print("3. Created instance create info with required extensions\n", .{});
         
-        if (create_result != vk.VK_SUCCESS) {
-            std.debug.print("Failed to create Vulkan instance: {}\n", .{create_result});
-            return error.InitializationFailed;
+        // 3. Try to create the instance
+        var instance: vk.VkInstance = undefined;
+        std.debug.print("4. Creating Vulkan instance...\n", .{});
+        
+        // Debug print the create_info structure
+        std.debug.print("4.1. Create info: {{\n", .{});
+        std.debug.print("  sType: {}\n", .{create_info.sType});
+        std.debug.print("  flags: {}\n", .{create_info.flags});
+        std.debug.print("  enabledExtensionCount: {}\n", .{create_info.enabledExtensionCount});
+        std.debug.print("  enabledLayerCount: {}\n", .{create_info.enabledLayerCount});
+        std.debug.print("}}\n", .{});
+        
+        const result = vk.vkCreateInstance(&create_info, null, &instance);
+        
+        if (result != vk.VK_SUCCESS) {
+            std.debug.print("5.1. Failed to create Vulkan instance: {}\n", .{result});
+            self.printVulkanError(result);
+            
+                // If we're here, the attempt failed
+            std.debug.print("5.2. Vulkan instance creation failed\n", .{});
+            std.debug.print("5.3. Please check if your system has Vulkan installed and your GPU drivers are up to date\n", .{});
+            std.debug.print("5.4. You can verify Vulkan installation with: vulkaninfo | head -n 20\n", .{});
+            
+            return error.FailedToCreateInstance;
         }
         
-        std.debug.print("Successfully created Vulkan instance\n", .{});
+        std.debug.print("5. Successfully created Vulkan instance\n", .{});
         
-        // Store the instance
+        std.debug.print("8. Successfully created Vulkan instance\n", .{});
         self.instance = instance;
         
         // Now proceed with device creation
