@@ -173,6 +173,29 @@ pub fn build(b: *std.Build) !void {
     pattern_matching_test.root_module.addImport("vulkan_compute_tensor", tensor_module);
     pattern_matching_test.root_module.addImport("vulkan_pattern_matching", pattern_matching_module);
     pattern_matching_test.root_module.addImport("vulkan_compute_tensor_operations", tensor_ops_module);
+
+    // Add Vulkan test executable
+    const vulkan_test = b.addExecutable(.{
+        .name = "vulkan_test",
+        .root_source_file = .{ .cwd_relative = "examples/vulkan_test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Link against system libraries
+    vulkan_test.linkLibC();
+    vulkan_test.linkSystemLibrary("vulkan");
+    
+    // Add Vulkan module dependencies
+    vulkan_test.root_module.addImport("vulkan_context", context_module);
+    
+    // Install the test executable
+    b.installArtifact(vulkan_test);
+    
+    // Add run step for the test
+    const run_vulkan_test = b.addRunArtifact(vulkan_test);
+    const run_vulkan_test_step = b.step("run-vulkan-test", "Run the Vulkan context test");
+    run_vulkan_test_step.dependOn(&run_vulkan_test.step);
     
     // Add include paths
     pattern_matching_test.addIncludePath(.{ .cwd_relative = "src" });
