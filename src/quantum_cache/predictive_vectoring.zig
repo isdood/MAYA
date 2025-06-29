@@ -11,13 +11,52 @@ const StringArrayHashMap = std.StringArrayHashMap;
 const Thread = std.Thread;
 const time = std.time;
 const math = std.math;
+const sort = std.sort;
+const AutoHashMap = std.AutoHashMap;
 
-// Simple pattern structure for testing
+// Import pattern matching module
+const pattern_matching = @import("../neural/pattern_matching.zig");
+const Image = pattern_matching.Image;
+const MultiScaleMatcher = pattern_matching.MultiScaleMatcher;
+
+/// Pattern structure with multi-scale matching capabilities
 pub const Pattern = struct {
-    data: []const f32,
-    width: u32,
-    height: u32,
-    owns_data: bool = false,
+    image: Image,  // The pattern image data
+    key: []const u8 = "",  // Unique identifier for the pattern (owned by the pattern_cache)
+    owns_key: bool = false,
+    
+    pub fn init(allocator: Allocator, key: []const u8, width: usize, height: usize) !Pattern {
+        const key_copy = try allocator.dupe(u8, key);
+        return .{
+            .image = try Image.init(allocator, width, height),
+            .key = key_copy,
+            .owns_key = true,
+        };
+    }
+    
+    pub fn deinit(self: *Pattern) void {
+        self.image.deinit();
+        if (self.owns_key) {
+            const allocator = self.image.allocator;
+            allocator.free(self.key);
+        }
+    }
+    
+    pub fn getWidth(self: Pattern) usize {
+        return self.image.width;
+    }
+    
+    pub fn getHeight(self: Pattern) usize {
+        return self.image.height;
+    }
+    
+    pub fn setPixel(self: *Pattern, x: usize, y: usize, value: f32) void {
+        self.image.setPixel(x, y, value);
+    }
+    
+    pub fn getPixel(self: Pattern, x: usize, y: usize) f32 {
+        return self.image.getPixel(x, y);
+    }
 };
 
 // 🌀 STARWEAVE Meta-Pattern Constants
@@ -48,109 +87,88 @@ pub const STARWEAVE_META = struct {
 
 /// 🌈 PatternSignature captures the multi-dimensional essence of a pattern
 pub const PatternSignature = struct {
+    allocator: Allocator,
+    
     // Core pattern metrics
-    hash: u64,                  // Fast comparison
-    fingerprint: [32]u8,        // Cryptographic fingerprint
+    hash: u64 = 0,                  // Fast comparison
+    fingerprint: [32]u8 = [_]u8{0} ** 32,  // Cryptographic fingerprint
+    dimensionality: u8 = 0,         // Number of dimensions in the pattern
     
-    // STARWEAVE meta-pattern aspects (normalized 0.0-1.0)
-    aspects: [STARWEAVE_META.PRISMATIC_ASPECTS]f32,
+    // Temporal tracking
+    first_accessed: i64 = 0,
+    last_accessed: i64 = 0,
+    access_count: u64 = 0,
     
-    // Quantum properties
-    coherence: f32 = 0.0,       // 0.0 (decohered) to 1.0 (max coherence)
-    coherence_state: STARWEAVE_META.CoherenceState = .COLLAPSED,
+    // STARWEAVE meta-pattern aspects
+    meta_aspects: [STARWEAVE_META.PRISMATIC_ASPECTS]f32 = [_]f32{0.0} ** STARWEAVE_META.PRISMATIC_ASPECTS,
     
-    // Temporal properties
-    last_accessed: i64,
-    access_count: u32 = 0,
+    // Quantum coherence state
+    coherence_state: STARWEAVE_META.CoherenceState = .SUPERPOSED,
     
-    // Pattern relationships (quantum entanglement)
-    entangled_with: ArrayList(u64),  // Hashes of related patterns
+    // Associated patterns (entangled states)
+    entanglements: ArrayList(u64),
     
-    pub fn init(allocator: Allocator) !@This() {
+    pub fn init(allocator: Allocator) PatternSignature {
         return .{
-            .hash = 0,
-            .fingerprint = [_]u8{0} ** 32,
-            .aspects = [_]f32{0.0} ** STARWEAVE_META.PRISMATIC_ASPECTS,
-            .entangled_with = ArrayList(u64).init(allocator),
-            .last_accessed = time.milliTimestamp(),
+            .allocator = allocator,
+            .entanglements = ArrayList(u64).init(allocator),
         };
     }
     
     pub fn deinit(self: *@This()) void {
-        self.entangled_with.deinit();
+        self.entanglements.deinit();
     }
     
-    /// Calculates similarity between this signature and another
-    pub fn similarity(self: *const PatternSignature, other: *const PatternSignature) f32 {
-        // If comparing with self, return 1.0
-        if (self == other) return 1.0;
-        
-        // Simple cosine similarity
-        var dot: f32 = 0.0;
-        var norm_a: f32 = 0.0;
-        var norm_b: f32 = 0.0;
-        
-        for (self.aspects, 0..) |a, i| {
-            const b = other.aspects[i];
-            dot += a * b;
-            norm_a += a * a;
-            norm_b += b * b;
+    /// Updates the coherence state based on access patterns and temporal dynamics
+    pub fn updateCoherence(self: *@This(), timestamp: i64) void {
+        // Update temporal tracking
+        if (self.first_accessed == 0) {
+            self.first_accessed = timestamp;
         }
+        self.last_accessed = timestamp;
+        self.access_count += 1;
         
-        // Handle edge cases
-        if (norm_a == 0 or norm_b == 0) return 0.0;
+        // Simple coherence model (can be enhanced with quantum-inspired dynamics)
+        const time_since_last = @as(f64, @floatFromInt(timestamp - self.first_accessed)) / 1000.0;
+        const access_rate = @as(f64, @floatFromInt(self.access_count)) / (time_since_last + 1.0);
         
-        // Calculate cosine similarity
-        const cos_sim = dot / (@sqrt(norm_a) * @sqrt(norm_b));
-        
-        // Ensure the result is within valid range [-1, 1]
-        return @min(1.0, @max(-1.0, cos_sim));
-    }
-    
-    /// Updates coherence based on access patterns and system state
-    pub fn updateCoherence(self: *@This(), current_time: i64) void {
-        const time_since_access = @as(f32, @floatFromInt(current_time - self.last_accessed)) / 1000.0; // seconds
-        
-        // Apply STARWEAVE coherence dynamics
-        switch (self.coherence_state) {
-            .ENTANGLED => {
-                // Maintain high coherence through active use
-                self.coherence = @min(1.0, self.coherence + 0.1);
-            },
-            .RESONANT => {
-                // Gradually increase coherence when resonant
-                self.coherence = @min(1.0, self.coherence + 0.05);
-            },
-            .SUPERPOSED => {
-                // Random fluctuations in superposition
-                self.coherence *= 0.9 + 0.2 * @as(f32, @floatFromInt(std.crypto.random.int(u8))) / 255.0;
-            },
-            .COLLAPSED, .DECOHERED => {
-                // Slow decay when not actively maintained
-                self.coherence *= @exp(-0.1 * time_since_access);
-            },
-        }
-        
-        // State transitions based on coherence
-        if (self.coherence > 0.8) {
+        // Update coherence based on access patterns
+        if (access_rate > 10.0) {
             self.coherence_state = .ENTANGLED;
-        } else if (self.coherence > 0.6) {
+        } else if (access_rate > 1.0) {
             self.coherence_state = .RESONANT;
-        } else if (self.coherence > 0.3) {
-            self.coherence_state = .SUPERPOSED;
-        } else if (self.coherence > 0.1) {
-            self.coherence_state = .COLLAPSED;
-        } else {
+        } else if (time_since_last > 60.0) {  // 1 minute of inactivity
             self.coherence_state = .DECOHERED;
+        } else {
+            self.coherence_state = .SUPERPOSED;
         }
+    }
+    
+    /// Calculates the pattern's recency score (0.0 to 1.0)
+    pub fn getRecencyScore(self: *const @This(), current_time: i64) f32 {
+        if (self.access_count == 0) return 0.0;
+        const time_since_access = @as(f32, @floatFromInt(current_time - self.last_accessed));
+        // Normalize to 0-1 range (1.0 = recently accessed, 0.0 = never accessed)
+        return 1.0 / (1.0 + time_since_access / 1000.0); // Decay over seconds
     }
 };
 
 /// 🌠 PredictiveVectoringSystem implements quantum-coherent pattern prediction
+/// 🌟 Pattern matching result
+pub const PatternMatch = struct {
+    pattern_key: []const u8,
+    x: usize,
+    y: usize,
+    scale: f32,
+    score: f32,
+    signature: *PatternSignature,
+};
+
 pub const PredictiveVectoringSystem = struct {
     allocator: Allocator,
     cache: StringArrayHashMap(PatternSignature),
     pattern_cache: StringArrayHashMap(Pattern),
+    pattern_matcher: MultiScaleMatcher,
     
     // STARWEAVE meta-pattern tracking
     pattern_entanglement: std.AutoHashMap(u64, ArrayList(u64)),
@@ -167,11 +185,12 @@ pub const PredictiveVectoringSystem = struct {
     // Thread safety
     mutex: Thread.Mutex = .{},
     
-    pub fn init(allocator: Allocator) !@This() {
+    pub fn init(allocator: Allocator) !PredictiveVectoringSystem {
         return .{
             .allocator = allocator,
             .cache = StringArrayHashMap(PatternSignature).init(allocator),
             .pattern_cache = StringArrayHashMap(Pattern).init(allocator),
+            .pattern_matcher = MultiScaleMatcher.init(allocator),
             .pattern_entanglement = std.AutoHashMap(u64, ArrayList(u64)).init(allocator),
             .temporal_patterns = std.PriorityQueue(PatternTemporalNode, void, PatternTemporalNode.lessThan).init(allocator, {}),
             .stats = .{},
@@ -180,17 +199,26 @@ pub const PredictiveVectoringSystem = struct {
     
     /// Deinitializes the predictive vectoring system and frees all resources
     pub fn deinit(self: *@This()) void {
-        // Free all pattern data
-        var it = self.pattern_cache.iterator();
+        // Free all pattern signatures
+        var it = self.cache.iterator();
         while (it.next()) |entry| {
-            if (entry.value_ptr.owns_data) {
-                self.allocator.free(entry.value_ptr.data);
-            }
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.deinit();
         }
-        
-        // Free all data structures
-        self.pattern_cache.deinit();
         self.cache.deinit();
+        
+        // Free all patterns - don't free the keys as they're owned by the patterns
+        var pat_it = self.pattern_cache.iterator();
+        while (pat_it.next()) |entry| {
+            // The pattern owns its key, so we don't free it here
+            entry.value_ptr.deinit();
+        }
+        self.pattern_cache.deinit();
+        
+        // Clean up pattern matcher if it has a deinit method
+        if (@hasDecl(@TypeOf(self.pattern_matcher), "deinit")) {
+            self.pattern_matcher.deinit();
+        }
         
         // Free pattern_entanglement values
         var ent_it = self.pattern_entanglement.iterator();
@@ -270,13 +298,91 @@ pub const PredictiveVectoringSystem = struct {
         signature.updateCoherence(time.milliTimestamp());
     }
     
+    /// Registers a new pattern with the system
+    pub fn registerPattern(self: *@This(), key: []const u8, pattern: *const Pattern) !void {
+        // Create a new pattern instance and copy the data
+        var new_pattern = try Pattern.init(self.allocator, key, pattern.getWidth(), pattern.getHeight());
+        
+        // Copy the image data
+        for (0..pattern.getHeight()) |y| {
+            for (0..pattern.getWidth()) |x| {
+                const val = pattern.getPixel(x, y);
+                new_pattern.setPixel(x, y, val);
+            }
+        }
+        
+        // Store the new pattern in the cache
+        try self.pattern_cache.put(new_pattern.key, new_pattern);
+        
+        // Create a signature for the pattern if it doesn't exist
+        if (!self.cache.contains(key)) {
+            const signature = PatternSignature.init(self.allocator);
+            const key_copy = try self.allocator.dupe(u8, key);
+            try self.cache.put(key_copy, signature);
+        }
+    }
+    
+    /// Finds patterns in the given image
+    pub fn findPatterns(self: *@This(), image: *const Image, min_score: f32) !ArrayList(PatternMatch) {
+        var matches = ArrayList(PatternMatch).init(self.allocator);
+        
+        // Iterate through all registered patterns
+        var it = self.pattern_cache.iterator();
+        while (it.next()) |entry| {
+            const pattern_key = entry.key_ptr.*;
+            const pattern = entry.value_ptr;
+            
+            // Skip if pattern is larger than the image
+            if (pattern.getWidth() > image.width or pattern.getHeight() > image.height) {
+                continue;
+            }
+            
+            // Find the best match for this pattern
+            const result = try self.pattern_matcher.findBestMatch(
+                image.*, 
+                pattern.image,
+                self.allocator
+            );
+            
+            // Only include matches above the minimum score
+            if (result.score >= min_score) {
+                try matches.append(PatternMatch{
+                    .pattern_key = pattern_key,
+                    .x = result.x,
+                    .y = result.y,
+                    .scale = result.scale,
+                    .score = result.score,
+                    .signature = self.cache.getPtr(pattern_key).?,
+                });
+            }
+        }
+        
+        // Sort matches by score in descending order
+        std.sort.insertion(PatternMatch, matches.items, {}, struct {
+            fn lessThan(_: void, a: PatternMatch, b: PatternMatch) bool {
+                return a.score > b.score;
+            }
+        }.lessThan);
+        
+        return matches;
+    }
+    
     /// Updates temporal pattern tracking
     fn updateTemporalPatterns(self: *@This(), key: []const u8, signature: *PatternSignature) !void {
-        // TODO: Implement temporal pattern analysis
-        // For now, just track access times
+        // Track access time for temporal pattern analysis
+        const now = std.time.milliTimestamp();
+        signature.last_accessed = now;
+        
+        // Update access frequency
+        if (signature.first_accessed == 0) {
+            signature.first_accessed = now;
+        }
+        signature.access_count += 1;
+        
+        // Update temporal patterns
+        // TODO: Add more sophisticated temporal pattern analysis
         _ = self;
         _ = key;
-        _ = signature;
     }
 };
 
