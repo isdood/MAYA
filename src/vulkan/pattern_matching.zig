@@ -1,16 +1,16 @@
 const std = @import("std");
 const vk = @import("vk");
-const Context = @import("context").VulkanContext;
-const Pipeline = @import("compute/pipeline.zig").VulkanComputePipeline;
-const Tensor4D = @import("compute/tensor.zig").Tensor4D;
-const pattern_matching_pipeline = @import("pattern_matching/pipeline.zig");
+const Context = @import("vulkan_context").VulkanContext;
+const Tensor4D = @import("vulkan_compute_tensor").Tensor4D;
+
+// Import the pipeline implementation
+const Pipeline = @import("vulkan_pattern_matching_pipeline").Self;
 
 /// GPU-accelerated pattern matching using Vulkan
 pub const VulkanPatternMatcher = struct {
     allocator: std.mem.Allocator,
     context: *Context,
     pipeline: Pipeline,
-    compute_pipeline: pattern_matching_pipeline.Self,
     shader_module: vk.VkShaderModule,
     
     const Self = @This();
@@ -19,27 +19,28 @@ pub const VulkanPatternMatcher = struct {
     pub fn init(allocator: std.mem.Allocator, context: *Context) !Self {
         // Load the pre-compiled SPIR-V shader
         const shader_path = "shaders/spv/pattern_matching.comp.spv";
-        const shader_module = try loadShaderModule(allocator, context.device, shader_path);
+        const device = context.device orelse return error.NoDevice;
+        const shader_module = try loadShaderModule(allocator, device, shader_path);
         
         // Initialize the compute pipeline
-        const compute_pipeline = try pattern_matching_pipeline.Self.init(context, shader_module);
+        const queue_family_index = context.compute_queue_family_index orelse return error.NoComputeQueue;
+        var compute_queue: vk.VkQueue = undefined;
+        vk.vkGetDeviceQueue(device, queue_family_index, 0, &compute_queue);
         
-        // TODO: Initialize the main pipeline
+        const pipeline = try Pipeline.init(device, shader_module, queue_family_index, compute_queue);
         
         return Self{
             .allocator = allocator,
             .context = context,
-            .pipeline = undefined, // TODO: Initialize with actual pipeline
-            .compute_pipeline = compute_pipeline,
+            .pipeline = pipeline,
             .shader_module = shader_module,
         };
     }
     
     /// Clean up resources
     pub fn deinit(self: *Self) void {
-        self.compute_pipeline.deinit();
+        self.pipeline.deinit();
         vk.vkDestroyShaderModule(self.context.device, self.shader_module, null);
-        // TODO: Clean up other resources
     }
     
     /// Match a pattern in an image using GPU acceleration
@@ -62,14 +63,11 @@ pub const VulkanPatternMatcher = struct {
     
     /// Match a pattern at a specific scale
     fn matchAtScale(
-        self: *Self,
-        image: Tensor4D(f32),
-        pattern: Tensor4D(f32),
-        scale: f32,
+        _: *Self,
+        _: Tensor4D(f32),
+        _: Tensor4D(f32),
+        _: f32,
     ) !struct { x: u32, y: u32, scale: f32, score: f32 } {
-        _ = image;
-        _ = pattern;
-        _ = scale;
         
         // TODO: Implement GPU-accelerated pattern matching at a specific scale
         // 1. Upload image and pattern to GPU
@@ -87,7 +85,6 @@ pub const VulkanPatternMatcher = struct {
         device: vk.VkDevice,
         path: []const u8,
     ) !vk.VkShaderModule {
-        _ = allocator; // Not used in this implementation
         
         // Read the SPIR-V file directly
         const file = try std.fs.cwd().openFile(path, .{});
@@ -101,7 +98,7 @@ pub const VulkanPatternMatcher = struct {
         defer allocator.free(shader_code);
         
         // Create shader module
-        return try pattern_matching_pipeline.Self.createShaderModule(device, shader_code);
+        return try Pipeline.createShaderModule(device, shader_code);
     }
 };
 

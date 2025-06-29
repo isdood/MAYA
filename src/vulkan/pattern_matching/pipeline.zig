@@ -1,8 +1,8 @@
 const std = @import("std");
-const vk = @import("../vk");
-const Context = @import("../context").VulkanContext;
+const vk = @import("vk");
+const Context = @import("vulkan_context").VulkanContext;
 
-const Self = @This();
+pub const Self = @This();
 
 const max_descriptor_sets = 32;
 const max_push_constant_size = 128; // bytes
@@ -27,11 +27,11 @@ compute_queue: vk.VkQueue,
 command_pool: vk.VkCommandPool,
 
 pub fn init(
-    context: *Context,
+    device: vk.VkDevice,
     shader_module: vk.VkShaderModule,
+    queue_family_index: u32,
+    queue: vk.VkQueue,
 ) !Self {
-    const device = context.device;
-    
     // Create descriptor set layout
     const bindings = [_]vk.VkDescriptorSetLayoutBinding{
         .{
@@ -57,21 +57,24 @@ pub fn init(
         },
     };
 
+    const binding_count = @as(u32, @intCast(bindings.len));
     const layout_info = vk.VkDescriptorSetLayoutCreateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .pNext = null,
         .flags = 0,
-        .bindingCount = @intCast(u32, bindings.len),
+        .bindingCount = binding_count,
         .pBindings = &bindings,
     };
 
     var descriptor_set_layout: vk.VkDescriptorSetLayout = undefined;
-    try vk.checkSuccess(vk.vkCreateDescriptorSetLayout(
+    if (vk.vkCreateDescriptorSetLayout(
         device,
         &layout_info,
         null,
         &descriptor_set_layout,
-    ), error.FailedToCreateDescriptorSetLayout);
+    ) != vk.VK_SUCCESS) {
+        return error.FailedToCreateDescriptorSetLayout;
+    }
 
     // Create descriptor pool
     const pool_sizes = [_]vk.VkDescriptorPoolSize{
@@ -83,17 +86,19 @@ pub fn init(
         .pNext = null,
         .flags = vk.VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .maxSets = max_descriptor_sets,
-        .poolSizeCount = @intCast(u32, pool_sizes.len),
+        .poolSizeCount = @as(u32, @intCast(pool_sizes.len)),
         .pPoolSizes = &pool_sizes,
     };
 
     var descriptor_pool: vk.VkDescriptorPool = undefined;
-    try vk.checkSuccess(vk.vkCreateDescriptorPool(
+    if (vk.vkCreateDescriptorPool(
         device,
         &pool_info,
         null,
         &descriptor_pool,
-    ), error.FailedToCreateDescriptorPool);
+    ) != vk.VK_SUCCESS) {
+        return error.FailedToCreateDescriptorPool;
+    }
 
     // Allocate descriptor sets
     const layouts = [_]vk.VkDescriptorSetLayout{descriptor_set_layout} ** max_descriptor_sets;
@@ -107,11 +112,13 @@ pub fn init(
         .pSetLayouts = &layouts,
     };
 
-    try vk.checkSuccess(vk.vkAllocateDescriptorSets(
+    if (vk.vkAllocateDescriptorSets(
         device,
         &alloc_info,
         &descriptor_sets,
-    ), error.FailedToAllocateDescriptorSets);
+    ) != vk.VK_SUCCESS) {
+        return error.FailedToAllocateDescriptorSets;
+    }
 
     // Create pipeline layout
     const push_constant_range = vk.VkPushConstantRange{
@@ -131,12 +138,14 @@ pub fn init(
     };
 
     var pipeline_layout: vk.VkPipelineLayout = undefined;
-    try vk.checkSuccess(vk.vkCreatePipelineLayout(
+    if (vk.vkCreatePipelineLayout(
         device,
         &pipeline_layout_info,
         null,
         &pipeline_layout,
-    ), error.FailedToCreatePipelineLayout);
+    ) != vk.VK_SUCCESS) {
+        return error.FailedToCreatePipelineLayout;
+    }
 
     // Create compute pipeline
     const stage_info = vk.VkPipelineShaderStageCreateInfo{
@@ -160,17 +169,18 @@ pub fn init(
     };
 
     var pipeline: vk.VkPipeline = undefined;
-    try vk.checkSuccess(vk.vkCreateComputePipelines(
+    if (vk.vkCreateComputePipelines(
         device,
-        .null_handle,
+        null,
         1,
         &pipeline_info,
         null,
         &pipeline,
-    ), error.FailedToCreateComputePipeline);
+    ) != vk.VK_SUCCESS) {
+        return error.FailedToCreateComputePipeline;
+    }
 
     // Create command pool
-    const queue_family_index = context.compute_queue_family_index;
     const command_pool_info = vk.VkCommandPoolCreateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = null,
@@ -179,16 +189,14 @@ pub fn init(
     };
 
     var command_pool: vk.VkCommandPool = undefined;
-    try vk.checkSuccess(vk.vkCreateCommandPool(
+    if (vk.vkCreateCommandPool(
         device,
         &command_pool_info,
         null,
         &command_pool,
-    ), error.FailedToCreateCommandPool);
-
-    // Get compute queue
-    var compute_queue: vk.VkQueue = undefined;
-    vk.vkGetDeviceQueue(device, queue_family_index, 0, &compute_queue);
+    ) != vk.VK_SUCCESS) {
+        return error.FailedToCreateCommandPool;
+    }
 
     return Self{
         .device = device,
@@ -199,7 +207,7 @@ pub fn init(
             .pool = descriptor_pool,
             .sets = descriptor_sets,
         },
-        .compute_queue = compute_queue,
+        .compute_queue = queue,
         .command_pool = command_pool,
     };
 }
@@ -216,21 +224,24 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn createShaderModule(device: vk.VkDevice, code: []const u8) !vk.VkShaderModule {
+    // Create the shader module info with the raw code
     const shader_module_info = vk.VkShaderModuleCreateInfo{
         .sType = vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .pNext = null,
         .flags = 0,
         .codeSize = code.len,
-        .pCode = @ptrCast([*]const u32, @alignCast(@alignOf(u32), code.ptr)),
+        .pCode = @as([*]const u32, @ptrCast(@alignCast(code.ptr))),
     };
 
     var shader_module: vk.VkShaderModule = undefined;
-    try vk.checkSuccess(vk.vkCreateShaderModule(
+    if (vk.vkCreateShaderModule(
         device,
         &shader_module_info,
         null,
         &shader_module,
-    ), error.FailedToCreateShaderModule);
+    ) != vk.VK_SUCCESS) {
+        return error.FailedToCreateShaderModule;
+    }
 
     return shader_module;
 }

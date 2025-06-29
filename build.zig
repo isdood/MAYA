@@ -115,6 +115,48 @@ pub fn build(b: *std.Build) !void {
         },
     });
     
+    // Create the pipeline module first
+    const pipeline_module = b.addModule("vulkan_pattern_matching_pipeline", .{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/pattern_matching/pipeline.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan_context",
+                .module = context_module,
+            },
+        },
+    });
+    
+    // Create pattern matching module
+    const pattern_matching_module = b.addModule("vulkan_pattern_matching", .{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/pattern_matching.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan_context",
+                .module = context_module,
+            },
+            .{
+                .name = "vulkan_memory",
+                .module = memory_module,
+            },
+            .{
+                .name = "vulkan_compute_tensor",
+                .module = tensor_module,
+            },
+            .{
+                .name = "vulkan_pattern_matching_pipeline",
+                .module = pipeline_module,
+            },
+        },
+    });
+    
     // Create pattern matching test executable
     const pattern_matching_test = b.addExecutable(.{
         .name = "pattern_matching_test",
@@ -124,12 +166,13 @@ pub fn build(b: *std.Build) !void {
     });
     
     // Add dependencies for pattern matching test
-    pattern_matching_test.root_module.addImport("vulkan", vk_module);
+    pattern_matching_test.root_module.addImport("vk", vk_module);
     pattern_matching_test.root_module.addImport("shaders", shaders_module);
-    pattern_matching_test.root_module.addImport("vulkan/context", context_module);
-    pattern_matching_test.root_module.addImport("vulkan/memory", memory_module);
-    pattern_matching_test.root_module.addImport("vulkan/compute/tensor", tensor_module);
-    pattern_matching_test.root_module.addImport("vulkan/compute/tensor_operations", tensor_ops_module);
+    pattern_matching_test.root_module.addImport("vulkan_context", context_module);
+    pattern_matching_test.root_module.addImport("vulkan_memory", memory_module);
+    pattern_matching_test.root_module.addImport("vulkan_compute_tensor", tensor_module);
+    pattern_matching_test.root_module.addImport("vulkan_pattern_matching", pattern_matching_module);
+    pattern_matching_test.root_module.addImport("vulkan_compute_tensor_operations", tensor_ops_module);
     
     // Add include paths
     pattern_matching_test.addIncludePath(.{ .cwd_relative = "src" });

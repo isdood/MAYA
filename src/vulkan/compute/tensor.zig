@@ -28,7 +28,7 @@ pub fn Tensor4D(comptime T: type) type {
         pub fn initUninitialized(
             context: *Context,
             dims: [4]u32,
-            allocator: ?std.mem.Allocator,
+            _: ?std.mem.Allocator, // Keep for API compatibility
         ) !Self {
             const element_count = dims[0] * dims[1] * dims[2] * dims[3];
             const size = element_count * @sizeOf(T);
@@ -58,15 +58,13 @@ pub fn Tensor4D(comptime T: type) type {
         ) !Self {
             std.debug.assert(data.len == dims[0] * dims[1] * dims[2] * dims[3]);
             
-            var tensor = try Self.initUninitialized(context, dims, allocator);
-            try tensor.writeData(data, allocator);
+            var tensor = try Self.initUninitialized(context, dims, null);
+            try tensor.writeData(data, null);
             return tensor;
         }
         
         /// Write data to the tensor
         pub fn writeData(self: Self, data: []const T, _: ?std.mem.Allocator) !void {
-            const alloc = default_allocator;
-            
             // Create a staging buffer
             const staging = try Buffer.init(
                 self.buffer.device,

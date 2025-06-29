@@ -1,8 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const Tensor4D = @import("../src/compute/tensor.zig").Tensor4D;
-const VulkanContext = @import("../src/vulkan/context.zig").VulkanContext;
-const VulkanPatternMatcher = @import("../src/vulkan/pattern_matching.zig").VulkanPatternMatcher;
+const Tensor4D = @import("vulkan_compute_tensor").Tensor4D;
+const VulkanContext = @import("vulkan_context").VulkanContext;
+const VulkanPatternMatcher = @import("vulkan_pattern_matching").VulkanPatternMatcher;
 
 pub fn main() !void {
     // Initialize memory allocator
