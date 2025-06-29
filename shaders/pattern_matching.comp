@@ -1,0 +1,90 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_shader_atomic_float : require
+
+// Input image
+layout(binding = 0) uniform sampler2D inputImage;
+// Pattern to match
+layout(binding = 1) uniform sampler2D patternImage;
+// Output scores (one per pixel)
+layout(binding = 2, r32f) uniform image2D outputScores;
+
+// Workgroup size
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// Image dimensions
+layout(push_constant) uniform PushConstants {
+    ivec2 imageSize;
+    ivec2 patternSize;
+    float scale;
+} pushConstants;
+
+// Simple normalized cross-correlation
+float ncc(ivec2 imgCoord, ivec2 patternCoord) {
+    float sum = 0.0;
+    float sumImg = 0.0;
+    float sumPattern = 0.0;
+    float sumImgSq = 0.0;
+    float sumPatternSq = 0.0;
+    
+    int count = 0;
+    
+    // Sample a window around the current position
+    for (int dy = 0; dy < pushConstants.patternSize.y; dy++) {
+        for (int dx = 0; dx < pushConstants.patternSize.x; dx++) {
+            ivec2 samplePos = imgCoord + ivec2(dx, dy);
+            ivec2 patternPos = patternCoord + ivec2(dx, dy);
+            
+            // Skip out-of-bounds samples
+            if (any(lessThan(samplePos, ivec2(0))) || 
+                any(greaterThanEqual(samplePos, pushConstants.imageSize))) {
+                continue;
+            }
+            
+            float imgVal = texelFetch(inputImage, samplePos, 0).r;
+            float patternVal = texelFetch(patternImage, patternPos, 0).r;
+            
+            sum += imgVal * patternVal;
+            sumImg += imgVal;
+            sumPattern += patternVal;
+            sumImgSq += imgVal * imgVal;
+            sumPatternSq += patternVal * patternVal;
+            count++;
+        }
+    }
+    
+    if (count == 0) return -1.0;
+    
+    // Calculate means
+    float meanImg = sumImg / float(count);
+    float meanPattern = sumPattern / float(count);
+    
+    // Calculate standard deviations
+    float stdImg = sqrt(max(0.0, sumImgSq / float(count) - meanImg * meanImg));
+    float stdPattern = sqrt(max(0.0, sumPatternSq / float(count) - meanPattern * meanPattern));
+    
+    // Avoid division by zero
+    if (stdImg < 1e-6 || stdPattern < 1e-6) {
+        return 0.0;
+    }
+    
+    // Calculate normalized cross-correlation
+    float ncc = (sum - float(count) * meanImg * meanPattern) / 
+                (float(count) * stdImg * stdPattern);
+    
+    return ncc;
+}
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    
+    if (pixelCoord.x >= pushConstants.imageSize.x || pixelCoord.y >= pushConstants.imageSize.y) {
+        return;
+    }
+    
+    // Calculate NCC score at this position
+    float score = ncc(pixelCoord, ivec2(0, 0));
+    
+    // Store the result
+    imageStore(outputScores, pixelCoord, vec4(score, 0.0, 0.0, 1.0));
+}

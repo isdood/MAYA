@@ -12,8 +12,28 @@ pub fn build(b: *std.Build) !void {
     
     // Standard optimization options
     const optimize = b.standardOptimizeOption(.{});
-
-    // Create the shaders module first to avoid conflicts
+    
+    // Build shader compiler
+    const shader_compiler = b.addExecutable(.{
+        .name = "shader_compiler",
+        .root_source_file = .{ .cwd_relative = "tools/shader_compiler/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    // Add shader compilation step
+    const shader_compile_step = b.step("shaders", "Compile shaders");
+    const shader_compile = b.addRunArtifact(shader_compiler);
+    shader_compile.addArgs(&.{
+        "shaders",
+        "src/vulkan/compute/generated",
+    });
+    shader_compile_step.dependOn(&shader_compile.step);
+    
+    // Make shader compilation a dependency of the build
+    b.getInstallStep().dependOn(shader_compile_step);
+    
+    // Create the shaders module
     const shaders_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/compute/shaders.zig" },
     });
