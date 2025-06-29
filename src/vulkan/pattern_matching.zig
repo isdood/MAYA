@@ -17,8 +17,8 @@ pub const VulkanPatternMatcher = struct {
     
     /// Initialize the GPU pattern matcher
     pub fn init(allocator: std.mem.Allocator, context: *Context) !Self {
-        // Load and compile the shader
-        const shader_path = "src/vulkan/compute/generated/pattern_matching.comp.zig";
+        // Load the pre-compiled SPIR-V shader
+        const shader_path = "shaders/spv/pattern_matching.comp.spv";
         const shader_module = try loadShaderModule(allocator, context.device, shader_path);
         
         // Initialize the compute pipeline
@@ -87,16 +87,21 @@ pub const VulkanPatternMatcher = struct {
         device: vk.VkDevice,
         path: []const u8,
     ) !vk.VkShaderModule {
-        // Read the shader module
-        const shader_data = try std.fs.cwd().readFileAlloc(allocator, path, std.math.maxInt(usize));
-        defer allocator.free(shader_data);
+        _ = allocator; // Not used in this implementation
         
-        // The shader data is embedded in a Zig file, extract the SPIR-V bytes
-        // This is a simplified version - in practice, you'd need to parse the Zig file
-        // or use a more robust approach to extract the SPIR-V data
+        // Read the SPIR-V file directly
+        const file = try std.fs.cwd().openFile(path, .{});
+        defer file.close();
         
-        // For now, just pass the raw data to the pipeline module
-        return try pattern_matching_pipeline.Self.createShaderModule(device, shader_data);
+        // Get file size
+        const file_size = try file.getEndPos();
+        
+        // Read the entire file
+        const shader_code = try file.readToEndAlloc(allocator, file_size);
+        defer allocator.free(shader_code);
+        
+        // Create shader module
+        return try pattern_matching_pipeline.Self.createShaderModule(device, shader_code);
     }
 };
 
