@@ -1,0 +1,199 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_shader_atomic_float : require
+
+// Input image
+layout(binding = 0) uniform sampler2D inputImage;
+// Pattern to match
+layout(binding = 1) uniform sampler2D patternImage;
+// Output scores (one per pixel)
+layout(binding = 2, r32f) uniform image2D outputScores;
+// Temporary buffer for intermediate results
+layout(binding = 3, std430) buffer IntermediateBuffer {
+    float scores[];
+};
+
+// Workgroup size
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// Push constants for configuration
+layout(push_constant) uniform PushConstants {
+    ivec2 imageSize;
+    ivec2 patternSize;
+    float scale;
+    float rotation;  // Rotation in radians
+    float threshold;  // Matching threshold
+    uint  method;     // Matching method to use
+} pushConstants;
+
+// Matching methods
+#define METHOD_NCC 0
+#define METHOD_SAD 1
+#define METHOD_SSD 2
+#define METHOD_ORB  3
+
+// Convert RGB to grayscale
+float rgb2gray(vec3 rgb) {
+    return dot(rgb, vec3(0.299, 0.587, 0.114));
+}
+
+// Sample image with bilinear filtering
+float sampleImage(ivec2 coord) {
+    if (any(lessThan(coord, ivec2(0))) || 
+        any(greaterThanEqual(coord, pushConstants.imageSize))) {
+        return 0.0;
+    }
+    return texelFetch(inputImage, coord, 0).r;
+}
+
+// Sample pattern with rotation
+float samplePattern(ivec2 patternCoord, float cosTheta, float sinTheta) {
+    // Convert to pattern space
+    vec2 center = vec2(pushConstants.patternSize) * 0.5;
+    vec2 offset = vec2(patternCoord) - center;
+    
+    // Apply rotation
+    vec2 rotated = vec2(
+        offset.x * cosTheta - offset.y * sinTheta,
+        offset.x * sinTheta + offset.y * cosTheta
+    );
+    
+    // Convert back to texture space
+    ivec2 texCoord = ivec2(rotated + center);
+    
+    if (any(lessThan(texCoord, ivec2(0))) || 
+        any(greaterThanEqual(texCoord, pushConstants.patternSize))) {
+        return 0.0;
+    }
+    
+    return texelFetch(patternImage, texCoord, 0).r;
+}
+
+// Normalized Cross-Correlation
+float computeNCC(ivec2 imgCoord) {
+    float sum = 0.0;
+    float sumImg = 0.0;
+    float sumPattern = 0.0;
+    float sumImgSq = 0.0;
+    float sumPatternSq = 0.0;
+    
+    float cosTheta = cos(pushConstants.rotation);
+    float sinTheta = sin(pushConstants.rotation);
+    
+    int count = 0;
+    
+    for (int dy = 0; dy < pushConstants.patternSize.y; dy++) {
+        for (int dx = 0; dx < pushConstants.patternSize.x; dx++) {
+            ivec2 samplePos = imgCoord + ivec2(dx, dy);
+            float imgVal = sampleImage(samplePos);
+            float patternVal = samplePattern(ivec2(dx, dy), cosTheta, sinTheta);
+            
+            sum += imgVal * patternVal;
+            sumImg += imgVal;
+            sumPattern += patternVal;
+            sumImgSq += imgVal * imgVal;
+            sumPatternSq += patternVal * patternVal;
+            count++;
+        }
+    }
+    
+    if (count == 0) return -1.0;
+    
+    float meanImg = sumImg / float(count);
+    float meanPattern = sumPattern / float(count);
+    float stdImg = sqrt(max(0.0, sumImgSq / float(count) - meanImg * meanImg));
+    float stdPattern = sqrt(max(0.0, sumPatternSq / float(count) - meanPattern * meanPattern));
+    
+    if (stdImg < 1e-6 || stdPattern < 1e-6) {
+        return 0.0;
+    }
+    
+    return (sum - float(count) * meanImg * meanPattern) / 
+           (float(count) * stdImg * stdPattern);
+}
+
+// Sum of Absolute Differences
+float computeSAD(ivec2 imgCoord) {
+    float sad = 0.0;
+    float cosTheta = cos(pushConstants.rotation);
+    float sinTheta = sin(pushConstants.rotation);
+    
+    int count = 0;
+    
+    for (int dy = 0; dy < pushConstants.patternSize.y; dy++) {
+        for (int dx = 0; dx < pushConstants.patternSize.x; dx++) {
+            ivec2 samplePos = imgCoord + ivec2(dx, dy);
+            float imgVal = sampleImage(samplePos);
+            float patternVal = samplePattern(ivec2(dx, dy), cosTheta, sinTheta);
+            
+            sad += abs(imgVal - patternVal);
+            count++;
+        }
+    }
+    
+    return count > 0 ? sad / float(count) : 1.0;
+}
+
+// Sum of Squared Differences
+float computeSSD(ivec2 imgCoord) {
+    float ssd = 0.0;
+    float cosTheta = cos(pushConstants.rotation);
+    float sinTheta = sin(pushConstants.rotation);
+    
+    int count = 0;
+    
+    for (int dy = 0; dy < pushConstants.patternSize.y; dy++) {
+        for (int dx = 0; dx < pushConstants.patternSize.x; dx++) {
+            ivec2 samplePos = imgCoord + ivec2(dx, dy);
+            float imgVal = sampleImage(samplePos);
+            float patternVal = samplePattern(ivec2(dx, dy), cosTheta, sinTheta);
+            
+            float diff = imgVal - patternVal;
+            ssd += diff * diff;
+            count++;
+        }
+    }
+    
+    return count > 0 ? ssd / float(count) : 1.0;
+}
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    
+    if (pixelCoord.x >= pushConstants.imageSize.x || 
+        pixelCoord.y >= pushConstants.imageSize.y) {
+        return;
+    }
+    
+    float score = 0.0;
+    
+    // Select matching method
+    switch (pushConstants.method) {
+        case METHOD_NCC:
+            score = computeNCC(pixelCoord);
+            break;
+            
+        case METHOD_SAD:
+            score = 1.0 - computeSAD(pixelCoord); // Convert to similarity score
+            break;
+            
+        case METHOD_SSD:
+            score = 1.0 / (1.0 + computeSSD(pixelCoord)); // Convert to similarity score
+            break;
+            
+        default:
+            score = 0.0;
+    }
+    
+    // Apply threshold
+    if (score < pushConstants.threshold) {
+        score = 0.0;
+    }
+    
+    // Store the result
+    imageStore(outputScores, pixelCoord, vec4(score, 0.0, 0.0, 1.0));
+    
+    // Also store in the intermediate buffer for reduction
+    uint idx = pixelCoord.y * pushConstants.imageSize.x + pixelCoord.x;
+    scores[idx] = score;
+}

@@ -8,9 +8,11 @@ const ArrayList = std.ArrayList;
 const StringHashMap = std.StringHashMap;
 
 const ShaderInfo = struct {
+    const Kind = enum { compute, vertex, fragment };
+    
     path: []const u8,
     name: []const u8,
-    kind: enum { compute, vertex, fragment },
+    kind: Kind,
 };
 
 pub fn main() !void {
@@ -46,30 +48,29 @@ pub fn main() !void {
 }
 
 fn findShaders(allocator: Allocator, dir_path: []const u8, shaders: *ArrayList(ShaderInfo)) !void {
-    var dir = try fs.cwd().openIterableDir(dir_path, .{});
+    var dir = try fs.cwd().openDir(dir_path, .{ .iterate = true });
     defer dir.close();
 
-    var walker = try dir.walk(allocator);
-    defer walker.deinit();
-
-    while (try walker.next()) |entry| {
-        const ext = fs.path.extension(entry.path);
-        const kind: ?ShaderInfo.Kind = if (mem.eql(u8, ext, ".comp"))
-            .compute
+    var it = dir.iterate();
+    while (try it.next()) |entry| {
+        if (entry.kind != .file) continue;
+        
+        const ext = fs.path.extension(entry.name);
+        const kind = if (mem.eql(u8, ext, ".comp"))
+            ShaderInfo.Kind.compute
         else if (mem.eql(u8, ext, ".vert"))
-            .vertex
+            ShaderInfo.Kind.vertex
         else if (mem.eql(u8, ext, ".frag"))
-            .fragment
+            ShaderInfo.Kind.fragment
         else
             null;
 
         if (kind) |k| {
-            const name = try fs.path.stem(allocator, entry.path);
-            const full_path = try fs.path.join(allocator, &[_][]const u8{ dir_path, entry.path });
-            
-            try shaders.append(.{
-                .path = full_path,
-                .name = name,
+            const shader_path = try fs.path.join(allocator, &[_][]const u8{dir_path, entry.name});
+            const name = std.fs.path.stem(entry.name);
+            try shaders.append(ShaderInfo{
+                .path = shader_path,
+                .name = try allocator.dupe(u8, name),
                 .kind = k,
             });
         }
@@ -124,11 +125,10 @@ fn compileShader(allocator: Allocator, shader: ShaderInfo, output_dir: []const u
     defer zig_file.close();
 
     var writer = zig_file.writer();
-    try writer.print(
-        \//! Auto-generated from {s}
-        //! DO NOT EDIT MANUALLY
-        \
-        , .{shader.path});
+    try writer.writeAll("//! Auto-generated from ");
+    try writer.writeAll(shader.path);
+    try writer.writeAll("\n");
+    try writer.writeAll("//! DO NOT EDIT MANUALLY\n\n");
 
     // Write the SPIR-V data as a Zig array
     try writer.writeAll("pub const data = [_]u8{\n    ");
@@ -138,10 +138,18 @@ fn compileShader(allocator: Allocator, shader: ShaderInfo, output_dir: []const u
         if (i > 0 and i % 12 == 0) {
             try writer.writeAll("\n    ");
         }
-        try writer.print("0x{x:0>2},", .{byte});
+        // Use a simple string conversion for the byte
+        const byte_str = try std.fmt.allocPrint(allocator, "0x{x:0>2}", .{byte});
+        defer allocator.free(byte_str);
+        try writer.writeAll(byte_str);
+        if (i < spv_data.len - 1) {
+            try writer.writeAll(",");
+        }
     }
 
     try writer.writeAll("\n};\n");
     
-    std.log.info("Generated {s}", .{output_zig});
+    // Simple debug output without formatting
+    const stdout = std.io.getStdOut().writer();
+    try stdout.writeAll("Generated shader.zig\n");
 }

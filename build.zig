@@ -88,6 +88,17 @@ pub fn build(b: *std.Build) !void {
         },
     });
     
+    // Create the shader utils module
+    const shader_utils_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/shader_utils.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+        },
+    });
+
     // Create the tensor_operations module
     const tensor_ops_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/compute/tensor_operations.zig" },
@@ -115,9 +126,28 @@ pub fn build(b: *std.Build) !void {
         },
     });
     
-    // Create the pipeline module first
-    const pipeline_module = b.addModule("vulkan_pattern_matching_pipeline", .{
-        .root_source_file = .{ .cwd_relative = "src/vulkan/pattern_matching/pipeline.zig" },
+    // Create the pattern matching pipeline module
+    const pattern_matching_pipeline_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/compute/pattern_matching_pipeline.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan/context",
+                .module = context_module,
+            },
+            .{
+                .name = "vulkan/compute/shader_utils",
+                .module = shader_utils_module,
+            },
+        },
+    });
+
+    // Create the image module with unique imports
+    const image_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/image.zig" },
         .imports = &.{
             .{
                 .name = "vk",
@@ -127,11 +157,15 @@ pub fn build(b: *std.Build) !void {
                 .name = "vulkan_context",
                 .module = context_module,
             },
+            .{
+                .name = "vulkan_memory",
+                .module = memory_module,
+            },
         },
     });
-    
-    // Create pattern matching module
-    const pattern_matching_module = b.addModule("vulkan_pattern_matching", .{
+
+    // Create the pattern matching module
+    const pattern_matching_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/pattern_matching.zig" },
         .imports = &.{
             .{
@@ -152,10 +186,74 @@ pub fn build(b: *std.Build) !void {
             },
             .{
                 .name = "vulkan_pattern_matching_pipeline",
-                .module = pipeline_module,
+                .module = pattern_matching_pipeline_module,
+            },
+            .{
+                .name = "vulkan_image",
+                .module = image_module,
             },
         },
     });
+
+    // Create the buffer module with a unique name
+    const buffer_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/buffer.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan_context",
+                .module = context_module,
+            },
+            .{
+                .name = "vulkan_memory",
+                .module = memory_module,
+            },
+        },
+    });
+    
+    // Create the pattern matcher module with unique imports
+    const pattern_matcher_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/pattern_matcher.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan_context",
+                .module = context_module,
+            },
+            .{
+                .name = "vulkan_memory",
+                .module = memory_module,
+            },
+            .{
+                .name = "shaders",
+                .module = shaders_module,
+            },
+            .{
+                .name = "vulkan_compute_tensor",
+                .module = tensor_module,
+            },
+            .{
+                .name = "vulkan_image",
+                .module = image_module,
+            },
+            .{
+                .name = "vulkan_pattern_matching",
+                .module = pattern_matching_module,
+            },
+            .{
+                .name = "vulkan_pattern_matching_pipeline",
+                .module = pattern_matching_pipeline_module,
+            },
+        },
+    });
+
+
     
     // Create pattern matching test executable
     const pattern_matching_test = b.addExecutable(.{
@@ -165,13 +263,19 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     
-    // Add dependencies for pattern matching test
+    // Link system libraries
+    pattern_matching_test.linkLibC();
+    pattern_matching_test.linkSystemLibrary("vulkan");
+    
+    // Add module imports with unique names
     pattern_matching_test.root_module.addImport("vk", vk_module);
-    pattern_matching_test.root_module.addImport("shaders", shaders_module);
     pattern_matching_test.root_module.addImport("vulkan_context", context_module);
     pattern_matching_test.root_module.addImport("vulkan_memory", memory_module);
     pattern_matching_test.root_module.addImport("vulkan_compute_tensor", tensor_module);
+    pattern_matching_test.root_module.addImport("vulkan_image", image_module);
+    pattern_matching_test.root_module.addImport("vulkan_buffer", buffer_module);
     pattern_matching_test.root_module.addImport("vulkan_pattern_matching", pattern_matching_module);
+    pattern_matching_test.root_module.addImport("vulkan_pattern_matcher", pattern_matcher_module);
     pattern_matching_test.root_module.addImport("vulkan_compute_tensor_operations", tensor_ops_module);
 
     // Add Vulkan test executable
@@ -215,6 +319,9 @@ pub fn build(b: *std.Build) !void {
     // Create a run step for the test executable
     const run_pattern_matching_test = b.addRunArtifact(pattern_matching_test);
     
+    // Make the run step depend on shader compilation
+    run_pattern_matching_test.step.dependOn(shader_compile_step);
+    
     // Shader files to be installed
     const shader_files = [_][]const u8{
         "shaders/4d_tensor_operations_float.comp.spv",
@@ -238,9 +345,13 @@ pub fn build(b: *std.Build) !void {
     run_test_step.dependOn(&install_pattern_matching_test.step);
     run_test_step.dependOn(&run_pattern_matching_test.step);
     
+    // Add the test step
+    const test_step = b.step("test-pattern-matching", "Run the pattern matching tests");
+    test_step.dependOn(&run_pattern_matching_test.step);
+    
     // Create a test step for future use
-    const test_step = b.step("test", "Run all tests");
-    test_step.dependOn(run_test_step);
+    const all_tests_step = b.step("test", "Run all tests");
+    all_tests_step.dependOn(run_test_step);
     
     // Default run step
     const run_step = b.step("run", "Run the application");

@@ -4,14 +4,52 @@ const std = @import("std");
 // Import the vk module that was provided by the build system
 const vk = @import("vk");
 
-// Re-export buffer implementation
-pub const Buffer = @import("./memory/buffer.zig").Buffer;
+// Import VulkanContext
+const VulkanContext = @import("vulkan_context").VulkanContext;
 
-// Re-export pool implementation
-pub const pool = @import("./memory/pool.zig");
-
-// Re-export transfer implementation
-pub const transfer = @import("./memory/transfer.zig");
+/// Vulkan memory allocation and management
+pub const VulkanMemory = struct {
+    /// Allocate device memory with the given requirements and properties
+    pub fn allocate(
+        context: *const VulkanContext,
+        allocator: std.mem.Allocator,
+        requirements: vk.VkMemoryRequirements,
+        properties: vk.VkMemoryPropertyFlags,
+    ) !vk.VkDeviceMemory {
+        _ = allocator; // Might be used for custom allocators in the future
+        
+        const memory_type_index = try findMemoryType(
+            context.physical_device.?, 
+            @as(u32, @intCast(requirements.memoryTypeBits)),
+            properties
+        );
+        
+        const alloc_info = vk.VkMemoryAllocateInfo{
+            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .pNext = null,
+            .allocationSize = requirements.size,
+            .memoryTypeIndex = memory_type_index,
+        };
+        
+        var memory: vk.VkDeviceMemory = undefined;
+        try vk.checkSuccess(
+            vk.vkAllocateMemory(context.device.?, &alloc_info, null, &memory),
+            error.FailedToAllocateMemory
+        );
+        
+        return memory;
+    }
+    
+    /// Free allocated device memory
+    pub fn free(
+        context: *const VulkanContext,
+        allocator: std.mem.Allocator,
+        memory: vk.VkDeviceMemory,
+    ) void {
+        _ = allocator; // Might be used for custom allocators in the future
+        vk.vkFreeMemory(context.device.?, memory, null);
+    }
+};
 
 // Helper function to find memory type with required properties
 fn findMemoryType(
