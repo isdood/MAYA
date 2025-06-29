@@ -21,6 +21,7 @@ pub const VulkanContext = struct {
     physical_device: ?vk.VkPhysicalDevice,
     device: ?vk.VkDevice,
     compute_queue: ?vk.VkQueue,
+    compute_queue_family_index: ?u32,
     command_pool: ?vk.VkCommandPool,
     pipeline_cache: ?vk.VkPipelineCache,
     debug_messenger: ?vk.VkDebugUtilsMessengerEXT,
@@ -84,6 +85,7 @@ pub const VulkanContext = struct {
             .physical_device = null,
             .device = null,
             .compute_queue = null,
+            .compute_queue_family_index = null,
             .command_pool = null,
             .pipeline_cache = null,
             .debug_messenger = null,
@@ -105,11 +107,72 @@ pub const VulkanContext = struct {
         return false;
     }
     
-    pub fn initVulkan(self: *VulkanContext) !void {
-        std.debug.print("1. Starting Vulkan initialization...\n", .{});
+    fn enumerateInstanceExtensions() !std.ArrayList([:0]const u8) {
+        var extension_count: u32 = 0;
+        var result = vk.vkEnumerateInstanceExtensionProperties(null, &extension_count, null);
         
-        // 1. Create application info
-        std.debug.print("1.1. Creating application info...\n", .{});
+        if (result != vk.VK_SUCCESS and result != vk.VK_INCOMPLETE) {
+            std.debug.print("Failed to get instance extension count: {}\n", .{result});
+            return VulkanError.InitializationFailed;
+        }
+        
+        var extensions = try std.ArrayList([:0]const u8).initCapacity(std.heap.page_allocator, extension_count);
+        
+        if (extension_count > 0) {
+            var extension_properties = try std.heap.page_allocator.alloc(vk.VkExtensionProperties, extension_count);
+            defer std.heap.page_allocator.free(extension_properties);
+            
+            result = vk.vkEnumerateInstanceExtensionProperties(null, &extension_count, extension_properties.ptr);
+            if (result != vk.VK_SUCCESS) {
+                std.debug.print("Failed to enumerate instance extensions: {}\n", .{result});
+                return VulkanError.InitializationFailed;
+            }
+            
+            for (extension_properties) |prop| {
+                const name = std.mem.span(@as([*:0]const u8, @ptrCast(&prop.extensionName)));
+                try extensions.append(name);
+            }
+        }
+        
+        return extensions;
+    }
+    
+    pub fn initVulkan(self: *VulkanContext) !void {
+        std.debug.print("=== Starting Vulkan Initialization ===\n", .{});
+        
+        // 1. Enumerate available extensions
+        std.debug.print("1. Enumerating instance extensions...\n", .{});
+        var extensions = try self.enumerateInstanceExtensions();
+        defer extensions.deinit();
+        
+        std.debug.print("   Found {} instance extensions\n", .{extensions.items.len});
+        for (extensions.items) |ext| {
+            std.debug.print("   - {s}\n", .{ext});
+        }
+        
+        // 2. Define required extensions
+        const required_extensions = [_][:0]const u8{
+            "VK_KHR_surface",
+            "VK_KHR_xlib_surface",  // For X11
+        };
+        
+        // 3. Verify all required extensions are available
+        for (required_extensions) |required| {
+            var found = false;
+            for (extensions.items) |ext| {
+                if (std.mem.eql(u8, std.mem.span(ext), std.mem.span(required))) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                std.debug.print("Required extension not found: {s}\n", .{required});
+                return VulkanError.ExtensionNotPresent;
+            }
+        }
+        
+        // 4. Create application info
+        std.debug.print("\n2. Creating application info...\n", .{});
         const app_info = vk.VkApplicationInfo{
             .sType = vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
             .pNext = null,
@@ -120,10 +183,13 @@ pub const VulkanContext = struct {
             .apiVersion = vk.VK_API_VERSION_1_0,
         };
         
-        std.debug.print("1.2. Application info created successfully\n", .{});
+        // 5. Create instance with required extensions
+        std.debug.print("\n3. Creating Vulkan instance...\n", .{});
+        std.debug.print("   Using {} extensions:\n", .{required_extensions.len});
+        for (required_extensions) |ext| {
+            std.debug.print("   - {s}\n", .{ext});
+        }
         
-        // 2. Instance create info with no extensions or layers initially
-        std.debug.print("2.1. Creating instance create info...\n", .{});
         const create_info = vk.VkInstanceCreateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pNext = null,
@@ -131,44 +197,48 @@ pub const VulkanContext = struct {
             .pApplicationInfo = &app_info,
             .enabledLayerCount = 0,
             .ppEnabledLayerNames = null,
-            .enabledExtensionCount = 0,
-            .ppEnabledExtensionNames = null,
+            .enabledExtensionCount = @as(u32, required_extensions.len),
+            .ppEnabledExtensionNames = @ptrCast(&required_extensions),
         };
         
-        std.debug.print("2.2. Instance create info created successfully\n", .{});
-        
-        // 3. Create instance
-        std.debug.print("3.1. Creating Vulkan instance...\n", .{});
         var instance: vk.VkInstance = undefined;
-        
-        std.debug.print("3.2. Calling vkCreateInstance...\n", .{});
-        const result = vk.vkCreateInstance(&create_info, null, &instance);
-        std.debug.print("3.3. vkCreateInstance returned: {}\n", .{result});
+        const result = vk.vkCreateInstance(&create_info, null, @ptrCast(&instance));
         
         if (result != vk.VK_SUCCESS) {
-            std.debug.print("3.4. ERROR: Failed to create Vulkan instance: {}\n", .{result});
-            self.printVulkanError(result);
-            return error.FailedToCreateInstance;
+            std.debug.print("Failed to create Vulkan instance: {s}\n", .{
+                switch (result) {
+                    vk.VK_ERROR_OUT_OF_HOST_MEMORY => "VK_ERROR_OUT_OF_HOST_MEMORY",
+                    vk.VK_ERROR_OUT_OF_DEVICE_MEMORY => "VK_ERROR_OUT_OF_DEVICE_MEMORY",
+                    vk.VK_ERROR_INITIALIZATION_FAILED => "VK_ERROR_INITIALIZATION_FAILED",
+                    vk.VK_ERROR_LAYER_NOT_PRESENT => "VK_ERROR_LAYER_NOT_PRESENT",
+                    vk.VK_ERROR_EXTENSION_NOT_PRESENT => "VK_ERROR_EXTENSION_NOT_PRESENT",
+                    vk.VK_ERROR_INCOMPATIBLE_DRIVER => "VK_ERROR_INCOMPATIBLE_DRIVER",
+                    else => "Unknown error",
+                }
+            });
+            return VulkanError.InitializationFailed;
         }
         
-        std.debug.print("3.4. Vulkan instance created successfully\n", .{});
         self.instance = instance;
+        std.debug.print("\n4. Vulkan instance created successfully!\n", .{});
         
-        // Now proceed with device creation
-        std.debug.print("Picking physical device...\n", .{});
+        // 6. Initialize the rest of Vulkan
+        std.debug.print("\n5. Initializing Vulkan components...\n", .{});
+        
+        std.debug.print("   Picking physical device...\n", .{});
         try self.pickPhysicalDevice();
         
-        std.debug.print("Creating logical device...\n", .{});
+        std.debug.print("   Creating logical device...\n", .{});
         try self.createLogicalDevice();
         
-        std.debug.print("Creating command pool...\n", .{});
+        std.debug.print("   Creating command pool...\n", .{});
         try self.createCommandPool();
         
         // Initialize pipeline cache
         self.pipeline_cache = null;  // Will be created when needed
-        
-        std.debug.print("Vulkan initialization completed successfully\n", .{});
         try self.createPipelineCache();
+        
+        std.debug.print("\n=== Vulkan initialization completed successfully ===\n\n", .{});
     }
     
     fn pickPhysicalDevice(self: *VulkanContext) !void {
@@ -192,8 +262,32 @@ pub const VulkanContext = struct {
         self.physical_device = devices[0];
     }
     
+    fn findComputeQueueFamily(self: *VulkanContext) !u32 {
+        const physical_device = self.physical_device orelse return error.PhysicalDeviceNotSelected;
+        
+        var queue_family_count: u32 = 0;
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, null);
+        
+        const queue_family_properties = try self.allocator.alloc(vk.VkQueueFamilyProperties, queue_family_count);
+        defer self.allocator.free(queue_family_properties);
+        vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_family_properties.ptr);
+        
+        for (queue_family_properties, 0..) |props, i| {
+            const queue_family_index = @as(u32, @intCast(i));
+            if ((props.queueFlags & vk.VK_QUEUE_COMPUTE_BIT) != 0) {
+                return queue_family_index;
+            }
+        }
+        
+        return error.NoComputeQueue;
+    }
+    
     fn createLogicalDevice(self: *VulkanContext) !void {
         const physical_device = self.physical_device orelse return error.PhysicalDeviceNotSelected;
+        
+        // Find a queue family that supports compute operations
+        const queue_family_index = try self.findComputeQueueFamily();
+        self.compute_queue_family_index = queue_family_index;
         
         // For now, just request a single compute queue
         const queue_priority = [_]f32{1.0};
@@ -201,7 +295,7 @@ pub const VulkanContext = struct {
             .sType = vk.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
             .pNext = null,
             .flags = 0,
-            .queueFamilyIndex = 0, // Assuming first queue family supports compute
+            .queueFamilyIndex = queue_family_index,
             .queueCount = 1,
             .pQueuePriorities = &queue_priority,
         };

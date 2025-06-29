@@ -70,7 +70,7 @@ pub fn build(b: *std.Build) !void {
     });
     
     // Create the tensor module
-    const tensor_module = b.createModule(.{
+    const tensor_module = b.addModule("vulkan/compute/tensor", .{
         .root_source_file = .{ .cwd_relative = "src/vulkan/compute/tensor.zig" },
         .imports = &.{
             .{

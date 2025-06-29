@@ -1,40 +1,60 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const crypto = std.crypto;
 const Tensor4D = @import("vulkan_compute_tensor").Tensor4D;
 const VulkanContext = @import("vulkan_context").VulkanContext;
 const VulkanPatternMatcher = @import("vulkan_pattern_matching").VulkanPatternMatcher;
 
 pub fn main() !void {
+    std.debug.print("Starting pattern matching test...\n", .{});
     // Initialize memory allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
     // Initialize Vulkan context
+    std.debug.print("Initializing Vulkan context...\n", .{});
     var vulkan_context = try VulkanContext.init(allocator);
-    defer vulkan_context.deinit();
+    errdefer {
+        std.debug.print("Error initializing Vulkan context, cleaning up...\n", .{});
+        vulkan_context.deinit();
+    }
 
     // Initialize pattern matcher
+    std.debug.print("Initializing pattern matcher...\n", .{});
     var matcher = try VulkanPatternMatcher.init(allocator, &vulkan_context);
-    defer matcher.deinit();
+    errdefer {
+        std.debug.print("Error initializing pattern matcher, cleaning up...\n", .{});
+        matcher.deinit();
+    }
 
     // Create a simple test image (32x32)
     const width: u32 = 32;
     const height: u32 = 32;
-    var image = try Tensor4D(f32).init(allocator, .{ 1, 1, height, width });
-    defer image.deinit();
+    std.debug.print("Creating test image ({}x{})...\n", .{width, height});
+    var image = try Tensor4D(f32).initUninitialized(&vulkan_context, .{ 1, 1, height, width }, allocator);
+    errdefer {
+        std.debug.print("Error creating test image, cleaning up...\n", .{});
+        image.deinit();
+    }
 
     // Create a simple pattern (8x8)
     const pattern_width: u32 = 8;
     const pattern_height: u32 = 8;
-    var pattern = try Tensor4D(f32).init(allocator, .{ 1, 1, pattern_height, pattern_width });
-    defer pattern.deinit();
+    std.debug.print("Creating pattern ({}x{})...\n", .{pattern_width, pattern_height});
+    var pattern = try Tensor4D(f32).initUninitialized(&vulkan_context, .{ 1, 1, pattern_height, pattern_width }, allocator);
+    errdefer {
+        std.debug.print("Error creating pattern, cleaning up...\n", .{});
+        pattern.deinit();
+    }
 
     // Fill the pattern with a simple shape (a white square on black background)
-    for (0..pattern_height) |y| {
-        for (0..pattern_width) |x| {
-            const val: f32 = if (x >= 2 and x < 6 and y >= 2 and y < 6) 1.0 else 0.0;
-            try pattern.set(.{ 0, 0, y, x }, val);
+    var pat_y: u32 = 0;
+    while (pat_y < pattern_height) : (pat_y += 1) {
+        var pat_x: u32 = 0;
+        while (pat_x < pattern_width) : (pat_x += 1) {
+            const val: f32 = if (pat_x >= 2 and pat_x < 6 and pat_y >= 2 and pat_y < 6) 1.0 else 0.0;
+            try pattern.set(.{ 0, 0, pat_y, pat_x }, val);
         }
     }
 
@@ -42,27 +62,32 @@ pub fn main() !void {
     const pattern_x: u32 = 10;
     const pattern_y: u32 = 10;
     
-    for (0..pattern_height) |dy| {
-        for (0..pattern_width) |dx| {
-            const val = (try pattern.get(.{ 0, 0, dy, dx }));
-            try image.set(.{ 0, 0, pattern_y + dy, pattern_x + dx }, val);
+    var ddy: u32 = 0;
+    while (ddy < pattern_height) : (ddy += 1) {
+        var ddx: u32 = 0;
+        while (ddx < pattern_width) : (ddx += 1) {
+            const val = (try pattern.get(.{ 0, 0, ddy, ddx }));
+            try image.set(.{ 0, 0, pattern_y + ddy, pattern_x + ddx }, val);
         }
     }
 
     // Add some noise to the image
-    var rng = std.rand.DefaultPrng.init(42);
-    const rand = rng.random();
-    
-    for (0..height) |y| {
-        for (0..width) |x| {
-            const current = try image.get(.{ 0, 0, y, x });
-            const noise = 0.1 * (rand.float(f32) - 0.5);
-            try image.set(.{ 0, 0, y, x }, @max(0.0, @min(1.0, current + noise)));
+    var img_y: u32 = 0;
+    while (img_y < height) : (img_y += 1) {
+        var img_x: u32 = 0;
+        while (img_x < width) : (img_x += 1) {
+            const current = try image.get(.{ 0, 0, img_y, img_x });
+            // Use crypto.random for a random float between -0.5 and 0.5
+            const rand_val = @as(f32, @floatFromInt(crypto.random.int(u16))) / 65535.0 - 0.5;
+            const noise = 0.1 * rand_val;
+            try image.set(.{ 0, 0, img_y, img_x }, @max(0.0, @min(1.0, current + noise)));
         }
     }
 
     // Perform pattern matching
+    std.debug.print("Starting pattern matching...\n", .{});
     const result = try matcher.match(image, pattern, 0.5, 2.0, 3);
+    std.debug.print("Pattern matching completed.\n", .{});
     
     // Print results
     std.debug.print("Pattern matching results:\n", .{});

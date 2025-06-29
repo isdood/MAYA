@@ -96,13 +96,13 @@ pub const Buffer = struct {
         if (self.mapped_ptr) |_| {
             self.unmap();
         }
-        if (self.handle != .null_handle) {
+        if (self.handle != null) {
             vk.vkDestroyBuffer(device, self.handle, null);
-            self.handle = .null_handle;
+            self.handle = null;
         }
-        if (self.memory != .null_handle) {
+        if (self.memory != null) {
             vk.vkFreeMemory(device, self.memory, null);
-            self.memory = .null_handle;
+            self.memory = null;
         }
     }
     

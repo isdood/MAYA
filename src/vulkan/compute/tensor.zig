@@ -1,15 +1,19 @@
 // src/vulkan/compute/tensor.zig
 const std = @import("std");
 const vk = @import("vk");
-const Context = @import("../context").VulkanContext;
-const Buffer = @import("../memory/buffer").Buffer;
+const Context = @import("vulkan/context").VulkanContext;
+const Buffer = @import("vulkan/memory").Buffer;
 const DataType = @import("./datatypes.zig").DataType;
+
+
+
 
 /// A generic 4D tensor that can hold any supported data type
 pub fn Tensor4D(comptime T: type) type {
     return struct {
-        buffer: Buffer,
+        buffer: *Buffer,
         dims: [4]u32,  // Dimensions [x, y, z, w]
+        allocator: std.mem.Allocator,
         data_type: DataType = typeToDataType(T),
         
         const Self = @This();
@@ -24,43 +28,76 @@ pub fn Tensor4D(comptime T: type) type {
             return @sizeOf(T) * self.elementCount();
         }
         
-        /// Initialize an uninitialized tensor
-        pub fn initUninitialized(
-            context: *Context,
-            dims: [4]u32,
-            _: ?std.mem.Allocator, // Keep for API compatibility
-        ) !Self {
-            const element_count = dims[0] * dims[1] * dims[2] * dims[3];
-            const size = element_count * @sizeOf(T);
+        /// Set a value at the specified 4D index
+        pub fn set(self: *Self, index: [4]u32, value: T) !void {
+            // TODO: Add bounds checking
+            const offset = (index[3] * self.dims[0] * self.dims[1] * self.dims[2] +
+                          index[2] * self.dims[0] * self.dims[1] +
+                          index[1] * self.dims[0] +
+                          index[0]) * @sizeOf(T);
             
-            const buffer = try Buffer.init(
-                context.device,
-                context.physical_device,
+            const mapped = try self.buffer.map();
+            defer self.buffer.unmap();
+            
+            const ptr: [*]u8 = @ptrCast(mapped);
+            const value_ptr = @as(*T, @ptrFromInt(@intFromPtr(ptr) + offset));
+            value_ptr.* = value;
+        }
+        
+        /// Get a value at the specified 4D index
+        pub fn get(self: *const Self, index: [4]u32) !T {
+            // TODO: Add bounds checking
+            const offset = (index[3] * self.dims[0] * self.dims[1] * self.dims[2] +
+                          index[2] * self.dims[0] * self.dims[1] +
+                          index[1] * self.dims[0] +
+                          index[0]) * @sizeOf(T);
+            
+            const mapped = try self.buffer.map();
+            defer self.buffer.unmap();
+            
+            const ptr: [*]const u8 = @ptrCast(mapped);
+            const value_ptr = @as(*const T, @ptrFromInt(@intFromPtr(ptr) + offset));
+            return value_ptr.*;
+        }
+        
+        /// Initialize an uninitialized tensor
+        pub fn initUninitialized(context: *Context, dims: [4]u32, allocator: std.mem.Allocator) !Self {
+            const size = dims[0] * dims[1] * dims[2] * dims[3] * @sizeOf(T);
+            
+            // Create a buffer with the required size and usage flags
+            const buffer = try allocator.create(Buffer);
+            buffer.* = try Buffer.init(
+                context,
                 size,
                 vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
                 vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | 
                 vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
+                vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
             );
             
             return Self{
                 .buffer = buffer,
                 .dims = dims,
+                .allocator = allocator,
             };
         }
         
         /// Initialize a tensor with data
-        pub fn initWithData(
+        pub fn init(
             context: *Context,
             dims: [4]u32,
             data: []const T,
-            _: ?std.mem.Allocator, // Keep for API compatibility
+            allocator: std.mem.Allocator,
         ) !Self {
             std.debug.assert(data.len == dims[0] * dims[1] * dims[2] * dims[3]);
             
-            var tensor = try Self.initUninitialized(context, dims, null);
-            try tensor.writeData(data, null);
-            return tensor;
+            var self = try Self.initUninitialized(context, dims, allocator);
+            errdefer self.deinit();
+            
+            try self.writeData(data, null);
+            
+            return self;
         }
         
         /// Write data to the tensor
@@ -117,29 +154,21 @@ pub fn Tensor4D(comptime T: type) type {
             return data;
         }
         
-        /// Deinitialize the tensor
+        /// Clean up resources
         pub fn deinit(self: *Self) void {
             self.buffer.deinit();
+            self.allocator.destroy(self.buffer);
         }
         
         // Helper function to get DataType from Zig type
         fn typeToDataType(comptime T_: type) DataType {
-            return switch (@typeInfo(T_)) {
-                .Float => |float| switch (float.bits) {
-                    16 => .f16,
-                    32 => .f32,
-                    64 => .f64,
-                    else => @compileError("Unsupported float bit width"),
-                },
-                .Int => |int| switch (int.bits) {
-                    8 => if (int.signedness == .signed) .i8 else .u8,
-                    16 => if (int.signedness == .signed) .i16 else .u16,
-                    32 => if (int.signedness == .signed) .i32 else .u32,
-                    64 => if (int.signedness == .signed) .i64 else .u64,
-                    else => @compileError("Unsupported integer bit width"),
-                },
-                else => @compileError("Unsupported tensor element type"),
-            };
+            // For now, we'll just support f32 as it's the most common case
+            // We can expand this later to support more types
+            if (@typeName(T_)[0] == 'f') {
+                if (@sizeOf(T_) == 4) return .F32;
+            }
+            
+            @compileError("Unsupported tensor element type: " ++ @typeName(T_) ++ ". Only f32 is currently supported.");
         }
     };
 }

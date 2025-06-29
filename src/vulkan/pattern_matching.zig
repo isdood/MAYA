@@ -3,6 +3,14 @@ const vk = @import("vk");
 const Context = @import("vulkan_context").VulkanContext;
 const Tensor4D = @import("vulkan_compute_tensor").Tensor4D;
 
+/// Result of a pattern matching operation
+pub const MatchResult = struct {
+    x: u32,
+    y: u32,
+    scale: f32,
+    score: f32,
+};
+
 // Import the pipeline implementation
 const Pipeline = @import("vulkan_pattern_matching_pipeline").Self;
 
@@ -40,7 +48,9 @@ pub const VulkanPatternMatcher = struct {
     /// Clean up resources
     pub fn deinit(self: *Self) void {
         self.pipeline.deinit();
-        vk.vkDestroyShaderModule(self.context.device, self.shader_module, null);
+        if (self.context.device) |device| {
+            vk.vkDestroyShaderModule(device, self.shader_module, null);
+        }
     }
     
     /// Match a pattern in an image using GPU acceleration
@@ -51,7 +61,7 @@ pub const VulkanPatternMatcher = struct {
         min_scale: f32,
         max_scale: f32,
         scale_steps: u32,
-    ) !struct { x: u32, y: u32, scale: f32, score: f32 } {
+    ) !MatchResult {
         _ = min_scale;
         _ = max_scale;
         _ = scale_steps;
@@ -67,7 +77,7 @@ pub const VulkanPatternMatcher = struct {
         _: Tensor4D(f32),
         _: Tensor4D(f32),
         _: f32,
-    ) !struct { x: u32, y: u32, scale: f32, score: f32 } {
+    ) !MatchResult {
         
         // TODO: Implement GPU-accelerated pattern matching at a specific scale
         // 1. Upload image and pattern to GPU
@@ -76,7 +86,7 @@ pub const VulkanPatternMatcher = struct {
         // 4. Download and find best match
         
         // Placeholder implementation
-        return .{ .x = 0, .y = 0, .scale = 1.0, .score = 0.0 };
+        return MatchResult{ .x = 0, .y = 0, .scale = 1.0, .score = 0.0 };
     }
     
     /// Load a shader module from a compiled SPIR-V file
