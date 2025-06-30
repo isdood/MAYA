@@ -4,7 +4,7 @@ const crypto = std.crypto;
 
 const VulkanContext = @import("vulkan_context").VulkanContext;
 const VulkanMemory = @import("vulkan_memory").VulkanMemory;
-const VulkanBuffer = @import("vulkan_buffer").VulkanBuffer;
+const VulkanBuffer = @import("buffer").VulkanBuffer;
 const VulkanImage = @import("vulkan_image").VulkanImage;
 const PatternMatcher = @import("vulkan_pattern_matcher").PatternMatcher; 
 const vk = @import("vk");
@@ -169,8 +169,8 @@ pub fn main() !void {
         // Submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
             device_ptr,
-            queue_ptr,
             command_pool_ptr,
+            queue_ptr,
             command_buffer
         );
     }
@@ -237,8 +237,8 @@ pub fn main() !void {
         // Submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
             device_ptr,
-            queue_ptr,
             command_pool_ptr,
+            queue_ptr,
             command_buffer
         );
     }
@@ -260,8 +260,8 @@ pub fn main() !void {
         // Submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
             device_ptr,
-            queue_ptr,
             command_pool_ptr,
+            queue_ptr,
             command_buffer
         );
     }
@@ -269,9 +269,9 @@ pub fn main() !void {
     // Run pattern matching
     std.debug.print("Running pattern matching...\n", .{});
     try matcher.match(
-        image,
-        pattern_image,
-        output_image,
+        &image,
+        &pattern_image,
+        &output_image,
         .{
             .scale = 1.0,
             .rotation = 0.0,
@@ -333,8 +333,8 @@ pub fn main() !void {
         // Submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
             device_ptr,
-            queue_ptr,
             command_pool_ptr,
+            queue_ptr,
             command_buffer
         );
         

@@ -148,7 +148,11 @@ pub const VulkanBuffer = struct {
     }
     
     /// Begin a single-time command buffer
-    pub fn beginSingleTimeCommands(device: vk.VkDevice, command_pool: vk.VkCommandPool) !vk.VkCommandBuffer {
+    pub fn beginSingleTimeCommands(device: anytype, command_pool_param: anytype) !vk.VkCommandBuffer {
+        // Cast the device and command pool to their proper opaque pointer types
+        const dev: *vk.VkDevice_T = @ptrCast(device);
+        const command_pool: vk.VkCommandPool = @ptrCast(command_pool_param);
+            
         const alloc_info = vk.VkCommandBufferAllocateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = null,
@@ -156,55 +160,54 @@ pub const VulkanBuffer = struct {
             .level = vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
-        
+
         var command_buffer: vk.VkCommandBuffer = undefined;
-        try vk.checkSuccess(vk.vkAllocateCommandBuffers(device, &alloc_info, &command_buffer), error.FailedToAllocateCommandBuffer);
-        
+        try vk.checkSuccess(vk.vkAllocateCommandBuffers(dev, &alloc_info, &command_buffer), error.FailedToAllocateCommandBuffer);
+
         const begin_info = vk.VkCommandBufferBeginInfo{
             .sType = vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .pNext = null,
             .flags = vk.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
             .pInheritanceInfo = null,
         };
-        
+
         try vk.checkSuccess(vk.vkBeginCommandBuffer(command_buffer, &begin_info), error.FailedToBeginCommandBuffer);
-        
         return command_buffer;
     }
     
     /// End and submit a single-time command buffer
-    pub fn endSingleTimeCommands(
-        device: vk.VkDevice,
-        queue: vk.VkQueue,
-        command_pool: vk.VkCommandPool,
-        command_buffer: vk.VkCommandBuffer,
-    ) !void {
+    pub fn endSingleTimeCommands(device: anytype, command_pool_param: anytype, queue: vk.VkQueue, command_buffer: vk.VkCommandBuffer) !void {
+        // Cast the device and command pool to their proper opaque pointer types
+        const dev: *vk.VkDevice_T = @ptrCast(device);
+        const command_pool: vk.VkCommandPool = @ptrCast(command_pool_param);
+        
         try vk.checkSuccess(vk.vkEndCommandBuffer(command_buffer), error.FailedToEndCommandBuffer);
         
         const submit_info = vk.VkSubmitInfo{
             .sType = vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .pNext = null,
             .waitSemaphoreCount = 0,
-            .pWaitSemaphores = undefined,
-            .pWaitDstStageMask = undefined,
+            .pWaitSemaphores = null,
+            .pWaitDstStageMask = null,
             .commandBufferCount = 1,
             .pCommandBuffers = &command_buffer,
             .signalSemaphoreCount = 0,
-            .pSignalSemaphores = undefined,
+            .pSignalSemaphores = null,
         };
         
         try vk.checkSuccess(vk.vkQueueSubmit(queue, 1, &submit_info, null), error.FailedToSubmitQueue);
         try vk.checkSuccess(vk.vkQueueWaitIdle(queue), error.FailedToWaitForQueueIdle);
-        
-        vk.vkFreeCommandBuffers(device, command_pool, 1, &command_buffer);
+        vk.vkFreeCommandBuffers(dev, command_pool, 1, &command_buffer);
     }
     
     /// Destroy the buffer and free its memory
     pub fn deinit(self: *VulkanBuffer, device: anytype) void {
+        const dev: *vk.VkDevice_T = @ptrCast(device);
+            
         if (self.memory) |memory| {
-            vk.vkFreeMemory(@ptrCast(device), memory, null);
+            vk.vkFreeMemory(dev, memory, null);
         }
-        vk.vkDestroyBuffer(@ptrCast(device), self.buffer, null);
+        vk.vkDestroyBuffer(dev, self.buffer, null);
     }
 };
 

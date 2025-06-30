@@ -6,6 +6,7 @@ const process = std.process;
 const Allocator = mem.Allocator;
 const ArrayList = std.ArrayList;
 const StringHashMap = std.StringHashMap;
+const ChildProcess = std.process.Child;
 
 const ShaderInfo = struct {
     const Kind = enum { compute, vertex, fragment };
@@ -116,55 +117,90 @@ fn compileShader(allocator: Allocator, shader: ShaderInfo, output_dir: []const u
     });
     defer allocator.free(output_zig);
 
-    // Get the output directory from the output_spv path
+    // Create output directory if it doesn't exist
     if (std.fs.path.dirname(output_spv)) |dir| {
-        // Create the output directory if it doesn't exist
-        std.fs.cwd().makePath(dir) catch |err| {
-            if (err != error.PathAlreadyExists) {
-                std.debug.print("Error: Failed to create output directory {s}: {}\n", .{dir, err});
-                return err;
+        if (dir.len > 0) {
+            // Split the path into components and create each directory one by one
+            var it = std.mem.tokenizeScalar(u8, dir, '/');
+            var current_path = std.ArrayList(u8).init(allocator);
+            defer current_path.deinit();
+            
+            while (it.next()) |component| {
+                if (current_path.items.len > 0) {
+                    try current_path.append('/');
+                }
+                try current_path.appendSlice(component);
+                
+                std.fs.cwd().makeDir(current_path.items) catch |err| {
+                    if (err != error.PathAlreadyExists) {
+                        std.debug.print("Error: Failed to create directory {s}: {}\n", .{current_path.items, err});
+                        return err;
+                    }
+                };
             }
-        };
+        }
     }
 
     // Compile the shader
     std.debug.print("Compiling shader: {s} -> {s}\n", .{shader.path, output_spv});
     
     // Run glslc to compile the shader
-    const result = std.ChildProcess.run(.{
-        .allocator = allocator,
-        .argv = &[_][]const u8{ "glslc", "--target-env=vulkan1.2", "-o", output_spv, shader.path },
-        .max_output_bytes = 10 * 1024, // 10KB max output
-    }) catch |err| {
-        std.debug.print("Error running glslc: {}\n", .{err});
-        return err;
-    };
+    const argv = [_][]const u8{ "glslc", "--target-env=vulkan1.2", "-o", output_spv, shader.path };
     
-    defer {
-        allocator.free(result.stdout);
-        allocator.free(result.stderr);
-    }
-
-    if (result.term.Exited != 0) {
-        const stderr = std.io.getStdErr().writer();
-        try stderr.writeAll("\x1b[31mError: Failed to compile shader: ");
-        try stderr.print("{s}\n", .{shader.name});
-        try stderr.writeAll("Command: glslc --target-env=vulkan1.2 -o ");
-        try stderr.writeAll(output_spv);
-        try stderr.writeAll(" ");
-        try stderr.print("{s}\n", .{shader.path});
-        try stderr.print("Exit code: {}\n", .{result.term.Exited});
-        if (result.stdout.len > 0) {
-            try stderr.writeAll("stdout:\n");
-            try stderr.writeAll(result.stdout);
-            try stderr.writeAll("\n");
+    // Use the process API directly
+    var child = ChildProcess.init(&argv, allocator);
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Pipe;
+    
+    try child.spawn();
+    
+    // Read stdout
+    const stdout = child.stdout.?.reader().readAllAlloc(allocator, 10 * 1024) catch |err| {
+        std.debug.print("Failed to read stdout: {}\n", .{err});
+        _ = child.kill() catch {};
+        return error.ReadStdoutFailed;
+    };
+    defer allocator.free(stdout);
+    
+    // Read stderr
+    const stderr_output = child.stderr.?.reader().readAllAlloc(allocator, 10 * 1024) catch |err| {
+        std.debug.print("Failed to read stderr: {}\n", .{err});
+        _ = child.kill() catch {};
+        return error.ReadStderrFailed;
+    };
+    defer allocator.free(stderr_output);
+    
+    const term = try child.wait();
+    
+    // Check for errors
+    if (term != .Exited or term.Exited != 0 or stderr_output.len > 0) {
+        const stderr_writer = std.io.getStdErr().writer();
+        
+        // Print error header
+        try stderr_writer.writeAll("\x1b[31mError: Failed to compile shader: ");
+        try stderr_writer.print("{s}\n", .{shader.name});
+        
+        // Print the command that was run
+        try stderr_writer.writeAll("Command: glslc --target-env=vulkan1.2 -o ");
+        try stderr_writer.writeAll(output_spv);
+        try stderr_writer.writeAll(" ");
+        try stderr_writer.print("{s}\n", .{shader.path});
+        
+        // Print exit code if non-zero
+        if (term != .Exited) {
+            try stderr_writer.writeAll("Process terminated by signal\n");
+        } else if (term.Exited != 0) {
+            try stderr_writer.print("Exit code: {}\n", .{term.Exited});
         }
-        if (result.stderr.len > 0) {
-            try stderr.writeAll("stderr:\n");
-            try stderr.writeAll(result.stderr);
-            try stderr.writeAll("\n");
+        
+        // Print stderr if there was any output
+        if (stderr_output.len > 0) {
+            try stderr_writer.writeAll("Error output:\n");
+            try stderr_writer.writeAll(stderr_output);
+            try stderr_writer.writeAll("\n");
         }
-        try stderr.writeAll("\x1b[0m");
+        
+        try stderr_writer.writeAll("\x1b[0m");
         return error.ShaderCompilationFailed;
     }
 
@@ -206,8 +242,8 @@ fn compileShader(allocator: Allocator, shader: ShaderInfo, output_dir: []const u
     try writer.writeAll("\n};\n");
     
     // Log successful generation
-    const stdout = std.io.getStdOut().writer();
-    try stdout.writeAll("Generated ");
-    try stdout.writeAll(output_zig);
-    try stdout.writeAll("\n");
+    const stdout_writer = std.io.getStdOut().writer();
+    try stdout_writer.writeAll("Generated ");
+    try stdout_writer.writeAll(output_zig);
+    try stdout_writer.writeAll("\n");
 }

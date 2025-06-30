@@ -214,6 +214,7 @@ pub fn build(b: *std.Build) !void {
         },
     });
     
+
     // Create the pattern matcher module with unique imports
     const pattern_matcher_module = b.createModule(.{
         .root_source_file = .{ .cwd_relative = "src/vulkan/pattern_matcher.zig" },
@@ -250,6 +251,10 @@ pub fn build(b: *std.Build) !void {
                 .name = "vulkan_pattern_matching_pipeline",
                 .module = pattern_matching_pipeline_module,
             },
+            .{
+                .name = "buffer",
+                .module = buffer_module,
+            },
         },
     });
 
@@ -268,26 +273,6 @@ pub fn build(b: *std.Build) !void {
     pattern_matching_test.linkSystemLibrary("vulkan");
     
     // Add module imports with unique names
-    // Create a module for the buffer
-    const buffer_module = b.createModule(.{
-        .root_source_file = .{ .cwd_relative = "src/vulkan/buffer.zig" },
-        .imports = &.{
-            .{
-                .name = "vk",
-                .module = vk_module,
-            },
-            .{
-                .name = "vulkan/context",
-                .module = context_module,
-            },
-            .{
-                .name = "vulkan/memory",
-                .module = memory_module,
-            },
-        },
-    });
-
-    // Add all module imports
     pattern_matching_test.root_module.addImport("vk", vk_module);
     pattern_matching_test.root_module.addImport("vulkan_context", context_module);
     pattern_matching_test.root_module.addImport("vulkan_memory", memory_module);
@@ -297,6 +282,9 @@ pub fn build(b: *std.Build) !void {
     pattern_matching_test.root_module.addImport("vulkan_pattern_matching", pattern_matching_module);
     pattern_matching_test.root_module.addImport("vulkan_pattern_matcher", pattern_matcher_module);
     pattern_matching_test.root_module.addImport("vulkan_compute_tensor_operations", tensor_ops_module);
+    
+    // Also export the buffer module as 'buffer' for compatibility
+    pattern_matching_test.root_module.addImport("buffer", buffer_module);
 
     // Add Vulkan test executable
     const vulkan_test = b.addExecutable(.{

@@ -3,7 +3,7 @@ const vk = @import("vk");
 
 const Context = @import("vulkan_context").VulkanContext;
 const VulkanImage = @import("vulkan_image").VulkanImage;
-const VulkanBuffer = @import("vulkan_buffer").VulkanBuffer;
+const VulkanBuffer = @import("buffer").VulkanBuffer;
 const PatternMatchingPipeline = @import("vulkan_pattern_matching_pipeline").PatternMatchingPipeline;
 const PatternMatchingConfig = @import("vulkan_pattern_matching_pipeline").PatternMatchingConfig;
 
@@ -34,9 +34,9 @@ pub const PatternMatcher = struct {
     /// Match a pattern in an image
     pub fn match(
         self: *Self,
-        input_image: VulkanImage,
-        pattern_image: VulkanImage,
-        output_image: VulkanImage,
+        input_image: *VulkanImage,
+        pattern_image: *VulkanImage,
+        output_image: *VulkanImage,
         config: PatternMatchingConfig,
     ) !void {
         const device = self.context.device.?;
@@ -45,21 +45,25 @@ pub const PatternMatcher = struct {
         
         // Create a staging buffer for intermediate results
         const buffer_size = @as(vk.VkDeviceSize, @intCast(output_image.width * output_image.height * @sizeOf(f32)));
-        const staging_buffer = try VulkanBuffer.createStaging(
+        var staging_buffer = try VulkanBuffer.createStaging(
             self.context,
             self.allocator,
             buffer_size,
         );
-        defer staging_buffer.deinit();
+        defer {
+            staging_buffer.deinit(self.context.device);
+        }
         
         // Create a device-local buffer for the intermediate results
-        const intermediate_buffer = try VulkanBuffer.createDeviceLocal(
+        var intermediate_buffer = try VulkanBuffer.createDeviceLocal(
             self.context,
             self.allocator,
             buffer_size,
             vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         );
-        defer intermediate_buffer.deinit();
+        defer {
+            intermediate_buffer.deinit(self.context.device);
+        }
         
         // Update descriptor sets
         try self.pipeline.updateDescriptorSets(
@@ -144,8 +148,8 @@ pub const PatternMatcher = struct {
         // End and submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
             device,
-            queue,
             command_pool,
+            queue,
             command_buffer
         );
         
