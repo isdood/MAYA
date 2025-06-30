@@ -204,11 +204,11 @@ pub fn build(b: *std.Build) !void {
                 .module = vk_module,
             },
             .{
-                .name = "vulkan_context",
+                .name = "vulkan/context",
                 .module = context_module,
             },
             .{
-                .name = "vulkan_memory",
+                .name = "vulkan/memory",
                 .module = memory_module,
             },
         },
@@ -268,6 +268,26 @@ pub fn build(b: *std.Build) !void {
     pattern_matching_test.linkSystemLibrary("vulkan");
     
     // Add module imports with unique names
+    // Create a module for the buffer
+    const buffer_module = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "src/vulkan/buffer.zig" },
+        .imports = &.{
+            .{
+                .name = "vk",
+                .module = vk_module,
+            },
+            .{
+                .name = "vulkan/context",
+                .module = context_module,
+            },
+            .{
+                .name = "vulkan/memory",
+                .module = memory_module,
+            },
+        },
+    });
+
+    // Add all module imports
     pattern_matching_test.root_module.addImport("vk", vk_module);
     pattern_matching_test.root_module.addImport("vulkan_context", context_module);
     pattern_matching_test.root_module.addImport("vulkan_memory", memory_module);

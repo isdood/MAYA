@@ -3,9 +3,12 @@ const std = @import("std");
 
 // Import the vk module that was provided by the build system
 const vk = @import("vk");
+const VulkanContext = @import("vulkan/context").VulkanContext;
 
-// Import VulkanContext
-const VulkanContext = @import("vulkan_context").VulkanContext;
+// Import the C types directly from the Vulkan headers
+const c = @cImport({
+    @cInclude("vulkan/vulkan.h");
+});
 
 /// Vulkan memory allocation and management
 pub const VulkanMemory = struct {
@@ -18,11 +21,35 @@ pub const VulkanMemory = struct {
     ) !vk.VkDeviceMemory {
         _ = allocator; // Might be used for custom allocators in the future
         
-        const memory_type_index = try findMemoryType(
-            context.physical_device.?, 
-            @as(u32, @intCast(requirements.memoryTypeBits)),
-            properties
-        );
+        const device = context.device orelse return error.InvalidDevice;
+        const physical_device = context.physical_device orelse return error.InvalidPhysicalDevice;
+        
+        // Get memory properties
+        var mem_props: vk.VkPhysicalDeviceMemoryProperties = undefined;
+        const physical_device_ptr = @as(vk.VkPhysicalDevice, @ptrCast(physical_device));
+        vk.vkGetPhysicalDeviceMemoryProperties(physical_device_ptr, &mem_props);
+        
+        // Find a suitable memory type
+        const memory_type_bits = @as(u32, @intCast(requirements.memoryTypeBits));
+        var memory_type_index: u32 = 0;
+        var found = false;
+        
+        for (0..mem_props.memoryTypeCount) |i| {
+            const memory_type = mem_props.memoryTypes[i];
+            const bit = @as(u32, 1) << @as(u5, @intCast(i));
+            const has_type = (memory_type_bits & bit) != 0;
+            const has_properties = (memory_type.propertyFlags & properties) == properties;
+            
+            if (has_type and has_properties) {
+                memory_type_index = @as(u32, @intCast(i));
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            return error.NoSuitableMemoryType;
+        }
         
         const alloc_info = vk.VkMemoryAllocateInfo{
             .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
@@ -32,8 +59,9 @@ pub const VulkanMemory = struct {
         };
         
         var memory: vk.VkDeviceMemory = undefined;
+        const device_ptr = @as(vk.VkDevice, @ptrCast(device));
         try vk.checkSuccess(
-            vk.vkAllocateMemory(context.device.?, &alloc_info, null, &memory),
+            vk.vkAllocateMemory(device_ptr, &alloc_info, null, &memory),
             error.FailedToAllocateMemory
         );
         
@@ -52,49 +80,28 @@ pub const VulkanMemory = struct {
 };
 
 // Helper function to find memory type with required properties
-fn findMemoryType(
+pub fn findMemoryType(
     physical_device: vk.VkPhysicalDevice,
     type_filter: u32,
     properties: vk.VkMemoryPropertyFlags,
 ) !u32 {
-    if (physical_device == null) {
-        std.debug.print("Error: Invalid physical device in findMemoryType\n", .{});
-        return error.InvalidPhysicalDevice;
-    }
+    // Get memory properties directly from the physical device
+    var mem_props: vk.VkPhysicalDeviceMemoryProperties = undefined;
+    const physical_device_ptr = @as(vk.VkPhysicalDevice, @ptrCast(physical_device));
+    vk.vkGetPhysicalDeviceMemoryProperties(physical_device_ptr, &mem_props);
     
-    std.debug.print("  Looking for memory type with filter: {b}, properties: {b}\n", .{
-        type_filter, properties
-    });
-    
-    var mem_properties: vk.VkPhysicalDeviceMemoryProperties = undefined;
-    vk.vkGetPhysicalDeviceMemoryProperties(physical_device, &mem_properties);
-    
-    // Debug print available memory types
-    std.debug.print("  Available memory types (count: {}):\n", .{mem_properties.memoryTypeCount});
-    
-    for (0..mem_properties.memoryTypeCount) |i| {
-        const type_bit: u32 = @as(u32, 1) << @intCast(i);
-        const is_in_filter = (type_filter & type_bit) != 0;
-        const type_props = mem_properties.memoryTypes[i].propertyFlags;
-        const has_required_props = (type_props & properties) == properties;
+    // Find a memory type that is suitable for the buffer and has the required properties
+    for (0..mem_props.memoryTypeCount) |i| {
+        const memory_type = mem_props.memoryTypes[i];
+        const bit = @as(u32, 1) << @as(u5, @intCast(i));
+        const has_type = (type_filter & bit) != 0;
+        const has_properties = (memory_type.propertyFlags & properties) == properties;
         
-        std.debug.print("    [{}] Properties: {b}, In filter: {}, Has required props: {}\n", .{
-            i, type_props, is_in_filter, has_required_props
-        });
-        
-        if (is_in_filter and has_required_props) {
-            std.debug.print("  Selected memory type index: {}\n", .{i});
+        if (has_type and has_properties) {
             return @as(u32, @intCast(i));
         }
     }
     
-    std.debug.print("  No suitable memory type found for properties: {b}\n", .{properties});
-    std.debug.print("  Type filter bits: {b}\n", .{type_filter});
-    std.debug.print("  Available memory types ({}):\n", .{mem_properties.memoryTypeCount});
-    for (0..mem_properties.memoryTypeCount) |i| {
-        const type_props = mem_properties.memoryTypes[i].propertyFlags;
-        std.debug.print("    [{}] Properties: {b}\n", .{i, type_props});
-    }
     return error.NoSuitableMemoryType;
 }
 
@@ -160,43 +167,15 @@ pub const Buffer_legacy = struct {
         std.debug.print("    Alignment: {}\n", .{mem_requirements.alignment});
         std.debug.print("    Memory type bits: {b}\n", .{mem_requirements.memoryTypeBits});
 
-        // Find a suitable memory type
-        const memory_type_index = blk: {
-            const memory_type = try findMemoryType(
-                physical_device,
-                mem_requirements.memoryTypeBits,
-                memory_properties,
-            );
-            std.debug.print("  Selected memory type index: {} (from bits: {b})\n", .{
-                memory_type, 
-                mem_requirements.memoryTypeBits
-            });
-            break :blk memory_type;
-        };
-        
-        if (memory_type_index == std.math.maxInt(u32)) {
-            std.debug.print("  Error: Failed to find suitable memory type for properties: {b}\n", .{memory_properties});
-            std.debug.print("  Available memory type bits: {b}\n", .{mem_requirements.memoryTypeBits});
-            return error.NoSuitableMemoryType;
-        }
-
-        const alloc_info = vk.VkMemoryAllocateInfo{
-            .sType = vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .pNext = null,
-            .allocationSize = mem_requirements.size,
-            .memoryTypeIndex = memory_type_index,
-        };
-        
-        std.debug.print("  Allocating {} bytes of memory...\n", .{mem_requirements.size});
-
-        var memory: vk.VkDeviceMemory = undefined;
-        result = vk.vkAllocateMemory(device, &alloc_info, null, &memory);
-        if (result != vk.VK_SUCCESS) {
-            std.debug.print("  Failed to allocate memory: {}\n", .{result});
-            vk.vkDestroyBuffer(device, buffer, null);
-            return error.MemoryAllocationFailed;
-        }
-        std.debug.print("  Memory allocated successfully\n", .{});
+        const memory = try VulkanMemory.allocate(
+            VulkanContext{
+                .device = device,
+                .physical_device = physical_device,
+            },
+            std.heap.page_allocator,
+            mem_requirements,
+            memory_properties,
+        );
 
         std.debug.print("  Binding memory to buffer...\n", .{});
         result = vk.vkBindBufferMemory(device, buffer, memory, 0);

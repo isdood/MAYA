@@ -4,13 +4,15 @@ const crypto = std.crypto;
 
 const VulkanContext = @import("vulkan_context").VulkanContext;
 const VulkanMemory = @import("vulkan_memory").VulkanMemory;
-const VulkanBuffer = @import("vulkan_buffer").Buffer;
+const VulkanBuffer = @import("vulkan_buffer").VulkanBuffer;
 const VulkanImage = @import("vulkan_image").VulkanImage;
 const PatternMatcher = @import("vulkan_pattern_matcher").PatternMatcher; 
 const vk = @import("vk");
 
 // Import the pattern matching method enum if needed
 const PatternMatchingMethod = @import("vulkan/pattern_matcher").PatternMatchingMethod;
+const PatternMatchingPipeline = @import("../src/vulkan/compute/pattern_matching_pipeline").PatternMatchingPipeline;
+const PatternMatchingConfig = @import("../src/vulkan/compute/pattern_matching_pipeline").PatternMatchingConfig;
 
 // Generate a simple test pattern
 fn generateTestPattern(width: u32, height: u32, pattern_size: u32) ![]u8 {
@@ -46,6 +48,11 @@ pub fn main() !void {
     std.debug.print("Initializing Vulkan context...\n", .{});
     var vulkan_context = try VulkanContext.init(allocator);
     defer vulkan_context.deinit();
+    
+    // Get Vulkan object pointers
+    const device_ptr = @as(*vk.VkDevice_T, @ptrCast(vulkan_context.device.?));
+    const command_pool_ptr = @as(*vk.VkCommandPool_T, @ptrCast(vulkan_context.command_pool.?));
+    const queue_ptr = @as(*vk.VkQueue_T, @ptrCast(vulkan_context.compute_queue.?));
 
     // Initialize pattern matcher
     std.debug.print("Initializing pattern matcher...\n", .{});
@@ -103,9 +110,9 @@ pub fn main() !void {
     // Upload image data to GPU
     {
         // Create a temporary buffer to hold the image data
-        const staging_buffer = try VulkanBuffer.init(
-            vulkan_context.device.?, 
-            vulkan_context.physical_device.?, 
+        var staging_buffer = try VulkanBuffer.create(
+            &vulkan_context,
+            allocator,
             image_data.len,
             vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -117,8 +124,8 @@ pub fn main() !void {
         
         // Upload to GPU
         const command_buffer = try VulkanBuffer.beginSingleTimeCommands(
-            vulkan_context.device.?, 
-            vulkan_context.command_pool.?
+            device_ptr,
+            command_pool_ptr
         );
         
         // Transition image layout for transfer
@@ -145,7 +152,7 @@ pub fn main() !void {
         
         vk.vkCmdCopyBufferToImage(
             command_buffer,
-            staging_buffer.vk_buffer,
+            staging_buffer.buffer,
             image.image,
             vk.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
@@ -161,9 +168,9 @@ pub fn main() !void {
         
         // Submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
-            vulkan_context.device.?,
-            vulkan_context.compute_queue.?, 
-            vulkan_context.command_pool.?, 
+            device_ptr,
+            queue_ptr,
+            command_pool_ptr,
             command_buffer
         );
     }
@@ -171,9 +178,9 @@ pub fn main() !void {
     // Upload pattern data to GPU
     {
         // Create a temporary buffer to hold the pattern data
-        const staging_buffer = try VulkanBuffer.init(
-            vulkan_context.device.?, 
-            vulkan_context.physical_device.?, 
+        var staging_buffer = try VulkanBuffer.create(
+            &vulkan_context,
+            allocator,
             pattern_data.len,
             vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -185,8 +192,8 @@ pub fn main() !void {
         
         // Upload to GPU
         const command_buffer = try VulkanBuffer.beginSingleTimeCommands(
-            vulkan_context.device.?, 
-            vulkan_context.command_pool.?
+            device_ptr,
+            command_pool_ptr
         );
         
         // Transition image layout for transfer
@@ -213,7 +220,7 @@ pub fn main() !void {
         
         vk.vkCmdCopyBufferToImage(
             command_buffer,
-            staging_buffer.vk_buffer,
+            staging_buffer.buffer,
             pattern_image.image,
             vk.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
@@ -229,9 +236,9 @@ pub fn main() !void {
         
         // Submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
-            vulkan_context.device.?,
-            vulkan_context.compute_queue.?, 
-            vulkan_context.command_pool.?, 
+            device_ptr,
+            queue_ptr,
+            command_pool_ptr,
             command_buffer
         );
     }
@@ -239,8 +246,8 @@ pub fn main() !void {
     // Initialize the output image
     {
         const command_buffer = try VulkanBuffer.beginSingleTimeCommands(
-            vulkan_context.device.?, 
-            vulkan_context.command_pool.?
+            device_ptr,
+            command_pool_ptr
         );
         
         // Transition image layout for general use
@@ -252,9 +259,9 @@ pub fn main() !void {
         
         // Submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
-            vulkan_context.device.?,
-            vulkan_context.compute_queue.?, 
-            vulkan_context.command_pool.?, 
+            device_ptr,
+            queue_ptr,
+            command_pool_ptr,
             command_buffer
         );
     }
@@ -277,9 +284,9 @@ pub fn main() !void {
     {
         // Create a buffer to read back results
         const buffer_size = width * height * @sizeOf(f32);
-        const staging_buffer = try VulkanBuffer.init(
-            vulkan_context.device.?, 
-            vulkan_context.physical_device.?, 
+        var staging_buffer = try VulkanBuffer.create(
+            &vulkan_context,
+            allocator,
             buffer_size,
             vk.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -288,8 +295,8 @@ pub fn main() !void {
         
         // Copy image to buffer
         const command_buffer = try VulkanBuffer.beginSingleTimeCommands(
-            vulkan_context.device.?, 
-            vulkan_context.command_pool.?
+            device_ptr,
+            command_pool_ptr
         );
         
         // Transition image layout for transfer
@@ -318,16 +325,16 @@ pub fn main() !void {
             command_buffer,
             output_image.image,
             vk.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            staging_buffer.vk_buffer,
+            staging_buffer.buffer,
             1,
             &region
         );
         
         // Submit the command buffer
         try VulkanBuffer.endSingleTimeCommands(
-            vulkan_context.device.?,
-            vulkan_context.compute_queue.?, 
-            vulkan_context.command_pool.?, 
+            device_ptr,
+            queue_ptr,
+            command_pool_ptr,
             command_buffer
         );
         

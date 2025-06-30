@@ -3,8 +3,9 @@ const vk = @import("vk");
 
 const Context = @import("vulkan_context").VulkanContext;
 const VulkanImage = @import("vulkan_image").VulkanImage;
-const VulkanBuffer = @import("vulkan_buffer").Buffer;
+const VulkanBuffer = @import("vulkan_buffer").VulkanBuffer;
 const PatternMatchingPipeline = @import("vulkan_pattern_matching_pipeline").PatternMatchingPipeline;
+const PatternMatchingConfig = @import("vulkan_pattern_matching_pipeline").PatternMatchingConfig;
 
 /// High-level interface for GPU-accelerated pattern matching
 pub const PatternMatcher = struct {
@@ -36,7 +37,7 @@ pub const PatternMatcher = struct {
         input_image: VulkanImage,
         pattern_image: VulkanImage,
         output_image: VulkanImage,
-        config: PatternMatchingPipeline.PatternMatchingConfig,
+        config: PatternMatchingConfig,
     ) !void {
         const device = self.context.device.?;
         const command_pool = self.context.command_pool.?;

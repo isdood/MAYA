@@ -2,8 +2,8 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const vk = @import("vk");
 
-const VulkanContext = @import("vulkan_context").VulkanContext;
-const VulkanMemory = @import("memory").VulkanMemory;
+const VulkanContext = @import("vulkan/context").VulkanContext;
+const VulkanMemory = @import("vulkan/memory").VulkanMemory;
 
 pub const VulkanBuffer = struct {
     buffer: vk.VkBuffer,
@@ -37,7 +37,7 @@ pub const VulkanBuffer = struct {
         
         var buffer: vk.VkBuffer = undefined;
         try vk.checkSuccess(vk.vkCreateBuffer(
-            context.device.?, 
+            @as(vk.VkDevice, @ptrCast(context.device.?)),
             &buffer_info, 
             null, 
             &buffer
@@ -45,7 +45,8 @@ pub const VulkanBuffer = struct {
         
         // Allocate memory for the buffer
         var mem_requirements: vk.VkMemoryRequirements = undefined;
-        vk.vkGetBufferMemoryRequirements(context.device.?, buffer, &mem_requirements);
+        const device_ptr = @as(vk.VkDevice, @ptrCast(context.device.?));
+        vk.vkGetBufferMemoryRequirements(device_ptr, buffer, &mem_requirements);
         
         const memory = try VulkanMemory.allocate(
             context,
@@ -55,7 +56,7 @@ pub const VulkanBuffer = struct {
         );
         
         try vk.checkSuccess(vk.vkBindBufferMemory(
-            context.device.?, 
+            device_ptr,
             buffer, 
             memory, 
             0
@@ -103,44 +104,34 @@ pub const VulkanBuffer = struct {
         );
     }
     
-    /// Map the buffer memory
-    pub fn map(self: *Self, context: *VulkanContext) !void {
-        if (self.is_mapped) return;
-        
-        var data: *anyopaque = undefined;
-        try vk.checkSuccess(vk.vkMapMemory(
-            context.device.?, 
-            self.memory.?, 
-            0, 
-            self.size, 
-            0, 
-            @ptrCast(&data)
-        ), error.FailedToMapMemory);
-        
-        self.mapped = data;
-        self.is_mapped = true;
+    /// Upload data to the buffer
+    pub fn upload(self: VulkanBuffer, device: anytype, offset: vk.VkDeviceSize, data: []const u8) !void {
+        if (self.mapped) |mapped| {
+            const dest = @as([*]u8, @ptrFromInt(@intFromPtr(mapped) + @as(usize, @intCast(offset))));
+            @memcpy(dest[0..data.len], data);
+        } else {
+            var mapped_ptr: ?*anyopaque = null;
+            const device_ptr = @as(vk.VkDevice, @ptrCast(device));
+            try vk.checkSuccess(
+                vk.vkMapMemory(device_ptr, self.memory.?, offset, data.len, 0, @ptrCast(&mapped_ptr)),
+                error.FailedToMapMemory
+            );
+            defer vk.vkUnmapMemory(device_ptr, self.memory.?);
+            if (mapped_ptr) |mapped| {
+                const dest = @as([*]u8, @ptrCast(mapped));
+                @memcpy(dest[0..data.len], data);
+            }
+        }
     }
     
     /// Unmap the buffer memory
     pub fn unmap(self: *Self, context: *VulkanContext) void {
         if (!self.is_mapped) return;
         
-        vk.vkUnmapMemory(context.device.?, self.memory.?);
+        const device_ptr = @as(vk.VkDevice, @ptrCast(context.device.?));
+        vk.vkUnmapMemory(device_ptr, self.memory.?);
         self.mapped = null;
         self.is_mapped = false;
-    }
-    
-    /// Upload data to the buffer
-    pub fn upload(self: *Self, context: *VulkanContext, data: []const u8) !void {
-        if (self.memory_properties & vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT == 0) {
-            return error.MemoryNotHostVisible;
-        }
-        
-        try self.map(context);
-        defer self.unmap(context);
-        
-        const mapped_ptr = @as([*]u8, @ptrCast(@alignCast(self.mapped.?)));
-        @memcpy(mapped_ptr[0..data.len], data);
     }
     
     /// Download data from the buffer
@@ -209,11 +200,11 @@ pub const VulkanBuffer = struct {
     }
     
     /// Destroy the buffer and free its memory
-    pub fn deinit(self: *Self, context: *VulkanContext, allocator: Allocator) void {
+    pub fn deinit(self: *VulkanBuffer, device: anytype) void {
         if (self.memory) |memory| {
-            VulkanMemory.free(context, allocator, memory);
+            vk.vkFreeMemory(@ptrCast(device), memory, null);
         }
-        vk.vkDestroyBuffer(context.device.?, self.buffer, null);
+        vk.vkDestroyBuffer(@ptrCast(device), self.buffer, null);
     }
 };
 
@@ -235,7 +226,8 @@ pub fn createAndUploadBuffer(
     const buffer = try VulkanBuffer.createDeviceLocal(context, allocator, data.len, usage);
     
     // Copy from staging to device local
-    const command_buffer = try beginSingleTimeCommands(context.device.?, context.command_pool.?);
+    const device_ptr = @as(vk.VkDevice, @ptrCast(context.device.?));
+    const command_buffer = try beginSingleTimeCommands(device_ptr, context.command_pool.?);
     
     const copy_region = vk.VkBufferCopy{
         .srcOffset = 0,
@@ -252,7 +244,7 @@ pub fn createAndUploadBuffer(
     );
     
     try endSingleTimeCommands(
-        context.device.?,
+        device_ptr,
         context.compute_queue.?,
         context.command_pool.?,
         command_buffer,

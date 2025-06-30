@@ -10,9 +10,14 @@ const StringHashMap = std.StringHashMap;
 const ShaderInfo = struct {
     const Kind = enum { compute, vertex, fragment };
     
+    allocator: std.mem.Allocator,
     path: []const u8,
     name: []const u8,
     kind: Kind,
+    
+    pub fn deinit(self: *ShaderInfo) void {
+        self.allocator.free(self.path);
+    }
 };
 
 pub fn main() !void {
@@ -24,7 +29,10 @@ pub fn main() !void {
     defer process.argsFree(allocator, args);
 
     if (args.len < 3) {
-        std.log.err("Usage: {} <input_dir> <output_dir>", .{args[0]});
+        const stderr = std.io.getStdErr().writer();
+        try stderr.writeAll("Usage: ");
+        try stderr.writeAll(args[0]);
+        try stderr.writeAll(" <input_dir> <output_dir>\n");
         return error.InvalidArgs;
     }
 
@@ -39,11 +47,23 @@ pub fn main() !void {
     defer shaders.deinit();
 
     try findShaders(allocator, input_dir, &shaders);
-    std.log.info("Found {} shaders to compile", .{shaders.items.len});
+    const stdout = std.io.getStdOut().writer();
+    try stdout.writeAll("Found ");
+    try std.fmt.formatInt(shaders.items.len, 10, .lower, .{}, stdout);
+    try stdout.writeAll(" shaders to compile\n");
 
-    // Compile each shader
-    for (shaders.items) |shader| {
-        try compileShader(allocator, shader, output_dir);
+    // Compile each shader and ensure cleanup
+    for (shaders.items) |*shader| {
+        compileShader(allocator, shader.*, output_dir) catch |err| {
+            // Clean up all shaders on error
+            for (shaders.items) |*s| s.deinit();
+            return err;
+        };
+    }
+    
+    // Clean up shader resources
+    for (shaders.items) |*shader| {
+        shader.deinit();
     }
 }
 
@@ -66,11 +86,14 @@ fn findShaders(allocator: Allocator, dir_path: []const u8, shaders: *ArrayList(S
             null;
 
         if (kind) |k| {
-            const shader_path = try fs.path.join(allocator, &[_][]const u8{dir_path, entry.name});
-            const name = std.fs.path.stem(entry.name);
+            // Create a copy of the path and name for the shader
+            const shader_path = try std.fs.path.join(allocator, &[_][]const u8{dir_path, entry.name});
+            
+            // Create the shader info with the allocator for cleanup
             try shaders.append(ShaderInfo{
+                .allocator = allocator,
                 .path = shader_path,
-                .name = try allocator.dupe(u8, name),
+                .name = entry.name[0 .. std.mem.lastIndexOfScalar(u8, entry.name, '.') orelse entry.name.len],
                 .kind = k,
             });
         }
@@ -78,47 +101,79 @@ fn findShaders(allocator: Allocator, dir_path: []const u8, shaders: *ArrayList(S
 }
 
 fn compileShader(allocator: Allocator, shader: ShaderInfo, output_dir: []const u8) !void {
-    const output_spv = try fs.path.join(allocator, &[_][]const u8{
+    // Simple string concatenation for output paths
+    const output_spv = try std.fs.path.join(allocator, &[_][]const u8{
         output_dir,
-        try std.fmt.allocPrint(allocator, "{s}.spv", .{shader.name}),
+        shader.name,
+        ".spv"
     });
     defer allocator.free(output_spv);
 
-    const output_zig = try fs.path.join(allocator, &[_][]const u8{
+    const output_zig = try std.fs.path.join(allocator, &[_][]const u8{
         output_dir,
-        try std.fmt.allocPrint(allocator, "{s}.zig", .{shader.name}),
+        shader.name,
+        ".zig"
     });
     defer allocator.free(output_zig);
 
-    // Compile GLSL to SPIR-V using glslangValidator
-    const result = try process.Child.run(.{
+    // Get the output directory from the output_spv path
+    if (std.fs.path.dirname(output_spv)) |dir| {
+        // Create the output directory if it doesn't exist
+        std.fs.cwd().makePath(dir) catch |err| {
+            if (err != error.PathAlreadyExists) {
+                std.debug.print("Error: Failed to create output directory {s}: {}\n", .{dir, err});
+                return err;
+            }
+        };
+    }
+
+    // Compile the shader
+    std.debug.print("Compiling shader: {s} -> {s}\n", .{shader.path, output_spv});
+    
+    // Run glslc to compile the shader
+    const result = std.ChildProcess.run(.{
         .allocator = allocator,
-        .argv = &[_][]const u8{
-            "glslangValidator",
-            "-V",
-            "--target-env", "vulkan1.2",
-            "-o", output_spv,
-            shader.path,
-        },
-    });
+        .argv = &[_][]const u8{ "glslc", "--target-env=vulkan1.2", "-o", output_spv, shader.path },
+        .max_output_bytes = 10 * 1024, // 10KB max output
+    }) catch |err| {
+        std.debug.print("Error running glslc: {}\n", .{err});
+        return err;
+    };
+    
     defer {
         allocator.free(result.stdout);
         allocator.free(result.stderr);
     }
 
     if (result.term.Exited != 0) {
-        std.log.err("Failed to compile shader {s}: {s}", .{ shader.path, result.stderr });
+        const stderr = std.io.getStdErr().writer();
+        try stderr.writeAll("\x1b[31mError: Failed to compile shader: ");
+        try stderr.print("{s}\n", .{shader.name});
+        try stderr.writeAll("Command: glslc --target-env=vulkan1.2 -o ");
+        try stderr.writeAll(output_spv);
+        try stderr.writeAll(" ");
+        try stderr.print("{s}\n", .{shader.path});
+        try stderr.print("Exit code: {}\n", .{result.term.Exited});
+        if (result.stdout.len > 0) {
+            try stderr.writeAll("stdout:\n");
+            try stderr.writeAll(result.stdout);
+            try stderr.writeAll("\n");
+        }
+        if (result.stderr.len > 0) {
+            try stderr.writeAll("stderr:\n");
+            try stderr.writeAll(result.stderr);
+            try stderr.writeAll("\n");
+        }
+        try stderr.writeAll("\x1b[0m");
         return error.ShaderCompilationFailed;
     }
 
-    // Read the compiled SPIR-V
+    // Read the compiled SPIR-V file
     const spv_file = try fs.cwd().openFile(output_spv, .{});
     defer spv_file.close();
-
-    const file_size = try spv_file.getEndPos();
-    const spv_data = try allocator.alloc(u8, file_size);
+    
+    const spv_data = try spv_file.readToEndAlloc(allocator, std.math.maxInt(usize));
     defer allocator.free(spv_data);
-    _ = try spv_file.readAll(spv_data);
 
     // Generate Zig source file with the SPIR-V data
     var zig_file = try fs.cwd().createFile(output_zig, .{});
@@ -127,21 +182,22 @@ fn compileShader(allocator: Allocator, shader: ShaderInfo, output_dir: []const u
     var writer = zig_file.writer();
     try writer.writeAll("//! Auto-generated from ");
     try writer.writeAll(shader.path);
-    try writer.writeAll("\n");
-    try writer.writeAll("//! DO NOT EDIT MANUALLY\n\n");
-
-    // Write the SPIR-V data as a Zig array
+    try writer.writeAll("\n//! DO NOT EDIT MANUALLY\n\n");
     try writer.writeAll("pub const data = [_]u8{\n    ");
 
     // Write bytes in chunks of 12 for better readability
-    for (spv_data, 0..) |byte, i| {
+    var i: usize = 0;
+    while (i < spv_data.len) : (i += 1) {
         if (i > 0 and i % 12 == 0) {
             try writer.writeAll("\n    ");
         }
-        // Use a simple string conversion for the byte
-        const byte_str = try std.fmt.allocPrint(allocator, "0x{x:0>2}", .{byte});
-        defer allocator.free(byte_str);
-        try writer.writeAll(byte_str);
+        // Format the byte as hex
+        const byte = spv_data[i];
+        const nibble_hi = byte >> 4;
+        const nibble_lo = byte & 0xF;
+        try writer.writeAll("0x");
+        try writer.writeByte(if (nibble_hi < 10) '0' + @as(u8, @intCast(nibble_hi)) else 'a' + @as(u8, @intCast(nibble_hi - 10)));
+        try writer.writeByte(if (nibble_lo < 10) '0' + @as(u8, @intCast(nibble_lo)) else 'a' + @as(u8, @intCast(nibble_lo - 10)));
         if (i < spv_data.len - 1) {
             try writer.writeAll(",");
         }
@@ -149,7 +205,9 @@ fn compileShader(allocator: Allocator, shader: ShaderInfo, output_dir: []const u
 
     try writer.writeAll("\n};\n");
     
-    // Simple debug output without formatting
+    // Log successful generation
     const stdout = std.io.getStdOut().writer();
-    try stdout.writeAll("Generated shader.zig\n");
+    try stdout.writeAll("Generated ");
+    try stdout.writeAll(output_zig);
+    try stdout.writeAll("\n");
 }

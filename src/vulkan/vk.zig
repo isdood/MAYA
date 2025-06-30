@@ -1,6 +1,14 @@
 // Common Vulkan types and imports
 const std = @import("std");
 
+/// Helper function to check Vulkan result codes and return appropriate errors
+pub fn checkSuccess(result: c.VkResult, error_enum: anyerror) !void {
+    if (result != c.VK_SUCCESS) {
+        std.log.err("Vulkan error: {}", .{result});
+        return error_enum;
+    }
+}
+
 // Import Vulkan with proper platform defines
 const c = @cImport({
     @cDefine("VK_USE_PLATFORM_XLIB_KHR", "1");
